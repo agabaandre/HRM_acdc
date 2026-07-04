@@ -745,8 +745,12 @@
                 onMounted(() => {
                     participantsMountReady.value = !!document.getElementById('matrix-show-participants-mount');
                     loadActivities();
+                    if (cfg.approvedSingleMemosCount > 0) {
+                        loadSingleMemos();
+                    } else {
+                        setTimeout(setupSingleMemosLazyLoad, 100);
+                    }
                     setTimeout(setupParticipantsLazyLoad, 50);
-                    setTimeout(setupSingleMemosLazyLoad, 100);
                 });
 
                 onBeforeUnmount(() => {

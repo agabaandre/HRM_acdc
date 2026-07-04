@@ -713,8 +713,9 @@ class MatrixController extends Controller
             ->where('is_single_memo', 1)
             ->where('overall_status', 'approved');
         if ($isApprover) {
-            if (!empty($approvableIds)) {
-                $approvedSingleMemosCountQuery->whereIn('id', $approvableIds);
+            $visibleSingleMemoIds = $this->resolveVisibleSingleMemoIds($matrix, $userWorkflowDefinition ?? null);
+            if (! empty($visibleSingleMemoIds)) {
+                $approvedSingleMemosCountQuery->whereIn('id', $visibleSingleMemoIds);
             } else {
                 $approvedSingleMemosCountQuery->whereRaw('1 = 0');
             }
@@ -1466,6 +1467,233 @@ class MatrixController extends Controller
     }
 
     /**
+     * Cached approved single-memo IDs visible to the current approver (fund-type / funder rules).
+     *
+     * @return list<int>
+     */
+    private function resolveVisibleSingleMemoIds(Matrix $matrix, $userWorkflowDefinition = null): array
+    {
+        $currentUserId = (int) user_session('staff_id');
+        if ($currentUserId <= 0) {
+            return [];
+        }
+
+        $workflowDefinition = $userWorkflowDefinition ?? get_user_workflow_definition_for_matrix($matrix);
+        if (! $workflowDefinition) {
+            return [];
+        }
+
+        $cacheKey = 'visible_single_memo_ids_v1_'.$matrix->id.'_'.$currentUserId.'_'.$matrix->approval_level;
+
+        return Cache::remember($cacheKey, 300, function () use ($matrix, $workflowDefinition): array {
+            $memos = $matrix->activities()
+                ->where('is_single_memo', 1)
+                ->where('overall_status', 'approved')
+                ->select(['id', 'fund_type_id', 'budget_breakdown', 'matrix_id', 'is_single_memo'])
+                ->with([
+                    'activity_budget:id,activity_id,fund_code',
+                    'activity_budget.fundcode:id,funder_id',
+                ])
+                ->get();
+
+            if ($memos->isEmpty()) {
+                return [];
+            }
+
+            $funderIdsByActivity = $this->resolveActivityFunderIdsByActivityId($memos);
+            $userFundType = $workflowDefinition->fund_type !== null && $workflowDefinition->fund_type !== ''
+                ? (int) $workflowDefinition->fund_type
+                : null;
+            $allowedFunders = $this->normalizeAllowedFunderIds($workflowDefinition->allowed_funders);
+            $userHasRestriction = $userFundType !== null || $allowedFunders !== [];
+
+            $ids = [];
+            foreach ($memos as $memo) {
+                if (! $userHasRestriction) {
+                    $ids[] = (int) $memo->id;
+                    continue;
+                }
+
+                $passesUserRules = false;
+                if ($userFundType !== null && (int) $memo->fund_type_id === $userFundType) {
+                    $passesUserRules = true;
+                }
+                if (! $passesUserRules && $allowedFunders !== []) {
+                    $memoFunderIds = $funderIdsByActivity[(int) $memo->id] ?? [];
+                    if ($memoFunderIds !== [] && array_intersect($memoFunderIds, $allowedFunders) !== []) {
+                        $passesUserRules = true;
+                    }
+                }
+
+                if ($passesUserRules) {
+                    $ids[] = (int) $memo->id;
+                }
+            }
+
+            return $ids;
+        });
+    }
+
+    /**
+     * @param  array<int>|null  $limitIds
+     */
+    private function buildMatrixSingleMemosListQuery(Matrix $matrix, Request $request, ?array $limitIds = null)
+    {
+        $singleMemosQuery = $matrix->activities()
+            ->where('is_single_memo', 1)
+            ->where('overall_status', 'approved')
+            ->select([
+                'id',
+                'matrix_id',
+                'document_number',
+                'activity_title',
+                'date_from',
+                'date_to',
+                'total_participants',
+                'available_budget',
+                'budget_breakdown',
+                'overall_status',
+                'fund_type_id',
+                'location_id',
+                'responsible_person_id',
+                'staff_id',
+                'is_single_memo',
+            ])
+            ->with([
+                'matrix:id,approval_level,forward_workflow_id,overall_status',
+                'fundType:id,name',
+                'responsiblePerson:staff_id,fname,lname,job_name,title',
+                'activity_budget:id,activity_id,fund_code',
+                'activity_budget.fundcode:id,code,funder_id',
+                'activity_budget.fundcode.funder:id,name',
+            ]);
+
+        if ($limitIds !== null) {
+            $singleMemosQuery->whereIn('id', $limitIds);
+        }
+
+        if ($request->filled('document_number')) {
+            $singleMemosQuery->where('document_number', 'like', '%'.$request->document_number.'%');
+        }
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $singleMemosQuery->where(function ($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('document_number', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('background', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('activity_request_remarks', 'like', '%'.$searchTerm.'%')
+                    ->orWhereHas('responsiblePerson', function ($q) use ($searchTerm) {
+                        $q->where('fname', 'like', '%'.$searchTerm.'%')
+                            ->orWhere('lname', 'like', '%'.$searchTerm.'%');
+                    })
+                    ->orWhereHas('fundType', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', '%'.$searchTerm.'%');
+                    });
+            });
+        }
+
+        return $singleMemosQuery;
+    }
+
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $singleMemos
+     */
+    private function hydrateSingleMemosPageForApproverJson($singleMemos, $userWorkflowDefinition = null): void
+    {
+        $matrix = null;
+        foreach ($singleMemos->items() as $memo) {
+            if ($memo->relationLoaded('matrix') && $memo->matrix) {
+                $matrix = $memo->matrix;
+                break;
+            }
+        }
+
+        $allLocationIds = [];
+        $memoRows = [];
+
+        foreach ($singleMemos->items() as $memo) {
+            $locationIds = is_array($memo->location_id)
+                ? $memo->location_id
+                : json_decode($memo->location_id ?? '[]', true);
+            $locationIds = array_values(array_filter((array) ($locationIds ?: []), static fn ($id) => (int) $id > 0));
+
+            $memoRows[] = [
+                'memo' => $memo,
+                'location_ids' => $locationIds,
+            ];
+
+            $allLocationIds = array_merge($allLocationIds, $locationIds);
+        }
+
+        $locations = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get(['id', 'name'])->keyBy('id');
+
+        $memoIds = collect($singleMemos->items())->pluck('id')->map(static fn ($id) => (int) $id)->all();
+        $approvalMeta = [];
+        if ($userWorkflowDefinition && $memoIds !== [] && $matrix) {
+            $approvalMeta = $this->batchUserActivityApprovalMeta(
+                $memoIds,
+                (int) $matrix->id,
+                (int) $matrix->approval_level,
+                (int) user_session('staff_id')
+            );
+        }
+
+        $processedMemos = collect();
+        foreach ($memoRows as $row) {
+            $memo = $row['memo'];
+            $memo->locations = $locations->whereIn('id', $row['location_ids'])->values();
+            $memo->can_approve = false;
+            $memo->allow_print = false;
+            $memo->user_has_passed = false;
+            $memo->has_passed_at_current_level = false;
+            $memo->my_current_level_action = null;
+
+            if ($userWorkflowDefinition && $matrix) {
+                $meta = $approvalMeta[(int) $memo->id] ?? [
+                    'has_passed_at_current_level' => false,
+                    'my_current_level_action' => null,
+                ];
+                $memo->has_passed_at_current_level = $meta['has_passed_at_current_level'];
+                $memo->my_current_level_action = $meta['my_current_level_action'];
+                $memo->user_has_passed = $meta['has_passed_at_current_level'];
+            }
+
+            $processedMemos->push($memo);
+        }
+
+        $singleMemos->setCollection($processedMemos);
+    }
+
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $singleMemos
+     */
+    private function singleMemosApproverJsonResponse($singleMemos, $userWorkflowDefinition = null)
+    {
+        $mapped = $singleMemos->getCollection()->map(fn ($memo) => $this->formatActivityForMatrixApproverJson($memo));
+        $singleMemos->setCollection($mapped);
+
+        return response()->json([
+            'single_memos' => $singleMemos,
+            'user_workflow_definition' => $userWorkflowDefinition ? [
+                'id' => $userWorkflowDefinition->id,
+                'role' => $userWorkflowDefinition->role,
+                'approval_order' => $userWorkflowDefinition->approval_order,
+                'allowed_funders' => $userWorkflowDefinition->allowed_funders,
+                'is_division_specific' => $userWorkflowDefinition->is_division_specific,
+            ] : null,
+            'pagination' => [
+                'current_page' => $singleMemos->currentPage(),
+                'last_page' => $singleMemos->lastPage(),
+                'per_page' => $singleMemos->perPage(),
+                'total' => $singleMemos->total(),
+                'from' => $singleMemos->firstItem(),
+                'to' => $singleMemos->lastItem(),
+            ],
+        ]);
+    }
+
+    /**
      * Cached travel-day map for division schedule (expensive: scans activity participants).
      *
      * @return array<int, array{division_days: int, other_days: int}>
@@ -1765,89 +1993,41 @@ class MatrixController extends Controller
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
-        
-        // If user is not logged in, return all single memos without filtering
-        if (!$userStaffId) {
+
+        if (! $userStaffId) {
             return $this->getAllSingleMemos($matrix, $request);
         }
 
-        // Get user's workflow definition and approval order
         $userWorkflowDefinition = $this->getUserWorkflowDefinition($matrix, $userStaffId, $userDivisionId);
-        
-        // If no workflow definition found for user, return all single memos without filtering
-        if (!$userWorkflowDefinition) {
+
+        if (! $userWorkflowDefinition) {
             return $this->getAllSingleMemos($matrix, $request);
         }
 
-        // Build single memos query with filtering - only show approved single memos
-        $singleMemosQuery = $matrix->activities()
-            ->where('is_single_memo', 1)
-            ->where('overall_status', 'approved')
-            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
+        $perPage = max(1, (int) $request->get('per_page', 20));
+        $limitIds = null;
 
         if ($this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId)) {
-            $approvable = get_approvable_activities($matrix);
-            $approvableSingleMemoIds = $approvable->pluck('id')->toArray();
-            if (!empty($approvableSingleMemoIds)) {
-                $singleMemosQuery->whereIn('id', $approvableSingleMemoIds);
-            } else {
-                $singleMemosQuery->whereRaw('1 = 0');
+            $visibleIds = $this->resolveVisibleSingleMemoIds($matrix, $userWorkflowDefinition);
+            if (empty($visibleIds)) {
+                $singleMemos = new \Illuminate\Pagination\LengthAwarePaginator(
+                    [],
+                    0,
+                    $perPage,
+                    1,
+                    ['path' => $request->url(), 'pageName' => 'page']
+                );
+
+                return $this->singleMemosApproverJsonResponse($singleMemos, $userWorkflowDefinition);
             }
+            $limitIds = $visibleIds;
         }
 
-        // Apply document number filter if provided
-        if ($request->filled('document_number')) {
-            $singleMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-
-        // Apply general search filter if provided
-        if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $singleMemosQuery->where(function($query) use ($searchTerm) {
-                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
-                          $q->where('fname', 'like', '%' . $searchTerm . '%')
-                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
-                      })
-                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
-                          $q->where('name', 'like', '%' . $searchTerm . '%');
-                      });
-            });
-        }
-
-        $perPage = $request->get('per_page', 20);
+        $singleMemosQuery = $this->buildMatrixSingleMemosListQuery($matrix, $request, $limitIds);
         $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
+        $this->hydrateSingleMemosPageForApproverJson($singleMemos, $userWorkflowDefinition);
 
-        $this->hydrateSingleMemoRowsForJson($singleMemos->items());
-
-        foreach ($singleMemos as $memo) {
-            $memo->can_approve = can_approve_activity($memo);
-            $memo->allow_print = allow_print_activity($memo);
-            $memo->my_last_action = $memo->my_last_action ?? null;
-            $memo->user_has_passed = $this->hasUserPassedActivity($memo, $userWorkflowDefinition);
-        }
-
-        return response()->json([
-            'single_memos' => $singleMemos,
-            'user_workflow_definition' => [
-                'id' => $userWorkflowDefinition->id,
-                'role' => $userWorkflowDefinition->role,
-                'approval_order' => $userWorkflowDefinition->approval_order,
-                'allowed_funders' => $userWorkflowDefinition->allowed_funders,
-                'is_division_specific' => $userWorkflowDefinition->is_division_specific,
-            ],
-            'pagination' => [
-                'current_page' => $singleMemos->currentPage(),
-                'last_page' => $singleMemos->lastPage(),
-                'per_page' => $singleMemos->perPage(),
-                'total' => $singleMemos->total(),
-                'from' => $singleMemos->firstItem(),
-                'to' => $singleMemos->lastItem(),
-            ]
-        ]);
+        return $this->singleMemosApproverJsonResponse($singleMemos, $userWorkflowDefinition);
     }
 
     /**
@@ -1855,59 +2035,12 @@ class MatrixController extends Controller
      */
     private function getAllSingleMemos(Matrix $matrix, Request $request)
     {
-        // Build single memos query without filtering - only show approved single memos
-        $singleMemosQuery = $matrix->activities()
-            ->where('is_single_memo', 1)
-            ->where('overall_status', 'approved')
-            ->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
-
-        // Apply document number filter if provided
-        if ($request->filled('document_number')) {
-            $singleMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-
-        // Apply general search filter if provided
-        if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $singleMemosQuery->where(function($query) use ($searchTerm) {
-                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
-                          $q->where('fname', 'like', '%' . $searchTerm . '%')
-                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
-                      })
-                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
-                          $q->where('name', 'like', '%' . $searchTerm . '%');
-                      });
-            });
-        }
-
-        $perPage = $request->get('per_page', 20);
+        $perPage = max(1, (int) $request->get('per_page', 20));
+        $singleMemosQuery = $this->buildMatrixSingleMemosListQuery($matrix, $request);
         $singleMemos = $singleMemosQuery->latest()->paginate($perPage);
+        $this->hydrateSingleMemosPageForApproverJson($singleMemos);
 
-        $this->hydrateSingleMemoRowsForJson($singleMemos->items());
-
-        foreach ($singleMemos as $memo) {
-            $memo->can_approve = false;
-            $memo->allow_print = false;
-            $memo->my_last_action = null;
-            $memo->user_has_passed = false;
-        }
-
-        return response()->json([
-            'single_memos' => $singleMemos,
-            'user_workflow_definition' => null,
-            'pagination' => [
-                'current_page' => $singleMemos->currentPage(),
-                'last_page' => $singleMemos->lastPage(),
-                'per_page' => $singleMemos->perPage(),
-                'total' => $singleMemos->total(),
-                'from' => $singleMemos->firstItem(),
-                'to' => $singleMemos->lastItem(),
-            ]
-        ]);
+        return $this->singleMemosApproverJsonResponse($singleMemos);
     }
 
     /**
