@@ -11,7 +11,10 @@
 @endsection
 
 @section('content')
-    <form action="{{ route('staff.store') }}" method="POST" enctype="multipart/form-data">
+    @include('partials.apm-vuetify-like-forms-assets')
+
+    <div class="apm-v-form">
+<form action="{{ route('staff.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
         <div class="row">
@@ -378,6 +381,8 @@
             </div>
         </div>
     </form>
+
+    </div>
 @endsection
 
 @push('scripts')

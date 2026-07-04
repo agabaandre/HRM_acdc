@@ -166,6 +166,7 @@ class SystemSettingsController extends Controller
             'date_format' => 'locale', 'date_time_format' => 'locale', 'locale' => 'locale',
             'items_per_page' => 'ui', 'pagination_size' => 'ui', 'maintenance_mode' => 'ui',
             'approval_warning_days' => 'approvals',
+            'general_workflow_stale_escalation_orders' => 'approvals',
             'budget_draft_max_age_months' => 'budget',
             'budget_committed_activity_statuses' => 'budget',
             'budget_committed_memo_statuses' => 'budget',

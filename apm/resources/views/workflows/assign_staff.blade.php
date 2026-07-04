@@ -11,7 +11,10 @@
 @endsection
 
 @section('content')
-    <div class="card shadow-sm mb-4 border-0">
+    @include('partials.apm-vuetify-like-forms-assets')
+
+    <div class="apm-v-form">
+<div class="card shadow-sm mb-4 border-0">
         <div class="card-body py-3 px-4 bg-light rounded-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
                 <h4 class="mb-0 text-success fw-bold">
@@ -557,4 +560,6 @@
             })();
         </script>
     @endpush
+
+    </div>
 @endsection

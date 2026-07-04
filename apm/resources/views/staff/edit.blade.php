@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <form action="{{ route('staff.update', $staff) }}" method="POST" enctype="multipart/form-data">
     @csrf
     @method('PUT')
@@ -423,6 +426,8 @@
         </div>
     </div>
 </form>
+
+</div>
 @endsection
 
 @push('scripts')

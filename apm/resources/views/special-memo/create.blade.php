@@ -12,7 +12,10 @@
 @endsection
 
 @section('content')
-    <div class="card shadow-sm border-0 mb-5">
+    @include('partials.apm-vuetify-like-forms-assets')
+
+    <div class="apm-v-form">
+<div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-success">
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
@@ -128,6 +131,8 @@
                 </div>
             </form>
         </div>
+    </div>
+
     </div>
 @endsection
 
@@ -295,6 +300,7 @@ $(document).ready(function () {
     $('#total_participants_display').val(total);
     $('#total_participants').val(total);
 }
+    window.updateTotalParticipants = updateTotalParticipants;
 
 $('#internal_participants').on('change', function () {
     const selectedIds = ($(this).val() || []).map(id => String(id));
@@ -396,6 +402,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
 
     updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
 }
+    window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 
 
 
@@ -555,7 +562,15 @@ $(document).ready(function () {
     flatpickr('.date-picker', {
         dateFormat: 'Y-m-d'
     });
+    updateTotalParticipants();
 }
+
+    window.rebuildParticipantsTableFromSelect = function () {
+        if (!validateDates(false)) {
+            return;
+        }
+        updateParticipantsTable();
+    };
 
 
 $(document).on('change', '.participant-start, .participant-end', function () {
@@ -896,5 +911,6 @@ document.addEventListener('livewire:navigate', function () {
 </script>
 
 @include('partials.apm-working-balance-js')
+@include('partials.participant-groups-js')
 
 @endpush

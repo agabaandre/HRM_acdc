@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="card shadow-sm">
     <div class="card-header bg-warning text-dark">
         <h5 class="mb-0"><i class="bx bx-edit me-2"></i>Edit Fund Type</h5>
@@ -45,5 +48,7 @@
             </div>
         </form>
     </div>
+</div>
+
 </div>
 @endsection

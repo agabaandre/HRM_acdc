@@ -1,0 +1,455 @@
+/**
+ * Vuetify-inspired styling for Bootstrap memo forms (CSS only — no Vue).
+ * Scope all rules under .apm-v-form to avoid global side effects.
+ */
+.apm-v-form {
+    --v-primary: #119a48;
+    --v-primary-dark: #0d7a3a;
+    --v-primary-light: rgba(17, 154, 72, 0.08);
+    --v-on-surface: rgba(0, 0, 0, 0.87);
+    --v-on-surface-medium: rgba(0, 0, 0, 0.6);
+    --v-border: rgba(0, 0, 0, 0.24);
+    --v-border-hover: rgba(0, 0, 0, 0.42);
+    --v-radius: 4px;
+    --v-radius-lg: 12px;
+    --v-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --v-elevation-2: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    font-family: Roboto, system-ui, -apple-system, sans-serif;
+    color: var(--v-on-surface);
+}
+
+.apm-v-form.card {
+    border-radius: var(--v-radius-lg) !important;
+    box-shadow: var(--v-elevation-2) !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    overflow: hidden;
+}
+
+.apm-v-form .card-body {
+    padding: 1.5rem 1.75rem 1.75rem;
+}
+
+.apm-v-form .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.009375em;
+    color: var(--v-on-surface-medium);
+    margin-bottom: 0.35rem;
+    text-transform: none;
+}
+
+.apm-v-form .form-label .text-danger {
+    color: #b00020 !important;
+}
+
+.apm-v-form .form-label i.text-success {
+    color: var(--v-primary) !important;
+    opacity: 0.85;
+}
+
+.apm-v-form .form-control,
+.apm-v-form .form-select {
+    border: 1px solid var(--v-border);
+    border-radius: var(--v-radius);
+    background: #fff;
+    color: var(--v-on-surface);
+    font-size: 0.9375rem;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.875rem;
+    box-shadow: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apm-v-form .form-control:hover,
+.apm-v-form .form-select:hover {
+    border-color: var(--v-border-hover);
+}
+
+.apm-v-form .form-control:focus,
+.apm-v-form .form-select:focus {
+    border-color: var(--v-primary);
+    box-shadow: 0 0 0 1px var(--v-primary);
+    outline: none;
+}
+
+.apm-v-form .form-control.border-success,
+.apm-v-form .form-select.border-success {
+    border-color: var(--v-border);
+}
+
+.apm-v-form .form-control.is-invalid,
+.apm-v-form .form-select.is-invalid {
+    border-color: #b00020;
+    box-shadow: 0 0 0 1px #b00020;
+}
+
+.apm-v-form .invalid-feedback {
+    font-size: 0.75rem;
+    color: #b00020;
+    margin-top: 0.25rem;
+}
+
+.apm-v-form .text-muted,
+.apm-v-form small.text-muted {
+    font-size: 0.75rem;
+    color: var(--v-on-surface-medium) !important;
+    letter-spacing: 0.025em;
+}
+
+.apm-v-form h6.fw-bold.text-success {
+    font-size: 1rem;
+    font-weight: 500 !important;
+    color: var(--v-on-surface) !important;
+    letter-spacing: 0.0075em;
+    margin-bottom: 0.75rem !important;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.apm-v-form h6.fw-bold.text-success i {
+    color: var(--v-primary) !important;
+}
+
+.apm-v-form .btn {
+    border-radius: var(--v-radius);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    min-height: 2.25rem;
+    padding: 0.5rem 1rem;
+    box-shadow: none;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.apm-v-form .btn-outline-success {
+    color: var(--v-primary);
+    border: 1px solid var(--v-primary);
+    background: transparent;
+}
+
+.apm-v-form .btn-outline-success:hover,
+.apm-v-form .btn-outline-success:focus {
+    background: var(--v-primary-light);
+    color: var(--v-primary-dark);
+    border-color: var(--v-primary);
+}
+
+.apm-v-form .btn-success {
+    background: var(--v-primary);
+    border-color: var(--v-primary);
+}
+
+.apm-v-form .btn-success:hover {
+    background: var(--v-primary-dark);
+    border-color: var(--v-primary-dark);
+}
+
+.apm-v-form .btn-sm {
+    min-height: 2rem;
+    font-size: 0.8125rem;
+}
+
+.apm-v-form .participant-groups-picker {
+    margin-top: 1.25rem !important;
+    padding: 1rem 1.25rem;
+    border-radius: var(--v-radius-lg);
+    background: var(--v-primary-light);
+    border: 1px solid rgba(17, 154, 72, 0.2);
+}
+
+.apm-v-form .participant-groups-picker h6 {
+    border-bottom: none !important;
+    padding-bottom: 0;
+    margin-bottom: 0.5rem !important;
+    font-size: 0.9375rem !important;
+}
+
+.apm-v-form .participant-groups-picker a {
+    color: var(--v-primary);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.apm-v-form .participant-groups-picker a:hover {
+    text-decoration: underline;
+}
+
+.apm-v-form .division-block {
+    border-radius: var(--v-radius-lg) !important;
+    border: 1px solid var(--v-border) !important;
+    background: #fafafa !important;
+    box-shadow: var(--v-elevation-1);
+    padding: 1.25rem !important;
+}
+
+.apm-v-form .division-block .form-label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.apm-v-form #participantsTable {
+    border-radius: var(--v-radius-lg);
+    overflow: hidden;
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: var(--v-elevation-1);
+}
+
+.apm-v-form #participantsTable thead th {
+    background: #f5f5f5 !important;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--v-on-surface-medium);
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    padding: 0.75rem 1rem;
+}
+
+.apm-v-form #participantsTable tbody td {
+    padding: 0.625rem 1rem;
+    vertical-align: middle;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    font-size: 0.875rem;
+}
+
+.apm-v-form #participantsTable tbody .form-control {
+    min-height: 2.25rem;
+    font-size: 0.875rem;
+}
+
+.apm-v-form #participantsTable .form-check-input:checked {
+    background-color: var(--v-primary);
+    border-color: var(--v-primary);
+}
+
+.apm-v-form .select2-container--bootstrap4 .select2-selection,
+.apm-v-form .select2-container--default .select2-selection--single,
+.apm-v-form .select2-container--default .select2-selection--multiple {
+    border: 1px solid var(--v-border) !important;
+    border-radius: var(--v-radius) !important;
+    min-height: 2.75rem !important;
+    padding: 0.2rem 0.4rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apm-v-form .select2-container--bootstrap4.select2-container--focus .select2-selection,
+.apm-v-form .select2-container--default.select2-container--focus .select2-selection--single,
+.apm-v-form .select2-container--default.select2-container--focus .select2-selection--multiple,
+.apm-v-form .select2-container--bootstrap4.select2-container--open .select2-selection {
+    border-color: var(--v-primary) !important;
+    box-shadow: 0 0 0 1px var(--v-primary) !important;
+}
+
+.apm-v-form .select2-container--bootstrap4 .select2-selection__rendered,
+.apm-v-form .select2-container--default .select2-selection__rendered {
+    color: var(--v-on-surface);
+    font-size: 0.9375rem;
+    line-height: 2rem;
+    padding-left: 0.5rem;
+}
+
+.apm-v-form .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background: var(--v-primary-light);
+    border: 1px solid rgba(17, 154, 72, 0.25);
+    color: var(--v-primary-dark);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    padding: 0.125rem 0.5rem;
+}
+
+.apm-v-form .select2-dropdown {
+    border-radius: var(--v-radius);
+    border-color: var(--v-border);
+    box-shadow: var(--v-elevation-2);
+}
+
+.apm-v-form .select2-results__option--highlighted[aria-selected] {
+    background: var(--v-primary) !important;
+}
+
+.apm-v-form .ql-toolbar {
+    border-radius: var(--v-radius) var(--v-radius) 0 0;
+    border-color: var(--v-border) !important;
+}
+
+.apm-v-form .ql-container {
+    border-radius: 0 0 var(--v-radius) var(--v-radius);
+    border-color: var(--v-border) !important;
+}
+
+.apm-v-form .alert {
+    border-radius: var(--v-radius-lg);
+    border: none;
+    font-size: 0.875rem;
+}
+
+.apm-v-form .alert-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #92400e;
+}
+
+/* Page shell (create/edit wrappers) */
+.apm-v-form > .card {
+    border-radius: var(--v-radius-lg) !important;
+    box-shadow: var(--v-elevation-2) !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.apm-v-form > .card > .card-header {
+    background: #fafafa !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 1rem 1.5rem;
+}
+
+.apm-v-form > .card > .card-header h5 {
+    font-size: 1.125rem;
+    font-weight: 500;
+    letter-spacing: 0.0075em;
+    color: var(--v-on-surface);
+}
+
+.apm-v-form > .card > .card-header h5.text-success,
+.apm-v-form > .card > .card-header h5 i {
+    color: var(--v-primary) !important;
+}
+
+.apm-v-form > .card > .card-body {
+    padding: 1.5rem 1.75rem;
+}
+
+/* Non-travel section blocks */
+.apm-v-form h6.fw-bold.text-success.border-bottom {
+    font-size: 1rem;
+    font-weight: 500 !important;
+    color: var(--v-on-surface) !important;
+    border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+    letter-spacing: 0.0075em;
+}
+
+.apm-v-form h6.fw-bold.text-success.border-bottom i,
+.apm-v-form h5.fw-bold.text-success i {
+    color: var(--v-primary) !important;
+}
+
+.apm-v-form h5.fw-bold.text-success {
+    font-size: 1.0625rem;
+    font-weight: 500 !important;
+    color: var(--v-on-surface) !important;
+}
+
+/* Nested budget / detail cards */
+.apm-v-form .card .card {
+    border-radius: var(--v-radius-lg) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: var(--v-elevation-1) !important;
+}
+
+.apm-v-form #budgetGroupContainer .card {
+    border-radius: var(--v-radius-lg) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: var(--v-elevation-1);
+    overflow: hidden;
+}
+
+.apm-v-form #budgetGroupContainer .card-header {
+    background: #f5f5f5;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.apm-v-form #budgetGroupContainer .table {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.apm-v-form #budgetGroupContainer .table thead th {
+    background: #fafafa;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v-on-surface-medium);
+}
+
+/* Total budget summary pill */
+.apm-v-form .border.p-4.rounded-3.shadow-sm.bg-light {
+    border-radius: var(--v-radius-lg) !important;
+    border: 1px solid rgba(17, 154, 72, 0.2) !important;
+    background: var(--v-primary-light) !important;
+    box-shadow: var(--v-elevation-1) !important;
+}
+
+.apm-v-form .border.p-4.rounded-3.shadow-sm.bg-light h5 {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+/* Submit row */
+.apm-v-form .border-top.pt-4 {
+    border-top-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.apm-v-form .btn-lg {
+    border-radius: var(--v-radius);
+    min-height: 2.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    box-shadow: var(--v-elevation-1);
+}
+
+.apm-v-form .btn-outline-secondary {
+    border-color: var(--v-border);
+    color: var(--v-on-surface-medium);
+}
+
+.apm-v-form .btn-outline-secondary:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+/* Attachment tables */
+.apm-v-form .table.table-sm.table-bordered {
+    border-radius: var(--v-radius);
+    overflow: hidden;
+    font-size: 0.875rem;
+}
+
+.apm-v-form .table.table-sm.table-bordered thead th {
+    background: #f5f5f5;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--v-on-surface-medium);
+}
+
+/* Disabled / readonly fields */
+.apm-v-form .form-control:disabled,
+.apm-v-form .form-control[readonly] {
+    background: #f5f5f5;
+    color: var(--v-on-surface-medium);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+.apm-v-form label i.bx.text-success,
+.apm-v-form label i.fas.text-success {
+    color: var(--v-primary) !important;
+    opacity: 0.85;
+}
+
+/* Modals triggered from memo forms */
+.apm-v-form .modal-content {
+    border-radius: var(--v-radius-lg);
+    border: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.apm-v-form .modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.apm-v-form .modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}

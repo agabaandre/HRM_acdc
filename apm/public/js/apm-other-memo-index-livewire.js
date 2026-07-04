@@ -33,30 +33,7 @@
 
         var filterTabInput = document.getElementById('filter_tab');
 
-        // Select2 init fires synthetic change events — block auto filter AJAX until boot settles.
-        var allowFilterAjax = false;
-
-        if (window.APMFilters) {
-            APMFilters.clearInited('#otherMemoFilters');
-            APMFilters.init('#otherMemoFilters', {
-                fields: [
-                    { param: 'year', id: 'year', default: APMFilters.currentYear },
-                    { param: 'staff_id', id: 'staff_id' },
-                    { param: 'division_id', id: 'division_id' },
-                    { param: 'status', id: 'memo_status' },
-                    { param: 'document_number', id: 'document_number' },
-                    { param: 'search', id: 'search' }
-                ],
-                tabParam: 'filter_tab',
-                tabDefault: 'mySubmitted',
-                selectSelector: '.apm-filter-select'
-            });
-        }
-
         function applyFilters() {
-            if (!allowFilterAjax) {
-                return;
-            }
             setTimeout(function () {
                 var activeTab = document.querySelector('#otherMemoTabsContent .tab-pane.active');
                 if (activeTab) {
@@ -64,6 +41,12 @@
                 }
             }, 0);
         }
+
+        document.addEventListener('apm-memo-filters:apply', function (e) {
+            if (e.detail && e.detail.filterId === 'otherMemoFilters') {
+                applyFilters();
+            }
+        }, sig);
 
         function getYearValue() {
             var currentYear = String(new Date().getFullYear());
@@ -270,49 +253,6 @@
                     loadOtherMemoTabData(paneId, p);
                 });
             });
-        }
-
-        var applyBtn = document.getElementById('applyOtherMemoFilters');
-        if (applyBtn) {
-            applyBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                allowFilterAjax = true;
-                applyFilters();
-            }, sig);
-        }
-        var form = document.getElementById('otherMemoFiltersForm');
-        if (form) {
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                allowFilterAjax = true;
-                applyFilters();
-            }, sig);
-        }
-        var filterInitTimer = setTimeout(function () {
-            allowFilterAjax = true;
-            ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function (id) {
-                var el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('change', applyFilters, sig);
-                }
-            });
-            var docNum = document.getElementById('document_number');
-            if (docNum) {
-                var documentNumberTimeout;
-                docNum.addEventListener('input', function () {
-                    clearTimeout(documentNumberTimeout);
-                    documentNumberTimeout = setTimeout(applyFilters, 1000);
-                }, sig);
-                docNum.addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') {
-                        clearTimeout(documentNumberTimeout);
-                        applyFilters();
-                    }
-                }, sig);
-            }
-        }, 600);
-        if (root) {
-            root._apmOtherMemosFilterTimer = filterInitTimer;
         }
 
         document.querySelectorAll('#otherMemoTabs [data-bs-toggle="tab"]').forEach(function (button) {

@@ -148,6 +148,16 @@ class NotificationService
     }
 
     /**
+     * Escalate stale pending items to creator, HOD, and senior/configured approvers (all workflows).
+     *
+     * @return list<Notification>
+     */
+    public function createStaleApprovalEscalations(): array
+    {
+        return app(StaleApprovalEscalationService::class)->createEscalationNotifications();
+    }
+
+    /**
      * Remind memo creators about stale draft documents that still hold budget (see budget_stale_draft_reminders_enabled).
      *
      * @return list<Notification>
@@ -215,6 +225,7 @@ class NotificationService
             $template = match ($notification->type) {
                 'daily_pending_approvals' => 'emails.daily-pending-approvals-notification',
                 'stale_pending_approvals_reminder' => 'emails.stale-pending-approvals-reminder',
+                'stale_pending_approvals_escalation' => 'emails.stale-pending-approvals-escalation',
                 'stale_draft_memos_reminder' => 'emails.stale-draft-memos-reminder',
                 default => 'emails.generic-notification',
             };

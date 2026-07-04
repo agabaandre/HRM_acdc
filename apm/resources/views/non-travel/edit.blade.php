@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="card shadow-sm">
     <div class="card-header bg-light">
         <h5 class="mb-0"><i class="bx bx-edit me-2 text-primary"></i>Edit Memo Details</h5>
@@ -662,4 +665,6 @@
     });
 </script>
 @endpush
+
+</div>
 @endsection

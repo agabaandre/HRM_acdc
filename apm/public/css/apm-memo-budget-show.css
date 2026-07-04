@@ -1,0 +1,265 @@
+/* Memo show — budget breakdown (Vuetify-pro, neutral palette) */
+.apm-budget-panel {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    margin-bottom: 1.5rem;
+}
+
+.apm-budget-panel__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.apm-budget-panel__header i,
+.apm-budget-panel__header .apm-budget-panel__icon {
+    color: #119a48;
+    font-size: 1.25rem;
+}
+
+.apm-budget-panel__body {
+    padding: 1.25rem;
+}
+
+.apm-budget-fund-block + .apm-budget-fund-block {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.apm-budget-fund-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.7);
+    margin-bottom: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+    line-height: 1.45;
+}
+
+.apm-budget-table-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.apm-budget-table {
+    width: 100%;
+    margin-bottom: 0;
+    background: #fff;
+}
+
+.apm-budget-table thead th {
+    background: #f8fafc !important;
+    color: rgba(0, 0, 0, 0.65) !important;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    vertical-align: middle;
+}
+
+.apm-budget-table tbody td {
+    padding: 0.75rem 1rem !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+    background: #fff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+.apm-budget-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+.apm-budget-table tbody tr:hover td {
+    background: #fafafa !important;
+}
+
+.apm-budget-table tfoot th,
+.apm-budget-table tfoot td {
+    background: #f1f5f9 !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 1rem !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.apm-budget-grand-total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding: 0.875rem 1.125rem;
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.apm-budget-grand-total strong {
+    font-weight: 700;
+    color: #0d7a3a;
+}
+
+.apm-budget-available {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1.125rem;
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: rgba(0, 0, 0, 0.75);
+}
+
+.apm-budget-available small {
+    display: block;
+    margin-top: 0.25rem;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.apm-budget-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.apm-budget-empty i {
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+}
+
+/* Service request show — neutral budget tables & summary stats */
+#service-request-show .budget-table thead th,
+#service-request-show .apm-budget-table thead th,
+#service-request-show thead.table-primary th,
+#service-request-show thead.table-info th,
+#service-request-show thead.table-secondary th,
+#service-request-show thead.table-light th {
+    background: #f8fafc !important;
+    color: rgba(0, 0, 0, 0.65) !important;
+}
+
+#service-request-show .budget-table tbody td,
+#service-request-show .apm-budget-table tbody td {
+    background: #fff !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+}
+
+#service-request-show .budget-total-row th,
+#service-request-show .budget-total-row td,
+#service-request-show .apm-budget-subtotal-row th {
+    background: #f1f5f9 !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+    font-weight: 600 !important;
+}
+
+#service-request-show .sr-budget-stat {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    padding: 1rem;
+    height: 100%;
+}
+
+#service-request-show .apm-budget-fund-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.7);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #f8fafc;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 8px;
+}
+
+#service-request-show .accordion-item {
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+#service-request-show .accordion-button {
+    background: #fff !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+    box-shadow: none !important;
+}
+
+#service-request-show .accordion-button:not(.collapsed) {
+    background: #f8fafc !important;
+}
+
+#service-request-show .sr-comment-box {
+    background: #f8fafc !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Neutral content cards on memo show pages — no colored left accent */
+.content-section,
+.memo-show-content-card,
+.content-section.memo-show-content-card {
+    background: #fff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.memo-show-content-card .card-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.memo-show-content-card .card-header h6 {
+    color: rgba(0, 0, 0, 0.87) !important;
+    font-weight: 600 !important;
+}
+
+.memo-show-content-card .card-header i {
+    color: #119a48 !important;
+}
+
+.apm-memo-data-table thead th {
+    background: #f8fafc !important;
+    color: rgba(0, 0, 0, 0.65) !important;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.apm-memo-data-table tbody td {
+    background: #fff !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+    border-color: rgba(0, 0, 0, 0.06) !important;
+    vertical-align: middle;
+}
+
+.apm-memo-data-table tbody tr:hover td {
+    background: #fafafa !important;
+}
+
+.apm-memo-data-table .apm-table-total-row td {
+    background: #f1f5f9 !important;
+    font-weight: 600 !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+}

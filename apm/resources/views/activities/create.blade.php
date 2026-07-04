@@ -19,6 +19,8 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form">
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-success">
@@ -172,6 +174,7 @@
             </div>
         </div>
     </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -461,6 +464,7 @@ $(document).ready(function () {
     $('#total_participants_display').val(total);
     $('#total_participants').val(total);
 }
+    window.updateTotalParticipants = updateTotalParticipants;
 
 $('#internal_participants').on('change', function () {
     if (window._internalParticipantsChangeInProgress) return;
@@ -516,8 +520,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     <td class="text-center">
                         <div class="form-check d-flex justify-content-center">
                             <input type="hidden" name="international_travel[${id}]" value="1" class="international-travel-value">
-                            <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked>
-                            <label class="form-check-label ms-2">Yes</label>
+                            <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked aria-label="Leaving country">
                         </div>
                     </td>
                     <td class="text-center text-nowrap align-middle">
@@ -563,6 +566,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
     setTimeout(checkParticipantDaysWarnings, 50);
 }
+    window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 
     $('#addDivisionBlock').click(function () {
         if (!isValidActivityDates()) {
@@ -736,8 +740,7 @@ $(document).ready(function () {
                 <td class="text-center">
                     <div class="form-check d-flex justify-content-center">
                         <input type="hidden" name="international_travel[${id}]" value="1" class="international-travel-value">
-                        <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked>
-                        <label class="form-check-label ms-2">Yes</label>
+                        <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${id}" checked aria-label="Leaving country">
                     </div>
                 </td>
                 <td class="text-center text-nowrap align-middle">
@@ -756,6 +759,13 @@ $(document).ready(function () {
     setTimeout(function() { checkParticipantDaysWarnings(); }, 100);
     updateTotalParticipants();
 }
+
+    window.rebuildParticipantsTableFromSelect = function () {
+        if (!validateDates(false)) {
+            return;
+        }
+        updateParticipantsTable();
+    };
 
 
 $(document).on('change', '.participant-start, .participant-end', function () {
@@ -1194,5 +1204,6 @@ $('#successModal').on('hidden.bs.modal', function () {
 </script>
 
 @include('partials.apm-working-balance-js')
+@include('partials.participant-groups-js')
 
 @endpush

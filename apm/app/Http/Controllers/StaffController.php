@@ -70,7 +70,22 @@ class StaffController extends Controller
             ->orderBy('duty_station_name')
             ->get();
 
-        return view('staff.index', compact('staffMembers', 'divisions', 'dutyStations'));
+        return view('staff.index', [
+            'staffMembers' => $staffMembers,
+            'divisions' => $divisions,
+            'dutyStations' => $dutyStations,
+            'pageConfig' => [
+                'csrf' => csrf_token(),
+                'showParticipantGroups' => (bool) user_session('division_id'),
+                'routes' => [
+                    'ajax' => route('staff.ajax'),
+                    'show' => url('staff'),
+                    'participantGroups' => route('participant-groups.index'),
+                    'exportExcel' => route('staff.export', 'excel'),
+                    'exportPdf' => route('staff.export', 'pdf'),
+                ],
+            ],
+        ]);
     }
 
 

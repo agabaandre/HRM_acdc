@@ -193,110 +193,27 @@
                 </div>
 
                 <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
-                    <form action="{{ route('activities.index') }}" method="GET" class="row g-3 align-items-end w-100" id="activitiesFiltersForm">
-                        <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', in_array(87, user_session('permissions', [])) ? 'all-activities' : 'my-division') }}">
-                        <div class="col-12 mb-2">
-                            <label for="search" class="form-label fw-semibold mb-1">
-                                <i class="bx bx-search me-1 text-success"></i> Search Activity Title
-                            </label>
-                            <input type="text" name="search" id="search" class="form-control" 
-                                   value="{{ $searchTerm ?? request('search') }}" placeholder="Enter activity title to search...">
-                        </div>
-                    <div class="col-md-2">
-                        <label for="document_number" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-file me-1 text-success"></i> Document #
-                        </label>
-                        <input type="text" name="document_number" id="document_number" class="form-control" 
-                               value="{{ request('document_number') }}" placeholder="Enter document number">
-                    </div>
-                    <div class="col-md-2">
-                        <label for="staff_id" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-user me-1 text-success"></i> Responsible Person
-                        </label>
-                        <select name="staff_id" id="staff_id" class="form-select apm-filter-select activities-filter-select" style="width: 100%;">
-                            <option value="">All Staff</option>
-                            @foreach($staff as $staffMember)
-                                <option value="{{ $staffMember->staff_id }}" {{ request('staff_id') == $staffMember->staff_id ? 'selected' : '' }}>
-                                    {{ $staffMember->fname }} {{ $staffMember->lname }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <label for="year" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-calendar me-1 text-success"></i> Year
-                        </label>
-                        <select name="year" id="year" class="form-select" style="width: 100%;">
-                            @foreach($years as $year)
-                                <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>
-                                    {{ $year }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <label for="quarter" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-time-five me-1 text-success"></i> Quarter
-                        </label>
-                        <select name="quarter" id="quarter" class="form-select" style="width: 100%;">
-                            @foreach($quarters as $quarter)
-                                <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>
-                                    {{ $quarter }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="division_id" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-building me-1 text-success"></i> Division
-                        </label>
-                        <select name="division_id" id="division_id" class="form-select apm-filter-select activities-filter-select" style="width: 100%;">
-                            <option value="">All Divisions</option>
-                            @foreach($divisions as $division)
-                                <option value="{{ $division->id }}" {{ $selectedDivisionId == $division->id ? 'selected' : '' }}>
-                                    {{ $division->division_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <label for="status" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-info-circle me-1 text-success"></i> Status
-                        </label>
-                        <select name="status" id="status" class="form-select" style="width: 100%;">
-                            <option value="" {{ ($selectedStatus ?? request('status')) === '' ? 'selected' : '' }}>All</option>
-                            <option value="draft" {{ ($selectedStatus ?? request('status')) === 'draft' ? 'selected' : '' }}>Draft</option>
-                            <option value="pending" {{ ($selectedStatus ?? request('status')) === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="approved" {{ ($selectedStatus ?? request('status')) === 'approved' ? 'selected' : '' }}>Approved</option>
-                            <option value="rejected" {{ ($selectedStatus ?? request('status')) === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                            <option value="returned" {{ ($selectedStatus ?? request('status')) === 'returned' ? 'selected' : '' }}>Returned</option>
-                            <option value="archived" {{ ($selectedStatus ?? request('status')) === 'archived' ? 'selected' : '' }}>Archived</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="fund_type_id" class="form-label fw-semibold mb-1">
-                            <i class="bx bx-wallet me-1 text-success"></i> Fund Type
-                        </label>
-                        <select name="fund_type_id" id="fund_type_id" class="form-select" style="width: 100%;">
-                            <option value="">All Fund Types</option>
-                            @foreach($fundTypeFilterOptions ?? [] as $fundTypeId => $fundTypeLabel)
-                                <option value="{{ $fundTypeId }}" {{ (string) ($selectedFundTypeId ?? request('fund_type_id', '')) === (string) $fundTypeId ? 'selected' : '' }}>
-                                    {{ $fundTypeLabel }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
-                            <i class="bx bx-search-alt-2 me-1"></i> Filter
-                        </button>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <a wire:navigate href="{{ route('activities.index') }}" class="btn btn-outline-secondary btn-sm w-100">
-                            <i class="bx bx-reset me-1"></i> Reset
-                        </a>
-                    </div>
-                    </form>
+                    <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', in_array(87, user_session('permissions', [])) ? 'all-activities' : 'my-division') }}">
+                    @include('partials.apm-memo-list-filters', [
+                        'filterId' => 'activityFilters',
+                        'resetUrl' => route('activities.index'),
+                        'showQuarter' => true,
+                        'showFundType' => true,
+                        'searchLabel' => 'Search Activity Title',
+                        'searchPlaceholder' => 'Enter activity title to search...',
+                        'staffLabel' => 'Responsible Person',
+                        'staff' => $staff,
+                        'divisions' => $divisions,
+                        'years' => $years,
+                        'quarters' => $quarters,
+                        'selectedYear' => $selectedYear,
+                        'selectedQuarter' => $selectedQuarter,
+                        'selectedDivisionId' => $selectedDivisionId,
+                        'selectedStatus' => $selectedStatus,
+                        'selectedFundTypeId' => $selectedFundTypeId,
+                        'searchTerm' => $searchTerm,
+                        'fundTypeFilterOptions' => $fundTypeFilterOptions ?? [],
+                    ])
                 </div>
             </div>
         </div>
@@ -362,72 +279,13 @@ function initActivitiesIndexPage() {
     if (!document.getElementById('activitiesTabs')) return;
     var filtersEl = document.getElementById('activityFilters');
     if (!filtersEl) return;
-    // Shared filter state (matrices pattern): set from URL then Select2; no .select2 class so footer does not init
-    if (window.APMFilters) {
-        APMFilters.clearInited('#activityFilters');
-        APMFilters.init('#activityFilters', {
-            fields: [
-                { param: 'staff_id', id: 'staff_id' },
-                { param: 'year', id: 'year', default: APMFilters.currentYear },
-                { param: 'quarter', id: 'quarter', default: APMFilters.currentQuarter },
-                { param: 'division_id', id: 'division_id' },
-                { param: 'status', id: 'status' },
-                { param: 'fund_type_id', id: 'fund_type_id' },
-                { param: 'document_number', id: 'document_number' },
-                { param: 'search', id: 'search' }
-            ],
-            tabParam: 'filter_tab',
-            tabDefault: document.getElementById('all-activities-tab') ? 'all-activities' : 'my-division',
-            selectSelector: '.apm-filter-select'
-        });
-    }
     function applyFilters() {
         var activeTab = document.querySelector('#activitiesTabsContent .tab-pane.active');
         if (activeTab) loadTabData(activeTab.id);
     }
-    
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
-    }
-    var form = document.getElementById('activitiesFiltersForm');
-    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
-    // Auto-apply filters when they change
-    if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('quarter')) {
-        document.getElementById('quarter').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', applyFilters);
-    }
-
-    if (document.getElementById('status')) {
-        document.getElementById('status').addEventListener('change', applyFilters);
-    }
-
-    if (document.getElementById('fund_type_id')) {
-        document.getElementById('fund_type_id').addEventListener('change', applyFilters);
-    }
-    
-    // Document number filter - apply on Enter key or after 1 second delay
-    if (document.getElementById('document_number')) {
-        var documentNumberTimeout;
-        document.getElementById('document_number').addEventListener('input', function() {
-            clearTimeout(documentNumberTimeout);
-            documentNumberTimeout = setTimeout(applyFilters, 1000);
-        });
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); clearTimeout(documentNumberTimeout); applyFilters(); }
-        });
-    }
-    
+    document.addEventListener('apm-memo-filters:apply', function(e) {
+        if (e.detail && e.detail.filterId === 'activityFilters') applyFilters();
+    });
     // Keep hidden tab in sync so form submit opens the right tab
     var filterTabInput = document.getElementById('filter_tab');
     
@@ -476,25 +334,19 @@ function initActivitiesIndexPage() {
         currentUrl.searchParams.set('tab', tabId);
         
         // Include current filter values
-        const year = document.getElementById('year')?.value;
-        const quarter = document.getElementById('quarter')?.value;
-        const divisionId = document.getElementById('division_id')?.value;
-        const staffId = document.getElementById('staff_id')?.value;
-        const status = document.getElementById('status')?.value;
-        const fundTypeId = document.getElementById('fund_type_id')?.value;
-        const documentNumber = document.getElementById('document_number')?.value;
-        const search = document.getElementById('search')?.value;
-        
-        if (year) currentUrl.searchParams.set('year', year);
-        if (quarter) currentUrl.searchParams.set('quarter', quarter);
-        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
-        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
-        if (status) currentUrl.searchParams.set('status', status);
-        else currentUrl.searchParams.delete('status');
-        if (fundTypeId) currentUrl.searchParams.set('fund_type_id', fundTypeId);
-        else currentUrl.searchParams.delete('fund_type_id');
-        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
-        if (search) currentUrl.searchParams.set('search', search);
+        const frag = window.APMListFragment;
+        if (frag && frag.applyFilterValues) {
+            frag.applyFilterValues(currentUrl, {
+                year: document.getElementById('year')?.value,
+                quarter: document.getElementById('quarter')?.value,
+                division_id: document.getElementById('division_id')?.value,
+                staff_id: document.getElementById('staff_id')?.value,
+                status: document.getElementById('status')?.value,
+                fund_type_id: document.getElementById('fund_type_id')?.value,
+                document_number: document.getElementById('document_number')?.value,
+                search: document.getElementById('search')?.value,
+            });
+        }
 
         window.history.replaceState({}, '', currentUrl.toString());
 

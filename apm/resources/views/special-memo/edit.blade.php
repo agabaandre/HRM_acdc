@@ -67,7 +67,10 @@
 @endsection
 
 @section('content')
-    <div class="card shadow-sm border-0 mb-5">
+    @include('partials.apm-vuetify-like-forms-assets')
+
+    <div class="apm-v-form">
+<div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-success">
                 <i class="fas fa-calendar-plus me-2"></i> Activity Details
@@ -332,6 +335,8 @@
     </div>
   </div>
 </div>
+
+    </div>
 @endsection
 
 @push('scripts')
@@ -455,6 +460,7 @@ $(document).ready(function () {
         $('#total_participants_display').val(total);
         $('#total_participants').val(total);
     }
+    window.updateTotalParticipants = updateTotalParticipants;
 
     $('#internal_participants').on('change', function () {
         if (window._specialMemoRestoringParticipants) {
@@ -545,6 +551,7 @@ $(document).ready(function () {
 
         updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
     }
+    window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 
     // Function to load existing participants with their specific dates
     function loadExistingParticipantsToTable(participants) {
@@ -903,7 +910,15 @@ $(document).ready(function () {
         flatpickr('.date-picker', {
             dateFormat: 'Y-m-d'
         });
+        updateTotalParticipants();
     }
+
+    window.rebuildParticipantsTableFromSelect = function () {
+        if (!validateDates(false)) {
+            return;
+        }
+        updateParticipantsTable();
+    };
 
     // Date change handlers — rebuild participant rows from activity dates (aligns with activities edit)
     $('#date_from, #date_to').on('change', function () {
@@ -1784,4 +1799,5 @@ document.addEventListener('livewire:navigate', function () {
     });
 });
 </script>
+@include('partials.participant-groups-js')
 @endpush

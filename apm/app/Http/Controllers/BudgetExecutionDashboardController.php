@@ -52,6 +52,28 @@ class BudgetExecutionDashboardController extends Controller
             'canPickDivision' => ($scope['allowed_division_ids'] ?? null) === null
                 || count($scope['allowed_division_ids'] ?? []) > 1,
             'canViewAllDivisions' => $scope['access'] === BudgetExecutionScope::ACCESS_ALL,
+            'pageConfig' => [
+                'scopeAccess' => $scope['access'],
+                'isDirector' => (bool) ($scope['is_director'] ?? false),
+                'canPickDivision' => ($scope['allowed_division_ids'] ?? null) === null
+                    || count($scope['allowed_division_ids'] ?? []) > 1,
+                'canViewAllDivisions' => $scope['access'] === BudgetExecutionScope::ACCESS_ALL,
+                'defaultDivisionId' => $scope['default_division_id'] ?? null,
+                'currentYear' => $currentYear,
+                'currentQuarter' => $currentQuarter,
+                'years' => $years,
+                'quarters' => $quarters,
+                'divisions' => $divisions->map(fn ($d) => [
+                    'id' => (int) $d->id,
+                    'name' => $d->division_name,
+                ])->values(),
+                'routes' => [
+                    'data' => route('budget-execution.data'),
+                    'excel' => route('budget-execution.export.excel'),
+                    'pdf' => route('budget-execution.export.pdf'),
+                    'reports' => route('reports.index'),
+                ],
+            ],
         ]);
     }
 

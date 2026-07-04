@@ -173,20 +173,16 @@
     }
 
     .content-section {
-        border-left: 4px solid;
-        background: #fafafa;
+        background: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     }
 
-    .content-section.bg-blue {
-        border-left-color: #3b82f6;
-    }
-
-    .content-section.bg-green {
-        border-left-color: #10b981;
-    }
-
+    .content-section.bg-blue,
+    .content-section.bg-green,
     .content-section.bg-purple {
-        border-left-color: #8b5cf6;
+        background: #fff !important;
     }
 
     .sidebar-card {
@@ -220,14 +216,14 @@
     }
 
     .budget-total-row {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        font-weight: 700;
+        background: #f1f5f9 !important;
+        font-weight: 600;
     }
 
     .fund-code-header {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #bae6fd;
-        border-radius: 0.5rem;
+        background: #f8fafc;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 8px;
     }
 
     .fund-code-header h6 {
@@ -436,11 +432,11 @@
     /* Enhanced Summary Table Styling */
     .summary-table .field-label {
         font-weight: 600;
-        color: #374151;
+        color: rgba(0, 0, 0, 0.7);
         min-width: 150px;
         padding: 1rem 1rem 1rem 1.5rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-right: 3px solid #e2e8f0;
+        background: #f8fafc;
+        border-right: 1px solid rgba(0, 0, 0, 0.08);
         position: relative;
     }
 
@@ -458,13 +454,13 @@
     }
 
     .summary-table .table tr:hover .field-label {
-        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-        transition: all 0.3s ease;
+        background: #f1f5f9 !important;
+        transition: background 0.2s ease;
     }
 
     .summary-table .table tr:hover .field-value {
-        background-color: #f9fafb;
-        transition: all 0.3s ease;
+        background-color: #fafafa;
+        transition: background 0.2s ease;
     }
 
     .summary-table .table tr {
@@ -484,7 +480,10 @@
 
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
+@push('head-meta')
+<link rel="stylesheet" href="{{ asset('css/apm-memo-budget-show.css') }}?v=3">
+@endpush
+<div class="min-h-screen bg-gray-50 activity-show-page">
     <!-- Enhanced Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
         <div class="container-fluid">
@@ -968,7 +967,7 @@
 
         <!-- Key Result Area Card -->
         @if(!$activity->is_single_memo && $activity->key_result_area && $matrix->key_result_area)
-            <div class="card content-section border-0 mb-4">
+            <div class="card content-section memo-show-content-card border-0 mb-4">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-target-lock"></i>
@@ -987,7 +986,7 @@
 
         <!-- Background Card -->
         @if($activity->background)
-            <div class="card content-section border-0 mb-4">
+            <div class="card content-section memo-show-content-card border-0 mb-4">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
@@ -1002,9 +1001,9 @@
 
         <div class="row">
             <!-- Participants & Location -->
-            <div class="card content-section bg-green border-0 mb-4 w-100">
+            <div class="card content-section memo-show-content-card border-0 mb-4 w-100">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                    <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-group"></i>
                         Participants
                     </h6>
@@ -1032,7 +1031,7 @@
                         <div class="mt-4">
                             <label class="form-label text-muted small fw-semibold">Internal Participants Details</label>
                             <div class="table-responsive">
-                                <table class="table table-bordered table-sm mb-0">
+                                <table class="table table-bordered table-sm mb-0 apm-memo-data-table">
                                     <thead class="table-light">
                                         <tr>
                                             <th>#</th>
@@ -1102,7 +1101,7 @@
                     <div class="mt-4">
                         <label class="form-label text-muted small fw-semibold">Participants Summary</label>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-sm mb-0">
+                            <table class="table table-bordered table-sm mb-0 apm-memo-data-table">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Participant Type</th>
@@ -1118,7 +1117,7 @@
                                         <td>External Participants</td>
                                         <td class="text-end fw-bold">{{ $activity->total_external_participants ?? 0 }}</td>
                                     </tr>
-                                    <tr class="table-success">
+                                    <tr class="apm-table-total-row">
                                         <td class="fw-bold">Total Participants</td>
                                         <td class="text-end fw-bold">{{ count($processedInternalParticipants) + ($activity->total_external_participants ?? 0) }}</td>
                                     </tr>
@@ -1135,9 +1134,9 @@
 
         <!-- Attachments Card -->
         @if (!empty($attachments) && count($attachments) > 0)
-        <div class="card sidebar-card border-0 mb-4">
+        <div class="card sidebar-card memo-show-content-card border-0 mb-4">
             <div class="card-header bg-transparent border-0 py-3">
-                <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                     <i class="bx bx-paperclip"></i>
                     Attachments
                 </h6>
@@ -1211,158 +1210,20 @@
             </div>
         </div>
 
-        <!-- Budget Information -->
-        <div class="card content-section bg-blue border-0 mb-4 w-100">
-            <div class="card-header bg-transparent border-0 py-3">
-                <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                    <i class="bx bx-money"></i>
-                    Budget Information
-                </h6>
-            </div>
-            <div class="card-body">
-        
-                @if (!empty($budget))
-                    @if (!empty($budgetByFundCode))
-                        @php
-                            $count = 1;
-                            $grandTotal = 0;
-                        @endphp
-
-                        @foreach ($budgetByFundCode as $fundCodeId => $items)
-                            @php
-                                $fundCode = $fundCodes[$fundCodeId] ?? null;
-                                $groupTotal = 0;
-                                $itemCount = 1; // Reset counter for each budget code
-                            @endphp
-                            
-                            {{-- Budget Code Title --}}
-                            <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
-                                @if ($fundCode)
-                                    {{ $fundCode->activity }} - {{ $fundCode->code }} - {{ $fundCode->funder->name??'N/A' }} -
-                                    ({{ $fundCode->fundType->name ?? 'N/A' }})
-                                @else
-                                    Budget Code: {{ $fundCodeId }}
-                                @endif
-                            </h6>
-
-                            {{-- Individual Table for this Budget Code --}}
-                            <div class="table-responsive mb-4">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Cost Item</th>
-                                            <th class="text-end">Unit Cost</th>
-                                            <th class="text-end">Units</th>
-                                            <th class="text-end">Days</th>
-                                            <th class="text-end">Total</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                                        @foreach ($items as $item)
-                                            @php
-                                                $unitCost = $sanitizeNumber($item['unit_cost'] ?? 0);
-                                                $units = $sanitizeNumber($item['units'] ?? 0);
-                                                $days = $sanitizeNumber($item['days'] ?? 1);
-                                                $total = $unitCost * $units * $days;
-
-                                                $groupTotal += $total;
-                                                $grandTotal += $total;
-                                @endphp
-                                <tr>
-                                                <td>{{ $itemCount }}</td>
-                                                <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                <td class="text-end">{{ number_format($unitCost, 2) }}</td>
-                                                <td class="text-end">{{ $units }}</td>
-                                                <td class="text-end">{{ $days }}</td>
-                                                <td class="text-end">{{ number_format($total, 2) }}</td>
-                                                <td>{{ $item['description'] ?? '' }}</td>
-                                </tr>
-                            @php
-                                                $itemCount++;
-                            @endphp
-                                        @endforeach
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                            <th colspan="5" class="text-end">Sub Total</th>
-                                            <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
-                                            <th></th>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                        @endforeach
-                        
-                        {{-- Overall Grand Total --}}
-                        <div class="row mt-3">
-                            <div class="col-md-12">
-                                <div class="alert alert-success">
-                                    <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
-                                            USD</strong></h6>
-                </div>
-            </div>
-                        </div>
-                        
-               
-                    @else
-                        <!-- Fallback: Show budget as key-value pairs if structure is different -->
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Budget Item</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @foreach ($budget as $key => $value)
-                                    @if ($key !== 'grand_total')
-                                        <tr>
-                                            <td>{{ $key }}</td>
-                                            <td>
-                                                @if (is_array($value))
-                                                    <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                @else
-                                                    {{ $value }}
-            @endif
-                                            </td>
-                                        </tr>
-                                    @endif
-                                @endforeach
-                                </tbody>
-                            </table>
-                    </div>
-                    @endif
-                @else
-                    <div class="text-center text-muted py-4">
-                        <i class="bx bx-money bx-lg mb-3"></i>
-                        <p class="mb-0">No budget details</p>
-                            </div>
-                @endif
-                            </div>
-                              @if($activity->available_budget)
-                        {{-- Available Budget --}}
-                        <div class="row mt-2">
-                            <div class="col-md-12">
-                                <div class="alert alert-info">
-                                    <h6 class="mb-0"><strong>Available Budget: {{ number_format($activity->available_budget, 2) }}
-                                            USD</strong></h6>
-                                    <small class="text-muted">Allocated by Finance Officer</small>
-                     </div>
-                 </div>
-                        </div>
-                        @endif
-                            </div>
-        
+        @include('partials.memo-budget-breakdown', [
+            'budgetByFundCode' => $budgetByFundCode ?? [],
+            'fundCodes' => $fundCodes,
+            'budget' => $budget ?? [],
+            'availableBudget' => $activity->available_budget ?? null,
+            'titleMode' => 'full',
+        ])
 
         <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
             <!-- Request for Approval Card -->
             @if($activity->activity_request_remarks)
-                <div class="card content-section bg-purple border-0 mb-4">
+                <div class="card content-section memo-show-content-card border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                             <i class="bx bx-file-text"></i>
                             Request For Approval
                         </h6>
@@ -1413,77 +1274,77 @@
 
 @push('styles')
 <style>
-/* Activity Summary Table Styles */
-.table-striped tbody tr:nth-of-type(odd) {
+/* Activity show — neutral Vuetify-aligned tables */
+.activity-show-page .table-striped tbody tr:nth-of-type(odd) {
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-.table tbody tr:hover {
-    background-color: rgba(17, 154, 72, 0.05);
+.activity-show-page .table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
 }
 
-.table tbody td {
+.activity-show-page .summary-table .table tbody td {
     vertical-align: middle;
     padding: 1rem;
 }
 
-.table tbody td:first-child {
-    background-color: #f8f9fa !important;
-    border-right: 2px solid #119a48;
+.activity-show-page .summary-table .field-label {
+    background: #f8fafc !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
     font-weight: 600;
-    color: #2c3e50;
+    color: rgba(0, 0, 0, 0.7);
     width: 30%;
 }
 
-.table tbody td:last-child {
+.activity-show-page .summary-table .field-value {
     background-color: #ffffff;
 }
 
-/* Badge styling in table */
-.table .badge {
+.activity-show-page .table .badge {
     font-size: 0.8rem;
     padding: 0.4em 0.8em;
 }
 
-/* Background section styling */
-.bg-light.rounded.border {
-    border: 1px solid #dee2e6 !important;
-    background-color: #f8f9fa !important;
+.activity-show-page .bg-light.rounded.border {
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    background-color: #f8fafc !important;
 }
 
-/* Enhanced card styling */
-.card-header.bg-light {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-    border-bottom: 2px solid #119a48;
+.activity-show-page .summary-table .card-header.bg-light,
+.activity-show-page .card-header.bg-light {
+    background: #f8fafc !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
 }
 
-.card-header h5 {
-    color: #2c3e50;
-    font-weight: 700;
+.activity-show-page .card-header h5,
+.activity-show-page .card-header h6 {
+    color: rgba(0, 0, 0, 0.87);
+    font-weight: 600;
 }
 
-/* Status badges enhancement */
-.badge.fs-6 {
+.activity-show-page .badge.fs-6 {
     font-size: 0.9rem !important;
     padding: 0.5em 1em;
     font-weight: 600;
 }
 
-/* Background content styling */
-.bg-light.rounded {
-    border: 1px solid #e9ecef;
-    background-color: #f8f9fa !important;
+.activity-show-page .bg-light.rounded {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: #f8fafc !important;
 }
 
-/* Table enhancements for data tables */
-.table-hover tbody tr:hover {
-    background-color: rgba(17, 154, 72, 0.05);
-}
-
-.table thead th {
-    border-bottom: 2px solid #119a48;
+.activity-show-page .summary-table .table thead th {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     font-weight: 600;
-    color: #2c3e50;
+    color: rgba(0, 0, 0, 0.65);
+}
+
+.activity-show-page .summary-table .table tr:hover .field-label {
+    background: #f1f5f9 !important;
+}
+
+.activity-show-page .summary-table .table tr:hover .field-value {
+    background-color: #fafafa;
 }
 
 /* Button group styling */

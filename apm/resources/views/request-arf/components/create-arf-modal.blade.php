@@ -143,6 +143,8 @@
     </style>
 
 
+@include('partials.apm-vuetify-like-forms-assets')
+
 <!-- Create ARF Modal Component -->
 <div class="modal fade" id="createArfModal" tabindex="-1" aria-labelledby="createArfModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 90vw; width: 90vw;">
@@ -153,7 +155,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" style="flex: 1; overflow-y: auto;">
+            <div class="modal-body p-4 apm-v-form" style="flex: 1; overflow-y: auto;">
                 <!-- Source Details Section -->
                 <div class="mb-4">
                     <div class="section-header">

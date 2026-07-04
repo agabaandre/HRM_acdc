@@ -50,15 +50,70 @@ class ReturnedMemosController extends Controller
         if ($category !== 'all') {
             $returnedMemos = $this->filterByGroupedCategory($returnedMemos, $category);
         }
-        
-        return view('returned-memos.index', compact(
-            'returnedMemos',
-            'summaryStats',
-            'groupedCategories',
-            'divisions',
-            'category',
-            'division'
-        ));
+
+        return view('returned-memos.index', [
+            'pageConfig' => [
+                'csrf' => csrf_token(),
+                'filters' => [
+                    'category' => $category,
+                    'division' => $division,
+                ],
+                'summaryStats' => $this->serializeReturnedSummaryStats($summaryStats),
+                'returnedMemos' => $this->serializeReturnedMemos($returnedMemos),
+                'groupedCategories' => $groupedCategories,
+                'routes' => [
+                    'index' => route('returned-memos.index'),
+                    'api' => route('returned-memos.api'),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $summaryStats
+     * @return array<string, mixed>
+     */
+    private function serializeReturnedSummaryStats(array $summaryStats): array
+    {
+        $byCategory = $summaryStats['by_category'] ?? [];
+        if ($byCategory instanceof \Illuminate\Support\Collection) {
+            $byCategory = $byCategory->all();
+        }
+
+        return [
+            'total_returned' => (int) ($summaryStats['total_returned'] ?? 0),
+            'by_category' => array_map('intval', (array) $byCategory),
+        ];
+    }
+
+    /**
+     * @param  array<string, list<array<string, mixed>>>  $returnedMemos
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function serializeReturnedMemos(array $returnedMemos): array
+    {
+        $serialized = [];
+        foreach ($returnedMemos as $category => $items) {
+            $serialized[$category] = array_map(function (array $item): array {
+                unset($item['model']);
+                if (! empty($item['date_received'])) {
+                    try {
+                        $item['date_received'] = \Carbon\Carbon::parse($item['date_received'])->toIso8601String();
+                    } catch (\Throwable $e) {
+                        $item['date_received'] = null;
+                    }
+                }
+                if (! empty($item['submitted_by'])) {
+                    $item['submitted_by_text'] = trim(strip_tags((string) $item['submitted_by']));
+                } else {
+                    $item['submitted_by_text'] = '';
+                }
+
+                return $item;
+            }, $items);
+        }
+
+        return $serialized;
     }
 
     /**

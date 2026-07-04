@@ -31,6 +31,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
+use App\Support\MemoFundTypeFilter;
 
 class ServiceRequestController extends Controller
 {
@@ -94,6 +95,7 @@ class ServiceRequestController extends Controller
                     ->orWhere('document_number', 'like', '%' . $search . '%');
             });
         }
+        MemoFundTypeFilter::apply($baseQuery, $request);
         
         // My Submitted Requests (current user's requests)
         $mySubmittedQuery = clone $baseQuery;
@@ -149,7 +151,20 @@ class ServiceRequestController extends Controller
             ]);
         }
 
-        return view('service-requests.index', compact('mySubmittedRequests', 'myDivisionRequests', 'allRequests', 'staff', 'divisions', 'years', 'selectedYear'));
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+
+        return view('service-requests.index', compact(
+            'mySubmittedRequests',
+            'myDivisionRequests',
+            'allRequests',
+            'staff',
+            'divisions',
+            'years',
+            'selectedYear',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
+        ));
     }
 
     /**

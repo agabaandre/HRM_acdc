@@ -130,34 +130,153 @@ class PendingApprovalsController extends Controller
         $year = $request->filled('year') ? (int) $request->get('year') : null;
         $month = $request->filled('month') ? (int) $request->get('month') : null;
         $staffIdForAvg = $staffId ? (int) $staffId : (int) user_session('staff_id');
-        $divisionIdForAvg = $staffId
-            ? (int) ($staffForApprover->division_id ?? 0)
-            : (int) user_session('division_id');
+        $divisionIdForAvg = $this->divisionIdForAverageApprovalTime($staffIdForAvg);
         $avgApprovalTimeHours = $this->getAverageApprovalTimeAll($staffIdForAvg, $divisionIdForAvg, $year, $month);
         $avgApprovalTimeDisplay = $this->formatApprovalTime($avgApprovalTimeHours);
+        $avgLast5Hours = $this->getAverageApprovalTimeLast5($staffIdForAvg, $divisionIdForAvg, $year, $month);
+        $avgLast5Display = $this->formatApprovalTime($avgLast5Hours);
 
         $canViewApprovalTimingReport = approver_timing_report_can_view_all()
             || empty($staffId)
             || ((int) $staffId === (int) user_session('staff_id'));
 
-        return view('pending-approvals.index', compact(
-            'pendingApprovals',
-            'summaryStats',
-            'groupedCategories',
-            'divisions',
-            'category',
-            'division',
-            'isAdminAssistant',
-            'staffId',
-            'approverInfo',
-            'avgApprovalTimeDisplay',
-            'avgApprovalTimeHours',
-            'year',
-            'month',
-            'approvalWarningDays',
-            'stalePendingItems',
-            'canViewApprovalTimingReport'
-        ));
+        $timingReportUrl = null;
+        if ($canViewApprovalTimingReport && ((float) ($avgApprovalTimeHours ?? 0) > 0 || (float) ($avgLast5Hours ?? 0) > 0)) {
+            $timingReportUrl = route('reports.approver-document-timing.index', array_filter([
+                'staff_id' => ! empty($staffId) ? $staffId : null,
+                'year' => $year ?? null,
+                'month' => $month ?? null,
+            ]));
+        }
+
+        return view('pending-approvals.index', [
+            'pageConfig' => [
+                'csrf' => csrf_token(),
+                'filters' => [
+                    'category' => $category,
+                    'division' => (string) $division,
+                    'staff_id' => $staffId ? (int) $staffId : null,
+                    'year' => $year,
+                    'month' => $month,
+                ],
+                'summaryStats' => $this->serializeSummaryStats($summaryStats),
+                'pendingApprovals' => $this->serializePendingApprovals($pendingApprovals),
+                'groupedCategories' => $groupedCategories,
+                'divisions' => $divisions->map(fn ($d) => [
+                    'id' => $d->id,
+                    'name' => $d->division_name,
+                ])->values()->all(),
+                'isAdminAssistant' => (bool) $isAdminAssistant,
+                'approverInfo' => $approverInfo,
+                'avgApprovalTimeDisplay' => $avgApprovalTimeDisplay ?? null,
+                'avgApprovalTimeHours' => (float) ($avgApprovalTimeHours ?? 0),
+                'avgLast5Display' => $avgLast5Display ?? null,
+                'avgLast5Hours' => (float) ($avgLast5Hours ?? 0),
+                'timingReportUrl' => $timingReportUrl,
+                'approvalWarningDays' => (int) $approvalWarningDays,
+                'staleCount' => count($stalePendingItems ?? []),
+                'staleItems' => $this->serializeStaleItems($stalePendingItems ?? [], (int) $approvalWarningDays),
+                'staleKeys' => $this->staleItemKeys($stalePendingItems ?? []),
+                'canOpenSystemSettings' => in_array(89, user_session('permissions', []), true),
+                'systemSettingsUrl' => route('system-settings.index'),
+                'routes' => [
+                    'index' => route('pending-approvals.index'),
+                    'api' => route('pending-approvals.api'),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $summaryStats
+     * @return array<string, mixed>
+     */
+    private function serializeSummaryStats(array $summaryStats): array
+    {
+        $byCategory = $summaryStats['by_category'] ?? [];
+        if ($byCategory instanceof \Illuminate\Support\Collection) {
+            $byCategory = $byCategory->all();
+        }
+
+        return [
+            'total_pending' => (int) ($summaryStats['total_pending'] ?? 0),
+            'by_category' => array_map('intval', (array) $byCategory),
+        ];
+    }
+
+    /**
+     * @param  array<string, list<array<string, mixed>>>  $pendingApprovals
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function serializePendingApprovals(array $pendingApprovals): array
+    {
+        $serialized = [];
+        foreach ($pendingApprovals as $category => $items) {
+            $serialized[$category] = array_map(function (array $item): array {
+                unset($item['model']);
+                if (! empty($item['date_received'])) {
+                    try {
+                        $item['date_received'] = \Carbon\Carbon::parse($item['date_received'])->toIso8601String();
+                    } catch (\Throwable $e) {
+                        $item['date_received'] = null;
+                    }
+                }
+                if (! empty($item['title'])) {
+                    $item['title'] = to_title_case((string) $item['title']);
+                }
+
+                return $item;
+            }, $items);
+        }
+
+        return $serialized;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function serializeStaleItems(array $items, int $thresholdDays): array
+    {
+        return array_map(function (array $item) use ($thresholdDays): array {
+            $daysWaiting = 0;
+            if (! empty($item['date_received'])) {
+                try {
+                    $daysWaiting = (int) \Carbon\Carbon::parse($item['date_received'])->diffInDays(now());
+                } catch (\Throwable $e) {
+                    $daysWaiting = 0;
+                }
+            }
+
+            return [
+                'key' => $this->staleItemKey($item),
+                'title' => ! empty($item['title']) ? to_title_case((string) $item['title']) : '',
+                'category' => $item['category'] ?? '',
+                'days_waiting' => $daysWaiting,
+                'threshold_days' => $thresholdDays,
+                'view_url' => $item['view_url'] ?? '',
+            ];
+        }, array_values($items));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<string>
+     */
+    private function staleItemKeys(array $items): array
+    {
+        return array_values(array_filter(array_map(fn (array $item): string => $this->staleItemKey($item), $items)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function staleItemKey(array $item): string
+    {
+        $type = (string) ($item['item_type'] ?? $item['type'] ?? '');
+        $id = (string) ($item['item_id'] ?? $item['id'] ?? '');
+
+        return $type !== '' && $id !== '' ? "{$type}:{$id}" : '';
     }
 
     /**

@@ -11,75 +11,16 @@
                 @endif
             </div>
 
-            <div class="row g-3 align-items-end" id="matrixFilters" autocomplete="off">
-                <div class="col-md-2">
-                    <label for="yearFilter" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-calendar me-1 text-success"></i> Year</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-calendar"></i></span>
-                        <select class="form-select" id="yearFilter">
-                            <option value="">All Years</option>
-                            @foreach (range(date('Y') + 1, date('Y') - 5) as $year)
-                                <option value="{{ $year }}" {{ $selectedYear == $year ? 'selected' : '' }}>{{ $year }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label for="quarterFilter" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-time-five me-1 text-success"></i> Quarter</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-time-five"></i></span>
-                        <select class="form-select" id="quarterFilter">
-                            <option value="" {{ ($selectedQuarter === '' || $selectedQuarter === null) ? 'selected' : '' }}>All Quarters</option>
-                            @foreach (['Q1', 'Q2', 'Q3', 'Q4'] as $quarter)
-                                <option value="{{ $quarter }}" {{ $selectedQuarter == $quarter ? 'selected' : '' }}>{{ $quarter }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="divisionFilter" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-building me-1 text-success"></i> Division</label>
-                    <div class="input-group select2-flex w-100">
-
-                        <select class="form-select select2" id="divisionFilter">
-                            <option value="">All Divisions</option>
-                            @foreach ($divisions as $division)
-                                <option value="{{ $division->id }}">{{ $division->division_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="focalFilter" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-user-pin me-1 text-success"></i> Focal Person</label>
-                    <div class="input-group select2-flex w-100">
-                        <select class="form-select select2" id="focalFilter">
-                            <option value="">All Focal Persons</option>
-                            @foreach ($focalPersons as $person)
-                                <option value="{{ $person->staff_id }}">{{ $person->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label for="statusFilter" class="form-label fw-semibold mb-1"><i
-                            class="bx bx-archive me-1 text-success"></i> Matrix Status</label>
-                    <div class="input-group w-100">
-                        <span class="input-group-text bg-white"><i class="bx bx-filter-alt"></i></span>
-                        <select class="form-select" id="statusFilter">
-                            <option value="active" {{ ($selectedStatus ?? 'active') === 'active' ? 'selected' : '' }}>Active Only</option>
-                            <option value="archived" {{ ($selectedStatus ?? 'active') === 'archived' ? 'selected' : '' }}>Archived Only</option>
-                            <option value="all" {{ ($selectedStatus ?? 'active') === 'all' ? 'selected' : '' }}>All</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="button" class="btn btn-success w-100 fw-bold" id="applyFilters">
-                        <i class="bx bx-search-alt-2 me-1"></i> Filter
-                    </button>
-                </div>
+            <div class="w-100" id="matrixFilters" autocomplete="off">
+                @include('partials.apm-matrix-list-filters', [
+                    'filterId' => 'matrixFilters',
+                    'resetUrl' => route('matrices.index'),
+                    'divisions' => $divisions,
+                    'focalPersons' => $focalPersons,
+                    'selectedYear' => $selectedYear,
+                    'selectedQuarter' => $selectedQuarter,
+                    'selectedStatus' => $selectedStatus ?? 'active',
+                ])
             </div>
         </div>
     </div>

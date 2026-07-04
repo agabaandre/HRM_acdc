@@ -24,9 +24,11 @@ class SendStalePendingApprovalsReminderJob implements ShouldQueue
             Log::info('Starting stale pending approvals reminder job');
             $notificationService = new NotificationService();
             $notifications = $notificationService->createStalePendingApprovalsReminders();
+            $escalations = $notificationService->createStaleApprovalEscalations();
 
             Log::info('Stale pending approvals reminder job completed', [
                 'notifications_created' => count($notifications),
+                'escalations_created' => count($escalations),
             ]);
         } catch (\Exception $e) {
             Log::error('Stale pending approvals reminder job failed', [

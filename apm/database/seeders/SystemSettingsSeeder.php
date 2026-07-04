@@ -44,6 +44,7 @@ class SystemSettingsSeeder extends Seeder
 
             // Approvals (group: approvals) — aging reminder threshold (days at your level)
             ['key' => 'approval_warning_days', 'value' => '7', 'group' => 'approvals', 'type' => 'number'],
+            ['key' => 'general_workflow_stale_escalation_orders', 'value' => '', 'group' => 'approvals', 'type' => 'text'],
 
             // Budget commitment (group: budget)
             ['key' => 'budget_draft_max_age_months', 'value' => '2', 'group' => 'budget', 'type' => 'number'],

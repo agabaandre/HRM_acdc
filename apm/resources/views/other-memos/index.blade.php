@@ -63,83 +63,19 @@
         </div>
 
         <div class="row g-3 align-items-end" id="otherMemoFilters" autocomplete="off">
-            <form action="{{ route('other-memos.index') }}" method="GET" class="row g-3 align-items-end w-100" id="otherMemoFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ $activeTab }}">
-                <div class="col-md-2">
-                    <label for="year" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-calendar me-1 text-success"></i> Year
-                    </label>
-                    <select name="year" id="year" class="form-select" style="width: 100%;">
-                        @foreach($years ?? [] as $yr => $label)
-                            <option value="{{ $yr }}" {{ ($year ?? date('Y')) == $yr ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="document_number" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-file me-1 text-success"></i> Document #
-                    </label>
-                    <input type="text" name="document_number" id="document_number" class="form-control"
-                           value="{{ request('document_number') }}" placeholder="Doc #" style="width: 100%;">
-                </div>
-                <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-user me-1 text-success"></i> Staff
-                    </label>
-                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select other-memo-filter-select" style="width: 100%;">
-                        <option value="">All Staff</option>
-                        @foreach($staff as $member)
-                            <option value="{{ $member->staff_id }}" {{ (string) request('staff_id') === (string) $member->staff_id ? 'selected' : '' }}>
-                                {{ $member->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-building me-1 text-success"></i> Division
-                    </label>
-                    <select name="division_id" id="division_id" class="form-select apm-filter-select other-memo-filter-select" style="width: 100%;">
-                        <option value="">All Divisions</option>
-                        @foreach($divisions as $division)
-                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                {{ $division->division_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="memo_status" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-info-circle me-1 text-success"></i> Status
-                    </label>
-                    <select name="status" id="memo_status" class="form-select apm-filter-select other-memo-filter-select" style="width: 100%;">
-                        <option value="">All Statuses</option>
-                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                        <option value="archived" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="search" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-search me-1 text-success"></i> Search Title
-                    </label>
-                    <input type="text" name="search" id="search" class="form-control"
-                           value="{{ request('search') }}" placeholder="Title or type…" style="width: 100%;">
-                </div>
-                <div class="col-auto d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm" id="applyOtherMemoFilters">
-                        <i class="bx bx-search-alt-2 me-1"></i> Filter
-                    </button>
-                </div>
-                <div class="col-auto d-flex align-items-end">
-                    <a wire:navigate href="{{ route('other-memos.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bx bx-reset me-1"></i> Reset
-                    </a>
-                </div>
-            </form>
+            <input type="hidden" name="tab" id="filter_tab" value="{{ $activeTab }}">
+            @include('partials.apm-memo-list-filters', [
+                'filterId' => 'otherMemoFilters',
+                'resetUrl' => route('other-memos.index'),
+                'showFundType' => false,
+                'statusDomId' => 'memo_status',
+                'searchLabel' => 'Search title',
+                'searchPlaceholder' => 'Title or type…',
+                'staff' => $staff,
+                'divisions' => $divisions,
+                'years' => $years,
+                'selectedYear' => $year ?? date('Y'),
+            ])
         </div>
     </div>
 </div>

@@ -29,13 +29,16 @@
     }
     
     .content-section {
-        border-left: 4px solid;
-        background: #fafafa;
+        background: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     }
     
-    .content-section.bg-blue { border-left-color: #3b82f6; }
-    .content-section.bg-green { border-left-color: #10b981; }
-    .content-section.bg-purple { border-left-color: #8b5cf6; }
+    .content-section.bg-blue,
+    .content-section.bg-green,
+    .content-section.bg-purple {
+        background: #fff !important;
+    }
     
     .sidebar-card {
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
@@ -209,6 +212,7 @@
     .status-rejected { background: #fee2e2; color: #dc2626; }
     .status-returned { background: #dbeafe; color: #2563eb; }
 </style>
+<link rel="stylesheet" href="{{ asset('css/apm-memo-budget-show.css') }}?v=3">
 @endsection
 
 @section('content')
@@ -638,10 +642,10 @@
                 <!-- Content Sections -->
                 <div class="mb-5">
                     <!-- Background -->
-                    <div class="card content-section bg-blue border-0 mb-4">
+                    <div class="card content-section memo-show-content-card border-0 mb-4">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
-                                <i class="bx bx-info-circle text-primary"></i>
+                                <i class="bx bx-info-circle"></i>
                                 Background
                             </h6>
                         </div>
@@ -653,10 +657,10 @@
 
 
                     <!-- Justification -->
-                    <div class="card content-section bg-purple border-0">
+                    <div class="card content-section memo-show-content-card border-0">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
-                                <i class="bx bx-check-shield" style="color: #8b5cf6;"></i>
+                                <i class="bx bx-check-shield"></i>
                                 Justification
                             </h6>
                         </div>
@@ -668,89 +672,29 @@
 
                 <hr class="my-5">
 
-                <!-- Enhanced Budget Breakdown -->
-                <div class="mb-5">
-                    <div class="d-flex align-items-center gap-2 mb-4">
-                        <i class="bx bx-money text-success fs-4"></i>
-                        <h4 class="mb-0 fw-bold">Budget Breakdown</h4>
-                    </div>
+                @php
+                    $ntBudgetBreakdown = is_string($nonTravel->budget_breakdown)
+                        ? json_decode($nonTravel->budget_breakdown, true)
+                        : $nonTravel->budget_breakdown;
+                    $ntBudgetBreakdown = is_array($ntBudgetBreakdown) ? $ntBudgetBreakdown : [];
+                    unset($ntBudgetBreakdown['grand_total']);
+                @endphp
 
-                    <div class="table-responsive">
-                        <table class="table table-hover border rounded-3 overflow-hidden">
-                            <thead style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
-                                <tr>
-                                    <th class="border-0 fw-bold" style="width: 40px;">#</th>
-                                    <th class="border-0 fw-bold" style="width: 60%;">Description</th>
-                                    <th class="border-0 fw-bold text-center">Quantity</th>
-                                    <th class="border-0 fw-bold text-end">Unit Price</th>
-                                    <th class="border-0 fw-bold text-end">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $grandTotal = 0;
-                                    $budgetBreakdown = is_string($nonTravel->budget_breakdown) ? json_decode($nonTravel->budget_breakdown, true) : $nonTravel->budget_breakdown;
-                                    $budgetBreakdown = is_array($budgetBreakdown) ? $budgetBreakdown : [];
-                                    unset($budgetBreakdown['grand_total']);
-                                    $rowIndex = 1;
-                                @endphp
-                                @forelse($budgetBreakdown as $codeId => $items)
-                                    @if(is_array($items))
-                                        @foreach($items as $item)
-                                            @php
-                                                $itemTotal = ($item['quantity'] ?? 1) * ($item['unit_cost'] ?? 0);
-                                                $grandTotal += $itemTotal;
-                                            @endphp
-                                            <tr class="border-bottom">
-                                                <td class="fw-medium">{{ $rowIndex++ }}</td>
-                                                <td>
-                                                    <div class="text-wrap" style="word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3;">
-                                                        <p class="mb-1 fw-medium">{{ $item['description'] ?? 'N/A' }}</p>
-                                                        @if(isset($item['notes']) && !empty($item['notes']))
-                                                            <small class="text-muted">{{ $item['notes'] }}</small>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td class="text-center fw-medium">{{ $item['quantity'] ?? 1 }}</td>
-                                                <td class="text-end">${{ number_format($item['unit_cost'] ?? 0, 2) }}</td>
-                                                <td class="text-end">${{ number_format($itemTotal, 2) }}</td>
-                                            </tr>
-                                        @endforeach
-                                    @endif
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">No budget breakdown available.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="4" class="text-end fw-bold">Grand Total</td>
-                                    <td class="text-end fw-bold">${{ number_format($grandTotal, 2) }}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    
-                    {{-- Available Budget --}}
-                    @if($nonTravel->available_budget)
-                    <div class="row mt-3">
-                        <div class="col-md-12">
-                            <div class="alert alert-info">
-                                <h6 class="mb-0"><strong>Available Budget: {{ number_format($nonTravel->available_budget, 2) }}
-                                        USD</strong></h6>
-                                <small class="text-muted">Allocated by Finance Officer</small>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-                </div>
+                @include('partials.memo-budget-breakdown', [
+                    'budgetByFundCode' => $ntBudgetBreakdown,
+                    'fundCodes' => $budgetCodes ?? collect(),
+                    'budget' => $ntBudgetBreakdown,
+                    'availableBudget' => $nonTravel->available_budget ?? null,
+                    'titleMode' => 'code_only',
+                    'variant' => 'quantity',
+                    'panelTitle' => 'Budget Breakdown',
+                ])
 
                                     <!-- Request Remarks -->
-                <div class="card content-section bg-green border-0 mb-4">
+                <div class="card content-section memo-show-content-card border-0 mb-4">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-semibold d-flex align-items-center gap-2">
-                                <i class="bx bx-message-detail text-success"></i>
+                                <i class="bx bx-message-detail"></i>
                                 Request for Approval
                             </h6>
                         </div>

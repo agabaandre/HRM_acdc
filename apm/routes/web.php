@@ -60,13 +60,9 @@ Route::get('/signature-verify/{type}/{id}', [App\Http\Controllers\SignatureVerif
     ->where('id', '[0-9]+');
 
 // Home route
-Route::get('/home', function () {
-    return view('home', [
-        'user' => session('user', []),
-        'permissions' => session('permissions', []),
-        'base_url' => session('base_url', ''),
-    ]);
-})->name('home')->middleware(CheckSessionMiddleware::class);
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
+    ->name('home')
+    ->middleware(CheckSessionMiddleware::class);
 
 // Memo print routes: allow session OR JWT (header Authorization: Bearer <token> or ?token= for GET)
 $printMiddleware = ['accept.token.in.query', 'auth.session.or.jwt'];
@@ -198,6 +194,18 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('staff/ajax', [App\Http\Controllers\StaffController::class, 'getStaffAjax'])->name('staff.ajax');
     Route::get('staff/export/{format}', [App\Http\Controllers\StaffController::class, 'export'])->name('staff.export');
     Route::get('/staff/{staff}/activities', [App\Http\Controllers\StaffController::class, 'getActivities'])->name('staff.activities.data');
+
+    Route::prefix('participant-groups')->name('participant-groups.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ParticipantGroupController::class, 'index'])->name('index');
+        Route::get('/list', [App\Http\Controllers\ParticipantGroupController::class, 'list'])->name('list');
+        Route::get('/memos-for-import', [App\Http\Controllers\ParticipantGroupController::class, 'memosForImport'])->name('memos-for-import');
+        Route::get('/{group}/members', [App\Http\Controllers\ParticipantGroupController::class, 'members'])->name('members');
+        Route::get('/saved/{participantGroup}', [App\Http\Controllers\ParticipantGroupController::class, 'show'])->name('show');
+        Route::post('/', [App\Http\Controllers\ParticipantGroupController::class, 'store'])->name('store');
+        Route::post('/from-memo', [App\Http\Controllers\ParticipantGroupController::class, 'storeFromMemo'])->name('store-from-memo');
+        Route::put('/{participantGroup}', [App\Http\Controllers\ParticipantGroupController::class, 'update'])->name('update');
+        Route::delete('/{participantGroup}', [App\Http\Controllers\ParticipantGroupController::class, 'destroy'])->name('destroy');
+    });
     
     // Staff resource routes
     Route::resource('staff', App\Http\Controllers\StaffController::class)
@@ -269,6 +277,7 @@ Route::get('/api/approver-dashboard', [App\Http\Controllers\ApproverDashboardCon
 Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\ApproverDashboardController::class, 'getFilterOptions'])->name('approver-dashboard.filter-options');
 Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
 Route::get('/api/approver-dashboard/workflow-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getWorkflowStats'])->name('approver-dashboard.workflow-stats');
+Route::get('/api/approver-dashboard/timing-trend', [App\Http\Controllers\ApproverDashboardController::class, 'getTimingTrend'])->name('approver-dashboard.timing-trend');
 
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
@@ -524,6 +533,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('reports/memo-list/export/excel', [App\Http\Controllers\ReportsController::class, 'exportMemoListExcel'])->name('reports.memo-list.export.excel');
 
     Route::get('reports/average-time-per-document', [App\Http\Controllers\ApproverDocumentTimingReportController::class, 'index'])->name('reports.approver-document-timing.index');
+    Route::get('reports/average-time-per-document/trend', [App\Http\Controllers\ApproverDocumentTimingReportController::class, 'trend'])->name('reports.approver-document-timing.trend');
     Route::get('reports/average-time-per-document/export', [App\Http\Controllers\ApproverDocumentTimingReportController::class, 'exportCsv'])->name('reports.approver-document-timing.export');
 
     // Staff Quarterly Travel Report

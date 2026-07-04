@@ -18,6 +18,21 @@
             var u = new URL(url, window.location.origin);
             u.searchParams.set('fragment', '1');
             return u.toString();
+        },
+        syncFilterParam: function (url, key, value) {
+            var v = value === null || value === undefined ? '' : String(value).trim();
+            if (v !== '') {
+                url.searchParams.set(key, v);
+            } else {
+                url.searchParams.delete(key);
+            }
+        },
+        applyFilterValues: function (url, pairs) {
+            var self = this;
+            Object.keys(pairs).forEach(function (key) {
+                self.syncFilterParam(url, key, pairs[key]);
+            });
+            return url;
         }
     };
 

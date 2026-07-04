@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Models\User;
 use App\Models\Workflow;
+use App\Services\ApproverDocumentTimingService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,13 +28,48 @@ class ApproverDashboardController extends Controller
         $hasPermission88 = in_array(88, $userPermissions);
         $approverTimingReportWideAccess = approver_timing_report_can_view_all();
         $sessionStaffIdForTiming = (int) ($userSession['staff_id'] ?? 0);
+        $now = Carbon::now();
 
-        return view('approver-dashboard.index', compact(
-            'userDivisionId',
-            'hasPermission88',
-            'approverTimingReportWideAccess',
-            'sessionStaffIdForTiming'
-        ));
+        return view('approver-dashboard.index', [
+            'userDivisionId' => $userDivisionId,
+            'hasPermission88' => $hasPermission88,
+            'approverTimingReportWideAccess' => $approverTimingReportWideAccess,
+            'sessionStaffIdForTiming' => $sessionStaffIdForTiming,
+            'pageConfig' => [
+                'userDivisionId' => $userDivisionId,
+                'hasPermission88' => $hasPermission88,
+                'approverTimingReportWideAccess' => $approverTimingReportWideAccess,
+                'sessionStaffIdForTiming' => $sessionStaffIdForTiming,
+                'routes' => [
+                    'api' => route('approver-dashboard.api'),
+                    'filterOptions' => route('approver-dashboard.filter-options'),
+                    'workflowStats' => route('approver-dashboard.workflow-stats'),
+                    'timingTrend' => route('approver-dashboard.timing-trend'),
+                    'staffPhoto' => route('staff-uploads.photo'),
+                    'pendingApprovals' => route('pending-approvals.index'),
+                    'timingReport' => route('reports.approver-document-timing.index'),
+                ],
+                'months' => [
+                    ['value' => '', 'title' => 'All months'],
+                    ['value' => 1, 'title' => 'January'],
+                    ['value' => 2, 'title' => 'February'],
+                    ['value' => 3, 'title' => 'March'],
+                    ['value' => 4, 'title' => 'April'],
+                    ['value' => 5, 'title' => 'May'],
+                    ['value' => 6, 'title' => 'June'],
+                    ['value' => 7, 'title' => 'July'],
+                    ['value' => 8, 'title' => 'August'],
+                    ['value' => 9, 'title' => 'September'],
+                    ['value' => 10, 'title' => 'October'],
+                    ['value' => 11, 'title' => 'November'],
+                    ['value' => 12, 'title' => 'December'],
+                ],
+                'currentTrendPeriods' => [
+                    'weekly' => 'W'.str_pad((string) $now->isoWeek(), 2, '0', STR_PAD_LEFT).' '.$now->isoWeekYear(),
+                    'monthly' => $now->format('M Y'),
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -124,7 +160,7 @@ class ApproverDashboardController extends Controller
             $allApproversWithCounts = $this->getPendingCountsForApprovers($approversCollection, $workflowDefinitionId, $docType, $divisionId, $year, $month);
 
             // Handle sorting - check for DataTables order parameter or use default
-            $orderColumn = 2; // Default: Avg. Time (column index 2)
+            $orderColumn = 2; // Default: Avg. time (last 5 docs)
             $orderDirection = 'desc'; // Default: descending (highest days first)
 
             $orderFirst = null;
@@ -150,17 +186,18 @@ class ApproverDashboardController extends Controller
                 }
             }
 
-            // Map column index to sort field (0=#, 1=Approver, 2=Avg. Time, 3=Total Pending, 4=Total Handled, 5=Pending Items, 6=Role, 7=Last approval date)
+            // Map column index to sort field (0=#, 1=Approver, 2=Avg last 5, 3=Avg all, 4=Pending, 5=Handled, 6=Pending items, 7=Role, 8=Last approval)
             $sortFields = [
                 1 => 'approver_name',
-                2 => 'avg_approval_time_hours',
-                3 => 'total_pending',
-                4 => 'total_handled',
-                6 => 'roles',
-                7 => 'last_approval_date',
+                2 => 'avg_last_5_hours',
+                3 => 'avg_approval_time_hours',
+                4 => 'total_pending',
+                5 => 'total_handled',
+                7 => 'roles',
+                8 => 'last_approval_date',
             ];
 
-            $sortField = $sortFields[$orderColumn] ?? 'avg_approval_time_hours';
+            $sortField = $sortFields[$orderColumn] ?? 'avg_last_5_hours';
 
             // Sort approvers based on selected column
             usort($allApproversWithCounts, function ($a, $b) use ($sortField, $orderDirection) {
@@ -438,6 +475,70 @@ class ApproverDashboardController extends Controller
         });
     }
 
+    public function getTimingTrend(Request $request): JsonResponse
+    {
+        $keyParts = $this->apmCacheKeyFromRequest($request, [
+            'division_id', 'doc_type', 'month', 'year', 'granularity',
+        ]);
+
+        return $this->apmCachedJson('approver_dashboard', $request, array_merge($keyParts, ['timing_trend' => 1]), function () use ($request): JsonResponse {
+            try {
+                $userSession = user_session();
+                $userDivisionId = $userSession['division_id'] ?? null;
+                $userPermissions = $userSession['permissions'] ?? [];
+                $hasPermission88 = in_array(88, $userPermissions);
+
+                $divisionId = $request->get('division_id') ? (int) $request->get('division_id') : null;
+                $docType = $request->get('doc_type') ?: null;
+                $month = $request->get('month') ? (int) $request->get('month') : null;
+                $year = $request->get('year') ? (int) $request->get('year') : null;
+                $granularity = $request->get('granularity') === 'weekly' ? 'weekly' : 'monthly';
+
+                if ($docType && ! $this->isValidApproverDashboardDocType($docType)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid document type filter.',
+                        'data' => [],
+                    ], 422);
+                }
+
+                if (! $hasPermission88 && $userDivisionId && $userDivisionId > 0) {
+                    $divisionId = $userDivisionId;
+                }
+
+                $filters = array_filter([
+                    'division_id' => $divisionId,
+                    'year' => $year,
+                    'month' => $month,
+                ], fn ($v) => $v !== null && $v !== '');
+
+                if ($docType) {
+                    $modelType = self::getModelTypeByDocType($docType);
+                    if ($modelType) {
+                        $filters['model_type'] = $modelType;
+                    }
+                }
+
+                /** @var ApproverDocumentTimingService $timingService */
+                $timingService = app(ApproverDocumentTimingService::class);
+                $points = $timingService->averageHoursTrend($granularity, $filters);
+
+                return response()->json([
+                    'success' => true,
+                    'granularity' => $granularity,
+                    'current_period_key' => $timingService->currentTrendPeriodKey($granularity),
+                    'data' => $points,
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error retrieving timing trend: '.$e->getMessage(),
+                    'data' => [],
+                ], 500);
+            }
+        });
+    }
+
     /**
      * Export dashboard data to PDF using mPDF.
      */
@@ -535,8 +636,10 @@ class ApproverDashboardController extends Controller
             fputcsv($file, [
                 '#',
                 'Approver Name',
-                'Avg Approval Time (Display)',
-                'Avg Approval Time (Hours)',
+                'Avg Time Last 5 Docs (Display)',
+                'Avg Time Last 5 Docs (Hours)',
+                'Avg Approval Time All Docs (Display)',
+                'Avg Approval Time All Docs (Hours)',
                 'Total Pending',
                 'Total Handled',
                 'Pending Items',
@@ -580,6 +683,8 @@ class ApproverDashboardController extends Controller
                 fputcsv($file, [
                     $index + 1,
                     $approver['approver_name'] ?? '',
+                    $approver['avg_last_5_display'] ?? 'No data',
+                    $approver['avg_last_5_hours'] ?? 0,
                     $approver['avg_approval_time_display'] ?? 'No data',
                     $approver['avg_approval_time_hours'] ?? 0,
                     $approver['total_pending'] ?? 0,

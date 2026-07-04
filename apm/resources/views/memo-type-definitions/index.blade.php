@@ -11,6 +11,8 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form">
 <style>
     .memo-type-table-col-name {
         max-width: 400px;
@@ -126,7 +128,7 @@
                 <h5 class="modal-title" id="memo-type-form-title">Memo type</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body apm-v-form">
                 <form id="memo-type-form">
                     <input type="hidden" id="memo-type-form-id" value="">
                     <div class="row g-3">
@@ -808,4 +810,5 @@
     document.addEventListener('livewire:navigated', bootMemoTypeCatalog);
 })();
 </script>
+</div>
 @endsection

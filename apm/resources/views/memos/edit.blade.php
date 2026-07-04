@@ -3,7 +3,10 @@
 @section('title', 'Edit Memo')
 
 @section('content')
-    <div class="container">
+    @include('partials.apm-vuetify-like-forms-assets')
+
+    <div class="apm-v-form">
+<div class="container">
         <div class="row">
             <div class="col-lg-12">
                 <div class="card">
@@ -66,5 +69,7 @@
                 </div>
             </div>
         </div>
+    </div>
+
     </div>
 @endsection

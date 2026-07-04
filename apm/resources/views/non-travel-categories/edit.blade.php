@@ -23,6 +23,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="card shadow-sm">
     <div class="card-body">
         <form action="{{ route('non-travel-categories.update', $category->id) }}" method="POST" id="editCategoryForm">
@@ -70,4 +73,6 @@
     });
 </script>
 @endpush
+
+</div>
 @endsection

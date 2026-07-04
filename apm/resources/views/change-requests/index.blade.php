@@ -82,108 +82,22 @@
         </div>
 
         <div class="row g-3 align-items-end" id="changeRequestFilters" autocomplete="off">
-            <form action="{{ route('change-requests.index') }}" method="GET" class="row g-3 align-items-end w-100" id="changeRequestFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'myChangeRequests') }}">
-                <div class="col-md-2">
-                    <label for="year" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-calendar me-1 text-success"></i> Year
-                    </label>
-                    <select name="year" id="year" class="form-select" style="width: 100%;">
-                        @foreach($years ?? [] as $yrValue => $yrLabel)
-                            <option value="{{ $yrValue }}" {{ (request('year', $selectedYear ?? date('Y')) == (string)$yrValue) ? 'selected' : '' }}>{{ $yrLabel }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="document_number" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-file me-1 text-success"></i> Document #
-                    </label>
-                    <input type="text" name="document_number" id="document_number" class="form-control" 
-                           value="{{ request('document_number') }}" placeholder="Doc #">
-                </div>
-                <div class="col-md-2">
-                    <label for="memo_type" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-category me-1 text-success"></i> Memo Type
-                    </label>
-                    <select name="memo_type" id="memo_type" class="form-select apm-filter-select change-request-filter-select" style="width: 100%;">
-                        <option value="">All Memo Types</option>
-                        <option value="App\Models\Activity" {{ request('memo_type') == 'App\Models\Activity' ? 'selected' : '' }}>Activity</option>
-                        <option value="App\Models\SpecialMemo" {{ request('memo_type') == 'App\Models\SpecialMemo' ? 'selected' : '' }}>Special Memo</option>
-                        <option value="App\Models\NonTravelMemo" {{ request('memo_type') == 'App\Models\NonTravelMemo' ? 'selected' : '' }}>Non-Travel Memo</option>
-                        <option value="App\Models\RequestArf" {{ request('memo_type') == 'App\Models\RequestArf' ? 'selected' : '' }}>Request ARF</option>
-                        <option value="App\Models\ServiceRequest" {{ request('memo_type') == 'App\Models\ServiceRequest' ? 'selected' : '' }}>Service Request</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-user me-1 text-success"></i> Staff
-                    </label>
-                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select change-request-filter-select" style="width: 100%;">
-                        <option value="">All Staff</option>
-                        @foreach($staff as $member)
-                            <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
-                                {{ $member->fname }} {{ $member->lname }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-building me-1 text-success"></i> Division
-                    </label>
-                    <select name="division_id" id="division_id" class="form-select apm-filter-select change-request-filter-select" style="width: 100%;">
-                        <option value="">All Divisions</option>
-                        @foreach($divisions as $division)
-                            <option value="{{ $division->id }}" {{ (string) request('division_id') === (string) $division->id ? 'selected' : '' }}>
-                                {{ $division->division_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-            <label for="search" class="form-label fw-semibold mb-1">
-                <i class="bx bx-search me-1 text-success"></i> Search Activity Title
-            </label>
-            <input type="text" name="search" id="search" class="form-control" 
-                   value="{{ request('search') }}" placeholder="Enter activity title...">
-                </div>
-                <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-info-circle me-1 text-success"></i> Status
-                    </label>
-                    <select name="status" id="statusFilter" class="form-select apm-filter-select change-request-filter-select" style="width: 100%;">
-                        <option value="">All Statuses</option>
-                        @foreach($statuses as $value => $label)
-                            <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="fund_type_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-wallet me-1 text-success"></i> Fund Type
-                    </label>
-                    <select name="fund_type_id" id="fund_type_id" class="form-select" style="width: 100%;">
-                        <option value="">All Fund Types</option>
-                        @foreach($fundTypeFilterOptions ?? [] as $fundTypeId => $fundTypeLabel)
-                            <option value="{{ $fundTypeId }}" {{ (string) request('fund_type_id', $selectedFundTypeId ?? '') === (string) $fundTypeId ? 'selected' : '' }}>
-                                {{ $fundTypeLabel }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
-                        <i class="bx bx-search-alt-2 me-1"></i> Filter
-                    </button>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <a wire:navigate href="{{ route('change-requests.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
-                        <i class="bx bx-reset me-1"></i> Reset
-                    </a>
-                </div>
-            </form>
+            <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'myChangeRequests') }}">
+            @include('partials.apm-memo-list-filters', [
+                'filterId' => 'changeRequestFilters',
+                'resetUrl' => route('change-requests.index'),
+                'showMemoType' => true,
+                'showFundType' => true,
+                'statusDomId' => 'statusFilter',
+                'searchLabel' => 'Search Activity Title',
+                'searchPlaceholder' => 'Enter activity title...',
+                'staff' => $staff,
+                'divisions' => $divisions,
+                'years' => $years,
+                'selectedYear' => $selectedYear ?? date('Y'),
+                'selectedFundTypeId' => $selectedFundTypeId ?? '',
+                'fundTypeFilterOptions' => $fundTypeFilterOptions ?? [],
+            ])
         </div>
     </div>
 </div>
@@ -299,25 +213,6 @@ function initChangeRequestsPage() {
     if (!document.getElementById('changeRequestTabs')) return;
     var filtersEl = document.getElementById('changeRequestFilters');
     if (!filtersEl) return;
-    if (window.APMFilters) {
-        APMFilters.clearInited('#changeRequestFilters');
-        APMFilters.init('#changeRequestFilters', {
-            fields: [
-                { param: 'year', id: 'year', default: APMFilters.currentYear },
-                { param: 'memo_type', id: 'memo_type' },
-                { param: 'staff_id', id: 'staff_id' },
-                { param: 'division_id', id: 'division_id' },
-                { param: 'status', id: 'statusFilter' },
-                { param: 'fund_type_id', id: 'fund_type_id' },
-                { param: 'document_number', id: 'document_number' },
-                { param: 'search', id: 'search' }
-            ],
-            tabParam: 'filter_tab',
-            tabDefault: 'myChangeRequests',
-            selectSelector: '.apm-filter-select'
-        });
-    }
-    // AJAX filtering - auto-update when filters change
     function applyFilters() {
         const activeTab = document.querySelector('.tab-pane.active');
         if (activeTab) {
@@ -325,70 +220,9 @@ function initChangeRequestsPage() {
             loadTabData(tabId);
         }
     }
-    
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
-    }
-    var form = document.getElementById('changeRequestFiltersForm');
-    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
-    // Auto-apply filters when they change
-    if (document.getElementById('statusFilter')) {
-        document.getElementById('statusFilter').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('division_id')) {
-        document.getElementById('division_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('staff_id')) {
-        document.getElementById('staff_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('memo_type')) {
-        document.getElementById('memo_type').addEventListener('change', applyFilters);
-    }
-
-    if (document.getElementById('fund_type_id')) {
-        document.getElementById('fund_type_id').addEventListener('change', applyFilters);
-    }
-    
-    if (document.getElementById('year')) {
-        document.getElementById('year').addEventListener('change', function() {
-            setTimeout(applyFilters, 0);
-        });
-    }
-    
-    // Document number filter - apply on Enter key or after 1 second delay
-    if (document.getElementById('document_number')) {
-        let documentNumberTimeout;
-        document.getElementById('document_number').addEventListener('input', function() {
-            clearTimeout(documentNumberTimeout);
-            documentNumberTimeout = setTimeout(applyFilters, 1000);
-        });
-        
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(documentNumberTimeout);
-                applyFilters();
-            }
-        });
-    }
-    
-    // Search input - apply on Enter key or after 500ms delay
-    if (document.getElementById('search')) {
-        let searchTimeout;
-        document.getElementById('search').addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(applyFilters, 500);
-        });
-        
-        document.getElementById('search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(searchTimeout);
-                applyFilters();
-            }
-        });
-    }
+    document.addEventListener('apm-memo-filters:apply', function(e) {
+        if (e.detail && e.detail.filterId === 'changeRequestFilters') applyFilters();
+    });
     
     function getYearValue() {
         const currentYear = String(new Date().getFullYear());

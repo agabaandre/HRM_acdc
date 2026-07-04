@@ -13,6 +13,7 @@
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <meta name="base-url" content="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}">
+    @include('partials.apm-vuetify-runtime-head')
     @stack('head-meta')
     <title>@yield('title', config('app.name', 'Business Management System'))</title>
 
@@ -464,11 +465,12 @@
         });
     })();
     </script>
-    <script src="{{ asset('js/apm-list-fragment.js') }}?v=2"></script>
+    <script src="{{ asset('js/apm-list-fragment.js') }}?v=3"></script>
     <script src="{{ asset('js/apm-filter-state.js') }}"></script>
     <script src="{{ asset('js/apm-other-memo-index-livewire.js') }}?v=2"></script>
     <script src="{{ asset('js/apm-other-memo-approvers.js') }}"></script>
     <script src="{{ asset('js/apm-other-memo-create.js') }}?v=3"></script>
+    @include('partials.apm-vuetify-runtime-scripts')
     @stack('scripts')
 
     <script>

@@ -14,7 +14,8 @@
             <tr style="background: #119a48; color: #ffffff;">
                 <th style="text-align: center; width: 28px; color: #ffffff;">#</th>
                 <th style="text-align: left; color: #ffffff;">Approver</th>
-                <th style="text-align: center; color: #ffffff;">Avg. time</th>
+                <th style="text-align: center; color: #ffffff;">Avg. last 5</th>
+                <th style="text-align: center; color: #ffffff;">Avg. all docs</th>
                 <th style="text-align: center; color: #ffffff;">Total pending</th>
                 <th style="text-align: center; color: #ffffff;">Total handled</th>
                 <th style="text-align: left; color: #ffffff;">Pending items</th>
@@ -29,6 +30,7 @@
             <tr style="{{ $index % 2 === 1 ? 'background: #f8f9fa;' : '' }}">
                 <td style="text-align: center;">{{ $index + 1 }}</td>
                 <td>{{ $row['approver_name'] ?? '—' }}</td>
+                <td style="text-align: center;">{{ $row['avg_last_5_display'] ?? 'No data' }}</td>
                 <td style="text-align: center;">{{ $row['avg_approval_time_display'] ?? 'No data' }}</td>
                 <td style="text-align: center;">{{ $row['total_pending'] ?? 0 }}</td>
                 <td style="text-align: center;">{{ $row['total_handled'] ?? 0 }}</td>
@@ -40,7 +42,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="10" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
+                <td colspan="11" style="text-align: center; padding: 16px; color: #6c757d;">No approvers to display.</td>
             </tr>
             @endforelse
         </tbody>

@@ -8,6 +8,8 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form">
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
             <h5 class="mb-0 text-success">
@@ -265,6 +267,7 @@
             </form>
         </div>
     </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -520,6 +523,7 @@ $(document).ready(function () {
         $('#total_participants_display').val(total);
         $('#total_participants').val(total);
     }
+    window.updateTotalParticipants = updateTotalParticipants;
 
     function getActivityDays(startDate, endDate) {
         const start = new Date(startDate);
@@ -586,8 +590,7 @@ $(document).ready(function () {
                         <td class="text-center">
                             <div class="form-check d-flex justify-content-center">
                                 <input type="hidden" name="international_travel[${sid}]" value="${travelStr}" class="international-travel-value">
-                                <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${sid}" ${checked ? 'checked' : ''}>
-                                <label class="form-check-label ms-2">Yes</label>
+                                <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${sid}" ${checked ? 'checked' : ''} aria-label="Leaving country">
                             </div>
                         </td>
                         <td class="text-center text-nowrap align-middle">
@@ -649,6 +652,7 @@ $(document).ready(function () {
 
         updateTotalParticipants();
     }
+    window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 
     // Apply international travel state from existing (internal + external) participants to every participant row (source of truth for edit page load)
     function applyInternationalTravelFromExistingParticipants() {
@@ -1739,5 +1743,6 @@ $(document).ready(function () {
     ];
 @endphp
 @include('partials.apm-working-balance-js', ['apmBalanceConfig' => $apmBalanceConfig])
+@include('partials.participant-groups-js')
 
 @endpush

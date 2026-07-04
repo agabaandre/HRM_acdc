@@ -27,6 +27,8 @@ use App\Models\FundCodeTransaction;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use App\Services\ConvertMemoToNonTravelMemoService;
+use App\Support\MemoFundTypeFilter;
+use Illuminate\Database\Eloquent\Builder;
 use App\Services\FundCodeWorkingBalanceService;
 use App\Models\ApprovalTrail;
 use InvalidArgumentException;
@@ -78,24 +80,7 @@ class NonTravelMemoController extends Controller
         }
 
         // Apply filters to my submitted memos
-        if ($request->filled('category_id')) {
-            $mySubmittedQuery->where('non_travel_memo_category_id', $request->category_id);
-        }
-        if ($request->filled('division_id')) {
-            $mySubmittedQuery->where('division_id', $request->division_id);
-        }
-        if ($request->filled('staff_id')) {
-            $mySubmittedQuery->where('staff_id', $request->staff_id);
-        }
-        if ($request->filled('status')) {
-            $mySubmittedQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('document_number')) {
-            $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-        if ($request->filled('search')) {
-            $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
+        $this->applyNonTravelMemoIndexFilters($mySubmittedQuery, $request);
 
         $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
@@ -117,24 +102,7 @@ class NonTravelMemoController extends Controller
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
         }
-        if ($request->filled('staff_id')) {
-            $myDivisionMemosQuery->where('staff_id', $request->staff_id);
-        }
-        if ($request->filled('category_id')) {
-            $myDivisionMemosQuery->where('non_travel_memo_category_id', $request->category_id);
-        }
-        if ($request->filled('division_id')) {
-            $myDivisionMemosQuery->where('division_id', $request->division_id);
-        }
-        if ($request->filled('status')) {
-            $myDivisionMemosQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('document_number')) {
-            $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-        if ($request->filled('search')) {
-            $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
+        $this->applyNonTravelMemoIndexFilters($myDivisionMemosQuery, $request);
         $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Tab 3: All Non-Travel Memos (visible to users with permission 87)
@@ -153,24 +121,7 @@ class NonTravelMemoController extends Controller
             }
 
             // Apply filters to all memos
-            if ($request->filled('staff_id')) {
-                $allMemosQuery->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('category_id')) {
-                $allMemosQuery->where('non_travel_memo_category_id', $request->category_id);
-            }
-            if ($request->filled('division_id')) {
-                $allMemosQuery->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $allMemosQuery->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applyNonTravelMemoIndexFilters($allMemosQuery, $request);
 
             $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
         }
@@ -206,24 +157,7 @@ class NonTravelMemoController extends Controller
             }
 
             // Apply filters to my submitted memos
-            if ($request->filled('category_id')) {
-                $mySubmittedQuery->where('non_travel_memo_category_id', $request->category_id);
-            }
-            if ($request->filled('division_id')) {
-                $mySubmittedQuery->where('division_id', $request->division_id);
-            }
-            if ($request->filled('staff_id')) {
-                $mySubmittedQuery->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('status')) {
-                $mySubmittedQuery->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applyNonTravelMemoIndexFilters($mySubmittedQuery, $request);
 
             $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
@@ -244,24 +178,7 @@ class NonTravelMemoController extends Controller
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $myDivisionMemosQuery->whereYear('memo_date', (int) $year);
             }
-            if ($request->filled('staff_id')) {
-                $myDivisionMemosQuery->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('category_id')) {
-                $myDivisionMemosQuery->where('non_travel_memo_category_id', $request->category_id);
-            }
-            if ($request->filled('division_id')) {
-                $myDivisionMemosQuery->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $myDivisionMemosQuery->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applyNonTravelMemoIndexFilters($myDivisionMemosQuery, $request);
             $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             // Tab 3: All Non-Travel Memos (visible to users with permission 87)
@@ -280,24 +197,7 @@ class NonTravelMemoController extends Controller
                 }
 
                 // Apply filters to all memos
-                if ($request->filled('staff_id')) {
-                    $allMemosQuery->where('staff_id', $request->staff_id);
-                }
-                if ($request->filled('category_id')) {
-                    $allMemosQuery->where('non_travel_memo_category_id', $request->category_id);
-                }
-                if ($request->filled('division_id')) {
-                    $allMemosQuery->where('division_id', $request->division_id);
-                }
-                if ($request->filled('status')) {
-                    $allMemosQuery->where('overall_status', $request->status);
-                }
-                if ($request->filled('document_number')) {
-                    $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-                }
-                if ($request->filled('search')) {
-                    $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-                }
+                $this->applyNonTravelMemoIndexFilters($allMemosQuery, $request);
 
                 $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
             }
@@ -339,6 +239,9 @@ class NonTravelMemoController extends Controller
         $yearRange = range($currentYear, $minYear);
         $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+
         return view('non-travel.index', compact(
             'mySubmittedMemos',
             'myDivisionMemos',
@@ -349,8 +252,33 @@ class NonTravelMemoController extends Controller
             'year',
             'years',
             'currentStaffId',
-            'userDivisionId'
+            'userDivisionId',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
         ));
+    }
+
+    private function applyNonTravelMemoIndexFilters(Builder $query, Request $request): void
+    {
+        if ($request->filled('category_id')) {
+            $query->where('non_travel_memo_category_id', $request->category_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+        if ($request->filled('document_number')) {
+            $query->where('document_number', 'like', '%'.$request->document_number.'%');
+        }
+        if ($request->filled('search')) {
+            $query->where('activity_title', 'like', '%'.$request->search.'%');
+        }
+        MemoFundTypeFilter::apply($query, $request);
     }
 
    public function create(): View

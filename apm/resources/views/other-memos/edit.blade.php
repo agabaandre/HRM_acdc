@@ -25,7 +25,8 @@
 @endpush
 
 @section('content')
-<div class="other-memo-form-page" data-apm-livewire-page="other-memos-edit"
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form other-memo-form-page" data-apm-livewire-page="other-memos-edit"
     data-cc-on-approval="{{ ($memo->cc_on_approval_enabled_snapshot ?? false) ? '1' : '0' }}">
     @if (session('msg'))
         <div class="alert alert-{{ session('type', 'info') }}">{{ session('msg') }}</div>

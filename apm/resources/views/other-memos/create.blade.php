@@ -25,12 +25,13 @@
 @endpush
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
 {{-- Page markers + scripts below live inside #apm-content-area so wire:navigate executes them (Livewire docs). --}}
 @php
     $memoTypesForCreate = $memoTypesForCreate ?? [];
     $selectedMemoTypeSlug = old('memo_type_slug', '');
 @endphp
-<div class="other-memo-form-page" data-apm-livewire-page="other-memos-create"
+<div class="apm-v-form other-memo-form-page" data-apm-livewire-page="other-memos-create"
     data-memo-types-api="{{ route('memo-type-definitions.api.index') }}?active_only=1"
     data-memo-types-embedded='@json($memoTypesForCreate)'
     data-cc-enabled-slugs='@json($ccEnabledTypeSlugs ?? [])'

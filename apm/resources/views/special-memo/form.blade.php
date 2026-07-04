@@ -1,4 +1,5 @@
-<div class="card border-0 shadow-sm mb-5">
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="card border-0 shadow-sm mb-5 apm-v-form">
     <div class="card-body">
         <div class="row g-4">
             <div class="col-md-6">
@@ -206,6 +207,9 @@
                 <button type="button" class="btn btn-outline-success btn-sm mt-2" id="addDivisionBlock">
                     <i class="fas fa-plus-circle me-1"></i> Add Division Participants
                 </button>
+                @if(user_session('division_id'))
+                    @include('partials.participant-groups-picker')
+                @endif
             </div>
             <h6 class="fw-bold text-success mb-2 mt-4">
                 <i class="fas fa-users-cog me-2"></i>Participant dates &amp; days

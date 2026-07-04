@@ -49,87 +49,19 @@
             </div>
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
-            <form action="{{ route('non-travel.index') }}" method="GET" class="row g-3 align-items-end w-100" id="nonTravelFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
-                <div class="col-md-2">
-                    <label for="year" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-calendar me-1 text-success"></i> Year
-                    </label>
-                    <select name="year" id="year" class="form-select" style="width: 100%;">
-                        @foreach($years ?? [] as $yr => $label)
-                            <option value="{{ $yr }}" {{ ($year ?? date('Y')) == $yr ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="document_number" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-file me-1 text-success"></i> Document #
-                    </label>
-                    <input type="text" name="document_number" id="document_number" class="form-control" 
-                           value="{{ request('document_number') }}" placeholder="Doc #" style="width: 100%;">
-                </div>
-                 {{-- @php
-                    dd($divisions);
-                @endphp --}}
-                <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-user me-1 text-success"></i> Staff
-                    </label>
-                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select non-travel-filter-select" style="width: 100%;">
-                        <option value="">All Staff</option>
-                        @foreach($staff as $member)
-                            <option value="{{ $member->id }}" {{ request('staff_id') == $member->id ? 'selected' : '' }}>
-                                {{ $member->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-building me-1 text-success"></i> Division
-                    </label>
-                    <select name="division_id" id="division_id" class="form-select apm-filter-select non-travel-filter-select" style="width: 100%;">
-                        <option value="">All Divisions</option>
-                        @foreach($divisions as $division)
-                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                {{ $division->division_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="memo_status" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-info-circle me-1 text-success"></i> Status
-                    </label>
-                    <select name="status" id="memo_status" class="form-select apm-filter-select non-travel-filter-select" style="width: 100%;">
-                        <option value="">All Statuses</option>
-                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                        <option value="archived" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="search" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-search me-1 text-success"></i> Search Title
-                    </label>
-                    <input type="text" name="search" id="search" class="form-control" 
-                           value="{{ request('search') }}" placeholder="Enter memo title..." style="width: 100%;">
-                </div>
-                <div class="col-auto d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm" id="applyFilters">
-                        <i class="bx bx-search-alt-2 me-1"></i> Filter
-                    </button>
-                </div>
-                <div class="col-auto d-flex align-items-end">
-                    <a wire:navigate href="{{ route('non-travel.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bx bx-reset me-1"></i> Reset
-                    </a>
-                </div>
-            </form>
-            </div>
+            <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+            @include('partials.apm-memo-list-filters', [
+                'filterId' => 'memoFilters',
+                'resetUrl' => route('non-travel.index'),
+                'statusDomId' => 'memo_status',
+                'searchLabel' => 'Search title',
+                'searchPlaceholder' => 'Enter memo title...',
+                'staff' => $staff,
+                'divisions' => $divisions,
+                'years' => $years,
+                'selectedYear' => $year ?? date('Y'),
+            ])
+        </div>
         </div>
     </div>
 
@@ -227,54 +159,15 @@ function initNonTravelPage() {
     if (!document.getElementById('memoTabs')) return;
     var filtersEl = document.getElementById('memoFilters');
     if (!filtersEl) return;
-    if (window.APMFilters) {
-        APMFilters.clearInited('#memoFilters');
-        APMFilters.init('#memoFilters', {
-            fields: [
-                { param: 'year', id: 'year', default: APMFilters.currentYear },
-                { param: 'staff_id', id: 'staff_id' },
-                { param: 'division_id', id: 'division_id' },
-                { param: 'status', id: 'memo_status' },
-                { param: 'document_number', id: 'document_number' },
-                { param: 'search', id: 'search' }
-            ],
-            tabParam: 'filter_tab',
-            tabDefault: 'mySubmitted',
-            selectSelector: '.apm-filter-select'
-        });
-    }
     function applyFilters() {
         setTimeout(function() {
             var activeTab = document.querySelector('#memoTabsContent .tab-pane.active');
             if (activeTab) loadTabData(activeTab.id);
         }, 0);
     }
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
-    }
-    var form = document.getElementById('nonTravelFiltersForm');
-    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
-    ['staff_id', 'division_id', 'memo_status', 'year'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', applyFilters);
+    document.addEventListener('apm-memo-filters:apply', function(e) {
+        if (e.detail && e.detail.filterId === 'memoFilters') applyFilters();
     });
-    
-    // Document number filter - apply on Enter key or after 1 second delay
-    if (document.getElementById('document_number')) {
-        let documentNumberTimeout;
-        document.getElementById('document_number').addEventListener('input', function() {
-            clearTimeout(documentNumberTimeout);
-            documentNumberTimeout = setTimeout(applyFilters, 1000);
-        });
-        
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                clearTimeout(documentNumberTimeout);
-                applyFilters();
-            }
-        });
-    }
-    
     // Read year: use jQuery/Select2 value if available, else native select; default to current year
     function getYearValue() {
         var currentYear = String(new Date().getFullYear());
@@ -297,18 +190,18 @@ function initNonTravelPage() {
         currentUrl.searchParams.set('tab', tabId);
         
         var year = getYearValue();
-        var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '';
-        var staffId = document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '';
-        var divisionId = document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '';
-        var status = document.getElementById('memo_status') ? (document.getElementById('memo_status').value || '') : '';
-        var search = document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '';
-        
         currentUrl.searchParams.set('year', year);
-        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
-        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
-        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
-        if (status) currentUrl.searchParams.set('status', status);
-        if (search) currentUrl.searchParams.set('search', search);
+        var frag = window.APMListFragment;
+        if (frag && frag.applyFilterValues) {
+            frag.applyFilterValues(currentUrl, {
+                document_number: (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '',
+                staff_id: document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '',
+                division_id: document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '',
+                status: document.getElementById('memo_status') ? (document.getElementById('memo_status').value || '') : '',
+                search: document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '',
+                fund_type_id: document.getElementById('fund_type_id') ? (document.getElementById('fund_type_id').value || '') : '',
+            });
+        }
         
         window.history.replaceState({}, '', currentUrl.toString());
         

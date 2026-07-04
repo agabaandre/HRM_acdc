@@ -19,6 +19,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-light">
         <h5 class="mb-0"><i class="bx bx-user-check me-2 text-primary"></i>{{ $workflow->workflow_name }} - Approvers Overview</h5>
@@ -633,4 +636,6 @@
 }
 </style>
 @endpush
+
+</div>
 @endsection 

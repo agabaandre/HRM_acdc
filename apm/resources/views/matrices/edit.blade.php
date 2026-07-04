@@ -10,6 +10,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 @php
     $areas = old('key_result_area') ?? (is_array($matrix->key_result_area) ? $matrix->key_result_area : json_decode($matrix->key_result_area ?? '[]', true));
 @endphp
@@ -158,4 +161,6 @@
     });
 </script>
 @endpush
+
+</div>
 @endsection

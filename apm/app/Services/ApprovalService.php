@@ -1423,6 +1423,32 @@ class ApprovalService
     }
 
     /**
+     * Active approver staff IDs for a workflow level on a document (regular + OIC + division-specific).
+     *
+     * @return list<int>
+     */
+    public function getApproverStaffIdsForWorkflowLevel(Model $model, int $workflowId, int $approvalOrder): array
+    {
+        $definitions = WorkflowDefinition::query()
+            ->where('workflow_id', $workflowId)
+            ->where('approval_order', $approvalOrder)
+            ->where('is_enabled', 1)
+            ->get();
+
+        $ids = [];
+        foreach ($definitions as $definition) {
+            foreach ($this->getApproversForDefinition($definition, $model) as $approver) {
+                $staffId = (int) ($approver['staff_id'] ?? 0);
+                if ($staffId > 0) {
+                    $ids[] = $staffId;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Update the approval order map for a model
      * 
      * @param Model $model The model to update

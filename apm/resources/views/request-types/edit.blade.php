@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="row">
     <div class="col-md-8 mx-auto">
         <div class="card shadow-sm">
@@ -60,5 +63,7 @@
             </div>
         </div>
     </div>
+</div>
+
 </div>
 @endsection

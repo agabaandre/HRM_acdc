@@ -7,6 +7,7 @@ use App\Models\ApproverDocumentTimingRecord;
 use App\Models\Division;
 use App\Models\Staff;
 use App\Services\ApproverDocumentTimingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -86,31 +87,126 @@ class ApproverDocumentTimingReportController extends Controller
 
                 $divisions = Division::orderBy('division_name')->get();
 
+                $totalElapsedParts = format_approver_timing_elapsed_display($totalHours);
+
+                $recordRows = $records->getCollection()->map(function ($r) {
+                    $docUrl = $this->timingService->resolveDocumentUrl($r->model_type, (int) $r->model_id);
+                    $elapsedParts = format_approver_timing_elapsed_display($r->hours_elapsed);
+
+                    return [
+                        'staff_id' => (int) $r->staff_id,
+                        'staff_name' => $r->staff_name_snapshot ?: 'Staff #'.$r->staff_id,
+                        'document_type_label' => $r->document_type_label,
+                        'document_title' => strip_tags($r->document_title ?? '—'),
+                        'document_number' => $r->document_number_snapshot,
+                        'division_name' => $r->division_name_snapshot ?? '—',
+                        'workflow_name' => $r->workflow_name_snapshot ?? '—',
+                        'workflow_role' => $r->workflow_role_snapshot ?? ('Level '.($r->approval_order ?? '—')),
+                        'received_at' => $r->received_at?->format('Y-m-d H:i'),
+                        'acted_at' => $r->acted_at?->format('Y-m-d H:i'),
+                        'elapsed_hours' => $elapsedParts['hours_formatted'],
+                        'elapsed_days' => $elapsedParts['days_formatted'],
+                        'doc_url' => $docUrl ? url($docUrl) : null,
+                    ];
+                })->values()->all();
+
+                $yearOpts = range((int) date('Y'), (int) date('Y') - 8);
+
                 return [
-                    'records' => $records,
-                    'staffOptions' => $staffOptions,
-                    'divisions' => $divisions,
-                    'documentTypes' => $documentTypes,
-                    'reportFullAccess' => approver_timing_report_can_view_all(),
-                    'filters' => [
-                        'staff_id' => $staffId,
-                        'division_id' => $divisionId,
-                        'document_type' => $documentType,
-                        'year' => $year,
-                        'month' => $month,
-                        'q' => $search,
+                    'pageConfig' => [
+                        'reportFullAccess' => approver_timing_report_can_view_all(),
+                        'sessionStaffId' => (int) user_session('staff_id'),
+                        'filters' => [
+                            'staff_id' => $staffId,
+                            'division_id' => $divisionId,
+                            'document_type' => $documentType,
+                            'year' => $year,
+                            'month' => $month,
+                            'q' => $search,
+                        ],
+                        'summary' => [
+                            'total_rows' => $totalRows,
+                            'avg_hours' => $avgHours,
+                            'total_hours' => $totalHours,
+                            'avg_display' => $avgHours === null ? '—' : $this->formatHoursForDisplay((float) $avgHours),
+                            'total_elapsed_hours' => $totalElapsedParts['hours_formatted'],
+                            'total_elapsed_days' => $totalElapsedParts['days_formatted'],
+                        ],
+                        'staffOptions' => $staffOptions->map(fn ($s) => [
+                            'staff_id' => (int) $s->staff_id,
+                            'label' => trim(($s->title ? $s->title.' ' : '').$s->fname.' '.$s->lname).' ('.$s->staff_id.')',
+                        ])->values()->all(),
+                        'divisions' => $divisions->map(fn ($d) => [
+                            'id' => (int) $d->id,
+                            'name' => $d->division_name,
+                        ])->values()->all(),
+                        'documentTypes' => $documentTypes->values()->all(),
+                        'years' => $yearOpts,
+                        'months' => [
+                            ['value' => '', 'title' => 'Any month'],
+                            ['value' => 1, 'title' => 'January'],
+                            ['value' => 2, 'title' => 'February'],
+                            ['value' => 3, 'title' => 'March'],
+                            ['value' => 4, 'title' => 'April'],
+                            ['value' => 5, 'title' => 'May'],
+                            ['value' => 6, 'title' => 'June'],
+                            ['value' => 7, 'title' => 'July'],
+                            ['value' => 8, 'title' => 'August'],
+                            ['value' => 9, 'title' => 'September'],
+                            ['value' => 10, 'title' => 'October'],
+                            ['value' => 11, 'title' => 'November'],
+                            ['value' => 12, 'title' => 'December'],
+                        ],
+                        'records' => $recordRows,
+                        'pagination' => [
+                            'current_page' => $records->currentPage(),
+                            'last_page' => $records->lastPage(),
+                            'per_page' => $records->perPage(),
+                            'total' => $records->total(),
+                            'from' => $records->firstItem(),
+                            'to' => $records->lastItem(),
+                        ],
+                        'routes' => [
+                            'index' => route('reports.approver-document-timing.index'),
+                            'export' => route('reports.approver-document-timing.export'),
+                            'trend' => route('reports.approver-document-timing.trend'),
+                            'reportsIndex' => route('reports.index'),
+                        ],
                     ],
-                    'summary' => [
-                        'total_rows' => $totalRows,
-                        'avg_hours' => $avgHours,
-                        'total_hours' => $totalHours,
-                        'avg_display' => $avgHours === null ? '—' : $this->formatHoursForDisplay((float) $avgHours),
-                    ],
-                    'timingService' => $this->timingService,
                 ];
             },
             ['report' => 'approver_document_timing']
         );
+    }
+
+    public function trend(Request $request): JsonResponse
+    {
+        approver_timing_report_authorize_web_request($request);
+
+        $staffId = approver_timing_report_effective_staff_id($request);
+        $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
+        $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
+        $year = $request->filled('year') ? (int) $request->year : null;
+        $month = $request->filled('month') ? (int) $request->month : null;
+        $search = $request->filled('q') ? trim((string) $request->q) : null;
+        $granularity = $request->get('granularity') === 'weekly' ? 'weekly' : 'monthly';
+
+        $filters = array_filter([
+            'staff_id' => $staffId,
+            'division_id' => $divisionId,
+            'document_type' => $documentType,
+            'year' => $year,
+            'month' => $month,
+            'q' => $search,
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $points = $this->timingService->averageHoursTrend($granularity, $filters);
+
+        return response()->json([
+            'success' => true,
+            'granularity' => $granularity,
+            'data' => $points,
+        ]);
     }
 
     public function exportCsv(Request $request)

@@ -32,6 +32,7 @@ use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
 use App\Http\Controllers\Concerns\CachesApmPageResponses;
+use App\Support\MemoFundTypeFilter;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 
 class ActivityController extends Controller
@@ -1896,19 +1897,47 @@ class ActivityController extends Controller
         $currentStaffId = user_session('staff_id');
         $tab = $request->get('tab', '');
         $searchTerm = $request->get('search', '');
-        
-        // Get current year and quarter as default
-        $currentYear = now()->year;
-        $currentQuarter = now()->quarter;
-        
-        $selectedYear = $request->get('year', $currentYear);
-        $selectedQuarter = $request->get('quarter', 'Q' . $currentQuarter);
-        
+        $explicitPeriod = $request->filled('year') || $request->filled('quarter');
+
+        $selectedYear = (int) $request->get('year', current_apm_year());
+        $selectedQuarter = (string) $request->get('quarter', current_apm_quarter());
+
         // Ensure quarter is in correct format (Q1, Q2, Q3, Q4)
-        if (!str_starts_with($selectedQuarter, 'Q')) {
-            $selectedQuarter = 'Q' . $selectedQuarter;
+        if (! str_starts_with($selectedQuarter, 'Q')) {
+            $selectedQuarter = 'Q'.$selectedQuarter;
         }
-        
+
+        // Default period: current APM year/quarter. If that matrix period has no single
+        // memos yet (common early in a quarter), fall back to the latest period that does.
+        if (! $explicitPeriod) {
+            $hasForPeriod = Activity::query()
+                ->where('is_single_memo', true)
+                ->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
+                    $query->where('year', $selectedYear)
+                        ->where('quarter', $selectedQuarter);
+                })
+                ->exists();
+
+            if (! $hasForPeriod) {
+                $latestMatrix = Matrix::query()
+                    ->whereIn(
+                        'id',
+                        Activity::query()
+                            ->where('is_single_memo', true)
+                            ->whereNotNull('matrix_id')
+                            ->select('matrix_id')
+                    )
+                    ->orderByDesc('year')
+                    ->orderByRaw("FIELD(quarter, 'Q4', 'Q3', 'Q2', 'Q1')")
+                    ->first(['year', 'quarter']);
+
+                if ($latestMatrix) {
+                    $selectedYear = (int) $latestMatrix->year;
+                    $selectedQuarter = (string) $latestMatrix->quarter;
+                }
+            }
+        }
+
         // Note: Removed tab-based page reset to allow proper pagination
         
         // Base query for all single memos
@@ -1945,6 +1974,8 @@ class ActivityController extends Controller
         if ($searchTerm) {
             $baseQuery->where('activity_title', 'like', '%' . $searchTerm . '%');
         }
+
+        MemoFundTypeFilter::apply($baseQuery, $request, 'activities.fund_type_id');
 
         // Apply year and quarter filters
         $baseQuery->whereHas('matrix', function ($query) use ($selectedYear, $selectedQuarter) {
@@ -2074,6 +2105,9 @@ class ActivityController extends Controller
             ]);
         }
         
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+
         return view('activities.single-memos.index', compact(
             'myMemos',
             'allMemos',
@@ -2089,7 +2123,9 @@ class ActivityController extends Controller
             'currentQuarterMatrix',
             'currentQuarterLabel',
             'apmCurrentYear',
-            'apmCurrentQuarter'
+            'apmCurrentQuarter',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
         ));
     }
 
@@ -2384,12 +2420,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $selectedStatus = $request->get('status', '');
         $searchTerm = $request->get('search', '');
         $tab = $request->get('tab', '');
-        $selectedFundTypeId = trim((string) ($request->get('fund_type_id') ?? ''));
-        $fundTypeFilterOptions = [
-            '1' => 'Intramural',
-            '2' => 'Extramural',
-            '3' => 'External Source',
-        ];
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
         
         // Note: Removed tab-based page reset to allow proper pagination
         

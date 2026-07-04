@@ -12,7 +12,7 @@ class SendStalePendingApprovalsRemindersCommand extends Command
     protected $signature = 'approvals:send-stale-pending-reminders
                             {--dry-run : List who would be emailed without dispatching}';
 
-    protected $description = 'Notify approvers whose queue has items pending at their level for more than approval_warning_days (default 7); run daily at 11:00 until cleared';
+    protected $description = 'Notify approvers whose queue has items pending at their level for more than approval_warning_days (default 7); escalate to creator, HOD, and senior/configured approvers; run daily at 11:00 until cleared';
 
     public function handle(): int
     {
@@ -58,6 +58,18 @@ class SendStalePendingApprovalsRemindersCommand extends Command
             $this->info('No approvers have items past the threshold.');
         } else {
             $this->info("Total stale items counted: {$totalStale}");
+        }
+
+        $this->newLine();
+        $this->info('Dry run — escalation recipients (creator / HOD / senior or configured approvers):');
+        $preview = app(\App\Services\StaleApprovalEscalationService::class)->previewEscalationRecipients();
+        if ($preview === []) {
+            $this->info('  No escalation recipients for stale items.');
+        } else {
+            foreach ($preview as $row) {
+                $reasons = implode(', ', $row['reasons'] ?? []);
+                $this->line("  • {$row['name']} <{$row['email']}>: {$row['item_count']} item(s) [{$reasons}]");
+            }
         }
 
         return self::SUCCESS;

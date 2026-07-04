@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
+use App\Support\MemoFundTypeFilter;
+use Illuminate\Database\Eloquent\Builder;
 
 class SpecialMemoController extends Controller
 {
@@ -77,21 +79,7 @@ class SpecialMemoController extends Controller
         }
 
         // Apply filters to my submitted memos
-        if ($request->filled('request_type_id')) {
-            $mySubmittedQuery->where('request_type_id', $request->request_type_id);
-        }
-        if ($request->filled('division_id')) {
-            $mySubmittedQuery->where('division_id', $request->division_id);
-        }
-        if ($request->filled('status')) {
-            $mySubmittedQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('document_number')) {
-            $mySubmittedQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-        if ($request->filled('search')) {
-            $mySubmittedQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
+        $this->applySpecialMemoIndexFilters($mySubmittedQuery, $request);
 
         $mySubmittedMemos = $mySubmittedQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
@@ -112,24 +100,7 @@ class SpecialMemoController extends Controller
         if ($year !== '' && $year !== 'all' && (int) $year > 0) {
             $myDivisionMemosQuery->whereYear('created_at', (int) $year);
         }
-        if ($request->filled('staff_id')) {
-            $myDivisionMemosQuery->where('staff_id', $request->staff_id);
-        }
-        if ($request->filled('request_type_id')) {
-            $myDivisionMemosQuery->where('request_type_id', $request->request_type_id);
-        }
-        if ($request->filled('division_id')) {
-            $myDivisionMemosQuery->where('division_id', $request->division_id);
-        }
-        if ($request->filled('status')) {
-            $myDivisionMemosQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('document_number')) {
-            $myDivisionMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-        if ($request->filled('search')) {
-            $myDivisionMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
+        $this->applySpecialMemoIndexFilters($myDivisionMemosQuery, $request);
         $myDivisionMemos = $myDivisionMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
         // Tab 3: All Special Memos (visible to users with permission 87)
@@ -148,24 +119,7 @@ class SpecialMemoController extends Controller
             }
 
             // Apply filters to all memos
-            if ($request->filled('staff_id')) {
-                $allMemosQuery->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('request_type_id')) {
-                $allMemosQuery->where('request_type_id', $request->request_type_id);
-            }
-            if ($request->filled('division_id')) {
-                $allMemosQuery->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $allMemosQuery->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $allMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $allMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applySpecialMemoIndexFilters($allMemosQuery, $request);
 
             $allMemos = $allMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
         }
@@ -187,24 +141,7 @@ class SpecialMemoController extends Controller
         $sharedMemosQuery->where('overall_status', '!=', 'archived');
 
         // Apply filters to shared memos
-        if ($request->filled('request_type_id')) {
-            $sharedMemosQuery->where('request_type_id', $request->request_type_id);
-        }
-        if ($request->filled('division_id')) {
-            $sharedMemosQuery->where('division_id', $request->division_id);
-        }
-        if ($request->filled('status')) {
-            $sharedMemosQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('staff_id')) {
-            $sharedMemosQuery->where('staff_id', $request->staff_id);
-        }
-        if ($request->filled('document_number')) {
-            $sharedMemosQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-        if ($request->filled('search')) {
-            $sharedMemosQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
+        $this->applySpecialMemoIndexFilters($sharedMemosQuery, $request);
 
         $sharedMemos = $sharedMemosQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
@@ -232,21 +169,7 @@ class SpecialMemoController extends Controller
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $mySubmittedQueryAjax->whereYear('created_at', (int) $year);
             }
-            if ($request->filled('request_type_id')) {
-                $mySubmittedQueryAjax->where('request_type_id', $request->request_type_id);
-            }
-            if ($request->filled('division_id')) {
-                $mySubmittedQueryAjax->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $mySubmittedQueryAjax->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $mySubmittedQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $mySubmittedQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applySpecialMemoIndexFilters($mySubmittedQueryAjax, $request);
             $mySubmittedMemos = $mySubmittedQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             $myDivisionMemosQueryAjax = SpecialMemo::with([
@@ -262,24 +185,7 @@ class SpecialMemoController extends Controller
             if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                 $myDivisionMemosQueryAjax->whereYear('created_at', (int) $year);
             }
-            if ($request->filled('staff_id')) {
-                $myDivisionMemosQueryAjax->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('request_type_id')) {
-                $myDivisionMemosQueryAjax->where('request_type_id', $request->request_type_id);
-            }
-            if ($request->filled('division_id')) {
-                $myDivisionMemosQueryAjax->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $myDivisionMemosQueryAjax->where('overall_status', $request->status);
-            }
-            if ($request->filled('document_number')) {
-                $myDivisionMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $myDivisionMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applySpecialMemoIndexFilters($myDivisionMemosQueryAjax, $request);
             $myDivisionMemos = $myDivisionMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             $allMemos = collect();
@@ -291,24 +197,7 @@ class SpecialMemoController extends Controller
                 if ($year !== '' && $year !== 'all' && (int) $year > 0) {
                     $allMemosQueryAjax->whereYear('created_at', (int) $year);
                 }
-                if ($request->filled('staff_id')) {
-                    $allMemosQueryAjax->where('staff_id', $request->staff_id);
-                }
-                if ($request->filled('request_type_id')) {
-                    $allMemosQueryAjax->where('request_type_id', $request->request_type_id);
-                }
-                if ($request->filled('division_id')) {
-                    $allMemosQueryAjax->where('division_id', $request->division_id);
-                }
-                if ($request->filled('status')) {
-                    $allMemosQueryAjax->where('overall_status', $request->status);
-                }
-                if ($request->filled('document_number')) {
-                    $allMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
-                }
-                if ($request->filled('search')) {
-                    $allMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
-                }
+                $this->applySpecialMemoIndexFilters($allMemosQueryAjax, $request);
                 $allMemos = $allMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
             }
 
@@ -320,24 +209,7 @@ class SpecialMemoController extends Controller
                 $sharedMemosQueryAjax->whereYear('created_at', (int) $year);
             }
             $sharedMemosQueryAjax->where('overall_status', '!=', 'archived');
-            if ($request->filled('request_type_id')) {
-                $sharedMemosQueryAjax->where('request_type_id', $request->request_type_id);
-            }
-            if ($request->filled('division_id')) {
-                $sharedMemosQueryAjax->where('division_id', $request->division_id);
-            }
-            if ($request->filled('status')) {
-                $sharedMemosQueryAjax->where('overall_status', $request->status);
-            }
-            if ($request->filled('staff_id')) {
-                $sharedMemosQueryAjax->where('staff_id', $request->staff_id);
-            }
-            if ($request->filled('document_number')) {
-                $sharedMemosQueryAjax->where('document_number', 'like', '%' . $request->document_number . '%');
-            }
-            if ($request->filled('search')) {
-                $sharedMemosQueryAjax->where('activity_title', 'like', '%' . $request->search . '%');
-            }
+            $this->applySpecialMemoIndexFilters($sharedMemosQueryAjax, $request);
             $sharedMemos = $sharedMemosQueryAjax->orderByDesc('created_at')->paginate(20)->withQueryString();
 
             $countMySubmitted = $mySubmittedMemos->total();
@@ -383,6 +255,9 @@ class SpecialMemoController extends Controller
         $yearRange = range($currentYear, $minYear);
         $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
 
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+
         return view('special-memo.index', compact(
             'mySubmittedMemos',
             'myDivisionMemos',
@@ -394,8 +269,33 @@ class SpecialMemoController extends Controller
             'currentStaffId',
             'userDivisionId',
             'year',
-            'years'
+            'years',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
         ));
+    }
+
+    private function applySpecialMemoIndexFilters(Builder $query, Request $request): void
+    {
+        if ($request->filled('request_type_id')) {
+            $query->where('request_type_id', $request->request_type_id);
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', $request->division_id);
+        }
+        if ($request->filled('staff_id')) {
+            $query->where('staff_id', $request->staff_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('overall_status', $request->status);
+        }
+        if ($request->filled('document_number')) {
+            $query->where('document_number', 'like', '%'.$request->document_number.'%');
+        }
+        if ($request->filled('search')) {
+            $query->where('activity_title', 'like', '%'.$request->search.'%');
+        }
+        MemoFundTypeFilter::apply($query, $request);
     }
     
 

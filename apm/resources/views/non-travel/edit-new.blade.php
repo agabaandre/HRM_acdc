@@ -42,6 +42,8 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form">
     <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-dark">
@@ -464,6 +466,7 @@
             </div>
         </div>
     </div>
+</div>
 @endsection
 
 @push('scripts')

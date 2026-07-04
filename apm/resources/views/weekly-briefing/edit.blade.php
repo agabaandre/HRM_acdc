@@ -4,7 +4,8 @@
 @section('header', 'Edit Weekly brief')
 
 @section('content')
-<div class="container-fluid py-3" id="weekly-briefing-page">
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="apm-v-form container-fluid py-3" id="weekly-briefing-page">
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
     @endif

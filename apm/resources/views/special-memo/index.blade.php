@@ -100,96 +100,20 @@
         </div>
 
         <div class="row g-3 align-items-end" id="memoFilters" autocomplete="off">
-            <form action="{{ route('special-memo.index') }}" method="GET" class="row g-3 align-items-end w-100" id="specialMemoFiltersForm">
-                <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
-                <div class="col-md-2">
-                    <label for="year" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-calendar me-1 text-success"></i> Year
-                    </label>
-                    <select name="year" id="year" class="form-select" style="width: 100%;">
-                        @foreach($years ?? [] as $yr => $label)
-                            <option value="{{ $yr }}" {{ (string)($year ?? date('Y')) === (string)$yr ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="document_number" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-file me-1 text-success"></i> Document #
-                    </label>
-                    <input type="text" name="document_number" id="document_number" class="form-control" 
-                           value="{{ request('document_number') }}" placeholder="Doc #">
-                </div>
-                <div class="col-md-2">
-                    <label for="request_type_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-category me-1 text-success"></i> Request Type
-                    </label>
-                    <select name="request_type_id" id="request_type_id" class="form-select apm-filter-select special-memo-filter-select" style="width: 100%;">
-                        <option value="">All Request Types</option>
-                        @foreach($requestTypes as $requestType)
-                            <option value="{{ $requestType->id }}" {{ request('request_type_id') == $requestType->id ? 'selected' : '' }}>
-                                {{ $requestType->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="staff_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-user me-1 text-success"></i> Staff
-                    </label>
-                    <select name="staff_id" id="staff_id" class="form-select apm-filter-select special-memo-filter-select" style="width: 100%;">
-                        <option value="">All Staff</option>
-                        @foreach($staff as $member)
-                            <option value="{{ $member->staff_id }}" {{ request('staff_id') == $member->staff_id ? 'selected' : '' }}>
-                                {{ $member->fname }} {{ $member->lname }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="division_id" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-building me-1 text-success"></i> Division
-                    </label>
-                    <select name="division_id" id="division_id" class="form-select apm-filter-select special-memo-filter-select" style="width: 100%;">
-                        <option value="">All Divisions</option>
-                        @foreach($divisions as $division)
-                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
-                                {{ $division->division_name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="special_status" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-info-circle me-1 text-success"></i> Status
-                    </label>
-                    <select name="status" id="special_status" class="form-select apm-filter-select special-memo-filter-select" style="width: 100%;">
-                        <option value="">All Statuses</option>
-                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                        <option value="returned" {{ request('status') == 'returned' ? 'selected' : '' }}>Returned</option>
-                        <option value="archived" {{ request('status') == 'archived' ? 'selected' : '' }}>Archived</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="search" class="form-label fw-semibold mb-1">
-                        <i class="bx bx-search me-1 text-success"></i> Search Title
-                    </label>
-                    <input type="text" name="search" id="search" class="form-control" 
-                           value="{{ request('search') }}" placeholder="Enter memo title...">
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="button" class="btn btn-success btn-sm w-100" id="applyFilters">
-                        <i class="bx bx-search-alt-2 me-1"></i> Filter
-                    </button>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <a wire:navigate href="{{ route('special-memo.index') }}" class="btn btn-outline-secondary btn-sm w-100 fw-bold">
-                        <i class="bx bx-reset me-1"></i> Reset
-                    </a>
-                </div>
-            </form>
+            <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', 'mySubmitted') }}">
+            @include('partials.apm-memo-list-filters', [
+                'filterId' => 'memoFilters',
+                'resetUrl' => route('special-memo.index'),
+                'showRequestType' => true,
+                'statusDomId' => 'special_status',
+                'searchLabel' => 'Search title',
+                'searchPlaceholder' => 'Enter memo title...',
+                'staff' => $staff,
+                'divisions' => $divisions,
+                'years' => $years,
+                'requestTypes' => $requestTypes,
+                'selectedYear' => $year ?? date('Y'),
+            ])
         </div>
     </div>
 </div>
@@ -315,49 +239,15 @@ function initSpecialMemoPage() {
     if (!document.getElementById('memoTabs')) return;
     var filtersEl = document.getElementById('memoFilters');
     if (!filtersEl) return;
-    if (window.APMFilters) {
-        APMFilters.clearInited('#memoFilters');
-        APMFilters.init('#memoFilters', {
-            fields: [
-                { param: 'year', id: 'year', default: APMFilters.currentYear },
-                { param: 'request_type_id', id: 'request_type_id' },
-                { param: 'staff_id', id: 'staff_id' },
-                { param: 'division_id', id: 'division_id' },
-                { param: 'status', id: 'special_status' },
-                { param: 'document_number', id: 'document_number' },
-                { param: 'search', id: 'search' }
-            ],
-            tabParam: 'filter_tab',
-            tabDefault: 'mySubmitted',
-            selectSelector: '.apm-filter-select'
-        });
-    }
     function applyFilters() {
         setTimeout(function() {
             var activeTab = document.querySelector('#memoTabsContent .tab-pane.active');
             if (activeTab) loadTabData(activeTab.id);
         }, 0);
     }
-    if (document.getElementById('applyFilters')) {
-        document.getElementById('applyFilters').addEventListener('click', function(e) { e.preventDefault(); applyFilters(); });
-    }
-    var form = document.getElementById('specialMemoFiltersForm');
-    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); applyFilters(); });
-    ['year', 'request_type_id', 'staff_id', 'division_id', 'special_status'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener('change', applyFilters);
+    document.addEventListener('apm-memo-filters:apply', function(e) {
+        if (e.detail && e.detail.filterId === 'memoFilters') applyFilters();
     });
-    if (document.getElementById('document_number')) {
-        var documentNumberTimeout;
-        document.getElementById('document_number').addEventListener('input', function() {
-            clearTimeout(documentNumberTimeout);
-            documentNumberTimeout = setTimeout(applyFilters, 1000);
-        });
-        document.getElementById('document_number').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') { clearTimeout(documentNumberTimeout); applyFilters(); }
-        });
-    }
-    
     function getYearValue() {
         var currentYear = String(new Date().getFullYear());
         if (typeof $ !== 'undefined' && $('#year').length) {
@@ -379,20 +269,19 @@ function initSpecialMemoPage() {
         currentUrl.searchParams.set('tab', tabId);
         
         var year = getYearValue();
-        var documentNumber = (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '';
-        var requestTypeId = document.getElementById('request_type_id') ? (document.getElementById('request_type_id').value || '') : '';
-        var staffId = document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '';
-        var divisionId = document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '';
-        var status = document.getElementById('special_status') ? (document.getElementById('special_status').value || '') : '';
-        var search = document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '';
-        
         currentUrl.searchParams.set('year', year);
-        if (documentNumber) currentUrl.searchParams.set('document_number', documentNumber);
-        if (requestTypeId) currentUrl.searchParams.set('request_type_id', requestTypeId);
-        if (staffId) currentUrl.searchParams.set('staff_id', staffId);
-        if (divisionId) currentUrl.searchParams.set('division_id', divisionId);
-        if (status) currentUrl.searchParams.set('status', status);
-        if (search) currentUrl.searchParams.set('search', search);
+        var frag = window.APMListFragment;
+        if (frag && frag.applyFilterValues) {
+            frag.applyFilterValues(currentUrl, {
+                document_number: (document.getElementById('document_number') && document.getElementById('document_number').value) ? document.getElementById('document_number').value.trim() : '',
+                request_type_id: document.getElementById('request_type_id') ? (document.getElementById('request_type_id').value || '') : '',
+                staff_id: document.getElementById('staff_id') ? (document.getElementById('staff_id').value || '') : '',
+                division_id: document.getElementById('division_id') ? (document.getElementById('division_id').value || '') : '',
+                status: document.getElementById('special_status') ? (document.getElementById('special_status').value || '') : '',
+                search: document.getElementById('search') ? (document.getElementById('search').value || '').trim() : '',
+                fund_type_id: document.getElementById('fund_type_id') ? (document.getElementById('fund_type_id').value || '') : '',
+            });
+        }
 
         window.history.replaceState({}, '', currentUrl.toString());
 

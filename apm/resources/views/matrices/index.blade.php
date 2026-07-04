@@ -125,55 +125,6 @@
         function initMatricesIndexPage() {
             if (!document.getElementById('yearFilter')) return;
             const params = new URLSearchParams(window.location.search);
-            // Default to current year if no year parameter exists (initial page load)
-            // If year parameter exists but is empty, use empty string (explicit "All Years" selection)
-            const currentYear = new Date().getFullYear();
-            const yearParam = params.get('year');
-            $('#yearFilter').val(yearParam !== null ? yearParam : currentYear);
-            $('#quarterFilter').val(params.get('quarter') || '');
-            $('#divisionFilter').val(params.get('division') || '');
-            $('#focalFilter').val(params.get('focal_person') || '');
-            $('#statusFilter').val(params.get('status') || 'active');
-
-            // Apply Select2
-            $('.select2').select2({
-                width: '100%'
-            });
-
-            // AJAX filtering - auto-update when filters change
-            function applyFilters() {
-                const activeTab = document.querySelector('.tab-pane.active');
-                if (activeTab) {
-                    const tabId = activeTab.id;
-                    loadTabData(tabId, 1);
-                }
-            }
-            
-            // Manual filter button click
-            if (document.getElementById('applyFilters')) {
-                document.getElementById('applyFilters').addEventListener('click', applyFilters);
-            }
-            
-            // Auto-apply filters when they change
-            if (document.getElementById('yearFilter')) {
-                document.getElementById('yearFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('quarterFilter')) {
-                document.getElementById('quarterFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('divisionFilter')) {
-                document.getElementById('divisionFilter').addEventListener('change', applyFilters);
-            }
-            
-            if (document.getElementById('focalFilter')) {
-                document.getElementById('focalFilter').addEventListener('change', applyFilters);
-            }
-
-            if (document.getElementById('statusFilter')) {
-                document.getElementById('statusFilter').addEventListener('change', applyFilters);
-            }
 
             function matricesTabMountEl(tabId) {
                 return document.getElementById(tabId + '-matrix-table-host');
@@ -185,7 +136,6 @@
                 return 'page';
             }
 
-            // Function to load tab data via AJAX (injects HTML into #<tabId>-matrix-table-host only)
             function loadTabData(tabId, page = 1) {
                 const mount = matricesTabMountEl(tabId);
                 if (!mount) return;
@@ -202,27 +152,43 @@
                     currentUrl.searchParams.set(pageParam, String(pageNum));
                 }
 
-                const year = document.getElementById('yearFilter')?.value || '';
-                const quarter = document.getElementById('quarterFilter')?.value || '';
-                const division = document.getElementById('divisionFilter')?.value || '';
-                const focalPerson = document.getElementById('focalFilter')?.value || '';
+                const frag = window.APMListFragment;
+                const year = document.getElementById('yearFilter')?.value ?? '';
+                const quarter = document.getElementById('quarterFilter')?.value ?? '';
                 const status = document.getElementById('statusFilter')?.value || 'active';
 
                 currentUrl.searchParams.set('year', year);
                 currentUrl.searchParams.set('quarter', quarter);
                 currentUrl.searchParams.set('status', status);
-                if (division) currentUrl.searchParams.set('division', division); else currentUrl.searchParams.delete('division');
-                if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson); else currentUrl.searchParams.delete('focal_person');
+                if (frag && frag.applyFilterValues) {
+                    frag.applyFilterValues(currentUrl, {
+                        division: document.getElementById('divisionFilter')?.value,
+                        focal_person: document.getElementById('focalFilter')?.value,
+                    });
+                } else {
+                    const division = document.getElementById('divisionFilter')?.value || '';
+                    const focalPerson = document.getElementById('focalFilter')?.value || '';
+                    if (division) currentUrl.searchParams.set('division', division);
+                    else currentUrl.searchParams.delete('division');
+                    if (focalPerson) currentUrl.searchParams.set('focal_person', focalPerson);
+                    else currentUrl.searchParams.delete('focal_person');
+                }
+
+                window.history.replaceState({}, '', currentUrl.toString());
 
                 mount.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="text-muted small mt-2 mb-0">Loading matrices…</p></div>';
 
-                fetch(currentUrl.toString(), {
+                const fetchUrl = (frag && frag.applyToUrl)
+                    ? frag.applyToUrl(currentUrl.toString())
+                    : currentUrl.toString();
+
+                fetch(fetchUrl, {
                     method: 'GET',
-                    headers: (window.APMListFragment && window.APMListFragment.headers) ? window.APMListFragment.headers() : {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-APM-List-Fragment': '1'
-            }
+                    headers: (frag && frag.headers) ? frag.headers() : {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-APM-List-Fragment': '1'
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -238,6 +204,8 @@
                     mount.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
                 });
             }
+
+            window.__matricesPageLoadTabData = loadTabData;
 
             function attachPaginationHandlers(tabId) {
                 const mount = matricesTabMountEl(tabId);
@@ -297,6 +265,14 @@
             } else {
                 updatePaginationInfo();
             }
+        }
+        if (!window.__matricesFilterListenerBound) {
+            document.addEventListener('apm-matrix-filters:apply', function () {
+                if (typeof window.__matricesPageLoadTabData !== 'function') return;
+                const activeTab = document.querySelector('.tab-pane.active');
+                if (activeTab) window.__matricesPageLoadTabData(activeTab.id, 1);
+            });
+            window.__matricesFilterListenerBound = true;
         }
         $(document).ready(initMatricesIndexPage);
         document.addEventListener('livewire:navigated', function() {

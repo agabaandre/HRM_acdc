@@ -30,16 +30,19 @@
     }
     
     .content-section {
-        border-left: 4px solid;
-        background: #fafafa;
+        background: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 0.75rem;
         margin-bottom: 1.5rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     }
     
-    .content-section.bg-blue { border-left-color: #3b82f6; }
-    .content-section.bg-green { border-left-color: #10b981; }
-    .content-section.bg-purple { border-left-color: #8b5cf6; }
-    .content-section.bg-orange { border-left-color: #f59e0b; }
+    .content-section.bg-blue,
+    .content-section.bg-green,
+    .content-section.bg-purple,
+    .content-section.bg-orange {
+        background: #fff !important;
+    }
     
     .sidebar-card {
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
@@ -61,8 +64,8 @@
     }
     
     .budget-total-row {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        font-weight: 700;
+        background: #f1f5f9 !important;
+        font-weight: 600;
     }
     
     .fund-code-header {
@@ -83,8 +86,8 @@
     }
     
     .attachment-item {
-        background: #faf5ff;
-        border: 1px solid #e9d5ff;
+        background: #f8fafc;
+        border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 0.5rem;
         padding: 0.75rem;
     }
@@ -205,6 +208,7 @@
         background: linear-gradient(90deg, #fffbeb 0%, #ffffff 100%);
     }
 </style>
+<link rel="stylesheet" href="{{ asset('css/apm-memo-budget-show.css') }}?v=2">
 @endsection
 
 @section('content')
@@ -287,7 +291,7 @@
         ? (float) ($serviceRequest->original_total_budget ?? 0)
         : null;
 @endphp
-<div class="container-fluid">
+<div class="container-fluid" id="service-request-show">
     @include('service-requests.partials.child-request-banner', [
         'serviceRequest' => $serviceRequest,
         'parentServiceRequest' => $serviceRequest->parentServiceRequest,
@@ -412,7 +416,7 @@
         <!-- Main Content -->
         <div class="col-lg-8">
             <!-- Activity Details -->
-            <div class="card content-section bg-blue">
+            <div class="card content-section memo-show-content-card border-0">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-muted">
                         <i class="fas fa-calendar-alt me-2 info-icon"></i>Activity Details
@@ -520,10 +524,10 @@
 
             <!-- Budget Information -->
             @if($displayBudgetBreakdown || $serviceRequest->budget_breakdown || $serviceRequest->internal_participants_cost || $serviceRequest->external_participants_cost || $serviceRequest->other_costs)
-            <div class="card content-section bg-green">
+            <div class="card content-section memo-show-content-card border-0">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-success">
-                        <i class="fas fa-calculator me-2"></i>Budget Information
+                    <h5 class="mb-0 fw-semibold d-flex align-items-center gap-2">
+                        <i class="fas fa-calculator me-2 text-success"></i>Budget Information
                     </h5>
                 </div>
                 <div class="card-body">
@@ -542,7 +546,7 @@
                     @if($displayOriginalTotalBudget || $displayNewTotalBudget || $serviceRequest->original_total_budget || $serviceRequest->new_total_budget)
                     <div class="row mb-4">
                         <div class="col-md-3">
-                            <div class="meta-card text-center">
+                            <div class="sr-budget-stat text-center">
                                 <label class="form-label text-muted small fw-semibold">
                                     @if($serviceRequest->isChildRequest())
                                         Maximum allowable (remaining balance)
@@ -557,20 +561,20 @@
                         </div>
                         @if($parentAllocatedBudget)
                         <div class="col-md-3">
-                            <div class="meta-card text-center">
+                            <div class="sr-budget-stat text-center">
                                 <label class="form-label text-muted small fw-semibold">Allocated Budget (Finance)</label>
                                 <p class="h4 mb-0 text-dark fw-bold">${{ number_format($parentAllocatedBudget, 2) }}</p>
                             </div>
                         </div>
                         @endif
                         <div class="col-md-3">
-                            <div class="meta-card text-center">
+                            <div class="sr-budget-stat text-center">
                                 <label class="form-label text-muted small fw-semibold">Total Requested Funds</label>
                                 <p class="h4 mb-0 text-muted">${{ number_format($displayNewTotalBudget ?? $serviceRequest->new_total_budget ?? 0, 2) }}</p>
                             </div>
                         </div>
                         <div class="col-md-3">
-                            <div class="meta-card text-center">
+                            <div class="sr-budget-stat text-center">
                                 <label class="form-label text-muted small fw-semibold">Difference</label>
                                 @php
                                     $shownNewTotal = $displayNewTotalBudget ?? $serviceRequest->new_total_budget ?? 0;
@@ -661,16 +665,16 @@
                                 $fundCode = $memoFundCodes[$fundCodeId] ?? null;
                                 $groupTotal = 0.0;
                             @endphp
-                            <h6 class="text-primary small fw-semibold mt-3">
+                            <h6 class="apm-budget-fund-label">
                                 @if($fundCode)
                                     {{ $fundCode->activity }} — {{ $fundCode->code }}
                                 @else
                                     Budget code {{ $fundCodeId }}
                                 @endif
                             </h6>
-                            <div class="table-responsive mb-3">
-                                <table class="table table-sm table-bordered budget-table">
-                                    <thead class="table-light">
+                            <div class="apm-budget-table-wrap table-responsive mb-3">
+                                <table class="table apm-budget-table mb-0">
+                                    <thead>
                                         <tr>
                                             <th>#</th>
                                             <th>Cost item</th>
@@ -701,7 +705,7 @@
                                         @endforeach
                                     </tbody>
                                     <tfoot>
-                                        <tr class="table-light">
+                                        <tr class="apm-budget-subtotal-row">
                                             <th colspan="5" class="text-end">Subtotal</th>
                                             <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
                                         </tr>
@@ -709,7 +713,10 @@
                                 </table>
                             </div>
                         @endforeach
-                        <p class="mb-0 fw-bold text-success">Memo total: ${{ number_format($memoBudgetGrandTotal, 2) }} USD</p>
+                        <div class="apm-budget-grand-total mt-2">
+                            <span>Memo total</span>
+                            <strong>${{ number_format($memoBudgetGrandTotal, 2) }} USD</strong>
+                        </div>
                                 </div>
                             </div>
                         </div>
@@ -727,12 +734,12 @@
                         <!-- Non-Travel Memo Budget Structure (when budgetData is a simple array) -->
                         @if($serviceRequest->source_type === 'non_travel_memo' && is_array($budgetData) && !isset($budgetData['internal_participants']) && !isset($budgetData['external_participants']) && !isset($budgetData['other_costs']))
                         <div class="mb-4">
-                            <h6 class="fw-bold text-info mb-3">
+                            <h6 class="fw-semibold text-muted mb-3">
                                 <i class="fas fa-list me-2"></i>Budget Items
                             </h6>
-                            <div class="table-responsive">
-                                <table class="table budget-table table-hover table-bordered">
-                                    <thead class="table-info">
+                            <div class="apm-budget-table-wrap table-responsive">
+                                <table class="table apm-budget-table mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Description</th>
@@ -799,9 +806,9 @@
                             <h6 class="fw-bold text-muted mb-3">
                                 <i class="fas fa-users me-2"></i>Internal Participants
                             </h6>
-                            <div class="table-responsive">
-                                <table class="table budget-table table-hover table-bordered">
-                                    <thead class="table-primary">
+                            <div class="apm-budget-table-wrap table-responsive">
+                                <table class="table apm-budget-table mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Staff Member</th>
@@ -860,8 +867,8 @@
                             
                             <!-- Internal Participants Comments -->
                             @if($serviceRequest->internal_participants_comment)
-                            <div class="mt-3 p-3 bg-light rounded border-start border-success border-4">
-                                <h6 class="fw-bold text-success mb-2">
+                            <div class="mt-3 p-3 rounded sr-comment-box">
+                                <h6 class="fw-semibold text-muted mb-2">
                                     <i class="fas fa-comment me-2"></i>Internal Participants Comments
                                 </h6>
                                 <div class="mb-0 text-muted">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->internal_participants_comment) !!}</div>
@@ -876,9 +883,9 @@
                             <h6 class="fw-bold text-muted mb-3">
                                 <i class="fas fa-user-friends me-2"></i>External Participants
                             </h6>
-                            <div class="table-responsive">
-                                <table class="table budget-table table-hover table-bordered">
-                                    <thead class="table-secondary">
+                            <div class="apm-budget-table-wrap table-responsive">
+                                <table class="table apm-budget-table mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Name</th>
@@ -924,8 +931,8 @@
                             
                             <!-- External Participants Comments -->
                             @if($serviceRequest->external_participants_comment)
-                            <div class="mt-3 p-3 bg-light rounded border-start border-secondary border-4">
-                                <h6 class="fw-bold text-muted mb-2">
+                            <div class="mt-3 p-3 rounded sr-comment-box">
+                                <h6 class="fw-semibold text-muted mb-2">
                                     <i class="fas fa-comment me-2"></i>External Participants Comments
                                 </h6>
                                 <div class="mb-0 text-muted">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->external_participants_comment) !!}</div>
@@ -937,12 +944,12 @@
                         <!-- Other Costs -->
                         @if(isset($budgetData['other_costs']) && is_array($budgetData['other_costs']) && count($budgetData['other_costs']) > 0)
                         <div class="mb-4">
-                            <h6 class="fw-bold text-info mb-3">
+                            <h6 class="fw-semibold text-muted mb-3">
                                 <i class="fas fa-list me-2"></i>Other Costs
                             </h6>
-                            <div class="table-responsive">
-                                <table class="table budget-table table-hover table-bordered">
-                                    <thead class="table-info">
+                            <div class="apm-budget-table-wrap table-responsive">
+                                <table class="table apm-budget-table mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center">#</th>
                                             <th>Item</th>
@@ -985,8 +992,8 @@
                             
                             <!-- Other Costs Comments -->
                             @if($serviceRequest->other_costs_comment)
-                            <div class="mt-3 p-3 bg-light rounded border-start border-info border-4">
-                                <h6 class="fw-bold text-info mb-2">
+                            <div class="mt-3 p-3 rounded sr-comment-box">
+                                <h6 class="fw-semibold text-muted mb-2">
                                     <i class="fas fa-comment me-2"></i>Other Costs Comments
                                 </h6>
                                 <div class="mb-0 text-muted">{!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($serviceRequest->other_costs_comment) !!}</div>
@@ -1005,9 +1012,9 @@
 
             <!-- Specifications -->
             @if($serviceRequest->specifications && is_array($serviceRequest->specifications) && count($serviceRequest->specifications) > 0)
-            <div class="card content-section bg-purple">
+            <div class="card content-section memo-show-content-card border-0">
                 <div class="card-header bg-transparent border-0 py-3">
-                    <h5 class="mb-0 text-purple">
+                    <h5 class="mb-0 fw-semibold d-flex align-items-center gap-2">
                         <i class="fas fa-list-alt me-2"></i>Specifications
                     </h5>
                 </div>
@@ -1026,7 +1033,7 @@
 
             <!-- Attachments -->
             @if($serviceRequest->attachments && is_array($serviceRequest->attachments) && count($serviceRequest->attachments) > 0)
-            <div class="card content-section bg-blue">
+            <div class="card content-section memo-show-content-card border-0">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-muted">
                         <i class="fas fa-paperclip me-2"></i>Attachments
@@ -1055,7 +1062,7 @@
 
             <!-- Remarks -->
             @if($serviceRequest->remarks)
-            <div class="card content-section bg-orange">
+            <div class="card content-section memo-show-content-card border-0">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h5 class="mb-0 text-muted">
                         <i class="fas fa-comment me-2"></i>Remarks

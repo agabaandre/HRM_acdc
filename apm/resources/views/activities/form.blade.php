@@ -1,4 +1,5 @@
-<div class="card border-0 shadow-sm mb-5">
+@include('partials.apm-vuetify-like-forms-assets')
+<div class="card border-0 shadow-sm mb-5 apm-v-form">
 
     <div class="card-body">
         <div class="row g-4">
@@ -193,13 +194,16 @@
                     <button type="button" class="btn btn-outline-success btn-sm mt-2" id="addDivisionBlock">
                         <i class="fas fa-plus-circle me-1"></i> Add Division Participants
                     </button>
+                    @if(user_session('division_id'))
+                        @include('partials.participant-groups-picker')
+                    @endif
             </div>
 
 
             <h6 class="fw-bold text-success mb-3 mt-4">
                     <i class="fas fa-users-cog me-2"></i> Participants - Days
                 </h6>
-                <p class="text-muted small mb-2">If a participant’s total <strong>travel</strong> days in this quarter (all matrices, any division) plus this activity (only when International Travel is Yes) exceed 21, a warning row will appear above that participant. Contact the participant to harmonise; otherwise the activity may not be approved.</p>
+                <p class="text-muted small mb-2">If a participant’s total <strong>travel</strong> days in this quarter (all matrices, any division) plus this activity (only when <strong>Leaving Country</strong> is checked) exceed 21, a warning row will appear above that participant. Contact the participant to harmonise; otherwise the activity may not be approved.</p>
                 <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle" id="participantsTable">
         <thead class="table-light">
@@ -208,7 +212,13 @@
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>No. of Days</th>
-                <th>International Travel</th>
+                <th scope="col" class="text-center" style="min-width: 8.5rem;">
+                    <div class="small fw-semibold mb-1">Leaving Country</div>
+                    <div class="d-flex justify-content-center gap-1 flex-wrap">
+                        <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 leaving-country-check-all" title="Check all participants">All</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 leaving-country-uncheck-all" title="Uncheck all participants">None</button>
+                    </div>
+                </th>
                 <th scope="col" class="text-center text-nowrap" style="width: 1%;">Actions</th>
             </tr>
         </thead>
@@ -224,3 +234,32 @@
         </div>
     </div>
 </div>
+
+@once
+@push('scripts')
+<script>
+(function () {
+    function setAllLeavingCountry(checked) {
+        $('#participantsTableBody tr[data-participant-id]').each(function () {
+            var row = $(this);
+            row.find('.international-travel-checkbox').prop('checked', checked);
+            row.find('input.international-travel-value').val(checked ? '1' : '0');
+        });
+        if (typeof window.checkParticipantDaysWarnings === 'function') {
+            window.checkParticipantDaysWarnings();
+        }
+        if (typeof window.updateTotalParticipants === 'function') {
+            window.updateTotalParticipants();
+        }
+    }
+
+    $(document).on('click', '.leaving-country-check-all', function () {
+        setAllLeavingCountry(true);
+    });
+    $(document).on('click', '.leaving-country-uncheck-all', function () {
+        setAllLeavingCountry(false);
+    });
+})();
+</script>
+@endpush
+@endonce

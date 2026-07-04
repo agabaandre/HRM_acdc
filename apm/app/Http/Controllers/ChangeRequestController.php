@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\CachesApmPageResponses;
+use App\Support\MemoFundTypeFilter;
 use App\Models\ChangeRequest;
 use App\Models\Activity;
 use App\Models\SpecialMemo;
@@ -62,12 +63,8 @@ class ChangeRequestController extends Controller
         $staffId = (int) $request->get('staff_id');
         $memoType = $request->get('memo_type');
         $parentMemoId = $request->get('parent_memo_id');
-        $selectedFundTypeId = trim((string) ($request->get('fund_type_id') ?? ''));
-        $fundTypeFilterOptions = [
-            '1' => 'Intramural',
-            '2' => 'Extramural',
-            '3' => 'External Source',
-        ];
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
 
         if (\App\Support\ApmListFragment::wants($request)) {
             $fragmentKey = $this->apmCacheKeyFromRequest($request, [

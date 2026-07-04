@@ -11,6 +11,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <style>
 :root {
     --primary-color: #119a48;
@@ -226,6 +229,8 @@
             </div>
         </div>
     </div>
+</div>
+
 </div>
 @endsection
 

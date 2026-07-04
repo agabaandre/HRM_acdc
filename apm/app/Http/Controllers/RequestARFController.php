@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use App\Models\ApprovalTrail;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
+use App\Support\MemoFundTypeFilter;
 
 class RequestARFController extends Controller
 {
@@ -78,6 +79,7 @@ class RequestARFController extends Controller
         if ($request->filled('search')) {
             $mySubmittedArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
+        MemoFundTypeFilter::apply($mySubmittedArfsQuery, $request);
 
         $mySubmittedArfs = $mySubmittedArfsQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
 
@@ -116,6 +118,7 @@ class RequestARFController extends Controller
         if ($request->filled('search')) {
             $myDivisionArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
         }
+        MemoFundTypeFilter::apply($myDivisionArfsQuery, $request);
         $myDivisionArfs = $myDivisionArfsQuery->paginate(20)->withQueryString();
 
         // Get All ARFs (only for users with permission 87)
@@ -155,6 +158,7 @@ class RequestARFController extends Controller
             if ($request->filled('search')) {
                 $allArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
             }
+            MemoFundTypeFilter::apply($allArfsQuery, $request);
 
             $allArfs = $allArfsQuery->paginate(20)->withQueryString();
         }
@@ -192,6 +196,9 @@ class RequestARFController extends Controller
 
         $pendingArfCount = get_pending_arf_count((int) $currentStaffId);
 
+        $fundTypeFilterOptions = MemoFundTypeFilter::options();
+        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
+
         return view('request-arf.index', compact(
             'mySubmittedArfs',
             'myDivisionArfs',
@@ -201,6 +208,8 @@ class RequestARFController extends Controller
             'years',
             'selectedYear',
             'pendingArfCount',
+            'fundTypeFilterOptions',
+            'selectedFundTypeId',
         ));
     }
 

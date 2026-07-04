@@ -173,20 +173,15 @@
     }
     
     .content-section {
-        border-left: 4px solid;
-        background: #fafafa;
-    }
-    
-    .content-section.bg-blue {
-        border-left-color: #3b82f6;
+        background: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
     }
 
-    .content-section.bg-green {
-        border-left-color: #10b981;
-    }
-
+    .content-section.bg-blue,
+    .content-section.bg-green,
     .content-section.bg-purple {
-        border-left-color: #8b5cf6;
+        background: #fff !important;
     }
     
     .sidebar-card {
@@ -468,6 +463,7 @@
         background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
 </style>
+<link rel="stylesheet" href="{{ asset('css/apm-memo-budget-show.css') }}?v=3">
 @endsection
 
 @section('content')
@@ -951,7 +947,7 @@
 
         <!-- Background Card -->
         @if($specialMemo->background)
-            <div class="card content-section border-0 mb-4">
+            <div class="card content-section memo-show-content-card border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
@@ -966,7 +962,7 @@
 
         <!-- Justification Card -->
         @if(!empty($specialMemo->justification))
-            <div class="card content-section border-0 mb-4">
+            <div class="card content-section memo-show-content-card border-0 mb-4">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-list-check"></i>
@@ -983,9 +979,9 @@
          
 
                 <!-- Participants & Location -->
-            <div class="card content-section bg-green border-0 mb-4 w-100">
+            <div class="card content-section memo-show-content-card border-0 mb-4 w-100">
                     <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                        <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                             <i class="bx bx-group"></i>
                         Participants
                         </h6>
@@ -1100,153 +1096,13 @@
                     </div>
             </div>
 
-                <!-- Budget Information -->
-            <div class="card content-section bg-blue border-0 mb-4 w-100">
-                    <div class="card-header bg-transparent border-0 py-3">
-                        <h6 class="mb-0 fw-bold text-primary d-flex align-items-center gap-2">
-                            <i class="bx bx-money"></i>
-                            Budget Information
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                    @if (!empty($budget))
-                        @if (!empty($budgetByFundCode))
-                            @php
-                                $count = 1;
-                                $grandTotal = 0;
-                            @endphp
-
-                            @foreach ($budgetByFundCode as $fundCodeId => $items)
-                                    @php
-                                        $fundCode = $fundCodes->get((int) $fundCodeId);
-                                    $groupTotal = 0;
-                                    $itemCount = 1; // Reset counter for each budget code
-                                    @endphp
-                                    
-                                {{-- Budget Code Title: fund_codes.code only (no fund_codes.activity line) --}}
-                                <h6 style="color: #2c3d50; font-weight: 600; margin-top: 20px;">
-                                    @if ($fundCode)
-                                        <span class="text-primary">Budget Code:</span>
-                                        <span class="fw-semibold">{{ $fundCode->code ?: '—' }}</span>
-                                        @if ($fundCode->fundType)
-                                            <small class="text-muted"> ({{ $fundCode->fundType->name }})</small>
-                                        @endif
-                                    @else
-                                        <span class="text-primary">Budget Code:</span>
-                                        <span class="text-muted">Not found</span>
-                                        <small class="text-muted">(reference ID {{ $fundCodeId }})</small>
-                                    @endif
-                                </h6>
-
-                                {{-- Individual Table for this Budget Code --}}
-                                <div class="table-responsive mb-4">
-                                    <table class="table table-bordered">
-                                                <thead>
-                                                    <tr>
-                                                <th>#</th>
-                                                        <th>Cost Item</th>
-                                                <th class="text-end">Unit Cost</th>
-                                                <th class="text-end">Units</th>
-                                                <th class="text-end">Days</th>
-                                                <th class="text-end">Total</th>
-                                                        <th>Description</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                            @foreach ($items as $item)
-                                                @php
-                                                    $unitCost = floatval($item['unit_cost'] ?? 0);
-                                                    $units = floatval($item['units'] ?? $item['quantity'] ?? 1);
-                                                    $days = floatval($item['days'] ?? 1);
-                                                    $total = $unitCost * $units * $days;
-
-                                                    $groupTotal += $total;
-                                                    $grandTotal += $total;
-                                                        @endphp
-                                                        <tr>
-                                                    <td>{{ $itemCount }}</td>
-                                                            <td>{{ $item['cost'] ?? 'N/A' }}</td>
-                                                    <td class="text-end">{{ number_format($unitCost, 2) }}</td>
-                                                    <td class="text-end">{{ $units }}</td>
-                                                    <td class="text-end">{{ $days }}</td>
-                                                    <td class="text-end">{{ number_format($total, 2) }}</td>
-                                                    <td>{{ $item['description'] ?? '' }}</td>
-                                                        </tr>
-                                                @php
-                                                    $itemCount++;
-                                                @endphp
-                                                    @endforeach
-                                                </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <th colspan="5" class="text-end">Sub Total</th>
-                                                <th class="text-end">{{ number_format($groupTotal, 2) }}</th>
-                                                <th></th>
-                                            </tr>
-                                        </tfoot>
-                                            </table>
-                                    </div>
-                                @endforeach
-                                
-                            {{-- Overall Grand Total --}}
-                            <div class="row mt-3">
-                                <div class="col-md-12">
-                                    <div class="alert alert-success">
-                                        <h6 class="mb-0"><strong>Grand Total: {{ number_format($grandTotal, 2) }}
-                                                USD</strong></h6>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {{-- Available Budget --}}
-                            @if($specialMemo->available_budget)
-                            <div class="row mt-2">
-                                <div class="col-md-12">
-                                    <div class="alert alert-info">
-                                        <h6 class="mb-0"><strong>Available Budget: {{ number_format($specialMemo->available_budget, 2) }}
-                                                USD</strong></h6>
-                                        <small class="text-muted">Allocated by Finance Officer</small>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-                            @else
-                                <!-- Fallback: Show budget as key-value pairs if structure is different -->
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-sm mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th>Budget Item</th>
-                                                <th>Value</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        @foreach ($budget as $key => $value)
-                                            @if ($key !== 'grand_total')
-                                                    <tr>
-                                                        <td>{{ $key }}</td>
-                                                        <td>
-                                                        @if (is_array($value))
-                                                                <pre class="mb-0">{{ json_encode($value, JSON_PRETTY_PRINT) }}</pre>
-                                                            @else
-                                                                {{ $value }}
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @endif
-                        @else
-                            <div class="text-center text-muted py-4">
-                                <i class="bx bx-money bx-lg mb-3"></i>
-                                <p class="mb-0">No budget details</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
+                @include('partials.memo-budget-breakdown', [
+                    'budgetByFundCode' => $budgetByFundCode ?? [],
+                    'fundCodes' => $fundCodes,
+                    'budget' => $budget ?? [],
+                    'availableBudget' => $specialMemo->available_budget ?? null,
+                    'titleMode' => 'code_only',
+                ])
 
             <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
                 @if($specialMemo->request_travel_with_cash)
@@ -1272,9 +1128,9 @@
 
                 <!-- Request for Approval Card -->
                 @if($specialMemo->activity_request_remarks)
-                    <div class="card content-section bg-purple border-0 mb-4">
+                    <div class="card content-section memo-show-content-card border-0 mb-4">
                         <div class="card-header bg-transparent border-0 py-3">
-                            <h6 class="mb-0 fw-bold text-success d-flex align-items-center gap-2">
+                            <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                                 <i class="bx bx-file-text"></i>
                                 Request For Approval
                             </h6>

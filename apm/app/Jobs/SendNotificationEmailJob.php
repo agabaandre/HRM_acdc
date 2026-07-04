@@ -166,6 +166,10 @@ class SendNotificationEmailJob implements ShouldQueue
             $viewData = array_merge($viewData, $this->emailViewContext);
         }
 
+        if ($this->template === 'emails.stale-pending-approvals-escalation' && $this->emailViewContext !== []) {
+            $viewData = array_merge($viewData, $this->emailViewContext);
+        }
+
         if ($this->template === 'emails.stale-draft-memos-reminder' && $this->emailViewContext !== []) {
             $viewData = array_merge($viewData, [
                 'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,

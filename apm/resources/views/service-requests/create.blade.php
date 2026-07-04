@@ -21,6 +21,9 @@
 @endsection
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 @php
     $isEdit = isset($serviceRequest);
     // Initialize budget variables
@@ -132,9 +135,9 @@
 
 <div class="card shadow-sm border-0 mb-5">
     <div class="card-header bg-white border-bottom">
-        <h4 class="mb-0 text-dark">
+        <h5 class="mb-0 text-dark">
             <i class="fas fa-tools me-2"></i> Service Request Details
-        </h4>
+        </h5>
                 </div>
     <div class="card-body p-4">
             @include('service-requests.partials.child-request-banner', [
@@ -1764,4 +1767,6 @@ document.addEventListener('livewire:navigated', function() {
     }, 0);
     });
 </script>
+
+</div>
 @endsection

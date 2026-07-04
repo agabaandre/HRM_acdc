@@ -4,6 +4,9 @@
 @section('header', 'Weekly briefing settings')
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
+
+<div class="apm-v-form">
 <div class="container-fluid py-3 px-3 px-lg-4 weekly-briefing-settings-page" style="max-width: 1680px; margin-left: auto; margin-right: auto;">
     @if (session('status'))
         <div class="alert alert-success">{{ session('status') }}</div>
@@ -420,6 +423,8 @@
             'staffList' => $staffList,
         ])
     </template>
+
+</div>
 @endsection
 
 @push('scripts')

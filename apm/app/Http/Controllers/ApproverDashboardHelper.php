@@ -317,7 +317,7 @@ trait ApproverDashboardHelper
             ->where('wd.workflow_id', $workflowId)
             ->where('wd.is_enabled', 1)
             ->where('wd.is_division_specific', 0) // Only non-division-specific roles
-            ->where('s.active', 1);
+            ->whereIn('s.status', ['Active', 'Due', 'Under Renewal']);
 
         // Apply filters to approvers query
         if ($search) {
@@ -377,7 +377,7 @@ trait ApproverDashboardHelper
                     DB::raw("'{$columnName}' as division_reference_column"),
                     DB::raw("'divisions_table' as source"),
                 ])
-                ->where('s.active', 1)
+                ->whereIn('s.status', ['Active', 'Due', 'Under Renewal'])
                 ->whereNotNull("d.{$columnName}");
 
             // Apply filters
@@ -501,6 +501,7 @@ trait ApproverDashboardHelper
             // the dashboard division filter does not apply to this metric so values match that page.
             $avgDivisionForTime = $this->divisionIdForAverageApprovalTime((int) $staffId);
             $avgApprovalTime = $this->getAverageApprovalTimeAll((int) $staffId, $avgDivisionForTime, $year, $month);
+            $avgLast5 = $this->getAverageApprovalTimeLast5((int) $staffId, $avgDivisionForTime, $year, $month);
 
             // Sort roles and levels for display
             sort($data['levels']);
@@ -526,6 +527,8 @@ trait ApproverDashboardHelper
                 'pending_counts' => $data['pending_counts'],
                 'total_pending' => $totalPending,
                 'total_handled' => $totalHandled,
+                'avg_last_5_hours' => $avgLast5,
+                'avg_last_5_display' => $this->formatApprovalTime($avgLast5),
                 'avg_approval_time_hours' => $avgApprovalTime,
                 'avg_approval_time_display' => $this->formatApprovalTime($avgApprovalTime),
                 'last_approval_date' => $lastApprovalRaw,
@@ -534,7 +537,14 @@ trait ApproverDashboardHelper
         }
 
         return array_values(array_filter($approversWithCounts, function (array $row): bool {
-            return (int) ($row['total_handled'] ?? 0) > 0;
+            if ((int) ($row['total_handled'] ?? 0) <= 0) {
+                return false;
+            }
+
+            return DB::table('staff')
+                ->where('staff_id', $row['staff_id'])
+                ->whereIn('status', ['Active', 'Due', 'Under Renewal'])
+                ->exists();
         }));
     }
 
@@ -2126,6 +2136,43 @@ trait ApproverDashboardHelper
     protected function getAverageApprovalTimeAll($staffId, $divisionId = null, $year = null, $month = null)
     {
         try {
+            $hours = $this->collectCompletedApprovalActionHours($staffId, $divisionId, $year, $month);
+            $totalHours = array_sum($hours);
+            $count = count($hours);
+
+            $this->addPendingApprovalWaitContributions((int) $staffId, $divisionId, $year, $month, $totalHours, $count);
+
+            return $count > 0 ? round($totalHours / $count, 2) : 0;
+        } catch (\Exception $e) {
+            Log::error('Error calculating average approval time (all): '.$e->getMessage());
+
+            return 0;
+        }
+    }
+
+    /**
+     * Average approval time for the five most recent completed actions only (no pending wait).
+     */
+    protected function getAverageApprovalTimeLast5($staffId, $divisionId = null, $year = null, $month = null): float
+    {
+        try {
+            $hours = array_slice($this->collectCompletedApprovalActionHours($staffId, $divisionId, $year, $month), 0, 5);
+            $count = count($hours);
+
+            return $count > 0 ? round(array_sum($hours) / $count, 2) : 0;
+        } catch (\Exception $e) {
+            Log::error('Error calculating average approval time (last 5): '.$e->getMessage());
+
+            return 0;
+        }
+    }
+
+    /**
+     * @return list<float> Hours per completed approval action, most recent first.
+     */
+    protected function collectCompletedApprovalActionHours($staffId, $divisionId = null, $year = null, $month = null): array
+    {
+        try {
             // Build year and month filter conditions
             $yearMonthConditions = '';
             $params = [$staffId];
@@ -2313,39 +2360,29 @@ trait ApproverDashboardHelper
 
             $results = DB::select($sql, $params);
 
-            $totalHours = 0.0;
-            $count = 0;
+            $hours = [];
 
             foreach ($results as $result) {
                 try {
                     $approvalTime = Carbon::parse($result->approval_time);
                     $receivedTime = Carbon::parse($result->received_time);
 
-                    // Calculate seconds between when item was received at this level and when it was approved
                     $seconds = abs($approvalTime->getTimestamp() - $receivedTime->getTimestamp());
+                    $actionHours = $seconds / 3600;
 
-                    // Convert to hours (with decimal precision)
-                    $hours = $seconds / 3600;
-
-                    // Only count positive time differences (approval after receipt)
                     if ($approvalTime->getTimestamp() >= $receivedTime->getTimestamp()) {
-                        $totalHours += $hours;
-                        $count++;
+                        $hours[] = $actionHours;
                     }
                 } catch (\Exception $e) {
-                    // Skip invalid date entries
                     continue;
                 }
             }
 
-            $this->addPendingApprovalWaitContributions((int) $staffId, $divisionId, $year, $month, $totalHours, $count);
-
-            return $count > 0 ? round($totalHours / $count, 2) : 0;
-
+            return $hours;
         } catch (\Exception $e) {
-            Log::error('Error calculating average approval time (all): '.$e->getMessage());
+            Log::error('Error collecting approval action hours: '.$e->getMessage());
 
-            return 0;
+            return [];
         }
     }
 

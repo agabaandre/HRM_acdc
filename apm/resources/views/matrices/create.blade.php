@@ -5,6 +5,7 @@
 @section('header', isset($editing) && $editing ? 'Edit Matrix' : 'Create New Matrix')
 
 @section('content')
+@include('partials.apm-vuetify-like-forms-assets')
 @php
     $isAdmin = user_session('user_role') == 10;
     $userDivisionId = user_session('division_id') ?? 0;
@@ -21,9 +22,10 @@
     $allowQuarterControl = env('ALLOW_QUARTER_CONTROL', false);
 @endphp
 
+<div class="apm-v-form">
 <div class="card shadow-lg border-0 mb-5 bg-light">
     <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
-        <h4 class="mb-0 text-success fw-bold"><i class="bx bx-grid-alt me-2 text-success"></i> New Matrix</h4>
+        <h5 class="mb-0 text-success fw-bold"><i class="bx bx-grid-alt me-2 text-success"></i> {{ isset($editing) && $editing ? 'Edit Matrix' : 'New Matrix' }}</h5>
         <a wire:navigate href="{{ route('matrices.index') }}" class="btn btn-outline-secondary">
             <i class="bx bx-arrow-back text-dark"></i> Back to List
         </a>
@@ -216,6 +218,7 @@
             @endif
         </form>
     </div>
+</div>
 </div>
 
 @push('scripts')
@@ -433,107 +436,23 @@
 
 @push('styles')
 <style>
-    body, .bg-light {
-        background: linear-gradient(135deg, #f8fafc 0%, #e9f7ef 100%) !important;
+    .apm-v-form .key-result-area {
+        animation: apmMatrixFadeIn 0.5s;
     }
-    .matrix-stepper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 2rem;
-    }
-    .matrix-stepper .step {
-        background: #fff;
-        border: 2px solid #119A48;
-        color: #119A48;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 1.2rem;
-        box-shadow: 0 2px 8px rgba(17,154,72,0.08);
-        margin: 0 0.5rem;
-    }
-    .matrix-stepper .step.active {
-        background: #119A48;
-        color: #fff;
-    }
-    .matrix-section-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #119A48;
-        margin-bottom: 1.5rem;
-        letter-spacing: 0.5px;
-        display: flex;
-        align-items: center;
-    }
-    .matrix-section-title i {
-        font-size: 2rem;
-        margin-right: 0.75rem;
-    }
-    .matrix-info-panel {
-        background: #e9f7ef;
-        border-left: 5px solid #119A48;
-        border-radius: 0.5rem;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 2rem;
-        color: #119A48;
-        font-size: 1.1rem;
-        box-shadow: 0 2px 8px rgba(17,154,72,0.04);
-    }
-    .matrix-card {
-        background: #fff;
-        border-radius: 1.25rem;
-        box-shadow: 0 4px 24px rgba(17,154,72,0.08);
-        border: none;
-    }
-    .matrix-card .card-header {
-        border-radius: 1.25rem 1.25rem 0 0;
-        background: linear-gradient(90deg, #e9f7ef 0%, #fff 100%);
-        border-bottom: 1px solid #e9f7ef;
-    }
-    .matrix-card .card-body {
-        border-radius: 0 0 1.25rem 1.25rem;
-    }
-    .key-result-area {
-        animation: fadeIn 0.5s;
-    }
-    @keyframes fadeIn {
+    @keyframes apmMatrixFadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    .form-control, .form-select {
-        border-radius: 0.75rem !important;
-        box-shadow: 0 1px 4px rgba(17,154,72,0.04);
-        border: 1px solid #d1e7dd;
-        font-size: 1.08rem;
+    .apm-v-form .matrix-card .card-header {
+        background: #f5f5f5;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
-    .form-control:focus, .form-select:focus {
-        border-color: #119A48;
-        box-shadow: 0 0 0 0.2rem rgba(17,154,72,0.10);
+    .apm-v-form .alert-info {
+        background: rgba(17, 154, 72, 0.08);
+        color: #0d7a3a;
     }
-    .btn-success, .btn-outline-success {
-        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-    }
-    .btn-success:hover, .btn-success:focus {
-        background: #0e7c39 !important;
-        color: #fff !important;
-        box-shadow: 0 2px 8px rgba(17,154,72,0.12);
-    }
-    .btn-outline-success:hover, .btn-outline-success:focus {
-        background: #119A48 !important;
-        color: #fff !important;
-        box-shadow: 0 2px 8px rgba(17,154,72,0.10);
-    }
-    .btn-outline-danger:hover, .btn-outline-danger:focus {
-        background: #e74c3c !important;
-        color: #fff !important;
-    }
-    .rounded-pill {
-        border-radius: 2rem !important;
+    .apm-v-form .btn.rounded-pill {
+        border-radius: 4px !important;
     }
 </style>
 @endpush
