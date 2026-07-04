@@ -500,14 +500,13 @@ onUnmounted(() => {
         </v-row>
       </v-sheet>
 
-      <v-row class="kpis" aria-label="Key metrics">
+      <v-row class="kpis kpis--strip" dense aria-label="Key metrics">
         <v-col
           v-for="kpi in kpiCards"
           :key="kpi.key"
-          cols="12"
-          sm="6"
-          lg="4"
-          xl="2"
+          cols="6"
+          sm="4"
+          md="2"
         >
           <v-card
             class="kpi-card"
@@ -882,6 +881,48 @@ onUnmounted(() => {
 
 .kpis {
   margin: 0;
+}
+
+@media (min-width: 960px) {
+  .kpis--strip {
+    flex-wrap: nowrap;
+  }
+
+  .kpis--strip > .v-col {
+    min-width: 0;
+  }
+
+  .kpis--strip .kpi-card__body {
+    padding: 0.75rem 0.65rem !important;
+  }
+
+  .kpis--strip .kpi-card__head {
+    margin-bottom: 0.35rem;
+  }
+
+  .kpis--strip .kpi-card__label {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .kpis--strip .kpi-card__value {
+    font-size: 1.55rem;
+  }
+
+  .kpis--strip .kpi-card__sub {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .kpis--strip .kpi-card__icon.v-avatar {
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 0.85rem;
+  }
 }
 
 .kpi-card {
