@@ -53,6 +53,7 @@ interface TicketDetail {
   requester_name?: string | null
   requester_email?: string | null
   assignee?: AssigneeBrief | null
+  assignees?: AssigneeBrief[]
   attachments?: TicketAttachment[]
   category?: TicketCategory | null
   requester_unsatisfied_follow_up_enabled?: boolean
@@ -426,28 +427,32 @@ watch(canReopenWithComment, (can) => {
               <span v-if="ticket.requester_email" class="pemail">{{ ticket.requester_email }}</span>
             </div>
           </div>
-          <div v-if="ticket.assignee" class="person-card">
+          <div v-if="ticket.assignee || (ticket.assignees?.length ?? 0) > 0" class="person-card">
             <CbpAvatar
               size="md"
-              :name="ticket.assignee.name"
-              :image-url="ticket.assignee.avatar_url ?? null"
+              :name="ticket.assignee?.name || ticket.assignees?.[0]?.name || 'Agent'"
+              :image-url="ticket.assignee?.avatar_url ?? ticket.assignees?.[0]?.avatar_url ?? null"
             />
             <div class="person-meta">
               <span class="plabel">Assigned to</span>
               <strong class="pname">
-                {{ ticket.assignee.name }}
+                {{
+                  (ticket.assignees?.length
+                    ? ticket.assignees.map((a) => a.name).join(', ')
+                    : ticket.assignee?.name) || '—'
+                }}
                 <span
-                  v-if="ticket.assignee.work_mode === 'remote'"
+                  v-if="ticket.assignee?.work_mode === 'remote'"
                   class="wm-pill wm-remote"
-                  title="This agent is currently working remotely"
+                  title="Primary agent is currently working remotely"
                 >Remote</span>
                 <span
-                  v-else-if="ticket.assignee.work_mode === 'onsite'"
+                  v-else-if="ticket.assignee?.work_mode === 'onsite'"
                   class="wm-pill wm-onsite"
-                  title="This agent is currently working from the office"
+                  title="Primary agent is currently working from the office"
                 >Onsite</span>
               </strong>
-              <span v-if="ticket.assignee.email" class="pemail">{{ ticket.assignee.email }}</span>
+              <span v-if="ticket.assignee?.email" class="pemail">{{ ticket.assignee.email }}</span>
             </div>
           </div>
           <div v-if="ticket.category || canEditCategory" class="person-card person-card--category">

@@ -31,7 +31,8 @@ class HelpdeskTicketPolicy
             }
         }
 
-        return (int) $ticket->assigned_user_id === (int) $user->id;
+        return (int) $ticket->assigned_user_id === (int) $user->id
+            || $this->isTicketAssignee($user, $ticket);
     }
 
     public function create(User $user): bool
@@ -48,7 +49,7 @@ class HelpdeskTicketPolicy
         if ($p->hasSupervisorAccess()) {
             return true;
         }
-        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && $this->isTicketAssignee($user, $ticket)) {
             return true;
         }
         if ($p->role === HelpdeskProfile::ROLE_USER && $p->staff_id
@@ -85,7 +86,7 @@ class HelpdeskTicketPolicy
             return true;
         }
 
-        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && $this->isTicketAssignee($user, $ticket)) {
             return true;
         }
 
@@ -180,7 +181,7 @@ class HelpdeskTicketPolicy
         if ($p->hasSupervisorAccess()) {
             return $this->view($user, $ticket);
         }
-        if ($p->actsAsAgent() && (int) $ticket->assigned_user_id === (int) $user->id) {
+        if ($p->actsAsAgent() && $this->isTicketAssignee($user, $ticket)) {
             return true;
         }
 
@@ -195,5 +196,18 @@ class HelpdeskTicketPolicy
             HelpdeskProfile::ROLE_AGENT,
             HelpdeskProfile::ROLE_AUDITOR,
         ], true) || $p->grant_supervisor_access === true;
+    }
+
+    private function isTicketAssignee(User $user, HelpdeskTicket $ticket): bool
+    {
+        if ((int) $ticket->assigned_user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($ticket->relationLoaded('assignees')) {
+            return $ticket->assignees->contains(fn ($assignee) => (int) $assignee->id === (int) $user->id);
+        }
+
+        return $ticket->assignees()->where('users.id', $user->id)->exists();
     }
 }

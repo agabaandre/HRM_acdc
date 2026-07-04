@@ -736,8 +736,8 @@ onUnmounted(() => {
                 color="neutral"
                 variant="outline"
                 size="xs"
-                label="Reassign"
-                title="Reassign this ticket to another agent"
+                label="Configure"
+                title="Configure agents, priority, and category"
                 @click.stop="openReassign(item)"
               />
               <span v-else class="hd-dt-empty">›</span>

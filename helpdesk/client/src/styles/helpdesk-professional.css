@@ -461,6 +461,13 @@ html.helpdesk-theme-dark .hd-btn--outline {
   margin-bottom: 0.35rem;
 }
 
+.hd-kanban-card-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
 .hd-kanban-ticket-no {
   font-size: 0.72rem;
   font-weight: 800;
@@ -538,6 +545,13 @@ html.helpdesk-theme-dark .hd-btn--outline {
   color: #0d7a3a;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+.hd-kanban-agents {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 
 .hd-kanban-empty-col {

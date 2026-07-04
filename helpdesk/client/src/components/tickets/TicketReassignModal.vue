@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { minLengthError } from '../../lib/helpdeskForm'
+import { minLengthError, PRIORITY_ITEMS, type TicketPriority } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess } from '../../lib/notify'
 
 export interface ReassignTicketRef {
@@ -21,6 +21,25 @@ interface EligibleAgent {
   open_workload: number
 }
 
+interface SupportGroupOption {
+  id: number
+  name: string
+  members_count: number
+  open_workload: number
+}
+
+interface CategoryOption {
+  id: number
+  name: string
+}
+
+interface AssignmentCurrent {
+  assignee_user_ids: number[]
+  assigned_group_id: number | null
+  priority: TicketPriority
+  category_id: number
+}
+
 const props = defineProps<{
   ticket: ReassignTicketRef | null
 }>()
@@ -30,11 +49,14 @@ const emit = defineEmits<{
   reassigned: [payload: { ticketId: number; agentName?: string }]
 }>()
 
-const candidates = ref<EligibleAgent[]>([])
+const agents = ref<EligibleAgent[]>([])
+const groups = ref<SupportGroupOption[]>([])
+const categories = ref<CategoryOption[]>([])
 const candidatesLoading = ref(false)
-const selectedId = ref<number | null>(null)
-const agentSearch = ref('')
-const resultsOpen = ref(false)
+const selectedAgentIds = ref<number[]>([])
+const selectedGroupId = ref<number | null>(null)
+const selectedPriority = ref<TicketPriority>('medium')
+const selectedCategoryId = ref<number | null>(null)
 const reassignForm = reactive({ reason: '' })
 const submitting = ref(false)
 
@@ -48,32 +70,44 @@ const modalOpen = computed({
 })
 
 const modalTitle = computed(() =>
-  props.ticket ? `Reassign ${props.ticket.ticket_number}` : 'Reassign ticket',
+  props.ticket ? `Configure ${props.ticket.ticket_number}` : 'Configure ticket',
 )
 
 const modalDescription = computed(() => props.ticket?.subject ?? undefined)
 
-const selectedAgent = computed(() =>
-  candidates.value.find((a) => a.id === selectedId.value) ?? null,
+const agentSelectItems = computed(() =>
+  agents.value.map((a) => ({
+    label: `${a.name} (${a.open_workload} open)`,
+    value: a.id,
+  })),
 )
 
-const filteredAgents = computed(() => {
-  const q = agentSearch.value.trim().toLowerCase()
-  if (!q) {
-    return candidates.value
-  }
+const groupSelectItems = computed(() =>
+  groups.value.map((g) => ({
+    label: `${g.name} (${g.members_count} members · ${g.open_workload} open)`,
+    value: g.id,
+  })),
+)
 
-  return candidates.value.filter((a) => {
-    const haystack = [a.name, a.email, a.duty_station ?? ''].join(' ').toLowerCase()
-    return haystack.includes(q)
-  })
-})
+const categorySelectItems = computed(() =>
+  categories.value.map((c) => ({
+    label: c.name,
+    value: c.id,
+  })),
+)
+
+const selectedAgents = computed(() =>
+  agents.value.filter((a) => selectedAgentIds.value.includes(a.id)),
+)
 
 function resetState(): void {
-  candidates.value = []
-  selectedId.value = null
-  agentSearch.value = ''
-  resultsOpen.value = false
+  agents.value = []
+  groups.value = []
+  categories.value = []
+  selectedAgentIds.value = []
+  selectedGroupId.value = null
+  selectedPriority.value = 'medium'
+  selectedCategoryId.value = null
   reassignForm.reason = ''
   submitting.value = false
 }
@@ -83,37 +117,41 @@ function close(): void {
   emit('close')
 }
 
-function onSearchFocus(): void {
-  resultsOpen.value = true
-}
-
-function pickAgent(agent: EligibleAgent): void {
-  selectedId.value = agent.id
-  agentSearch.value = agent.name
-  resultsOpen.value = false
-}
-
-function agentMeta(agent: EligibleAgent): string {
-  const parts: string[] = []
-  if (agent.email) {
-    parts.push(agent.email)
+async function loadCategories(): Promise<void> {
+  try {
+    const { data } = await api.get<{ data: CategoryOption[] }>('/api/v1/categories')
+    categories.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    categories.value = []
   }
-  if (agent.duty_station) {
-    parts.push(agent.duty_station)
-  }
-  parts.push(`${agent.open_workload} open`)
-  return parts.join(' · ')
 }
 
 async function loadCandidates(ticketId: number): Promise<void> {
   candidatesLoading.value = true
   try {
-    const { data } = await api.get<{ data: { agents: EligibleAgent[] } }>(
-      `/api/v1/tickets/${ticketId}/eligible-agents`,
-    )
-    candidates.value = Array.isArray(data.data?.agents) ? data.data.agents : []
+    const [{ data }, _] = await Promise.all([
+      api.get<{
+        data: {
+          current?: AssignmentCurrent
+          agents: EligibleAgent[]
+          groups: SupportGroupOption[]
+        }
+      }>(`/api/v1/tickets/${ticketId}/eligible-agents`),
+      loadCategories(),
+    ])
+
+    agents.value = Array.isArray(data.data?.agents) ? data.data.agents : []
+    groups.value = Array.isArray(data.data?.groups) ? data.data.groups : []
+
+    const current = data.data?.current
+    selectedAgentIds.value = Array.isArray(current?.assignee_user_ids)
+      ? [...current.assignee_user_ids]
+      : []
+    selectedGroupId.value = current?.assigned_group_id ?? null
+    selectedPriority.value = current?.priority ?? 'medium'
+    selectedCategoryId.value = current?.category_id ?? null
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Could not load agents.'))
+    notifyError(apiErrorMessage(e, 'Could not load assignment options.'))
     close()
   } finally {
     candidatesLoading.value = false
@@ -131,19 +169,13 @@ watch(
   { immediate: true },
 )
 
-watch(agentSearch, (value) => {
-  if (!value.trim()) {
-    selectedId.value = null
-  } else if (selectedAgent.value && value !== selectedAgent.value.name) {
-    selectedId.value = null
-  }
-  resultsOpen.value = true
-})
-
 function validateReassign(state: typeof reassignForm): FormError[] {
   const errors: FormError[] = []
-  if (!selectedId.value) {
-    errors.push({ name: 'assignee', message: 'Pick an agent from the search results first.' })
+  if (selectedAgentIds.value.length === 0 && !selectedGroupId.value) {
+    errors.push({ name: 'assignee', message: 'Select at least one agent or a support group.' })
+  }
+  if (!selectedCategoryId.value) {
+    errors.push({ name: 'category', message: 'Select a category.' })
   }
   const reasonErr = minLengthError(
     'reason',
@@ -158,24 +190,37 @@ function validateReassign(state: typeof reassignForm): FormError[] {
 }
 
 async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): Promise<void> {
-  if (!props.ticket || !selectedId.value) {
+  if (!props.ticket) {
+    return
+  }
+  if (selectedAgentIds.value.length === 0 && !selectedGroupId.value) {
+    return
+  }
+  if (!selectedCategoryId.value) {
     return
   }
 
   submitting.value = true
   try {
     await api.post(`/api/v1/tickets/${props.ticket.id}/reassign`, {
-      assignee_user_id: selectedId.value,
+      assignee_user_ids: selectedAgentIds.value,
+      assignee_group_id: selectedGroupId.value,
+      priority: selectedPriority.value,
+      category_id: selectedCategoryId.value,
       reason: reassignForm.reason.trim(),
     })
-    const newAgent = selectedAgent.value
+    const names = selectedAgents.value.map((a) => a.name)
+    const label =
+      names.length > 0
+        ? names.join(', ')
+        : groups.value.find((g) => g.id === selectedGroupId.value)?.name
     notifySuccess(
-      `Reassigned ${props.ticket.ticket_number}${newAgent ? ` to ${newAgent.name}` : ''}.`,
+      `Updated ${props.ticket.ticket_number}${label ? ` (${label})` : ''}.`,
     )
-    emit('reassigned', { ticketId: props.ticket.id, agentName: newAgent?.name })
+    emit('reassigned', { ticketId: props.ticket.id, agentName: names[0] })
     close()
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Reassignment failed.'))
+    notifyError(apiErrorMessage(e, 'Configuration update failed.'))
   } finally {
     submitting.value = false
   }
@@ -198,77 +243,73 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
         class="hd-form reassign-body"
         @submit="onReassignSubmit"
       >
-        <p v-if="candidatesLoading" class="muted">Loading agents…</p>
-        <p v-else-if="candidates.length === 0" class="muted">
-          No other agents are available to assign this ticket to.
-        </p>
+        <p v-if="candidatesLoading" class="muted">Loading configuration options…</p>
         <template v-else>
-          <UFormField label="Search agents" name="assignee" required>
-            <UInput
-              v-model="agentSearch"
-              type="search"
-              icon="i-lucide-search"
-              placeholder="Type name, email, or duty station…"
-              autocomplete="off"
-              @focus="onSearchFocus"
-              class="w-full"
+          <UFormField
+            label="Agents"
+            name="assignee"
+            description="Select one or more agents. The first selected agent is the primary assignee."
+          >
+            <USelectMenu
+              v-model="selectedAgentIds"
+              :items="agentSelectItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-account-multiple"
+              placeholder="Search and select agents…"
+              :disabled="agents.length === 0"
             />
           </UFormField>
 
-          <ul
-            v-if="resultsOpen && filteredAgents.length"
-            class="agent-results"
-            role="listbox"
-            aria-label="Agent results"
+          <UFormField
+            label="Support group"
+            name="group"
+            description="Optional queue or team assignment."
           >
-            <li
-              v-for="a in filteredAgents"
-              :key="a.id"
-              role="option"
-              class="agent-result"
-              :class="{ selected: selectedId === a.id }"
-              :aria-selected="selectedId === a.id"
-              @mousedown.prevent
-              @click="pickAgent(a)"
-            >
-              <UAvatar :alt="a.name" :src="a.avatar_url ?? undefined" size="sm" />
-              <span class="agent-result-text">
-                <span class="agent-name">{{ a.name }}</span>
-                <span class="agent-meta">{{ agentMeta(a) }}</span>
-              </span>
-            </li>
-          </ul>
-          <p v-else-if="resultsOpen && agentSearch.trim()" class="muted">
-            No agents match your search.
-          </p>
+            <USelect
+              v-model="selectedGroupId"
+              :items="groupSelectItems"
+              value-key="value"
+              clearable
+              icon="mdi-account-group-outline"
+              placeholder="No group"
+              :disabled="groups.length === 0"
+            />
+          </UFormField>
 
-          <UCard v-if="selectedAgent" variant="subtle" class="selected-card">
-            <div class="selected-row">
-              <UAvatar
-                :alt="selectedAgent.name"
-                :src="selectedAgent.avatar_url ?? undefined"
-                size="sm"
-              />
-              <div>
-                <p class="selected-label">Selected assignee</p>
-                <p class="agent-name">{{ selectedAgent.name }}</p>
-                <p class="agent-meta">{{ agentMeta(selectedAgent) }}</p>
-              </div>
-            </div>
-          </UCard>
+          <UFormField label="Priority" name="priority">
+            <USelect
+              v-model="selectedPriority"
+              :items="PRIORITY_ITEMS"
+              icon="mdi-flag-outline"
+            />
+          </UFormField>
+
+          <UFormField label="Category" name="category" required>
+            <USelect
+              v-model="selectedCategoryId"
+              :items="categorySelectItems"
+              value-key="value"
+              searchable
+              icon="mdi-shape-outline"
+              placeholder="Select category"
+              :disabled="categories.length === 0"
+            />
+          </UFormField>
         </template>
 
         <UFormField
-          label="Reason for reassigning"
+          label="Reason for change"
           name="reason"
           required
-          description="Recorded on the ticket history and as an internal comment for the new assignee."
+          description="Recorded on the ticket history and as an internal comment."
           class="reason-field"
         >
           <UTextarea
             v-model="reassignForm.reason"
             :rows="4"
-            placeholder="e.g. Out of office for 3 days — please pick this up."
+            placeholder="e.g. Adding a second agent for coverage; raising priority for SLA."
             :maxlength="2000"
             class="w-full"
           />
@@ -282,9 +323,13 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
         type="submit"
         form="reassign-form"
         color="primary"
-        label="Reassign ticket"
+        label="Save changes"
         :loading="submitting"
-        :disabled="!selectedId || reassignForm.reason.trim().length < 5"
+        :disabled="
+          (selectedAgentIds.length === 0 && !selectedGroupId) ||
+          !selectedCategoryId ||
+          reassignForm.reason.trim().length < 5
+        "
       />
     </template>
   </UModal>
@@ -295,59 +340,6 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-.agent-results {
-  list-style: none;
-  margin: 0;
-  padding: 0.25rem;
-  max-height: 220px;
-  overflow-y: auto;
-  border: 1px solid var(--hd-line);
-  border-radius: 4px;
-  background: #fff;
-}
-.agent-result {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.5rem 0.55rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.agent-result:hover,
-.agent-result.selected {
-  background: rgba(17, 154, 72, 0.08);
-}
-.agent-result-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.agent-name {
-  font-weight: 600;
-  color: #0f172a;
-  font-size: 0.92rem;
-}
-.agent-meta {
-  font-size: 0.78rem;
-  color: #64748b;
-  word-break: break-word;
-}
-.selected-card {
-  margin-top: 0.25rem;
-}
-.selected-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-.selected-label {
-  margin: 0 0 0.15rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #0d7a3a;
 }
 .reason-field {
   margin-top: 0.25rem;

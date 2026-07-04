@@ -2,8 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
+import TicketReassignModal, {
+  type ReassignTicketRef,
+} from '../tickets/TicketReassignModal.vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { canReassignTickets, ticketStatusAllowsReassign } from '../../lib/canReassignTickets'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { priorityMeta } from '../../lib/ticketTableMeta'
 import { useAuthStore } from '../../stores/auth'
@@ -27,6 +31,7 @@ export interface KanbanTicket {
   requester_name?: string | null
   assigned_user_id?: number | null
   assignee?: { id: number; name: string; avatar_url?: string | null } | null
+  assignees?: { id: number; name: string; avatar_url?: string | null }[]
   category?: { id: number; name: string } | null
   updated_at?: string | null
 }
@@ -54,6 +59,9 @@ const savingId = ref<number | null>(null)
 const tickets = ref<KanbanTicket[]>([])
 const dragTicketId = ref<number | null>(null)
 const dragOverColumn = ref<string | null>(null)
+const configureTicket = ref<ReassignTicketRef | null>(null)
+
+const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
 const greeting = computed(() => {
   const name = auth.me?.name?.split(' ')[0] ?? 'there'
@@ -71,11 +79,39 @@ const boardTickets = computed(() => {
       return false
     }
     if (role === 'agent' && meId) {
-      return t.assigned_user_id === meId
+      const ids =
+        t.assignees?.map((a) => a.id) ??
+        (t.assigned_user_id ? [t.assigned_user_id] : [])
+      return ids.includes(meId)
     }
     return true
   })
 })
+
+function ticketAssigneeNames(t: KanbanTicket): string {
+  const names = t.assignees?.map((a) => a.name) ?? (t.assignee?.name ? [t.assignee.name] : [])
+  return names.length > 0 ? names.join(', ') : ''
+}
+
+function canConfigureTicket(t: KanbanTicket): boolean {
+  return canConfigure.value && ticketStatusAllowsReassign(t.status)
+}
+
+function openConfigure(t: KanbanTicket): void {
+  configureTicket.value = {
+    id: t.id,
+    ticket_number: t.ticket_number,
+    subject: t.subject,
+  }
+}
+
+function closeConfigure(): void {
+  configureTicket.value = null
+}
+
+async function onConfigured(): Promise<void> {
+  await loadTickets()
+}
 
 const columnTickets = computed(() => {
   const map = new Map<string, KanbanTicket[]>()
@@ -271,7 +307,19 @@ onMounted(() => {
                 <RouterLink :to="`/tickets/${t.id}`" class="hd-kanban-ticket-no" @click.stop>
                   {{ t.ticket_number }}
                 </RouterLink>
-                <span :class="priorityChip(t.priority).className">{{ priorityChip(t.priority).label }}</span>
+                <div class="hd-kanban-card-top-actions">
+                  <UButton
+                    v-if="canConfigureTicket(t)"
+                    type="button"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    icon="mdi-cog-outline"
+                    title="Configure agents, priority, and category"
+                    @click.stop="openConfigure(t)"
+                  />
+                  <span :class="priorityChip(t.priority).className">{{ priorityChip(t.priority).label }}</span>
+                </div>
               </div>
               <RouterLink :to="`/tickets/${t.id}`" class="hd-kanban-subject">
                 {{ t.subject }}
@@ -286,6 +334,7 @@ onMounted(() => {
                 <span v-if="relativeTime(t.updated_at)" class="hd-kanban-time">{{ relativeTime(t.updated_at) }}</span>
               </div>
               <p v-if="t.category?.name" class="hd-kanban-cat">{{ t.category.name }}</p>
+              <p v-if="ticketAssigneeNames(t)" class="hd-kanban-agents">{{ ticketAssigneeNames(t) }}</p>
             </article>
           </li>
         </ul>
@@ -300,5 +349,11 @@ onMounted(() => {
       <RouterLink v-if="!embedded" to="/desk/agent" class="hd-kanban-link">Open full agent desk →</RouterLink>
       <RouterLink to="/tickets" class="hd-kanban-link">All tickets →</RouterLink>
     </footer>
+
+    <TicketReassignModal
+      :ticket="configureTicket"
+      @close="closeConfigure"
+      @reassigned="onConfigured"
+    />
   </section>
 </template>

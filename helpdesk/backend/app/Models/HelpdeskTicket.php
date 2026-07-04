@@ -6,8 +6,11 @@ use App\Services\TicketAssignmentNotifier;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketReadCache;
 use App\Services\TicketStatusNotifier;
+use App\Services\TicketAssigneeService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HelpdeskTicket extends Model
@@ -21,6 +24,11 @@ class HelpdeskTicket extends Model
                 'ticket_number' => $ticket->ticket_number,
             ]);
             if ($ticket->assigned_user_id) {
+                app(TicketAssigneeService::class)->sync(
+                    $ticket,
+                    [(int) $ticket->assigned_user_id],
+                    (int) $ticket->assigned_user_id,
+                );
                 app(TicketAssignmentNotifier::class)->notifyOnInitialAssign($ticket);
             }
         });
@@ -95,6 +103,22 @@ class HelpdeskTicket extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'helpdesk_ticket_assignees', 'helpdesk_ticket_id', 'user_id')
+            ->withPivot('is_primary')
+            ->withTimestamps()
+            ->orderByDesc('helpdesk_ticket_assignees.is_primary');
+    }
+
+    /**
+     * @param  Builder<HelpdeskTicket>  $query
+     */
+    public function scopeAssignedToUser(Builder $query, int $userId): Builder
+    {
+        return app(TicketAssigneeService::class)->scopeAssignedToUser($query, $userId);
     }
 
     public function assignedGroup(): BelongsTo

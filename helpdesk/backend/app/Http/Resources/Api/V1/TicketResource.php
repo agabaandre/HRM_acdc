@@ -68,6 +68,16 @@ class TicketResource extends JsonResource
                         : null,
                 ]
             ),
+            'assignees' => $this->when(
+                $this->relationLoaded('assignees'),
+                fn () => $this->assignees->map(fn ($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'avatar_url' => StaffPhotoUrl::forUser($user),
+                    'is_primary' => (bool) ($user->pivot->is_primary ?? false),
+                ])->values()
+            ),
             'assigned_group' => $this->when(
                 $this->relationLoaded('assignedGroup') && $this->assignedGroup !== null,
                 fn () => [

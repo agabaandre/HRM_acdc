@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\HelpdeskTicket;
+use App\Services\TicketAssigneeService;
 use App\Services\TicketAssignmentService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +21,7 @@ class AssignEndUserTicket
         public ?string $requesterDutyStation,
     ) {}
 
-    public function handle(TicketAssignmentService $assignment): void
+    public function handle(TicketAssignmentService $assignment, TicketAssigneeService $assignees): void
     {
         $ticket = HelpdeskTicket::query()->find($this->ticketId);
         if (! $ticket || $ticket->assigned_user_id || $ticket->assigned_group_id) {
@@ -35,5 +36,9 @@ class AssignEndUserTicket
         $ticket->assigned_user_id = $result['user_id'];
         $ticket->assigned_group_id = $result['group_id'];
         $ticket->save();
+
+        if ($result['user_id']) {
+            $assignees->sync($ticket, [(int) $result['user_id']], (int) $result['user_id']);
+        }
     }
 }

@@ -46,7 +46,7 @@ class ReportController extends Controller
      */
     private function buildAgentDashboardPayload(\App\Models\User $user): array
     {
-        $base = HelpdeskTicket::query()->where('assigned_user_id', $user->id);
+        $base = HelpdeskTicket::query()->assignedToUser((int) $user->id);
 
         $pendingStatuses = ['open', 'pending', 'in_progress'];
         $now = now();
@@ -100,8 +100,8 @@ class ReportController extends Controller
         }
 
         $recent = HelpdeskTicket::query()
-            ->with(['category', 'assignee'])
-            ->where('assigned_user_id', $user->id)
+            ->with(['category', 'assignee', 'assignees'])
+            ->assignedToUser((int) $user->id)
             ->orderByDesc('id')
             ->limit(25)
             ->get();
