@@ -67,8 +67,7 @@ class FundCodeBudgetLedgerService
         $activeCrs = $this->balanceService->getActiveChangeRequests([]);
         $lines = [];
 
-        $lines = array_merge($lines, $this->linesFromActivityBudgets($fundCode, $activeCrs));
-        $lines = array_merge($lines, $this->linesFromActivityBreakdowns($fundCode, $activeCrs));
+        $lines = array_merge($lines, $this->linesFromActivities($fundCode, $activeCrs));
         $lines = array_merge($lines, $this->linesFromSpecialMemos($fundCode, $activeCrs));
         $lines = array_merge($lines, $this->linesFromNonTravelMemos($fundCode, $activeCrs));
         $lines = array_merge($lines, $this->linesFromChangeRequests($fundCode, $activeCrs));
@@ -123,17 +122,50 @@ class FundCodeBudgetLedgerService
      * }  $activeCrs
      * @return list<array<string, mixed>>
      */
-    private function linesFromActivityBudgets(FundCode $fundCode, array $activeCrs): array
+    private function linesFromActivities(FundCode $fundCode, array $activeCrs): array
     {
         $fundCodeId = (int) $fundCode->id;
-        $rows = DB::table('activity_budgets')
-            ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
-            ->leftJoin('matrices', 'matrices.id', '=', 'activities.matrix_id')
+
+        $budgetActivityIds = DB::table('activity_budgets')
             ->where(function ($q) use ($fundCode) {
-                $q->where('activity_budgets.fund_code', (string) $fundCode->id)
-                    ->orWhere('activity_budgets.fund_code', (string) $fundCode->code)
-                    ->orWhereRaw('UPPER(TRIM(activity_budgets.fund_code)) = UPPER(?)', [(string) $fundCode->code]);
+                $q->where('fund_code', (string) $fundCode->id)
+                    ->orWhere('fund_code', (string) $fundCode->code)
+                    ->orWhereRaw('UPPER(TRIM(fund_code)) = UPPER(?)', [(string) $fundCode->code]);
             })
+            ->pluck('activity_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $breakdownActivityIds = Activity::query()
+            ->whereNotNull('budget_breakdown')
+            ->where('budget_breakdown', '!=', '')
+            ->where('budget_breakdown', '!=', '[]')
+            ->where('budget_breakdown', '!=', '{}')
+            ->get(['id', 'budget_breakdown'])
+            ->filter(fn ($activity) => BudgetBreakdownTotal::hasFundCodeEntries($activity->budget_breakdown, $fundCodeId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $activityIds = array_values(array_unique(array_merge($budgetActivityIds, $breakdownActivityIds)));
+        if ($activityIds === []) {
+            return [];
+        }
+
+        $budgetSums = DB::table('activity_budgets')
+            ->whereIn('activity_id', $activityIds)
+            ->where(function ($q) use ($fundCode) {
+                $q->where('fund_code', (string) $fundCode->id)
+                    ->orWhere('fund_code', (string) $fundCode->code)
+                    ->orWhereRaw('UPPER(TRIM(fund_code)) = UPPER(?)', [(string) $fundCode->code]);
+            })
+            ->selectRaw('activity_id, SUM(total) as budget_sum')
+            ->groupBy('activity_id')
+            ->pluck('budget_sum', 'activity_id');
+
+        $rows = DB::table('activities')
+            ->leftJoin('matrices', 'matrices.id', '=', 'activities.matrix_id')
+            ->whereIn('activities.id', $activityIds)
             ->get([
                 'activities.id as activity_id',
                 'activities.activity_title',
@@ -142,146 +174,46 @@ class FundCodeBudgetLedgerService
                 'activities.updated_at',
                 'activities.matrix_id',
                 'activities.is_single_memo',
+                'activities.budget_breakdown',
                 'matrices.overall_status as matrix_status',
-                'activity_budgets.total',
             ]);
 
-        $grouped = [];
+        $lines = [];
         foreach ($rows as $row) {
-            $id = (int) $row->activity_id;
-            if (! isset($grouped[$id])) {
-                $grouped[$id] = [
-                    'activity_id' => $id,
-                    'activity_title' => (string) $row->activity_title,
-                    'document_number' => $row->document_number,
-                    'overall_status' => (string) $row->overall_status,
-                    'updated_at' => $row->updated_at,
-                    'matrix_id' => (int) $row->matrix_id,
-                    'is_single_memo' => (int) ($row->is_single_memo ?? 0),
-                    'matrix_status' => (string) $row->matrix_status,
-                    'amount' => 0.0,
-                ];
-            }
-            $grouped[$id]['amount'] += (float) $row->total;
-        }
-
-        $lines = [];
-        $activityIds = array_keys($grouped);
-        $activityBreakdowns = $activityIds !== []
-            ? Activity::query()->whereIn('id', $activityIds)->pluck('budget_breakdown', 'id')
-            : collect();
-
-        foreach ($grouped as $item) {
-            $amount = round($item['amount'], 2);
+            $amount = BudgetBreakdownTotal::activityAmountForFundCode(
+                $row->budget_breakdown,
+                $fundCodeId,
+                (float) ($budgetSums[(int) $row->activity_id] ?? 0)
+            );
             if ($amount <= 0) {
                 continue;
             }
 
-            $type = $item['is_single_memo'] ? 'single_memo' : 'activity';
+            $type = (int) ($row->is_single_memo ?? 0) === 1 ? 'single_memo' : 'activity';
             [$committed, $skipCode, $skipReason] = $this->classifyActivity(
-                $item['overall_status'],
-                $item['updated_at'],
-                $item['matrix_status'],
-                (int) $item['activity_id'],
+                (string) $row->overall_status,
+                $row->updated_at,
+                (string) ($row->matrix_status ?? ''),
+                (int) $row->activity_id,
                 $activeCrs,
                 'activity'
             );
 
-            $rawBreakdown = $activityBreakdowns[(int) $item['activity_id']] ?? null;
-            $memoGrandTotal = $rawBreakdown
-                ? BudgetBreakdownTotal::memoGrandTotal($this->decodeBreakdown($rawBreakdown), false)
-                : null;
+            $breakdown = $this->decodeBreakdown($row->budget_breakdown);
 
             $lines[] = $this->makeLine(
                 type: $type,
-                id: (int) $item['activity_id'],
-                title: $item['activity_title'],
-                documentNumber: $item['document_number'],
-                status: $item['overall_status'],
+                id: (int) $row->activity_id,
+                title: (string) $row->activity_title,
+                documentNumber: $row->document_number,
+                status: (string) $row->overall_status,
                 amount: $amount,
                 committed: $committed,
                 skipCode: $skipCode,
                 skipReason: $skipReason,
-                updatedAt: $item['updated_at'],
-                matrixId: (int) $item['matrix_id'],
-                memoGrandTotal: $memoGrandTotal,
-            );
-        }
-
-        return $lines;
-    }
-
-    /**
-     * Activities that reference this fund code only via budget_breakdown (e.g. some single memos).
-     *
-     * @param  array<string, mixed>  $activeCrs
-     * @return list<array<string, mixed>>
-     */
-    private function linesFromActivityBreakdowns(FundCode $fundCode, array $activeCrs): array
-    {
-        $fundCodeId = (int) $fundCode->id;
-        $coveredIds = DB::table('activity_budgets')
-            ->where(function ($q) use ($fundCode) {
-                $q->where('fund_code', (string) $fundCode->id)
-                    ->orWhere('fund_code', (string) $fundCode->code);
-            })
-            ->pluck('activity_id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $query = Activity::query()
-            ->whereNotNull('budget_breakdown')
-            ->where('budget_breakdown', '!=', '')
-            ->where('budget_breakdown', '!=', '[]')
-            ->where('budget_breakdown', '!=', '{}');
-
-        if ($coveredIds !== []) {
-            $query->whereNotIn('id', $coveredIds);
-        }
-
-        $activities = $query->get([
-            'id',
-            'activity_title',
-            'document_number',
-            'overall_status',
-            'updated_at',
-            'matrix_id',
-            'is_single_memo',
-            'budget_breakdown',
-        ]);
-
-        $lines = [];
-        foreach ($activities as $activity) {
-            $breakdown = $this->decodeBreakdown($activity->budget_breakdown);
-            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, false);
-            if ($amount <= 0) {
-                continue;
-            }
-
-            $matrixStatus = DB::table('matrices')->where('id', $activity->matrix_id)->value('overall_status') ?? '';
-            $type = (int) ($activity->is_single_memo ?? 0) === 1 ? 'single_memo' : 'activity';
-            [$committed, $skipCode, $skipReason] = $this->classifyActivity(
-                (string) $activity->overall_status,
-                $activity->updated_at,
-                (string) $matrixStatus,
-                (int) $activity->id,
-                $activeCrs,
-                'activity'
-            );
-
-            $lines[] = $this->makeLine(
-                type: $type,
-                id: (int) $activity->id,
-                title: (string) $activity->activity_title,
-                documentNumber: $activity->document_number,
-                status: (string) $activity->overall_status,
-                amount: $amount,
-                committed: $committed,
-                skipCode: $skipCode,
-                skipReason: $skipReason,
-                updatedAt: $activity->updated_at,
-                matrixId: (int) $activity->matrix_id,
-                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, false),
+                updatedAt: $row->updated_at,
+                matrixId: (int) $row->matrix_id,
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, BudgetBreakdownTotal::STYLE_TRAVEL_STRICT),
             );
         }
 
@@ -303,7 +235,7 @@ class FundCodeBudgetLedgerService
             $fundCode,
             $activeCrs,
             'special_memo',
-            false
+            BudgetBreakdownTotal::STYLE_TRAVEL_LENIENT
         );
     }
 
@@ -322,7 +254,7 @@ class FundCodeBudgetLedgerService
             $fundCode,
             $activeCrs,
             'non_travel',
-            true
+            BudgetBreakdownTotal::STYLE_NON_TRAVEL
         );
     }
 
@@ -331,7 +263,7 @@ class FundCodeBudgetLedgerService
      * @param  array<string, mixed>  $activeCrs
      * @return list<array<string, mixed>>
      */
-    private function linesFromBreakdownMemos($query, FundCode $fundCode, array $activeCrs, string $type, bool $useQuantity): array
+    private function linesFromBreakdownMemos($query, FundCode $fundCode, array $activeCrs, string $type, string $style): array
     {
         $fundCodeId = (int) $fundCode->id;
         $models = $query->get([
@@ -346,8 +278,7 @@ class FundCodeBudgetLedgerService
         $lines = [];
         foreach ($models as $model) {
             $breakdown = $this->decodeBreakdown($model->budget_breakdown);
-            $nonTravel = $type === 'non_travel';
-            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $nonTravel);
+            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $style);
             if ($amount <= 0) {
                 continue;
             }
@@ -371,7 +302,7 @@ class FundCodeBudgetLedgerService
                 skipCode: $skipCode,
                 skipReason: $skipReason,
                 updatedAt: $model->updated_at,
-                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $nonTravel),
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $style),
             );
         }
 
@@ -407,8 +338,10 @@ class FundCodeBudgetLedgerService
         $lines = [];
         foreach ($models as $cr) {
             $breakdown = $this->decodeBreakdown($cr->budget_breakdown);
-            $nonTravel = $cr->non_travel_memo_id !== null;
-            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $nonTravel);
+            $style = $cr->non_travel_memo_id !== null
+                ? BudgetBreakdownTotal::STYLE_NON_TRAVEL
+                : BudgetBreakdownTotal::STYLE_CHANGE_REQUEST;
+            $amount = BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $style);
             if ($amount <= 0) {
                 continue;
             }
@@ -430,7 +363,7 @@ class FundCodeBudgetLedgerService
                 skipCode: $skipCode,
                 skipReason: $skipReason,
                 updatedAt: $cr->updated_at,
-                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $nonTravel),
+                memoGrandTotal: BudgetBreakdownTotal::memoGrandTotal($breakdown, $style),
             );
         }
 

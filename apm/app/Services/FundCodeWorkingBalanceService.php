@@ -472,17 +472,57 @@ class FundCodeWorkingBalanceService
      */
     private function committedFromActivityBudgets(FundCode $fundCode, array $exclude, array $activeCrs): float
     {
+        return $this->committedFromActivities($fundCode, $exclude, $activeCrs);
+    }
+
+    /**
+     * @param  array<string, int|null>  $exclude
+     * @param  array{
+     *   activity_ids: list<int>,
+     *   special_memo_ids: list<int>,
+     *   non_travel_memo_ids: list<int>,
+     *   by_id: array<int, ChangeRequest>
+     * }  $activeCrs
+     */
+    private function committedFromActivities(FundCode $fundCode, array $exclude, array $activeCrs): float
+    {
+        $fundCodeId = (int) $fundCode->id;
         $statuses = $this->commitmentSettings()->committedActivityStatuses();
-        $query = DB::table('activity_budgets')
-            ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
+
+        $budgetActivityIds = DB::table('activity_budgets')
+            ->where(function ($q) use ($fundCode) {
+                $q->where('fund_code', (string) $fundCode->id)
+                    ->orWhere('fund_code', (string) $fundCode->code)
+                    ->orWhereRaw('UPPER(TRIM(fund_code)) = UPPER(?)', [(string) $fundCode->code]);
+            })
+            ->pluck('activity_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $breakdownActivityIds = Activity::query()
+            ->whereNotNull('budget_breakdown')
+            ->where('budget_breakdown', '!=', '')
+            ->where('budget_breakdown', '!=', '[]')
+            ->where('budget_breakdown', '!=', '{}')
+            ->pluck('id', 'budget_breakdown')
+            ->filter(function ($id, $breakdown) use ($fundCodeId) {
+                return BudgetBreakdownTotal::hasFundCodeEntries($breakdown, $fundCodeId);
+            })
+            ->values()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $activityIds = array_values(array_unique(array_merge($budgetActivityIds, $breakdownActivityIds)));
+        if ($activityIds === []) {
+            return 0.0;
+        }
+
+        $query = Activity::query()
+            ->whereIn('id', $activityIds)
             ->join('matrices', 'matrices.id', '=', 'activities.matrix_id')
             ->whereIn('activities.overall_status', $statuses)
             ->whereNotIn('activities.overall_status', self::NON_COMMITTING_STATUSES)
-            ->where('matrices.overall_status', '!=', 'archived')
-            ->where(function ($q) use ($fundCode) {
-                $q->where('activity_budgets.fund_code', (string) $fundCode->id)
-                    ->orWhere('activity_budgets.fund_code', (string) $fundCode->code);
-            });
+            ->where('matrices.overall_status', '!=', 'archived');
 
         $this->commitmentSettings()->applyDraftAgeFilter($query, 'activities', $statuses);
 
@@ -494,7 +534,29 @@ class FundCodeWorkingBalanceService
             $query->whereNotIn('activities.id', $activeCrs['activity_ids']);
         }
 
-        return (float) $query->sum('activity_budgets.total');
+        $activities = $query->get(['activities.id', 'activities.budget_breakdown']);
+
+        $budgetSums = DB::table('activity_budgets')
+            ->whereIn('activity_id', $activities->pluck('id')->all())
+            ->where(function ($q) use ($fundCode) {
+                $q->where('fund_code', (string) $fundCode->id)
+                    ->orWhere('fund_code', (string) $fundCode->code)
+                    ->orWhereRaw('UPPER(TRIM(fund_code)) = UPPER(?)', [(string) $fundCode->code]);
+            })
+            ->selectRaw('activity_id, SUM(total) as budget_sum')
+            ->groupBy('activity_id')
+            ->pluck('budget_sum', 'activity_id');
+
+        $total = 0.0;
+        foreach ($activities as $activity) {
+            $total += BudgetBreakdownTotal::activityAmountForFundCode(
+                $activity->budget_breakdown,
+                $fundCodeId,
+                (float) ($budgetSums[(int) $activity->id] ?? 0)
+            );
+        }
+
+        return $total;
     }
 
     /**
@@ -523,7 +585,11 @@ class FundCodeWorkingBalanceService
             $query->whereNotIn('id', $activeCrs['non_travel_memo_ids']);
         }
 
-        return $this->sumBreakdownFromModels($query->get(['id', 'budget_breakdown']), $fundCodeId, useQuantity: true);
+        return $this->sumBreakdownFromModels(
+            $query->get(['id', 'budget_breakdown']),
+            $fundCodeId,
+            BudgetBreakdownTotal::STYLE_NON_TRAVEL
+        );
     }
 
     /**
@@ -552,7 +618,11 @@ class FundCodeWorkingBalanceService
             $query->whereNotIn('id', $activeCrs['special_memo_ids']);
         }
 
-        return $this->sumBreakdownFromModels($query->get(['id', 'budget_breakdown']), $fundCodeId, useQuantity: false);
+        return $this->sumBreakdownFromModels(
+            $query->get(['id', 'budget_breakdown']),
+            $fundCodeId,
+            BudgetBreakdownTotal::STYLE_TRAVEL_LENIENT
+        );
     }
 
     /**
@@ -572,7 +642,10 @@ class FundCodeWorkingBalanceService
                 continue;
             }
             $breakdown = $this->decodeBreakdown($cr->budget_breakdown);
-            $total += $this->sumBreakdownForFundCode($breakdown, $fundCodeId, $this->changeRequestUsesQuantity($cr));
+            $style = $cr->non_travel_memo_id !== null
+                ? BudgetBreakdownTotal::STYLE_NON_TRAVEL
+                : BudgetBreakdownTotal::STYLE_CHANGE_REQUEST;
+            $total += $this->sumBreakdownForFundCode($breakdown, $fundCodeId, $style);
         }
 
         return $total;
@@ -586,12 +659,12 @@ class FundCodeWorkingBalanceService
     /**
      * @param  iterable<int, object{id: mixed, budget_breakdown: mixed}>  $models
      */
-    private function sumBreakdownFromModels(iterable $models, int $fundCodeId, bool $useQuantity): float
+    private function sumBreakdownFromModels(iterable $models, int $fundCodeId, string $style): float
     {
         $total = 0.0;
         foreach ($models as $model) {
             $breakdown = $this->decodeBreakdown($model->budget_breakdown);
-            $total += $this->sumBreakdownForFundCode($breakdown, $fundCodeId, $useQuantity);
+            $total += $this->sumBreakdownForFundCode($breakdown, $fundCodeId, $style);
         }
 
         return $total;
@@ -600,9 +673,12 @@ class FundCodeWorkingBalanceService
     /**
      * @param  array<mixed, mixed>  $breakdown
      */
-    public function sumBreakdownForFundCode(array $breakdown, int $fundCodeId, bool $useQuantity = false, bool $useDays = false): float
-    {
-        return BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $useQuantity);
+    public function sumBreakdownForFundCode(
+        array $breakdown,
+        int $fundCodeId,
+        string $style = BudgetBreakdownTotal::STYLE_TRAVEL_STRICT
+    ): float {
+        return BudgetBreakdownTotal::forFundCode($breakdown, $fundCodeId, $style);
     }
 
     /**
@@ -649,7 +725,11 @@ class FundCodeWorkingBalanceService
                 continue;
             }
             $codeId = (int) $codeKey;
-            $totals[$codeId] = $this->sumBreakdownForFundCode([$codeId => $items], $codeId, useQuantity: false, useDays: $withDays);
+            $totals[$codeId] = $this->sumBreakdownForFundCode(
+                [$codeId => $items],
+                $codeId,
+                $withDays ? BudgetBreakdownTotal::STYLE_TRAVEL_STRICT : BudgetBreakdownTotal::STYLE_NON_TRAVEL
+            );
         }
 
         return $totals;
@@ -675,11 +755,14 @@ class FundCodeWorkingBalanceService
             return [];
         }
 
-        $newTotals = $this->breakdownTotalsPerCode($newBreakdown, $useQuantity, $useDays);
+        $style = $useQuantity
+            ? BudgetBreakdownTotal::STYLE_NON_TRAVEL
+            : BudgetBreakdownTotal::STYLE_CHANGE_REQUEST;
+        $newTotals = BudgetBreakdownTotal::fundCodeTotals($newBreakdown, $style);
         $errors = [];
 
         foreach ($newTotals as $fundCodeId => $newTotal) {
-            $parentTotal = $this->sumBreakdownForFundCode($parentBreakdown, (int) $fundCodeId, $useQuantity, $useDays);
+            $parentTotal = $this->sumBreakdownForFundCode($parentBreakdown, (int) $fundCodeId, $style);
             $delta = round(max(0, $newTotal - $parentTotal), 2);
             if ($delta <= 0) {
                 continue;
@@ -705,16 +788,11 @@ class FundCodeWorkingBalanceService
      */
     public function breakdownTotalsPerCode(array $breakdown, bool $useQuantity = false, bool $useDays = false): array
     {
-        $totals = [];
-        foreach ($breakdown as $codeKey => $items) {
-            if (! is_numeric($codeKey)) {
-                continue;
-            }
-            $codeId = (int) $codeKey;
-            $totals[$codeId] = $this->sumBreakdownForFundCode($breakdown, $codeId, $useQuantity, $useDays);
-        }
+        $style = $useQuantity
+            ? BudgetBreakdownTotal::STYLE_NON_TRAVEL
+            : ($useDays ? BudgetBreakdownTotal::STYLE_TRAVEL_STRICT : BudgetBreakdownTotal::STYLE_CHANGE_REQUEST);
 
-        return $totals;
+        return BudgetBreakdownTotal::fundCodeTotals($breakdown, $style);
     }
 
     private function decodeBreakdown(mixed $value): array

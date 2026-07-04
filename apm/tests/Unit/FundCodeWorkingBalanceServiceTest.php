@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\FundCodeWorkingBalanceService;
+use App\Support\BudgetBreakdownTotal;
 use PHPUnit\Framework\TestCase;
 
 class FundCodeWorkingBalanceServiceTest extends TestCase
@@ -17,7 +18,7 @@ class FundCodeWorkingBalanceServiceTest extends TestCase
             ],
         ];
 
-        $this->assertSame(650.0, $service->sumBreakdownForFundCode($breakdown, 246, false, true));
+        $this->assertSame(650.0, $service->sumBreakdownForFundCode($breakdown, 246, BudgetBreakdownTotal::STYLE_TRAVEL_STRICT));
     }
 
     public function test_sum_breakdown_for_fund_code_with_quantity(): void
@@ -29,20 +30,24 @@ class FundCodeWorkingBalanceServiceTest extends TestCase
             ],
         ];
 
-        $this->assertSame(100.0, $service->sumBreakdownForFundCode($breakdown, 246, true, false));
+        $this->assertSame(100.0, $service->sumBreakdownForFundCode($breakdown, 246, BudgetBreakdownTotal::STYLE_NON_TRAVEL));
     }
 
     public function test_breakdown_totals_per_code(): void
     {
         $service = new FundCodeWorkingBalanceService();
         $breakdown = [
-            10 => [['unit_cost' => 10, 'units' => 2]],
+            10 => [['unit_cost' => 10, 'units' => 2, 'days' => 1]],
             20 => [['unit_cost' => 5, 'quantity' => 3]],
         ];
 
-        $totals = $service->breakdownTotalsPerCode($breakdown, true, false);
+        $totals = $service->breakdownTotalsPerCode($breakdown, false, true);
         $this->assertSame(20.0, $totals[10]);
-        $this->assertSame(15.0, $totals[20]);
+
+        $nonTravelTotals = $service->breakdownTotalsPerCode([
+            20 => [['unit_cost' => 5, 'quantity' => 3]],
+        ], true, false);
+        $this->assertSame(15.0, $nonTravelTotals[20]);
     }
 
     public function test_archived_status_does_not_commit_funds(): void
