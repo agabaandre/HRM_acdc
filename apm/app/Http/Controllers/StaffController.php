@@ -508,11 +508,8 @@ class StaffController extends Controller
                 ];
             })->values()->all(),
             'routes' => [
-                'edit' => route('staff.edit', $staff->staff_id),
                 'index' => route('staff.index'),
-                'destroy' => route('staff.destroy', $staff->staff_id),
             ],
-            'csrf' => csrf_token(),
         ];
     }
 

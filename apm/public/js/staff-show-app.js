@@ -66,8 +66,6 @@
                 const staff = ref(cfg.staff || {});
                 const activities = ref(cfg.activities || []);
                 const routes = cfg.routes || {};
-                const csrf = cfg.csrf || '';
-                const deleteDialog = ref(false);
 
                 const activityHeaders = [
                     { title: 'ID', key: 'id', width: 80 },
@@ -107,8 +105,6 @@
                     staff,
                     activities,
                     routes,
-                    csrf,
-                    deleteDialog,
                     activityHeaders,
                     personalFields,
                     employmentFields,
@@ -126,12 +122,6 @@
       <div class="d-flex flex-wrap gap-2">
         <v-btn color="primary" variant="flat" :href="routes.index" prepend-icon="mdi-arrow-left">
           Back to list
-        </v-btn>
-        <v-btn color="primary" variant="outlined" :href="routes.edit" prepend-icon="mdi-pencil">
-          Edit
-        </v-btn>
-        <v-btn color="error" variant="outlined" prepend-icon="mdi-delete" @click="deleteDialog = true">
-          Delete
         </v-btn>
       </div>
     </div>
@@ -289,25 +279,6 @@
         </template>
       </v-data-table>
     </v-card>
-
-    <v-dialog v-model="deleteDialog" max-width="480">
-      <v-card>
-        <v-card-title>Delete staff record</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete <strong>{{ staff.display_name }}</strong> from the staff records?
-          <div class="text-error text-body-2 mt-2">This action cannot be undone.</div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <form :action="routes.destroy" method="POST" class="d-inline">
-            <input type="hidden" name="_token" :value="csrf">
-            <input type="hidden" name="_method" value="DELETE">
-            <v-btn color="error" variant="flat" type="submit">Delete</v-btn>
-          </form>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </v-app>
             `,

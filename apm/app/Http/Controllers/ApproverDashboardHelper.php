@@ -293,6 +293,11 @@ trait ApproverDashboardHelper
      */
     protected function buildApproverQuery($workflowId, $search = null, $divisionId = null, $docType = null, $approvalLevel = null)
     {
+        $activeContractStaffIds = $this->approverDashboardActiveContractStaffIds();
+        if ($activeContractStaffIds !== null && $activeContractStaffIds === []) {
+            return collect();
+        }
+
         $search = $search !== null ? trim((string) $search) : '';
         $likePattern = $search !== '' ? '%'.addcslashes($search, '%_\\').'%' : null;
 
@@ -320,8 +325,9 @@ trait ApproverDashboardHelper
             ])
             ->where('wd.workflow_id', $workflowId)
             ->where('wd.is_enabled', 1)
-            ->where('wd.is_division_specific', 0) // Only non-division-specific roles
-            ->whereIn('s.status', ['Active', 'Due', 'Under Renewal']);
+            ->where('wd.is_division_specific', 0); // Only non-division-specific roles
+
+        $this->applyApproverActiveStaffFilter($approversQuery, $activeContractStaffIds);
 
         // Apply filters to approvers query
         if ($likePattern !== null) {
@@ -381,8 +387,9 @@ trait ApproverDashboardHelper
                     DB::raw("'{$columnName}' as division_reference_column"),
                     DB::raw("'divisions_table' as source"),
                 ])
-                ->whereIn('s.status', ['Active', 'Due', 'Under Renewal'])
                 ->whereNotNull("d.{$columnName}");
+
+            $this->applyApproverActiveStaffFilter($roleQuery, $activeContractStaffIds);
 
             // Apply filters
             if ($likePattern !== null) {
@@ -415,6 +422,68 @@ trait ApproverDashboardHelper
             ]);
 
         return $combinedResults;
+    }
+
+    /**
+     * Staff IDs whose latest contract is Active (1), Due (2), or Under renewal (7) in the staff portal DB.
+     *
+     * @return list<int>|null Null when staff_app is not configured (caller uses staff.status fallback).
+     */
+    protected function approverDashboardActiveContractStaffIds(): ?array
+    {
+        $db = config('database.connections.staff_app.database');
+        if (! is_string($db) || $db === '') {
+            return null;
+        }
+
+        try {
+            $connection = DB::connection('staff_app');
+
+            $latestContracts = $connection->table('staff_contracts')
+                ->select('staff_id', DB::raw('MAX(staff_contract_id) as latest_contract_id'))
+                ->groupBy('staff_id');
+
+            return $connection->table('staff_contracts as sc')
+                ->joinSub($latestContracts, 'latest', function ($join): void {
+                    $join->on('sc.staff_id', '=', 'latest.staff_id')
+                        ->on('sc.staff_contract_id', '=', 'latest.latest_contract_id');
+                })
+                ->whereIn('sc.status_id', [1, 2, 7])
+                ->pluck('sc.staff_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('Approver dashboard: could not load active contract staff IDs', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Restrict approver queries to staff with a current contract, or fall back to synced staff.status.
+     *
+     * @param  list<int>|null  $activeStaffIds
+     */
+    protected function applyApproverActiveStaffFilter($query, ?array $activeStaffIds = null): void
+    {
+        $activeStaffIds ??= $this->approverDashboardActiveContractStaffIds();
+
+        if ($activeStaffIds !== null) {
+            if ($activeStaffIds === []) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $query->whereIn('s.staff_id', $activeStaffIds);
+
+            return;
+        }
+
+        $query->whereIn('s.status', ['Active', 'Due', 'Under Renewal']);
     }
 
     /**

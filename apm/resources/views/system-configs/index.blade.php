@@ -9,7 +9,6 @@
 @section('content')
 @php
     $activeMeta = $tabs[$tab] ?? $tabs['jobs'];
-    $auditExportUrl = route('system-configs.index', array_merge(['tab' => 'audit-logs'], request()->query(), ['export' => 'csv']));
 @endphp
 
 <div class="sys-config-page">
@@ -44,13 +43,6 @@
                 </button>
                 <button type="button" class="btn btn-sm btn-success" onclick="typeof showDatabaseModal === 'function' && showDatabaseModal()">
                     <i class="bx bx-data"></i> Manage databases
-                </button>
-            @elseif ($tab === 'audit-logs')
-                <a href="{{ $auditExportUrl }}" class="btn btn-sm btn-success">
-                    <i class="bx bx-download"></i> Export CSV
-                </a>
-                <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#cleanupModal">
-                    <i class="bx bx-trash"></i> Cleanup old logs
                 </button>
             @endif
         </div>

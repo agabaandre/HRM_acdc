@@ -18,7 +18,7 @@
     #non-travel-index-app .apm-list-table thead th {
         background: #f8fafc !important;
         color: rgba(0, 0, 0, 0.7) !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         font-size: 0.75rem !important;
         text-transform: uppercase;
         letter-spacing: 0.03em;
