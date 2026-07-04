@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\DivisionsExport;
 use App\Models\Division;
+use App\Models\Staff;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -132,7 +133,71 @@ class DivisionController extends Controller
             'directorate',
         ])->findOrFail($id);
 
-        return view('divisions.show', compact('division'));
+        return view('divisions.show', [
+            'pageConfig' => $this->buildDivisionShowPageConfig($division),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDivisionShowPageConfig(Division $division): array
+    {
+        $formatDate = static fn ($value) => $value
+            ? \Carbon\Carbon::parse($value)->format('M d, Y')
+            : null;
+
+        $staffPayload = static function (?Staff $staff): ?array {
+            if (! $staff) {
+                return null;
+            }
+
+            return [
+                'staff_id' => $staff->staff_id,
+                'name' => trim(collect([$staff->fname, $staff->lname])->filter()->implode(' ')),
+                'meta' => $staff->title ?? $staff->job_name ?? 'Staff',
+                'show_url' => route('staff.show', $staff->staff_id),
+            ];
+        };
+
+        return [
+            'division' => [
+                'id' => $division->id,
+                'division_name' => $division->division_name,
+                'division_short_name' => $division->division_short_name ?? null,
+                'category' => $division->category ?? null,
+                'is_active' => $division->is_active ?? null,
+                'directorate_id' => $division->directorate_id,
+                'director_id' => $division->director_id,
+                'head_oic' => [
+                    'staff_id' => $division->head_oic_id,
+                    'start' => $formatDate($division->head_oic_start_date),
+                    'end' => $formatDate($division->head_oic_end_date),
+                ],
+                'director_oic' => [
+                    'staff_id' => $division->director_oic_id,
+                    'start' => $formatDate($division->director_oic_start_date),
+                    'end' => $formatDate($division->director_oic_end_date),
+                ],
+            ],
+            'directorate' => $division->directorate ? [
+                'id' => $division->directorate->id,
+                'name' => $division->directorate->name,
+                'show_url' => route('directorates.show', $division->directorate->id),
+            ] : null,
+            'staffRoles' => [
+                ['key' => 'divisionHead', 'label' => 'Division Head', 'icon' => 'mdi-account-tie', 'color' => 'primary', 'staff' => $staffPayload($division->divisionHead)],
+                ['key' => 'focalPerson', 'label' => 'Focal Person', 'icon' => 'mdi-account-voice', 'color' => 'info', 'staff' => $staffPayload($division->focalPerson)],
+                ['key' => 'adminAssistant', 'label' => 'Admin Assistant', 'icon' => 'mdi-headset', 'color' => 'success', 'staff' => $staffPayload($division->adminAssistant)],
+                ['key' => 'financeOfficer', 'label' => 'Finance Officer', 'icon' => 'mdi-currency-usd', 'color' => 'warning', 'staff' => $staffPayload($division->financeOfficer)],
+            ],
+            'routes' => [
+                'index' => route('divisions.index'),
+            ],
+            'flash' => [
+                'success' => session('success'),
+            ],
+        ];
     }
 
 }

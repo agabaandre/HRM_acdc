@@ -128,9 +128,13 @@ class DirectorateController extends Controller
     public function show(string $id)
     {
         $directorate = Directorate::with('director')->findOrFail($id);
-        $divisions = Division::where('directorate_id', $id)->get();
+        $divisions = Division::where('directorate_id', $id)
+            ->orderBy('division_name')
+            ->get();
 
-        return view('directorates.show', compact('directorate', 'divisions'));
+        return view('directorates.show', [
+            'pageConfig' => $this->buildDirectorateShowPageConfig($directorate, $divisions),
+        ]);
     }
 
     /**
@@ -200,5 +204,43 @@ class DirectorateController extends Controller
             ->orderBy('lname')
             ->orderBy('fname')
             ->get(['staff_id', 'fname', 'lname', 'title']);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Division>  $divisions
+     * @return array<string, mixed>
+     */
+    private function buildDirectorateShowPageConfig(Directorate $directorate, $divisions): array
+    {
+        $director = $directorate->director;
+
+        return [
+            'directorate' => [
+                'id' => $directorate->id,
+                'name' => $directorate->name,
+                'code' => $directorate->code ?? null,
+                'description' => $directorate->description ?? null,
+                'is_active' => (bool) $directorate->is_active,
+                'created_at' => $directorate->created_at?->format('Y-m-d H:i'),
+                'updated_at' => $directorate->updated_at?->format('Y-m-d H:i'),
+            ],
+            'director' => $director ? [
+                'staff_id' => $director->staff_id,
+                'name' => trim($director->lname.' '.$director->fname),
+                'show_url' => route('staff.show', $director->staff_id),
+            ] : null,
+            'divisions' => $divisions->map(fn (Division $division) => [
+                'id' => $division->id,
+                'division_name' => $division->division_name,
+                'short_name' => $division->division_short_name ?? null,
+                'category' => $division->category ?? null,
+                'is_active' => $division->is_active ?? null,
+                'show_url' => route('divisions.show', $division->id),
+            ])->values()->all(),
+            'routes' => [
+                'index' => route('directorates.index'),
+                'edit' => route('directorates.edit', $directorate->id),
+            ],
+        ];
     }
 }

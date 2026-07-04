@@ -288,13 +288,6 @@ class Matrix extends Model
         return $this->hasMany(ParticipantSchedule::class);
     }
 
-    /**
-     * Build travel days per staff from activities' internal_participants JSON (like staff-quarterly-travel).
-     * Uses effective internal_participants (approved change request overrides activity).
-     * Only includes activities where overall_status != 'cancelled'.
-     * Only counts participant_days where international_travel is 1 (travel days); excludes domestic/non-travel (international_travel=0) so division schedule matches staff drill-down and staff-quarterly-travel report.
-     * Returns array keyed by staff_id (int) with keys division_days, other_days (ints).
-     */
     public function getTravelDaysFromInternalParticipants(): array
     {
         $activities = $this->activities()
@@ -340,6 +333,20 @@ class Matrix extends Model
         }
 
         return $byStaff;
+    }
+
+    /**
+     * Redis-backed travel days map with fallback to live calculation.
+     *
+     * @return array<int, array{division_days: int, other_days: int}>
+     */
+    public function cachedTravelDaysFromInternalParticipants(): array
+    {
+        return \App\Services\ApmPageCache::remember(
+            'matrix_staff_days',
+            ['matrix_id' => $this->id, 'kind' => 'travel_map'],
+            fn () => $this->getTravelDaysFromInternalParticipants()
+        );
     }
 
     public function getDivisionStaffAttribute(){
