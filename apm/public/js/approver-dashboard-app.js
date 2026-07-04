@@ -512,10 +512,12 @@
                         }
                         return p.label;
                     });
-                    const seriesData = points.map((p) => ({
+                    const seriesData = points.map((p, idx) => ({
                         y: p.avg_hours != null && p.avg_hours !== '' ? Number(p.avg_hours) : null,
                         count: Number(p.count) || 0,
                         isCurrent: p.is_current === true,
+                        periodKey: p.period_key,
+                        pointIndex: idx,
                         marker: p.is_current ? {
                             radius: 7,
                             fillColor: '#0284c7',
@@ -535,7 +537,7 @@
                             chart: { type: 'line', height: 320 },
                             title: { text: `${granLabel} average hours trend (all approvers)` },
                             subtitle: {
-                                text: `Average hours per approval action. Blue highlight marks the current ${periodHint}.`,
+                                text: `Average hours per approval action. Click a ${periodHint} to view approvals for that period. Blue highlight marks the current ${periodHint}.`,
                             },
                             xAxis: {
                                 categories,
@@ -558,7 +560,7 @@
                                 pointFormatter() {
                                     const currentNote = this.isCurrent ? '<br/><span style="color:#0369a1">Current ' + periodHint + '</span>' : '';
                                     const avg = this.y != null ? `${this.y} hrs` : 'No actions yet';
-                                    return `Avg: <b>${avg}</b><br/>Actions: <b>${this.count}</b>${currentNote}`;
+                                    return `Avg: <b>${avg}</b><br/>Actions: <b>${this.count}</b>${currentNote}<br/><span style="color:#64748b">Click to view approvals</span>`;
                                 },
                             },
                             plotOptions: {
@@ -567,6 +569,16 @@
                                     lineWidth: 2,
                                     marker: { radius: 4, fillColor: '#119a48' },
                                     connectNulls: false,
+                                    cursor: 'pointer',
+                                    point: {
+                                        events: {
+                                            click() {
+                                                if (typeof this.pointIndex === 'number') {
+                                                    openApprovalsForTrendPeriod(this.pointIndex);
+                                                }
+                                            },
+                                        },
+                                    },
                                 },
                             },
                             series: [{
@@ -718,6 +730,31 @@
                     return `${cfg.routes.timingReport}?${params.toString()}`;
                 }
 
+                function buildTimingReportPeriodUrl(point, gran) {
+                    const params = new URLSearchParams();
+                    if (filters.value.division_id) params.set('division_id', filters.value.division_id);
+                    if (filters.value.doc_type) params.set('document_type', filters.value.doc_type);
+                    if (gran === 'monthly' && point?.period_key) {
+                        const parts = String(point.period_key).split('-');
+                        if (parts[0]) params.set('year', parts[0]);
+                        if (parts[1]) params.set('month', String(parseInt(parts[1], 10)));
+                    } else if (gran === 'weekly' && point?.period_key) {
+                        params.set('year_week', String(point.period_key));
+                    }
+                    return `${cfg.routes.timingReport}?${params.toString()}`;
+                }
+
+                function openApprovalsForTrendPeriod(pointIndex) {
+                    const point = trendPoints.value[pointIndex];
+                    if (!point || !cfg.routes.timingReport) return;
+                    const url = buildTimingReportPeriodUrl(point, trendGranularity.value);
+                    if (typeof window.Livewire !== 'undefined' && typeof window.Livewire.navigate === 'function') {
+                        window.Livewire.navigate(url);
+                    } else {
+                        window.location.href = url;
+                    }
+                }
+
                 function canLinkTiming(staffId) {
                     return cfg.approverTimingReportWideAccess || Number(staffId) === Number(cfg.sessionStaffIdForTiming);
                 }
@@ -814,6 +851,7 @@
                     clearFilters,
                     refreshDashboard,
                     exportData,
+                    openApprovalsForTrendPeriod,
                     timingReportUrl,
                     canLinkTiming,
                     pendingUrl,

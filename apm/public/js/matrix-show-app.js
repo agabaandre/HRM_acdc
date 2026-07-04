@@ -777,32 +777,43 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
-        <v-row dense>
-          <v-col cols="12" md="5">
-            <v-text-field v-model="activitySearch" label="Search activities" prepend-inner-icon="mdi-magnify" clearable />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field v-model="activityDocument" label="Document #" prepend-inner-icon="mdi-pound" clearable />
-          </v-col>
-          <v-col cols="12" md="3" class="d-flex gap-2 align-center">
-            <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="activityPage = 1; loadActivities()">Search</v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-close" @click="resetActivitySearch">Reset</v-btn>
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="activityPerPage"
-              :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
-              item-title="title"
-              item-value="value"
-              label="Show"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="12" md="9" class="d-flex justify-end align-center">
-            <span class="text-body-2 text-medium-emphasis">{{ activityShowingRange }}</span>
-          </v-col>
-        </v-row>
+      <v-card-text class="mx-filter-bar px-4 py-2">
+        <div class="mx-filter-row d-flex flex-wrap align-center">
+          <v-text-field
+            v-model="activitySearch"
+            label="Search activities"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-grow"
+          />
+          <v-text-field
+            v-model="activityDocument"
+            label="Document #"
+            prepend-inner-icon="mdi-pound"
+            clearable
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-doc"
+          />
+          <v-select
+            v-model="activityPerPage"
+            :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+            item-title="title"
+            item-value="value"
+            label="Show"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-page-size"
+          />
+          <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-magnify" @click="activityPage = 1; loadActivities()">Search</v-btn>
+          <v-btn variant="outlined" size="small" prepend-icon="mdi-close" @click="resetActivitySearch">Reset</v-btn>
+          <span class="mx-filter-range text-medium-emphasis">{{ activityShowingRange }}</span>
+        </div>
       </v-card-text>
 
       <v-alert v-if="activitySearchStatus" type="info" variant="tonal" class="mx-4 mb-2" density="compact">
@@ -926,32 +937,43 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
-        <v-row dense>
-          <v-col cols="12" md="5">
-            <v-text-field v-model="singleMemoSearch" label="Search single memos" prepend-inner-icon="mdi-magnify" clearable />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field v-model="singleMemoDocument" label="Document #" prepend-inner-icon="mdi-pound" clearable />
-          </v-col>
-          <v-col cols="12" md="3" class="d-flex gap-2 align-center">
-            <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" @click="singleMemoPage = 1; loadSingleMemos()">Search</v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-close" @click="resetSingleMemoSearch">Reset</v-btn>
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="singleMemoPerPage"
-              :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
-              item-title="title"
-              item-value="value"
-              label="Show"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="12" md="9" class="d-flex justify-end align-center">
-            <span class="text-body-2 text-medium-emphasis">{{ singleMemoShowingRange }}</span>
-          </v-col>
-        </v-row>
+      <v-card-text class="mx-filter-bar px-4 py-2">
+        <div class="mx-filter-row d-flex flex-wrap align-center">
+          <v-text-field
+            v-model="singleMemoSearch"
+            label="Search single memos"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-grow"
+          />
+          <v-text-field
+            v-model="singleMemoDocument"
+            label="Document #"
+            prepend-inner-icon="mdi-pound"
+            clearable
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-doc"
+          />
+          <v-select
+            v-model="singleMemoPerPage"
+            :items="[{ title: '10 per page', value: 10 }, { title: '20 per page', value: 20 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+            item-title="title"
+            item-value="value"
+            label="Show"
+            density="compact"
+            variant="outlined"
+            hide-details
+            class="mx-filter-field mx-filter-page-size"
+          />
+          <v-btn color="primary" variant="flat" size="small" prepend-icon="mdi-magnify" @click="singleMemoPage = 1; loadSingleMemos()">Search</v-btn>
+          <v-btn variant="outlined" size="small" prepend-icon="mdi-close" @click="resetSingleMemoSearch">Reset</v-btn>
+          <span class="mx-filter-range text-medium-emphasis">{{ singleMemoShowingRange }}</span>
+        </div>
       </v-card-text>
 
       <v-alert v-if="singleMemoSearchStatus" type="info" variant="tonal" class="mx-4 mb-2" density="compact">
@@ -1042,27 +1064,30 @@
           </div>
         </v-card-title>
 
-        <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
-          <v-row dense>
-            <v-col cols="12" md="8">
-              <v-text-field
-                v-model="participantSearch"
-                label="Search by name, position, or duty station"
-                prepend-inner-icon="mdi-magnify"
-                clearable
-              />
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-select
-                v-model="participantPerPage"
-                :items="[{ title: '10 per page', value: 10 }, { title: '25 per page', value: 25 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
-                item-title="title"
-                item-value="value"
-                label="Show"
-                hide-details
-              />
-            </v-col>
-          </v-row>
+        <v-card-text class="mx-filter-bar px-4 py-2">
+          <div class="mx-filter-row d-flex flex-wrap align-center">
+            <v-text-field
+              v-model="participantSearch"
+              label="Search by name, position, or duty station"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="mx-filter-field mx-filter-grow-wide"
+            />
+            <v-select
+              v-model="participantPerPage"
+              :items="[{ title: '10 per page', value: 10 }, { title: '25 per page', value: 25 }, { title: '50 per page', value: 50 }, { title: '100 per page', value: 100 }]"
+              item-title="title"
+              item-value="value"
+              label="Show"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="mx-filter-field mx-filter-page-size"
+            />
+          </div>
         </v-card-text>
 
         <v-data-table

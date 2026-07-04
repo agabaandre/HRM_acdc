@@ -129,10 +129,82 @@ class DivisionController extends Controller
             'focalPerson',
             'adminAssistant',
             'financeOfficer',
-            'directorate',
+            'directorate.director',
         ])->findOrFail($id);
 
-        return view('divisions.show', compact('division'));
+        $directorateDirector = $division->directorate?->director;
+
+        return view('divisions.show', [
+            'pageConfig' => $this->buildDivisionShowPageConfig($division, $directorateDirector),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildDivisionShowPageConfig(Division $division, $directorateDirector): array
+    {
+        $mapStaff = static function ($staff): ?array {
+            if (! $staff) {
+                return null;
+            }
+
+            return [
+                'staff_id' => (int) ($staff->staff_id ?? 0),
+                'name' => trim(($staff->fname ?? '').' '.($staff->lname ?? '')),
+                'title' => $staff->title ?? $staff->job_name ?? 'Staff',
+            ];
+        };
+
+        $formatDate = static function ($value): ?string {
+            if (empty($value)) {
+                return null;
+            }
+
+            try {
+                return \Carbon\Carbon::parse($value)->format('M d, Y');
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        return [
+            'division' => [
+                'id' => (int) $division->id,
+                'division_name' => $division->division_name,
+                'division_short_name' => $division->division_short_name,
+                'category' => $division->category,
+                'is_active' => $division->is_active,
+                'directorate' => $division->directorate ? [
+                    'id' => (int) $division->directorate->id,
+                    'name' => $division->directorate->name,
+                ] : null,
+                'director' => $mapStaff($directorateDirector),
+                'head_oic' => [
+                    'staff_id' => $division->head_oic_id,
+                    'start' => $formatDate($division->head_oic_start_date),
+                    'end' => $formatDate($division->head_oic_end_date),
+                ],
+                'director_oic' => [
+                    'staff_id' => $division->director_oic_id,
+                    'start' => $formatDate($division->director_oic_start_date),
+                    'end' => $formatDate($division->director_oic_end_date),
+                ],
+                'staff_roles' => [
+                    ['key' => 'division_head', 'label' => 'Division Head', 'icon' => 'mdi-account-tie', 'color' => 'primary', 'staff' => $mapStaff($division->divisionHead)],
+                    ['key' => 'focal_person', 'label' => 'Focal Person', 'icon' => 'mdi-account-voice', 'color' => 'info', 'staff' => $mapStaff($division->focalPerson)],
+                    ['key' => 'admin_assistant', 'label' => 'Admin Assistant', 'icon' => 'mdi-headset', 'color' => 'success', 'staff' => $mapStaff($division->adminAssistant)],
+                    ['key' => 'finance_officer', 'label' => 'Finance Officer', 'icon' => 'mdi-currency-usd', 'color' => 'warning', 'staff' => $mapStaff($division->financeOfficer)],
+                ],
+            ],
+            'routes' => [
+                'index' => route('divisions.index'),
+                'directoratesShow' => url('directorates'),
+            ],
+            'flash' => [
+                'success' => session('success'),
+            ],
+        ];
     }
 
 }

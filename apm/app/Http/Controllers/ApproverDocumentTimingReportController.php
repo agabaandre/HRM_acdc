@@ -27,21 +27,23 @@ class ApproverDocumentTimingReportController extends Controller
             'reports',
             $request,
             'reports.approver-document-timing.index',
-            ['staff_id', 'division_id', 'document_type', 'year', 'month', 'q', 'page'],
+            ['staff_id', 'division_id', 'document_type', 'year', 'month', 'year_week', 'q', 'page'],
             function () use ($request): array {
                 $staffId = approver_timing_report_effective_staff_id($request);
                 $divisionId = $request->filled('division_id') ? (int) $request->division_id : null;
                 $documentType = $request->filled('document_type') ? (string) $request->document_type : null;
                 $year = $request->filled('year') ? (int) $request->year : null;
                 $month = $request->filled('month') ? (int) $request->month : null;
+                $yearWeek = $request->filled('year_week') ? (int) $request->year_week : null;
                 $search = $request->filled('q') ? trim((string) $request->q) : null;
 
                 $baseQuery = ApproverDocumentTimingRecord::query()
                     ->when($staffId !== null && $staffId > 0, fn ($q) => $q->where('staff_id', $staffId))
                     ->when($divisionId, fn ($q) => $q->where('division_id', $divisionId))
                     ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
-                    ->when($year, fn ($q) => $q->whereYear('acted_at', $year))
-                    ->when($month, fn ($q) => $q->whereMonth('acted_at', $month))
+                    ->when($yearWeek, fn ($q) => $q->whereRaw('YEARWEEK(acted_at, 3) = ?', [$yearWeek]))
+                    ->when(! $yearWeek && $year, fn ($q) => $q->whereYear('acted_at', $year))
+                    ->when(! $yearWeek && $month, fn ($q) => $q->whereMonth('acted_at', $month))
                     ->when($search, function ($q) use ($search): void {
                         $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
                         $q->where(function ($q2) use ($like): void {
@@ -122,6 +124,7 @@ class ApproverDocumentTimingReportController extends Controller
                             'document_type' => $documentType,
                             'year' => $year,
                             'month' => $month,
+                            'year_week' => $yearWeek,
                             'q' => $search,
                         ],
                         'summary' => [

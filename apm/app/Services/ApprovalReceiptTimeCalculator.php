@@ -32,36 +32,84 @@ class ApprovalReceiptTimeCalculator
         $seq = (int) $trail->approval_order;
         $actedAt = Carbon::parse($trail->updated_at ?? $trail->created_at);
 
+        $lastReturn = DB::table('other_memos_approval_trails')
+            ->where('other_memo_id', $memoId)
+            ->where('action', 'returned')
+            ->where('created_at', '<=', $actedAt)
+            ->max('created_at');
+
+        $afterReturn = $lastReturn ? Carbon::parse($lastReturn) : null;
+
         if ($seq <= 1) {
-            $t = DB::table('other_memos_approval_trails')
+            $query = DB::table('other_memos_approval_trails')
                 ->where('other_memo_id', $memoId)
                 ->where('approval_order', 0)
                 ->whereIn('action', ['submitted', 'resubmitted'])
-                ->where('created_at', '<=', $actedAt)
-                ->max('created_at');
+                ->where('created_at', '<=', $actedAt);
+
+            if ($afterReturn !== null) {
+                $query->where('created_at', '>', $afterReturn);
+            }
+
+            $t = $query->max('created_at');
 
             return $t ? Carbon::parse($t) : null;
         }
 
-        $prev = DB::table('other_memos_approval_trails')
+        $prevQuery = DB::table('other_memos_approval_trails')
             ->where('other_memo_id', $memoId)
             ->where('approval_order', '<', $seq)
             ->where('action', 'approved')
-            ->where('created_at', '<=', $actedAt)
-            ->max('created_at');
+            ->where('created_at', '<=', $actedAt);
+
+        if ($afterReturn !== null) {
+            $prevQuery->where('created_at', '>', $afterReturn);
+        }
+
+        $prev = $prevQuery->max('created_at');
 
         if ($prev !== null) {
             return Carbon::parse($prev);
         }
 
-        $t = DB::table('other_memos_approval_trails')
+        $subQuery = DB::table('other_memos_approval_trails')
             ->where('other_memo_id', $memoId)
             ->where('approval_order', 0)
             ->whereIn('action', ['submitted', 'resubmitted'])
-            ->where('created_at', '<=', $actedAt)
-            ->max('created_at');
+            ->where('created_at', '<=', $actedAt);
+
+        if ($afterReturn !== null) {
+            $subQuery->where('created_at', '>', $afterReturn);
+        }
+
+        $t = $subQuery->max('created_at');
 
         return $t ? Carbon::parse($t) : null;
+    }
+
+    /**
+     * SQL expression: latest return-to-submitter before the current action row.
+     */
+    public static function sqlLastReturnBeforeActionExpr(string $atAlias = 'at'): string
+    {
+        return "(SELECT MAX(ret_at.updated_at)
+                 FROM approval_trails ret_at
+                 WHERE ret_at.model_type = {$atAlias}.model_type
+                   AND ret_at.model_id = {$atAlias}.model_id
+                   AND ret_at.forward_workflow_id = {$atAlias}.forward_workflow_id
+                   AND ret_at.action = 'returned'
+                   AND ret_at.is_archived = 0
+                   AND ret_at.updated_at < {$atAlias}.updated_at)";
+    }
+
+    /**
+     * SQL fragment: trail row must be after the most recent return (resubmit clock starts at new submission).
+     */
+    public static function sqlAfterLastReturnCondition(string $trailAlias, string $atAlias = 'at'): string
+    {
+        $lastReturn = self::sqlLastReturnBeforeActionExpr($atAlias);
+
+        return "AND {$trailAlias}.updated_at > COALESCE({$lastReturn}, '1970-01-01 00:00:00')";
     }
 
     protected function parseReceivedRow(?object $row): ?Carbon
@@ -75,6 +123,9 @@ class ApprovalReceiptTimeCalculator
 
     protected function approvalTrailReceivedTimeSql(): string
     {
+        $afterReturnPrev = self::sqlAfterLastReturnCondition('prev_at');
+        $afterReturnSub = self::sqlAfterLastReturnCondition('sub_at');
+
         return "
                 SELECT 
                     CASE
@@ -87,7 +138,8 @@ class ApprovalReceiptTimeCalculator
                                AND prev_at.approval_order < at.approval_order
                                AND prev_at.action IN ('approved', 'rejected')
                                AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
+                               AND prev_at.updated_at <= at.updated_at
+                               {$afterReturnPrev}),
                             (SELECT MAX(sub_at.updated_at)
                              FROM approval_trails sub_at
                              WHERE sub_at.model_type = at.model_type
@@ -101,7 +153,8 @@ class ApprovalReceiptTimeCalculator
                                AND sub_at.approval_order = 0
                                AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
+                               AND sub_at.updated_at <= at.updated_at
+                               {$afterReturnSub})
                         )
                         WHEN at.approval_order = 2 THEN COALESCE(
                             (SELECT MAX(prev_at.updated_at)
@@ -112,7 +165,8 @@ class ApprovalReceiptTimeCalculator
                                AND prev_at.approval_order < 2
                                AND prev_at.action IN ('approved', 'rejected')
                                AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
+                               AND prev_at.updated_at <= at.updated_at
+                               {$afterReturnPrev}),
                             (SELECT MAX(sub_at.updated_at)
                              FROM approval_trails sub_at
                              WHERE sub_at.model_type = at.model_type
@@ -126,7 +180,8 @@ class ApprovalReceiptTimeCalculator
                                AND sub_at.approval_order = 0
                                AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
+                               AND sub_at.updated_at <= at.updated_at
+                               {$afterReturnSub})
                         )
                         WHEN at.approval_order = 1 THEN (
                             SELECT MAX(sub_at.updated_at)
@@ -143,6 +198,7 @@ class ApprovalReceiptTimeCalculator
                               AND sub_at.action IN ('submitted', 'resubmitted')
                               AND sub_at.is_archived = 0
                               AND sub_at.updated_at <= at.updated_at
+                              {$afterReturnSub}
                         )
                         ELSE NULL
                     END as received_time

@@ -61,6 +61,34 @@
         background: #fafbfc;
         border-bottom: 1px solid #e8edf2;
     }
+    #matrix-show-app .mx-filter-row {
+        gap: 0.5rem;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-grow {
+        flex: 1 1 160px;
+        min-width: 140px;
+        max-width: 300px;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-doc {
+        flex: 0 1 130px;
+        min-width: 110px;
+        max-width: 150px;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-page-size {
+        flex: 0 1 120px;
+        min-width: 110px;
+        max-width: 130px;
+    }
+    #matrix-show-app .mx-filter-field.mx-filter-grow-wide {
+        flex: 1 1 220px;
+        min-width: 180px;
+        max-width: 480px;
+    }
+    #matrix-show-app .mx-filter-range {
+        margin-left: auto;
+        white-space: nowrap;
+        font-size: 0.8125rem;
+    }
     #matrix-show-app .mx-stat-chip {
         min-width: 88px;
         text-align: center;

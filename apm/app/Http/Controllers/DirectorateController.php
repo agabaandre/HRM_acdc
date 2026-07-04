@@ -128,9 +128,50 @@ class DirectorateController extends Controller
     public function show(string $id)
     {
         $directorate = Directorate::with('director')->findOrFail($id);
-        $divisions = Division::where('directorate_id', $id)->get();
+        $divisions = Division::where('directorate_id', $id)->orderBy('division_name')->get();
 
-        return view('directorates.show', compact('directorate', 'divisions'));
+        return view('directorates.show', [
+            'pageConfig' => $this->buildDirectorateShowPageConfig($directorate, $divisions),
+        ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Division>  $divisions
+     * @return array<string, mixed>
+     */
+    protected function buildDirectorateShowPageConfig(Directorate $directorate, $divisions): array
+    {
+        $director = $directorate->director;
+
+        return [
+            'directorate' => [
+                'id' => (int) $directorate->id,
+                'name' => $directorate->name,
+                'code' => $directorate->code,
+                'description' => $directorate->description,
+                'is_active' => (bool) $directorate->is_active,
+                'director' => $director ? [
+                    'staff_id' => (int) $director->staff_id,
+                    'name' => trim(($director->fname ?? '').' '.($director->lname ?? '')),
+                    'title' => $director->title ?? $director->job_name ?? 'Staff',
+                ] : null,
+                'created_at' => $directorate->created_at?->format('Y-m-d H:i'),
+                'updated_at' => $directorate->updated_at?->format('Y-m-d H:i'),
+            ],
+            'divisions' => $divisions->map(fn (Division $d) => [
+                'id' => (int) $d->id,
+                'division_name' => $d->division_name,
+                'code' => $d->code ?? $d->division_short_name,
+                'is_active' => $d->is_active,
+            ])->values()->all(),
+            'routes' => [
+                'index' => route('directorates.index'),
+                'divisionsShow' => url('divisions'),
+            ],
+            'flash' => [
+                'success' => session('success'),
+            ],
+        ];
     }
 
     /**

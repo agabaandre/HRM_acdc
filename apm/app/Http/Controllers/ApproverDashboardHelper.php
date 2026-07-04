@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ApprovalReceiptTimeCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -292,6 +293,9 @@ trait ApproverDashboardHelper
      */
     protected function buildApproverQuery($workflowId, $search = null, $divisionId = null, $docType = null, $approvalLevel = null)
     {
+        $search = $search !== null ? trim((string) $search) : '';
+        $likePattern = $search !== '' ? '%'.addcslashes($search, '%_\\').'%' : null;
+
         // First, get approvers from the approvers table (only non-division-specific roles)
         $approversQuery = DB::table('workflow_definition as wd')
             ->join('approvers as a', 'wd.id', '=', 'a.workflow_dfn_id')
@@ -320,12 +324,12 @@ trait ApproverDashboardHelper
             ->whereIn('s.status', ['Active', 'Due', 'Under Renewal']);
 
         // Apply filters to approvers query
-        if ($search) {
-            $approversQuery->where(function ($q) use ($search) {
-                $q->where('s.fname', 'like', "%{$search}%")
-                    ->orWhere('s.lname', 'like', "%{$search}%")
-                    ->orWhere('s.work_email', 'like', "%{$search}%")
-                    ->orWhere('wd.role', 'like', "%{$search}%");
+        if ($likePattern !== null) {
+            $approversQuery->where(function ($q) use ($likePattern) {
+                $q->where('s.fname', 'like', $likePattern)
+                    ->orWhere('s.lname', 'like', $likePattern)
+                    ->orWhere('s.work_email', 'like', $likePattern)
+                    ->orWhere('wd.role', 'like', $likePattern);
             });
         }
 
@@ -381,12 +385,13 @@ trait ApproverDashboardHelper
                 ->whereNotNull("d.{$columnName}");
 
             // Apply filters
-            if ($search) {
-                $roleQuery->where(function ($q) use ($search) {
-                    $q->where('s.fname', 'like', "%{$search}%")
-                        ->orWhere('s.lname', 'like', "%{$search}%")
-                        ->orWhere('s.work_email', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%");
+            if ($likePattern !== null) {
+                $roleLabel = (string) $role->role;
+                $roleQuery->where(function ($q) use ($likePattern, $roleLabel) {
+                    $q->where('s.fname', 'like', $likePattern)
+                        ->orWhere('s.lname', 'like', $likePattern)
+                        ->orWhere('s.work_email', 'like', $likePattern)
+                        ->orWhereRaw('? LIKE ?', [$roleLabel, $likePattern]);
                 });
             }
 
@@ -1035,7 +1040,9 @@ trait ApproverDashboardHelper
 
             // Get approval times for this approver at this level.
             // Received = when they actually received the document: for level 1 the most recent submission
-            // before this approval; for level >= 2 the previous level's last approval action before this approval.
+            // before this approval (after any return for revision); for level >= 2 the previous level's last approval action before this approval.
+            $afterReturnPrev = ApprovalReceiptTimeCalculator::sqlAfterLastReturnCondition('prev_at');
+            $afterReturnSub = ApprovalReceiptTimeCalculator::sqlAfterLastReturnCondition('sub_at');
             if ($levelNo == 1) {
                 $sql = "
                     SELECT 
@@ -1056,6 +1063,7 @@ trait ApproverDashboardHelper
                            AND sub_at.action IN ('submitted', 'resubmitted')
                            AND sub_at.is_archived = 0
                            AND sub_at.updated_at <= at.updated_at
+                           {$afterReturnSub}
                         ) as submitted_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
@@ -1080,7 +1088,8 @@ trait ApproverDashboardHelper
                                AND prev_at.approval_order < at.approval_order
                                AND prev_at.action IN ('approved', 'rejected')
                                AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
+                               AND prev_at.updated_at <= at.updated_at
+                               {$afterReturnPrev}),
                             (SELECT MAX(sub_at.updated_at)
                              FROM approval_trails sub_at
                              WHERE sub_at.model_type = at.model_type
@@ -1094,7 +1103,8 @@ trait ApproverDashboardHelper
                                AND sub_at.approval_order = 0
                                AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
+                               AND sub_at.updated_at <= at.updated_at
+                               {$afterReturnSub})
                         ) as submitted_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
@@ -2269,8 +2279,10 @@ trait ApproverDashboardHelper
             // Get all approval actions by this approver.
             // received_time = when item came to this approver:
             // - Order >= 2: latest previous-level approved/rejected before this action; if none, latest order-0 submitted/resubmitted (return/resubmit cycles).
-            // - Order 1: latest order-0 submitted/resubmitted at or before this action.
+            // - Order 1: latest order-0 submitted/resubmitted at or before this action (after any return for revision).
             // approval_time = this approver's updated_at (when they took the action).
+            $afterReturnPrev = ApprovalReceiptTimeCalculator::sqlAfterLastReturnCondition('prev_at');
+            $afterReturnSub = ApprovalReceiptTimeCalculator::sqlAfterLastReturnCondition('sub_at');
             $sql = "
                 SELECT 
                     at.id,
@@ -2289,7 +2301,8 @@ trait ApproverDashboardHelper
                                AND prev_at.approval_order < at.approval_order
                                AND prev_at.action IN ('approved', 'rejected')
                                AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
+                               AND prev_at.updated_at <= at.updated_at
+                               {$afterReturnPrev}),
                             (SELECT MAX(sub_at.updated_at)
                              FROM approval_trails sub_at
                              WHERE sub_at.model_type = at.model_type
@@ -2303,7 +2316,8 @@ trait ApproverDashboardHelper
                                AND sub_at.approval_order = 0
                                AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
+                               AND sub_at.updated_at <= at.updated_at
+                               {$afterReturnSub})
                         )
                         WHEN at.approval_order = 2 THEN COALESCE(
                             (SELECT MAX(prev_at.updated_at)
@@ -2314,7 +2328,8 @@ trait ApproverDashboardHelper
                                AND prev_at.approval_order < 2
                                AND prev_at.action IN ('approved', 'rejected')
                                AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
+                               AND prev_at.updated_at <= at.updated_at
+                               {$afterReturnPrev}),
                             (SELECT MAX(sub_at.updated_at)
                              FROM approval_trails sub_at
                              WHERE sub_at.model_type = at.model_type
@@ -2328,7 +2343,8 @@ trait ApproverDashboardHelper
                                AND sub_at.approval_order = 0
                                AND sub_at.action IN ('submitted', 'resubmitted')
                                AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
+                               AND sub_at.updated_at <= at.updated_at
+                               {$afterReturnSub})
                         )
                         WHEN at.approval_order = 1 THEN (
                             SELECT MAX(sub_at.updated_at)
@@ -2345,6 +2361,7 @@ trait ApproverDashboardHelper
                               AND sub_at.action IN ('submitted', 'resubmitted')
                               AND sub_at.is_archived = 0
                               AND sub_at.updated_at <= at.updated_at
+                              {$afterReturnSub}
                         )
                         ELSE NULL
                     END as received_time
