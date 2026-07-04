@@ -1072,7 +1072,7 @@
       <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
         <div>
           <div class="text-h6 font-weight-bold d-flex align-center gap-2">
-            <v-icon icon="mdi-file-document-outline" color="info" />
+            <v-icon icon="mdi-file-document-outline" color="primary" />
             Single Memos
           </div>
           <div class="text-body-2 text-medium-emphasis mt-1">
@@ -1138,7 +1138,7 @@
         density="comfortable"
       >
         <template #item.document_number="{ item }">
-          <v-chip color="info" variant="flat" class="mx-doc-chip mx-doc-chip--memo" label>{{ item.document_number || 'N/A' }}</v-chip>
+          <v-chip color="primary" variant="flat" class="mx-doc-chip" label>{{ item.document_number || 'N/A' }}</v-chip>
         </template>
         <template #item.activity_title="{ item }">
           <div class="font-weight-medium">{{ item.activity_title }}</div>

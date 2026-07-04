@@ -68,41 +68,35 @@
         padding-top: 0.25rem;
     }
     #matrix-show-app .mx-single-memos-section {
-        border: 1px solid rgba(37, 99, 235, 0.2) !important;
-        background: #f8fafc;
-        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06) !important;
+        border: 1px solid rgba(17, 154, 72, 0.22) !important;
+        background: #f6fbf8;
+        box-shadow: 0 2px 8px rgba(17, 154, 72, 0.06) !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-section-head {
-        background: linear-gradient(135deg, #eff6ff 0%, #e0ecff 100%) !important;
-        border-bottom: 1px solid rgba(37, 99, 235, 0.14) !important;
+        background: linear-gradient(135deg, #f0fdf4 0%, #e8f5ee 100%) !important;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.16) !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-filter-bar {
-        background: #f3f7fd;
-        border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+        background: #f3faf6;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
     }
     #matrix-show-app .mx-single-memos-section .mx-table-meta {
-        background: #f5f9ff;
-        border-bottom: 1px solid rgba(37, 99, 235, 0.08);
-        color: rgba(30, 64, 175, 0.75);
+        background: #f4faf7;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
+        color: rgba(15, 107, 52, 0.78);
     }
     #matrix-show-app .mx-single-memos-table thead th {
-        background: #eef4fc !important;
-        color: rgba(30, 58, 138, 0.78) !important;
+        background: #ecf7f0 !important;
+        color: rgba(15, 107, 52, 0.82) !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-row-single-memo td {
-        background-color: #fafcff !important;
+        background-color: #f8fcf9 !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-warning td {
-        background-color: #fff7eb !important;
+        background-color: #fff8eb !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-approved td {
-        background-color: #e8f1ff !important;
-    }
-    #matrix-show-app .mx-doc-chip--memo.v-chip {
-        background-color: #2563eb !important;
-    }
-    #matrix-show-app .mx-doc-chip--memo .v-chip__content {
-        color: #fff !important;
+        background-color: #e3f5ea !important;
     }
     #matrix-show-app .mx-section-head {
         background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%) !important;
