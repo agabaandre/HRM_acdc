@@ -331,17 +331,17 @@
         <v-tab value="mySubmitted">
           <v-icon start icon="mdi-file-document" />
           My submitted
-          <v-chip size="x-small" color="success" class="ms-2">{{ counts.my_submitted }}</v-chip>
+          <v-chip size="x-small" color="success" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_submitted }}</v-chip>
         </v-tab>
         <v-tab value="myDivision">
           <v-icon start icon="mdi-office-building" />
           My division
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.my_division }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_division }}</v-chip>
         </v-tab>
         <v-tab v-if="cfg.canViewAllMemos" value="allMemos">
           <v-icon start icon="mdi-grid" />
           All other memos
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.all_memos }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.all_memos }}</v-chip>
         </v-tab>
       </v-tabs>
 

@@ -357,17 +357,17 @@
         <v-tab v-if="cfg.canViewAllActivities" value="all-activities">
           <v-icon start icon="mdi-view-list" />
           All activities
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.all_activities }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.all_activities }}</v-chip>
         </v-tab>
         <v-tab value="my-division">
           <v-icon start icon="mdi-home" />
           My division
-          <v-chip size="x-small" color="success" class="ms-2">{{ counts.my_division }}</v-chip>
+          <v-chip size="x-small" color="success" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_division }}</v-chip>
         </v-tab>
         <v-tab value="shared-activities">
           <v-icon start icon="mdi-share-variant" />
           Shared activities
-          <v-chip size="x-small" color="info" class="ms-2">{{ counts.shared_activities }}</v-chip>
+          <v-chip size="x-small" color="info" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.shared_activities }}</v-chip>
         </v-tab>
       </v-tabs>
 

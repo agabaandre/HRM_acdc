@@ -305,12 +305,12 @@
         <v-tab v-if="showMyDivisionTab" value="myDivision">
           <v-icon start icon="mdi-home" />
           My division
-          <v-chip size="x-small" color="success" class="ms-2">{{ counts.my_division }}</v-chip>
+          <v-chip size="x-small" color="success" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_division }}</v-chip>
         </v-tab>
         <v-tab v-if="cfg.canViewAllMatrices" value="allMatrices">
           <v-icon start icon="mdi-grid" />
           All matrices
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.all }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.all }}</v-chip>
         </v-tab>
       </v-tabs>
 

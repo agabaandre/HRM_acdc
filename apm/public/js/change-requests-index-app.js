@@ -330,22 +330,22 @@
         <v-tab value="myChangeRequests">
           <v-icon start icon="mdi-file-document" />
           My change requests
-          <v-chip size="x-small" color="success" class="ms-2">{{ counts.my_change_requests }}</v-chip>
+          <v-chip size="x-small" color="success" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_change_requests }}</v-chip>
         </v-tab>
         <v-tab value="myDivisionChangeRequests">
           <v-icon start icon="mdi-office-building" />
           My division
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.my_division }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.my_division }}</v-chip>
         </v-tab>
         <v-tab value="sharedChangeRequests">
           <v-icon start icon="mdi-share-variant" />
           Shared
-          <v-chip size="x-small" color="info" class="ms-2">{{ counts.shared }}</v-chip>
+          <v-chip size="x-small" color="info" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.shared }}</v-chip>
         </v-tab>
         <v-tab v-if="cfg.canViewAllChangeRequests" value="allChangeRequests">
           <v-icon start icon="mdi-grid" />
           All change requests
-          <v-chip size="x-small" color="primary" class="ms-2">{{ counts.all }}</v-chip>
+          <v-chip size="x-small" color="primary" variant="flat" class="ms-2 apm-tab-count-chip">{{ counts.all }}</v-chip>
         </v-tab>
       </v-tabs>
 
