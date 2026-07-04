@@ -305,36 +305,39 @@ class WeeklyBriefingController extends Controller
         $yearOptions = range($filingIsoYear - 2, $filingIsoYear + 1);
         $configuredUnitCount = $contributorRows->count();
 
-        return view('weekly-briefing.index', compact(
-            'tab',
-            'thisWeekPaginator',
-            'twStatus',
-            'twSearch',
-            'reports',
-            'filterYear',
-            'filterWeek',
-            'filterStatus',
-            'filterSearch',
-            'yearOptions',
-            'configuredUnitCount',
-            'startUrls',
-            'filingKeySet',
-            'filingWeekReports',
-            'divisionId',
-            'filingIsoYear',
-            'filingIsoWeek',
-            'filingWeekHumanRange',
-            'filingSubmissionDeadline',
-            'allReportsDefaultYear',
-            'allReportsDefaultWeek',
-            'filterWeekRangeLabel',
-            'wbNowY',
-            'wbNowW',
-            'wbDirectorCombinedOptions',
-            'directorReviewKeySet',
-            'hubShowsDirectorateOversight',
-            'hubCanViewAllReports'
-        ));
+        $pageConfig = $this->buildWeeklyBriefingIndexPageConfig(
+            $request,
+            $tab,
+            $twItems,
+            $thisWeekPaginator,
+            $reports,
+            $twStatus,
+            $twSearch,
+            $filterYear,
+            $filterWeek,
+            $filterStatus,
+            $filterSearch,
+            $yearOptions,
+            $configuredUnitCount,
+            $startUrls,
+            $filingKeySet,
+            $filingWeekReports,
+            $filingIsoYear,
+            $filingIsoWeek,
+            $filingWeekHumanRange,
+            $filingSubmissionDeadline,
+            $allReportsDefaultYear,
+            $allReportsDefaultWeek,
+            $filterWeekRangeLabel,
+            $wbNowY,
+            $wbNowW,
+            $wbDirectorCombinedOptions,
+            $directorReviewKeySet,
+            $hubShowsDirectorateOversight,
+            $hubCanViewAllReports
+        );
+
+        return view('weekly-briefing.index', compact('pageConfig'));
     }
 
     public function create(Request $request): RedirectResponse
@@ -823,6 +826,282 @@ class WeeklyBriefingController extends Controller
         });
 
         return $keys;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $twItems
+     * @param  array<string, string>  $startUrls
+     * @param  array<string, true>  $filingKeySet
+     * @param  array<string, true>  $directorReviewKeySet
+     * @param  list<array{directorate_id: int, label: string}>  $wbDirectorCombinedOptions
+     * @return array<string, mixed>
+     */
+    private function buildWeeklyBriefingIndexPageConfig(
+        Request $request,
+        string $tab,
+        array $twItems,
+        LengthAwarePaginator $thisWeekPaginator,
+        $reports,
+        string $twStatus,
+        string $twSearch,
+        int $filterYear,
+        ?int $filterWeek,
+        string $filterStatus,
+        string $filterSearch,
+        array $yearOptions,
+        int $configuredUnitCount,
+        array $startUrls,
+        array $filingKeySet,
+        $filingWeekReports,
+        int $filingIsoYear,
+        int $filingIsoWeek,
+        string $filingWeekHumanRange,
+        $filingSubmissionDeadline,
+        int $allReportsDefaultYear,
+        int $allReportsDefaultWeek,
+        ?string $filterWeekRangeLabel,
+        int $wbNowY,
+        int $wbNowW,
+        array $wbDirectorCombinedOptions,
+        array $directorReviewKeySet,
+        bool $hubShowsDirectorateOversight,
+        bool $hubCanViewAllReports,
+    ): array {
+        $hubSubtitle = $hubShowsDirectorateOversight
+            ? 'You are viewing submission status for divisions in your directorate; open Director review on submitted briefs to review and mark complete.'
+            : (DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant()
+                ? 'You may file weekly briefs for divisions where you are the admin assistant (on behalf of the division head).'
+                : 'Contributors edit assigned units.');
+
+        $thisWeekRows = [];
+        $rowNum = (int) ($thisWeekPaginator->firstItem() ?? 1);
+        foreach ($twItems as $row) {
+            /** @var WeeklyBriefingReport|null $report */
+            $report = $row['report'] ?? null;
+            $key = (string) ($row['key'] ?? '');
+            $statusMeta = $this->weeklyBriefStatusMeta($report);
+            $contributor = $row['contributor'] ?? null;
+            $staffName = '';
+            if ($contributor instanceof WeeklyBriefingContributor && $contributor->staff) {
+                $staffName = trim((string) $contributor->staff->name);
+            }
+
+            $thisWeekRows[] = [
+                'row_num' => $rowNum++,
+                'key' => $key,
+                'label' => (string) ($row['label'] ?? WeeklyBriefingContributor::presentationLabelForContributionKey($key)),
+                'staff_name' => $staffName,
+                'directorate_name' => trim((string) (($row['directorate_display']['directorate_name'] ?? ''))),
+                'director_name' => trim((string) (($row['directorate_display']['director_name'] ?? ''))),
+                'status' => $statusMeta['status'],
+                'status_color' => $statusMeta['color'],
+                'director_review_line' => $report && $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
+                'director_review_reviewed' => $report && $report->requiresDirectorReview() && $report->isDirectorReviewed(),
+                'actions' => $this->weeklyBriefHubActionsForRow(
+                    $report,
+                    $key,
+                    $hubCanViewAllReports,
+                    $filingKeySet,
+                    $directorReviewKeySet,
+                    $startUrls[$key] ?? null
+                ),
+            ];
+        }
+
+        $allReportRows = [];
+        if ($reports) {
+            $allRowNum = (int) ($reports->firstItem() ?? 1);
+            foreach ($reports as $report) {
+                if (! $report instanceof WeeklyBriefingReport) {
+                    continue;
+                }
+                $listKey = (int) ($report->division_id ?? 0) > 0
+                    ? WeeklyBriefingContributor::contributionKeyForDivision((int) $report->division_id)
+                    : (string) $report->contribution_key;
+                $statusMeta = $this->weeklyBriefStatusMeta($report);
+                $dd = $report->hubDirectorateDisplayRow();
+
+                $allReportRows[] = [
+                    'row_num' => $allRowNum++,
+                    'reporting_week' => WeeklyBriefingReport::humanIsoWeekRangeInline(
+                        (int) $report->report_iso_week_year,
+                        (int) $report->report_iso_week
+                    ),
+                    'unit_label' => $report->contributionEntityLabel(),
+                    'directorate_name' => trim((string) ($dd['directorate_name'] ?? '')),
+                    'director_name' => trim((string) ($dd['director_name'] ?? '')),
+                    'week_range' => $report->isoWeekStartEndLabel(true),
+                    'status' => $statusMeta['status'],
+                    'status_color' => $statusMeta['color'],
+                    'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
+                    'director_review_reviewed' => $report->requiresDirectorReview() && $report->isDirectorReviewed(),
+                    'actions' => $this->weeklyBriefHubActionsForRow(
+                        $report,
+                        $listKey,
+                        $hubCanViewAllReports,
+                        $filingKeySet,
+                        $directorReviewKeySet
+                    ),
+                ];
+            }
+        }
+
+        $weekOptions = [['value' => '', 'title' => 'Any week']];
+        for ($w = 1; $w <= 53; $w++) {
+            $weekOptions[] = [
+                'value' => (string) $w,
+                'title' => WeeklyBriefingReport::isoWeekFilterOptionLabel($filterYear, $w),
+            ];
+        }
+
+        return [
+            'tab' => $tab,
+            'hubSubtitle' => $hubSubtitle,
+            'hubShowsDirectorateOversight' => $hubShowsDirectorateOversight,
+            'hubCanViewAllReports' => $hubCanViewAllReports,
+            'flash' => [
+                'status' => session('status'),
+                'error' => session('error'),
+            ],
+            'filing' => [
+                'iso_year' => $filingIsoYear,
+                'iso_week' => $filingIsoWeek,
+                'human_range' => $filingWeekHumanRange,
+                'deadline_date' => $filingSubmissionDeadline->format('D, M j, Y'),
+                'deadline_time' => $filingSubmissionDeadline->format('g:i A'),
+            ],
+            'filters' => [
+                'tw_status' => $twStatus,
+                'tw_search' => $twSearch,
+                'year' => $filterYear,
+                'week' => $filterWeek !== null ? (string) $filterWeek : '',
+                'status' => $filterStatus,
+                'search' => $filterSearch,
+            ],
+            'defaults' => [
+                'all_year' => $allReportsDefaultYear,
+                'all_week' => $allReportsDefaultWeek,
+            ],
+            'filterWeekRangeLabel' => $filterWeekRangeLabel,
+            'configuredUnitCount' => $configuredUnitCount,
+            'thisWeekRows' => $thisWeekRows,
+            'thisWeekPagination' => [
+                'current_page' => $thisWeekPaginator->currentPage(),
+                'last_page' => $thisWeekPaginator->lastPage(),
+                'total' => $thisWeekPaginator->total(),
+                'from' => $thisWeekPaginator->firstItem(),
+                'to' => $thisWeekPaginator->lastItem(),
+            ],
+            'allReportRows' => $allReportRows,
+            'allReportsPagination' => $reports ? [
+                'current_page' => $reports->currentPage(),
+                'last_page' => $reports->lastPage(),
+                'total' => $reports->total(),
+                'from' => $reports->firstItem(),
+                'to' => $reports->lastItem(),
+            ] : null,
+            'yearOptions' => array_map(fn (int $y) => ['value' => (string) $y, 'title' => (string) $y], $yearOptions),
+            'weekOptions' => $weekOptions,
+            'twStatusOptions' => [
+                ['value' => '', 'title' => 'All statuses'],
+                ['value' => 'not_started', 'title' => 'Not started'],
+                ['value' => 'draft', 'title' => 'Draft'],
+                ['value' => 'submitted', 'title' => 'Submitted'],
+                ['value' => 'locked', 'title' => 'Locked'],
+            ],
+            'allStatusOptions' => [
+                ['value' => '', 'title' => 'All'],
+                ['value' => 'draft', 'title' => 'Draft'],
+                ['value' => 'submitted', 'title' => 'Submitted'],
+                ['value' => 'locked', 'title' => 'Locked'],
+            ],
+            'headerActions' => [
+                'filingWeekReports' => $filingWeekReports->map(fn (WeeklyBriefingReport $r) => [
+                    'id' => (int) $r->id,
+                    'label' => $r->contributionEntityLabel().' ('.$r->status.')',
+                    'edit_url' => route('weekly-briefing.edit', $r),
+                    'pdf_url' => route('weekly-briefing.pdf', $r),
+                ])->values()->all(),
+                'startUnits' => collect($startUrls)->map(fn (string $url, string $key) => [
+                    'key' => $key,
+                    'label' => WeeklyBriefingContributor::presentationLabelForContributionKey($key),
+                    'url' => $url,
+                ])->values()->all(),
+                'canCompiledExports' => DivisionWeeklyBriefGate::mayAccessCompiledBriefingExports(),
+                'compiledPdfUrl' => route('weekly-briefing.compiled-pdf', ['year' => $wbNowY, 'week' => $wbNowW]),
+                'completionSummaryUrl' => route('weekly-briefing.completion-summary-pdf', ['year' => $wbNowY, 'week' => $wbNowW]),
+                'directorCombinedOptions' => array_map(fn (array $o) => [
+                    'directorate_id' => (int) $o['directorate_id'],
+                    'label' => (string) $o['label'],
+                    'url' => route('weekly-briefing.directorate-combined-pdf', [
+                        'year' => $wbNowY,
+                        'week' => $wbNowW,
+                        'directorate_id' => (int) $o['directorate_id'],
+                    ]),
+                ], $wbDirectorCombinedOptions),
+            ],
+            'routes' => [
+                'index' => route('weekly-briefing.index'),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, true>  $filingKeySet
+     * @param  array<string, true>  $directorReviewKeySet
+     * @return list<array{label: string, url: string, variant: string, color: string, target?: string}>
+     */
+    private function weeklyBriefHubActionsForRow(
+        ?WeeklyBriefingReport $report,
+        string $listKey,
+        bool $hubCanViewAllReports,
+        array $filingKeySet,
+        array $directorReviewKeySet,
+        ?string $startUrl = null,
+    ): array {
+        $canFile = ! empty($filingKeySet[$listKey]);
+        $canDirReview = ! empty($directorReviewKeySet[$listKey]);
+        $canDirectorReview = $report && $canDirReview && DivisionWeeklyBriefGate::mayDirectorReviewReportOnHub($report);
+        $canDirectorView = $report && $canDirReview && DivisionWeeklyBriefGate::mayDirectorAccessReportOnHub($report);
+
+        $actions = [];
+        if ($report) {
+            if ($hubCanViewAllReports) {
+                $actions[] = ['label' => 'View', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'secondary'];
+                $actions[] = ['label' => 'PDF', 'url' => route('weekly-briefing.pdf', $report), 'variant' => 'outlined', 'color' => 'secondary', 'target' => '_blank'];
+            } else {
+                if ($canFile) {
+                    $actions[] = ['label' => 'Edit', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'primary'];
+                } elseif ($canDirectorReview) {
+                    $actions[] = ['label' => 'Director review', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'tonal', 'color' => 'info'];
+                } elseif ($canDirectorView) {
+                    $actions[] = ['label' => 'View', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'secondary'];
+                }
+                if ($canFile || $canDirectorView || $canDirectorReview) {
+                    $actions[] = ['label' => 'PDF', 'url' => route('weekly-briefing.pdf', $report), 'variant' => 'outlined', 'color' => 'secondary', 'target' => '_blank'];
+                }
+            }
+        } elseif ($canFile && ! $hubCanViewAllReports && $startUrl) {
+            $actions[] = ['label' => 'Start', 'url' => $startUrl, 'variant' => 'flat', 'color' => 'success'];
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @return array{status: string, color: string}
+     */
+    private function weeklyBriefStatusMeta(?WeeklyBriefingReport $report): array
+    {
+        if (! $report) {
+            return ['status' => 'not started', 'color' => 'default'];
+        }
+
+        return match ((string) $report->status) {
+            WeeklyBriefingReport::STATUS_SUBMITTED => ['status' => (string) $report->status, 'color' => 'success'],
+            WeeklyBriefingReport::STATUS_LOCKED => ['status' => (string) $report->status, 'color' => 'secondary'],
+            default => ['status' => (string) $report->status, 'color' => 'warning'],
+        };
     }
 
     private function assertDivisionWeeklyBriefModuleAccess(): void
