@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Activity;
 use App\Models\ChangeRequest;
 use App\Models\FundCode;
+use App\Models\Matrix;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use Illuminate\Support\Facades\Cache;
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Working balance = approved budget − commitments (draft, pending, submitted, approved).
- * Returned, archived, and cancelled records never commit funds.
- * Cached in Redis/default store; busted on budget writes and status changes.
+ * Returned, archived, cancelled, and other non-committing statuses do not reduce working balance.
+ * Cached in Redis/default store; busted on budget writes and archive/unarchive.
  */
 class FundCodeWorkingBalanceService
 {
@@ -26,8 +27,18 @@ class FundCodeWorkingBalanceService
     /** @var list<string> */
     public const ACTIVE_CHANGE_REQUEST_STATUSES = ['draft', 'pending', 'submitted'];
 
-    /** @var list<string> */
-    public const NON_COMMITTING_STATUSES = ['returned', 'archived', 'cancelled'];
+    /**
+     * Never counted toward working-balance commitments (explicit exclusion for clarity).
+     *
+     * @var list<string>
+     */
+    public const NON_COMMITTING_STATUSES = [
+        'returned',
+        'archived',
+        'cancelled',
+        'rejected',
+        'onhold',
+    ];
 
     private const CACHE_TTL_SECONDS = 45;
 
@@ -102,60 +113,116 @@ class FundCodeWorkingBalanceService
         }
     }
 
-    public function bustForActivity(int $activityId): void
+    /**
+     * Refresh working-balance cache after archive/unarchive (status no longer commits funds).
+     */
+    public function bustForArchiveStatusChange(object $model): void
+    {
+        if ($model instanceof Activity) {
+            $this->bustForActivityId((int) $model->id);
+
+            return;
+        }
+
+        if ($model instanceof SpecialMemo || $model instanceof NonTravelMemo) {
+            $this->bustForMemoBudgetFields($model->budget_breakdown ?? null, $model->budget_id ?? null);
+
+            return;
+        }
+
+        if ($model instanceof ChangeRequest) {
+            $this->bustForMemoBudgetFields($model->budget_breakdown ?? null, null);
+
+            return;
+        }
+
+        if ($model instanceof Matrix) {
+            $this->bustForMatrixId((int) $model->id);
+        }
+    }
+
+    public function bustForActivityId(int $activityId): void
     {
         if ($activityId <= 0) {
             return;
         }
 
-        $fundCodes = DB::table('activity_budgets')
+        $refs = DB::table('activity_budgets')
             ->where('activity_id', $activityId)
             ->pluck('fund_code');
 
-        if ($fundCodes->isEmpty()) {
+        $this->bust($this->resolveFundCodeIdsFromStoredReferences($refs));
+    }
+
+    public function bustForMatrixId(int $matrixId): void
+    {
+        if ($matrixId <= 0) {
             return;
         }
 
-        $numericIds = $fundCodes->map(fn ($code) => (int) $code)->filter(fn ($id) => $id > 0)->all();
-        $ids = FundCode::query()
-            ->where(function ($q) use ($fundCodes, $numericIds) {
-                $q->whereIn('code', $fundCodes);
-                if ($numericIds !== []) {
-                    $q->orWhereIn('id', $numericIds);
-                }
-            })
-            ->pluck('id')
-            ->all();
+        $activityIds = Activity::query()
+            ->where('matrix_id', $matrixId)
+            ->pluck('id');
 
-        $this->bust($ids);
+        foreach ($activityIds as $activityId) {
+            $this->bustForActivityId((int) $activityId);
+        }
     }
 
-    public function bustFromBudgetPayload(mixed $budgetId, mixed $budgetBreakdown): void
+    /**
+     * @param  mixed  $budgetBreakdown
+     * @param  mixed  $budgetIds
+     */
+    public function bustForMemoBudgetFields(mixed $budgetBreakdown, mixed $budgetIds = null): void
     {
         $ids = [];
 
-        if (is_string($budgetId)) {
-            $decoded = json_decode($budgetId, true);
-            $budgetId = is_array($decoded) ? $decoded : null;
+        if (is_string($budgetIds) && $budgetIds !== '') {
+            $decoded = json_decode($budgetIds, true);
+            $budgetIds = is_array($decoded) ? $decoded : [];
         }
-
-        if (is_array($budgetId)) {
-            foreach ($budgetId as $key => $value) {
-                if (is_numeric($key)) {
-                    $ids[] = (int) $key;
-                } elseif (is_numeric($value)) {
-                    $ids[] = (int) $value;
+        if (is_array($budgetIds)) {
+            foreach ($budgetIds as $id) {
+                if (is_numeric($id)) {
+                    $ids[] = (int) $id;
                 }
             }
         }
 
-        foreach (array_keys($this->decodeBreakdown($budgetBreakdown)) as $key) {
+        $breakdown = $this->decodeBreakdown($budgetBreakdown);
+        foreach (array_keys($breakdown) as $key) {
             if (is_numeric($key)) {
                 $ids[] = (int) $key;
             }
         }
 
-        $this->bust(array_values(array_unique(array_filter($ids))));
+        $this->bust(array_values(array_unique($ids)));
+    }
+
+    /**
+     * @param  iterable<int|string, mixed>  $refs
+     * @return list<int>
+     */
+    private function resolveFundCodeIdsFromStoredReferences(iterable $refs): array
+    {
+        $ids = [];
+        foreach ($refs as $ref) {
+            $ref = trim((string) $ref);
+            if ($ref === '') {
+                continue;
+            }
+            if (ctype_digit($ref)) {
+                $ids[] = (int) $ref;
+
+                continue;
+            }
+            $id = FundCode::query()->where('code', $ref)->value('id');
+            if ($id) {
+                $ids[] = (int) $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     public function resolveApprovedBudget(FundCode $fundCode): float
@@ -232,8 +299,10 @@ class FundCodeWorkingBalanceService
     {
         $query = DB::table('activity_budgets')
             ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
+            ->join('matrices', 'matrices.id', '=', 'activities.matrix_id')
             ->whereIn('activities.overall_status', self::COMMITTED_ACTIVITY_STATUSES)
             ->whereNotIn('activities.overall_status', self::NON_COMMITTING_STATUSES)
+            ->where('matrices.overall_status', '!=', 'archived')
             ->where(function ($q) use ($fundCode) {
                 $q->where('activity_budgets.fund_code', (string) $fundCode->id)
                     ->orWhere('activity_budgets.fund_code', (string) $fundCode->code);

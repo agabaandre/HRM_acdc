@@ -383,6 +383,14 @@ class ActivityController extends Controller
                 $this->storeParticipantSchedules($internalParticipants,$activity);
 
                 if(count($budgetItems)>0) {
+                    $balanceService = app(FundCodeWorkingBalanceService::class);
+                    $budgetErrors = $balanceService->validateTotals(
+                        $balanceService->activityBudgetTotalsPerCode($budgetItems, true),
+                        (int) $request->input('fund_type', 1)
+                    );
+                    if ($budgetErrors !== []) {
+                        throw new \InvalidArgumentException($budgetErrors[0]);
+                    }
                     $this->storeBudget($budgetCodes,$budgetItems,$activity);
                 }
     
@@ -583,8 +591,8 @@ class ActivityController extends Controller
             'approved_budget' => $snap['approved_budget'],
             'committed_total' => $snap['committed_total'],
             'working_balance' => $snap['working_balance'],
-            'budget_balance' => (float) ($code->budget_balance ?? 0),
-            'legacy_budget_balance' => (float) ($code->budget_balance ?? 0),
+            'budget_balance' => $snap['working_balance'],
+            'legacy_budget_balance' => $code->budget_balance,
             'funder_id' => $code->funder_id,
             'funder_name' => optional($code->funder)->name,
             'show_activity_code' => (bool) (optional($code->funder)->show_activity_code ?? false),
@@ -1186,6 +1194,37 @@ class ActivityController extends Controller
                 }
 
                 // Always call storeBudget to handle both updates and deletions
+                $balanceService = app(FundCodeWorkingBalanceService::class);
+                $isChangeRequest = $request->boolean('change_request') || $request->input('change_request') === '1';
+                if (! empty($budgetItems)) {
+                    if ($isChangeRequest) {
+                        $parentBreakdown = is_string($activity->budget_breakdown)
+                            ? (json_decode($activity->budget_breakdown, true) ?? [])
+                            : ($activity->budget_breakdown ?? []);
+                        $exclude = ['activity_id' => (int) $activity->id];
+                        $crId = $request->integer('change_request_id');
+                        if ($crId > 0) {
+                            $exclude['change_request_id'] = $crId;
+                        }
+                        $budgetErrors = $balanceService->validateChangeRequestIncreases(
+                            $budgetItems,
+                            is_array($parentBreakdown) ? $parentBreakdown : [],
+                            $fundTypeId,
+                            $exclude,
+                            false,
+                            true
+                        );
+                    } else {
+                        $budgetErrors = $balanceService->validateTotals(
+                            $balanceService->activityBudgetTotalsPerCode($budgetItems, true),
+                            $fundTypeId,
+                            ['activity_id' => (int) $activity->id]
+                        );
+                    }
+                    if ($budgetErrors !== []) {
+                        throw new \InvalidArgumentException($budgetErrors[0]);
+                    }
+                }
                 $this->storeBudget($budgetCodes, $budgetItems, $activity);
 
                 $successMessage = 'Activity updated successfully.';
@@ -3604,7 +3643,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
-        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($activity);
 
         return redirect()->back()
             ->with('success', 'Activity archived successfully.');
@@ -3640,7 +3680,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->overall_status = $activity->previous_overall_status ?: 'returned';
         $activity->previous_overall_status = null;
         $activity->save();
-        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($activity);
 
         return redirect()
             ->route('matrices.activities.show', [$matrix, $activity])
@@ -3660,7 +3701,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->previous_overall_status = $this->determineActivityStatusBeforeArchive($activity);
         $activity->overall_status = 'archived';
         $activity->save();
-        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($activity);
 
         return redirect()->back()
             ->with('success', 'Single memo archived successfully.');
@@ -3690,7 +3732,8 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
         $activity->overall_status = $activity->previous_overall_status ?: 'returned';
         $activity->previous_overall_status = null;
         $activity->save();
-        app(FundCodeWorkingBalanceService::class)->bustForActivity((int) $activity->id);
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($activity);
 
         return redirect()
             ->route('activities.single-memos.show', $activity)

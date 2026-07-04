@@ -435,6 +435,17 @@ class NonTravelMemoController extends Controller
         $budgetBreakdownJson = json_encode(is_array($budgetBreakdownPayload) ? $budgetBreakdownPayload : []);
         $attachmentsJson = json_encode($attachments);
 
+        if (! empty($budgetBreakdownPayload) && (int) ($data['fund_type_id'] ?? 0) !== 3) {
+            $balanceService = app(FundCodeWorkingBalanceService::class);
+            $budgetErrors = $balanceService->validateTotals(
+                $balanceService->breakdownTotalsPerCode($budgetBreakdownPayload, true, false),
+                (int) ($data['fund_type_id'] ?? 1)
+            );
+            if ($budgetErrors !== []) {
+                return redirect()->back()->withInput()->with(['msg' => $budgetErrors[0], 'type' => 'error']);
+            }
+        }
+
         // Determine status based on action
         $action = $request->input('action', 'draft');
         $isDraft = ($action === 'draft');
@@ -1174,20 +1185,6 @@ class NonTravelMemoController extends Controller
             \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\NonTravelMemo')
                 ->where('model_id', $nonTravel->id)
                 ->delete();
-
-            if (! $nonTravel->is_draft) {
-                $breakdown = is_string($nonTravel->budget_breakdown)
-                    ? (json_decode($nonTravel->budget_breakdown, true) ?? [])
-                    : ($nonTravel->budget_breakdown ?? []);
-                if (is_array($breakdown) && $breakdown !== []) {
-                    $totalsPerCode = $this->getBudgetTotalsPerCode($breakdown);
-                    foreach ($totalsPerCode as $codeId => $amount) {
-                        if ((float) $amount > 0) {
-                            credit_fund_code_balance((int) $codeId, (float) $amount);
-                        }
-                    }
-                }
-            }
             
             $nonTravel->delete();
             
@@ -2185,10 +2182,8 @@ class NonTravelMemoController extends Controller
         $nonTravel->previous_overall_status = $this->determineStatusBeforeArchive($nonTravel);
         $nonTravel->overall_status = 'archived';
         $nonTravel->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            $nonTravel->budget_id,
-            $nonTravel->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($nonTravel);
 
         return redirect()->back()
             ->with('success', 'Non-travel memo archived successfully.');
@@ -2221,10 +2216,8 @@ class NonTravelMemoController extends Controller
         $nonTravel->overall_status = $nonTravel->previous_overall_status ?: 'returned';
         $nonTravel->previous_overall_status = null;
         $nonTravel->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            $nonTravel->budget_id,
-            $nonTravel->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($nonTravel);
 
         return redirect()->route('non-travel.show', $nonTravel)
             ->with('success', 'Non-travel memo unarchived successfully.');

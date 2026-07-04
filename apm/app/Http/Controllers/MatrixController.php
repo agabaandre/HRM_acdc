@@ -17,6 +17,7 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\FundCode;
 use App\Services\ApprovalService;
+use App\Services\FundCodeWorkingBalanceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Log;
@@ -3321,6 +3322,8 @@ class MatrixController extends Controller
         $matrix->overall_status = 'archived';
         $matrix->save();
 
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($matrix);
+
         return redirect()->back()
             ->with('success', 'Matrix archived successfully.');
     }
@@ -3353,6 +3356,8 @@ class MatrixController extends Controller
         $matrix->overall_status = $matrix->previous_overall_status ?: 'returned';
         $matrix->previous_overall_status = null;
         $matrix->save();
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($matrix);
 
         return redirect()->route('matrices.show', $matrix)
             ->with('success', 'Matrix unarchived successfully.');

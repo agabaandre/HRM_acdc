@@ -570,6 +570,22 @@ class SpecialMemoController extends Controller
             ]);
         }
 
+        if (! empty($budgetItems) && $fundTypeId !== 3) {
+            $balanceService = app(FundCodeWorkingBalanceService::class);
+            $budgetErrors = $balanceService->validateTotals(
+                $balanceService->activityBudgetTotalsPerCode($budgetItems, false),
+                $fundTypeId
+            );
+            if ($budgetErrors !== []) {
+                $errorMessage = $budgetErrors[0];
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
+                }
+
+                return redirect()->back()->withInput()->with(['msg' => $errorMessage, 'type' => 'error']);
+            }
+        }
+    
         try {
             DB::beginTransaction();
     
@@ -1360,21 +1376,6 @@ class SpecialMemoController extends Controller
             \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\SpecialMemo')
                 ->where('model_id', $specialMemo->id)
                 ->delete();
-
-            if (! $specialMemo->is_draft) {
-                $breakdown = is_string($specialMemo->budget_breakdown)
-                    ? (json_decode($specialMemo->budget_breakdown, true) ?? [])
-                    : ($specialMemo->budget_breakdown ?? []);
-                if (is_array($breakdown) && $breakdown !== []) {
-                    $balanceService = app(FundCodeWorkingBalanceService::class);
-                    $totalsPerCode = $balanceService->breakdownTotalsPerCode($breakdown, false, false);
-                    foreach ($totalsPerCode as $codeId => $amount) {
-                        if ((float) $amount > 0) {
-                            credit_fund_code_balance((int) $codeId, (float) $amount);
-                        }
-                    }
-                }
-            }
             
             $specialMemo->delete();
             
@@ -2388,10 +2389,8 @@ class SpecialMemoController extends Controller
         $specialMemo->previous_overall_status = $this->determineStatusBeforeArchive($specialMemo);
         $specialMemo->overall_status = 'archived';
         $specialMemo->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            $specialMemo->budget_id,
-            $specialMemo->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($specialMemo);
 
         return redirect()->back()
             ->with('success', 'Special memo archived successfully.');
@@ -2424,10 +2423,8 @@ class SpecialMemoController extends Controller
         $specialMemo->overall_status = $specialMemo->previous_overall_status ?: 'returned';
         $specialMemo->previous_overall_status = null;
         $specialMemo->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            $specialMemo->budget_id,
-            $specialMemo->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($specialMemo);
 
         return redirect()->route('special-memo.show', $specialMemo)
             ->with('success', 'Special memo unarchived successfully.');

@@ -2194,10 +2194,8 @@ class ChangeRequestController extends Controller
         $changeRequest->previous_overall_status = $this->determineStatusBeforeArchive($changeRequest);
         $changeRequest->overall_status = 'archived';
         $changeRequest->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            null,
-            $changeRequest->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($changeRequest);
 
         return redirect()->back()
             ->with('success', 'Change request archived successfully.');
@@ -2230,10 +2228,8 @@ class ChangeRequestController extends Controller
         $changeRequest->overall_status = $changeRequest->previous_overall_status ?: 'returned';
         $changeRequest->previous_overall_status = null;
         $changeRequest->save();
-        app(FundCodeWorkingBalanceService::class)->bustFromBudgetPayload(
-            null,
-            $changeRequest->budget_breakdown
-        );
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($changeRequest);
 
         return redirect()->route('change-requests.show', $changeRequest)
             ->with('success', 'Change request unarchived successfully.');
