@@ -912,7 +912,13 @@ $(document).ready(function () {
 
         $.get('{{ route("budget-codes.by-fund-type") }}', {
             fund_type_id: fundTypeId,
-            division_id: divisionId
+            division_id: divisionId,
+            @if(isset($activity))
+            exclude_activity_id: {{ (int) $activity->id }},
+            @endif
+            @if(isset($changeRequestForEdit))
+            exclude_change_request_id: {{ (int) $changeRequestForEdit->id }},
+            @endif
         }, function (data) {
             budgetCodesSelect.empty();
             if (data.length) {
@@ -969,7 +975,7 @@ $(document).ready(function () {
                     <h6 class="fw-semibold mb-0">
                         <span class="badge bg-primary me-2">${budgetCode}</span>
                         <span class="float-end text-muted">
-                            Balance: $<span class="text-danger">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            Balance: $<span class="fund-code-header-balance text-success">${parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </span>
                     </h6>
                 </div>
@@ -1206,12 +1212,15 @@ $(document).ready(function () {
             const balanceElement = $(`#budget_codes option[value="${code}"]`);
             const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
             
-            // If editing, add the current activity's budget for this code to available balance
             let availableBalance = budgetBalance;
-            @if(isset($editing) && $editing && isset($fundCodes))
+            if (window.ApmWorkingBalance) {
+                availableBalance = window.ApmWorkingBalance.fundCodeAvailableBalance(code, window.ApmWorkingBalanceConfig || {});
+            } else {
+                @if(isset($editing) && $editing && isset($fundCodes))
                 const currentActivityBudget = parseFloat(balanceElement.data('current-activity-budget')) || 0;
                 availableBalance = budgetBalance + currentActivityBudget;
-            @endif
+                @endif
+            }
             
             // For change requests: only check if NEW items would cause balance to go negative
             // For regular edits: check if total exceeds available balance
@@ -1726,6 +1735,7 @@ $(document).ready(function () {
             'exclude_change_request_id' => isset($changeRequestForEdit) ? (int) $changeRequestForEdit->id : null,
         ]),
         'changeRequestMode' => (bool) request('change_request'),
+        'currentActivityBudgets' => isset($currentActivityBudgets) ? $currentActivityBudgets : new \stdClass(),
     ];
 @endphp
 @include('partials.apm-working-balance-js', ['apmBalanceConfig' => $apmBalanceConfig])

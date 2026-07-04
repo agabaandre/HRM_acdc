@@ -591,7 +591,7 @@ class ActivityController extends Controller
             'approved_budget' => $snap['approved_budget'],
             'committed_total' => $snap['committed_total'],
             'working_balance' => $snap['working_balance'],
-            'budget_balance' => (float) ($code->budget_balance ?? 0),
+            'budget_balance' => $snap['working_balance'],
             'legacy_budget_balance' => (float) ($code->budget_balance ?? 0),
             'funder_id' => $code->funder_id,
             'funder_name' => optional($code->funder)->name,
@@ -894,11 +894,24 @@ class ActivityController extends Controller
         
         // Calculate current activity budget for each fund code (for editing validation)
         $currentActivityBudgets = [];
-        if ($fundCodes->isNotEmpty()) {
-            $activityBudgets = \App\Models\ActivityBudget::where('activity_id', $activity->id)->get();
-            foreach ($fundCodes as $fundCode) {
-                $currentBudget = $activityBudgets->where('fund_code', $fundCode->id)->first();
-                $currentActivityBudgets[$fundCode->id] = $currentBudget ? $currentBudget->total : 0;
+        if (! empty($budgetItems) && is_array($budgetItems)) {
+            foreach ($budgetItems as $codeId => $items) {
+                if ($codeId === 'grand_total') {
+                    continue;
+                }
+                $total = 0.0;
+                $list = is_array($items) ? $items : (is_object($items) ? (array) $items : []);
+                foreach ($list as $item) {
+                    if (! is_array($item) && ! is_object($item)) {
+                        continue;
+                    }
+                    $item = (array) $item;
+                    $unitCost = (float) str_replace(',', '', (string) ($item['unit_cost'] ?? 0));
+                    $units = (float) str_replace(',', '', (string) ($item['units'] ?? 0));
+                    $days = (float) str_replace(',', '', (string) ($item['days'] ?? 0));
+                    $total += $unitCost * $units * $days;
+                }
+                $currentActivityBudgets[(string) $codeId] = round($total, 2);
             }
         }
 

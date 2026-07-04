@@ -22,6 +22,14 @@
         return config || window.ApmWorkingBalanceConfig || {};
     }
 
+    function hasExcludeContext(cfg) {
+        const exclude = (cfg || config()).exclude || {};
+        return Object.keys(exclude).some(function (key) {
+            const value = parseInt(exclude[key], 10);
+            return !Number.isNaN(value) && value > 0;
+        });
+    }
+
     function fundCodeOption(codeId, cfg) {
         const selectSelector = (cfg || config()).selectSelector || '#budget_codes';
         return $(`${selectSelector} option[value="${codeId}"]`);
@@ -40,6 +48,22 @@
         return initial;
     }
 
+    function fundCodeAvailableBalance(codeId, cfg) {
+        const configObj = cfg || config();
+        let available = fundCodeBaseBalance(codeId, configObj);
+        if (hasExcludeContext(configObj)) {
+            return available;
+        }
+
+        const $option = fundCodeOption(codeId, configObj);
+        let currentActivityBudget = parseFloat($option.data('current-activity-budget')) || 0;
+        if (!currentActivityBudget && configObj.currentActivityBudgets && configObj.currentActivityBudgets[codeId]) {
+            currentActivityBudget = parseFloat(configObj.currentActivityBudgets[codeId]) || 0;
+        }
+
+        return available + currentActivityBudget;
+    }
+
     function collectFundCodeIds(selectSelector) {
         const ids = new Set();
         $(selectSelector || '#budget_codes').find('option').each(function () {
@@ -55,10 +79,13 @@
         if (!snap) {
             return 0;
         }
+        if (snap.working_balance !== undefined && snap.working_balance !== null) {
+            return parseFloat(snap.working_balance) || 0;
+        }
         if (snap.budget_balance !== undefined && snap.budget_balance !== null) {
             return parseFloat(snap.budget_balance) || 0;
         }
-        return parseFloat(snap.working_balance ?? snap.workingBalance ?? 0) || 0;
+        return parseFloat(snap.workingBalance ?? 0) || 0;
     }
 
     function applyBalancesToOptions(balances, selectSelector) {
@@ -82,6 +109,12 @@
                 const funder = parts[1].trim();
                 $(this).text(`${code} | ${funder} | $${formatMoney(displayBalance)}`);
             }
+
+            $(`.budget-body[data-code="${id}"]`).closest('.card').find('.fund-code-header-balance').each(function () {
+                $(this).text(formatMoney(displayBalance));
+                $(this).toggleClass('text-danger', displayBalance < 0.009);
+                $(this).toggleClass('text-success', displayBalance >= 0.009);
+            });
         });
 
         if ($select.hasClass('select2-hidden-accessible')) {
@@ -126,13 +159,7 @@
 
     function updateCardRemainingBalance(codeId, subtotal, cfg) {
         const configObj = cfg || config();
-        let initial = fundCodeBaseBalance(codeId, configObj);
-        const $option = fundCodeOption(codeId, configObj);
-        let currentActivityBudget = parseFloat($option.data('current-activity-budget')) || 0;
-        if (!currentActivityBudget && configObj.currentActivityBudgets && configObj.currentActivityBudgets[codeId]) {
-            currentActivityBudget = parseFloat(configObj.currentActivityBudgets[codeId]) || 0;
-        }
-        initial += currentActivityBudget;
+        const initial = fundCodeAvailableBalance(codeId, configObj);
         const remaining = initial - (parseFloat(subtotal) || 0);
         const $card = $(`.budget-body[data-code="${codeId}"]`).closest('.card');
         const $budgetCard = $(`.budget-card[data-code="${codeId}"]`);
@@ -143,6 +170,14 @@
             $balanceEl.toggleClass('text-danger fw-bold', remaining < -0.009);
             $balanceEl.toggleClass('text-success', remaining >= -0.009);
         }
+
+        const $headerBalanceEl = $targetCard.find('.fund-code-header-balance');
+        if ($headerBalanceEl.length) {
+            $headerBalanceEl.text(formatMoney(initial));
+            $headerBalanceEl.toggleClass('text-danger', initial < 0.009);
+            $headerBalanceEl.toggleClass('text-success', initial >= 0.009);
+        }
+
         return remaining;
     }
 
@@ -153,13 +188,7 @@
             return false;
         }
 
-        let available = fundCodeBaseBalance(codeId, cfg);
-        const $option = fundCodeOption(codeId, cfg);
-        const currentActivityBudget = parseFloat($option.data('current-activity-budget')) || 0;
-        available += currentActivityBudget;
-        if (!currentActivityBudget && cfg.currentActivityBudgets && cfg.currentActivityBudgets[codeId]) {
-            available += parseFloat(cfg.currentActivityBudgets[codeId]) || 0;
-        }
+        const available = fundCodeAvailableBalance(codeId, cfg);
 
         if (cfg.changeRequestMode) {
             const original = (cfg.originalSubtotals && cfg.originalSubtotals[codeId]) || 0;
@@ -224,6 +253,8 @@
         showBudgetWarning,
         updateCardRemainingBalance,
         fundCodeBaseBalance,
+        fundCodeAvailableBalance,
+        hasExcludeContext,
         formatMoney,
         FINANCE_EXCEED_WARNING,
     };
