@@ -289,7 +289,7 @@ class FundCodeWorkingBalanceService
             $query->where('id', '!=', (int) $exclude['change_request_id']);
         }
 
-        $this->commitmentSettings()->applyDraftAgeFilter($query, 'change_requests', $statuses);
+        $this->commitmentSettings()->applyDraftAgeFilter($query, (new ChangeRequest)->getTable(), $statuses);
 
         $rows = $query->get([
             'id',
