@@ -130,7 +130,7 @@ class DivisionController extends Controller
             'focalPerson',
             'adminAssistant',
             'financeOfficer',
-            'directorate',
+            'directorate.director',
         ])->findOrFail($id);
 
         return view('divisions.show', [
@@ -185,6 +185,7 @@ class DivisionController extends Controller
                 'name' => $division->directorate->name,
                 'show_url' => route('directorates.show', $division->directorate->id),
             ] : null,
+            'director' => $staffPayload($division->directorate?->director),
             'staffRoles' => [
                 ['key' => 'divisionHead', 'label' => 'Division Head', 'icon' => 'mdi-account-tie', 'color' => 'primary', 'staff' => $staffPayload($division->divisionHead)],
                 ['key' => 'focalPerson', 'label' => 'Focal Person', 'icon' => 'mdi-account-voice', 'color' => 'info', 'staff' => $staffPayload($division->focalPerson)],

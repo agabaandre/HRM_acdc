@@ -63,6 +63,7 @@
             setup() {
                 const division = ref(cfg.division || {});
                 const directorate = ref(cfg.directorate || null);
+                const director = ref(cfg.director || null);
                 const staffRoles = ref(cfg.staffRoles || []);
                 const routes = ref(cfg.routes || {});
                 const flash = ref(cfg.flash || {});
@@ -82,14 +83,19 @@
                         url: directorate.value?.show_url || null,
                     },
                     {
-                        label: 'Director (staff ID)',
-                        value: division.value.director_id || 'Not specified',
+                        label: 'Director',
+                        value: director.value
+                            ? director.value.name
+                            : (division.value.director_id ? `Staff ID ${division.value.director_id}` : 'Not assigned'),
+                        url: director.value?.show_url || null,
+                        meta: director.value?.staff_id ? `Staff ID ${director.value.staff_id}` : null,
                     },
                 ]);
 
                 return {
                     division,
                     directorate,
+                    director,
                     staffRoles,
                     routes,
                     flash,
@@ -156,6 +162,7 @@
                 <div class="dv-show-info-value">
                   <a v-if="field.url" :href="field.url" class="text-decoration-none text-primary font-weight-medium">{{ field.value }}</a>
                   <span v-else>{{ field.value }}</span>
+                  <div v-if="field.meta" class="text-body-2 text-medium-emphasis mt-1">{{ field.meta }}</div>
                 </div>
               </v-col>
             </v-row>

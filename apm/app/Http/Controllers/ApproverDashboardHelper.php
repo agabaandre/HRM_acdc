@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ApprovalReceiptTimeCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 trait ApproverDashboardHelper
 {
-    /** SQL fragment: latest submit/resubmit time (ARF/RFS start at approval_level > 1, so order is not always 0). */
+    /** SQL fragment: latest submit/resubmit after last return before final approval. */
     private function workflowStatsSubmittedTimeSql(): string
     {
-        return "MAX(CASE WHEN at.action IN ('submitted', 'resubmitted') THEN at.updated_at END)";
+        return ApprovalReceiptTimeCalculator::workflowStatsSubmittedTimeSql();
     }
 
     /**
@@ -287,6 +288,68 @@ trait ApproverDashboardHelper
     }
 
     /**
+     * Allowed divisions-table columns for division-specific approver resolution.
+     *
+     * @var list<string>
+     */
+    private const DIVISION_REFERENCE_COLUMNS = [
+        'division_head',
+        'finance_officer',
+        'director_id',
+        'focal_person',
+        'admin_assistant',
+    ];
+
+    private function sanitizeApproverSearch(?string $search): ?string
+    {
+        if ($search === null) {
+            return null;
+        }
+
+        $search = trim(str_replace("\0", '', $search));
+
+        if ($search === '') {
+            return null;
+        }
+
+        return mb_substr($search, 0, 100);
+    }
+
+    private function isAllowedDivisionReferenceColumn(?string $columnName): bool
+    {
+        return is_string($columnName)
+            && $columnName !== ''
+            && in_array($columnName, self::DIVISION_REFERENCE_COLUMNS, true);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Query\Builder  $query
+     */
+    private function applyApproverStaffSearch($query, ?string $search, ?string $roleLabel = null, bool $includeWorkflowRoleColumn = false): void
+    {
+        $search = $this->sanitizeApproverSearch($search);
+        if ($search === null) {
+            return;
+        }
+
+        if ($roleLabel !== null && $roleLabel !== '' && stripos($roleLabel, $search) !== false) {
+            return;
+        }
+
+        $like = '%'.$search.'%';
+
+        $query->where(function ($q) use ($like, $includeWorkflowRoleColumn) {
+            $q->where('s.fname', 'like', $like)
+                ->orWhere('s.lname', 'like', $like)
+                ->orWhere('s.work_email', 'like', $like);
+
+            if ($includeWorkflowRoleColumn) {
+                $q->orWhere('wd.role', 'like', $like);
+            }
+        });
+    }
+
+    /**
      * Build the base query for approvers from both approvers table and divisions table.
      * Properly handles division-specific approval levels using is_division_specific column.
      */
@@ -320,14 +383,7 @@ trait ApproverDashboardHelper
             ->whereIn('s.status', ['Active', 'Due', 'Under Renewal']);
 
         // Apply filters to approvers query
-        if ($search) {
-            $approversQuery->where(function ($q) use ($search) {
-                $q->where('s.fname', 'like', "%{$search}%")
-                    ->orWhere('s.lname', 'like', "%{$search}%")
-                    ->orWhere('s.work_email', 'like', "%{$search}%")
-                    ->orWhere('wd.role', 'like', "%{$search}%");
-            });
-        }
+        $this->applyApproverStaffSearch($approversQuery, $search, null, true);
 
         if ($divisionId) {
             $approversQuery->where('s.division_id', $divisionId);
@@ -349,7 +405,7 @@ trait ApproverDashboardHelper
 
         foreach ($divisionSpecificRoles as $role) {
             $columnName = $role->division_reference_column;
-            if (! $columnName) {
+            if (! $this->isAllowedDivisionReferenceColumn($columnName)) {
                 continue;
             }
 
@@ -357,6 +413,9 @@ trait ApproverDashboardHelper
             if ($approvalLevel && $role->approval_order != $approvalLevel) {
                 continue;
             }
+
+            $roleLabel = (string) ($role->role ?? '');
+            $escapedRoleLabel = str_replace("'", "''", $roleLabel);
 
             $roleQuery = DB::table('divisions as d')
                 ->join('staff as s', 's.staff_id', '=', "d.{$columnName}")
@@ -370,9 +429,9 @@ trait ApproverDashboardHelper
                     's.photo',
                     'd.id as division_id', // Use the division they're assigned to, not their own division
                     'd.division_name',
-                    DB::raw("{$role->approval_order} as level_no"),
-                    DB::raw("{$role->workflow_id} as workflow_id"),
-                    DB::raw("'{$role->role}' as role"),
+                    DB::raw((int) $role->approval_order.' as level_no'),
+                    DB::raw((int) $role->workflow_id.' as workflow_id'),
+                    DB::raw("'{$escapedRoleLabel}' as role"),
                     DB::raw('1 as is_division_specific'),
                     DB::raw("'{$columnName}' as division_reference_column"),
                     DB::raw("'divisions_table' as source"),
@@ -381,14 +440,7 @@ trait ApproverDashboardHelper
                 ->whereNotNull("d.{$columnName}");
 
             // Apply filters
-            if ($search) {
-                $roleQuery->where(function ($q) use ($search) {
-                    $q->where('s.fname', 'like', "%{$search}%")
-                        ->orWhere('s.lname', 'like', "%{$search}%")
-                        ->orWhere('s.work_email', 'like', "%{$search}%")
-                        ->orWhere('role', 'like', "%{$search}%");
-                });
-            }
+            $this->applyApproverStaffSearch($roleQuery, $search, $roleLabel);
 
             if ($divisionId) {
                 $roleQuery->where('d.id', $divisionId);
@@ -1033,30 +1085,13 @@ trait ApproverDashboardHelper
         try {
             // No date filtering needed for approval time calculation
 
-            // Get approval times for this approver at this level.
-            // Received = when they actually received the document: for level 1 the most recent submission
-            // before this approval; for level >= 2 the previous level's last approval action before this approval.
-            if ($levelNo == 1) {
-                $sql = "
+            $receivedCase = app(ApprovalReceiptTimeCalculator::class)->receivedTimeCaseSql('at');
+            $sql = "
                     SELECT 
                         at.model_id,
                         at.model_type,
                         at.updated_at as approval_time,
-                        (SELECT MAX(sub_at.updated_at)
-                         FROM approval_trails sub_at
-                         WHERE sub_at.model_type = at.model_type
-                           AND sub_at.model_id = at.model_id
-                           AND (
-                               sub_at.forward_workflow_id = at.forward_workflow_id
-                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                               OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                           )
-                           AND sub_at.approval_order = 0
-                           AND sub_at.action IN ('submitted', 'resubmitted')
-                           AND sub_at.is_archived = 0
-                           AND sub_at.updated_at <= at.updated_at
-                        ) as submitted_time
+                        {$receivedCase} as submitted_time
                     FROM approval_trails at
                     WHERE at.forward_workflow_id = ?
                     AND at.approval_order = ?
@@ -1064,47 +1099,7 @@ trait ApproverDashboardHelper
                     AND at.action IN ('approved', 'rejected')
                     AND at.is_archived = 0
                 ";
-                $params = [$workflowId, $levelNo, $approverId];
-            } else {
-                $sql = "
-                    SELECT 
-                        at.model_id,
-                        at.model_type,
-                        at.updated_at as approval_time,
-                        COALESCE(
-                            (SELECT MAX(prev_at.updated_at)
-                             FROM approval_trails prev_at
-                             WHERE prev_at.model_type = at.model_type
-                               AND prev_at.model_id = at.model_id
-                               AND prev_at.forward_workflow_id = at.forward_workflow_id
-                               AND prev_at.approval_order < at.approval_order
-                               AND prev_at.action IN ('approved', 'rejected')
-                               AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
-                            (SELECT MAX(sub_at.updated_at)
-                             FROM approval_trails sub_at
-                             WHERE sub_at.model_type = at.model_type
-                               AND sub_at.model_id = at.model_id
-                               AND (
-                                   sub_at.forward_workflow_id = at.forward_workflow_id
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                               )
-                               AND sub_at.approval_order = 0
-                               AND sub_at.action IN ('submitted', 'resubmitted')
-                               AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
-                        ) as submitted_time
-                    FROM approval_trails at
-                    WHERE at.forward_workflow_id = ?
-                    AND at.approval_order = ?
-                    AND at.staff_id = ?
-                    AND at.action IN ('approved', 'rejected')
-                    AND at.is_archived = 0
-                ";
-                $params = [$workflowId, $levelNo, $approverId];
-            }
+            $params = [$workflowId, $levelNo, $approverId];
             $results = DB::select($sql, $params);
 
             if (empty($results)) {
@@ -2267,10 +2262,11 @@ trait ApproverDashboardHelper
             }
 
             // Get all approval actions by this approver.
-            // received_time = when item came to this approver:
-            // - Order >= 2: latest previous-level approved/rejected before this action; if none, latest order-0 submitted/resubmitted (return/resubmit cycles).
+            // received_time = when item came to this approver (after last return, if any):
+            // - Order >= 2: latest previous-level approved/rejected; if none, latest order-0 submitted/resubmitted.
             // - Order 1: latest order-0 submitted/resubmitted at or before this action.
             // approval_time = this approver's updated_at (when they took the action).
+            $receivedCase = app(ApprovalReceiptTimeCalculator::class)->receivedTimeCaseSql('at');
             $sql = "
                 SELECT 
                     at.id,
@@ -2279,75 +2275,7 @@ trait ApproverDashboardHelper
                     at.forward_workflow_id,
                     at.approval_order,
                     at.updated_at as approval_time,
-                    CASE
-                        WHEN at.approval_order >= 3 THEN COALESCE(
-                            (SELECT MAX(prev_at.updated_at)
-                             FROM approval_trails prev_at
-                             WHERE prev_at.model_type = at.model_type
-                               AND prev_at.model_id = at.model_id
-                               AND prev_at.forward_workflow_id = at.forward_workflow_id
-                               AND prev_at.approval_order < at.approval_order
-                               AND prev_at.action IN ('approved', 'rejected')
-                               AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
-                            (SELECT MAX(sub_at.updated_at)
-                             FROM approval_trails sub_at
-                             WHERE sub_at.model_type = at.model_type
-                               AND sub_at.model_id = at.model_id
-                               AND (
-                                   sub_at.forward_workflow_id = at.forward_workflow_id
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                               )
-                               AND sub_at.approval_order = 0
-                               AND sub_at.action IN ('submitted', 'resubmitted')
-                               AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
-                        )
-                        WHEN at.approval_order = 2 THEN COALESCE(
-                            (SELECT MAX(prev_at.updated_at)
-                             FROM approval_trails prev_at
-                             WHERE prev_at.model_type = at.model_type
-                               AND prev_at.model_id = at.model_id
-                               AND prev_at.forward_workflow_id = at.forward_workflow_id
-                               AND prev_at.approval_order < 2
-                               AND prev_at.action IN ('approved', 'rejected')
-                               AND prev_at.is_archived = 0
-                               AND prev_at.updated_at <= at.updated_at),
-                            (SELECT MAX(sub_at.updated_at)
-                             FROM approval_trails sub_at
-                             WHERE sub_at.model_type = at.model_type
-                               AND sub_at.model_id = at.model_id
-                               AND (
-                                   sub_at.forward_workflow_id = at.forward_workflow_id
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                   OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                               )
-                               AND sub_at.approval_order = 0
-                               AND sub_at.action IN ('submitted', 'resubmitted')
-                               AND sub_at.is_archived = 0
-                               AND sub_at.updated_at <= at.updated_at)
-                        )
-                        WHEN at.approval_order = 1 THEN (
-                            SELECT MAX(sub_at.updated_at)
-                            FROM approval_trails sub_at
-                            WHERE sub_at.model_type = at.model_type
-                              AND sub_at.model_id = at.model_id
-                              AND (
-                                  sub_at.forward_workflow_id = at.forward_workflow_id
-                                  OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Matrix' AND (SELECT m.forward_workflow_id FROM matrices m WHERE m.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                  OR (sub_at.forward_workflow_id IS NULL AND at.model_type = 'App\\\\Models\\\\Activity' AND (SELECT a.forward_workflow_id FROM activities a WHERE a.id = at.model_id LIMIT 1) = at.forward_workflow_id)
-                                  OR (sub_at.forward_workflow_id IS NULL AND at.model_type NOT IN ('App\\\\Models\\\\Matrix', 'App\\\\Models\\\\Activity') AND at.forward_workflow_id IS NOT NULL)
-                              )
-                              AND sub_at.approval_order = 0
-                              AND sub_at.action IN ('submitted', 'resubmitted')
-                              AND sub_at.is_archived = 0
-                              AND sub_at.updated_at <= at.updated_at
-                        )
-                        ELSE NULL
-                    END as received_time
+                    {$receivedCase} as received_time
                 FROM approval_trails at
                 WHERE at.staff_id = ?
                   AND at.action IN ('approved', 'rejected')
@@ -2387,12 +2315,14 @@ trait ApproverDashboardHelper
     }
 
     /**
-     * Latest order-0 submitted or resubmitted trail time (same workflow matching as order-1 receipt in averages).
+     * Latest order-0 submitted or resubmitted trail time after the last return (same workflow matching as order-1 receipt).
      */
-    protected function selectLastSubmittedTimeForModel(string $modelType, int $modelId, int $forwardWorkflowId): ?string
+    protected function selectLastSubmittedTimeForModel(string $modelType, int $modelId, int $forwardWorkflowId, ?Carbon $before = null): ?string
     {
         $matrixType = 'App\\Models\\Matrix';
         $activityType = 'App\\Models\\Activity';
+        $floor = app(ApprovalReceiptTimeCalculator::class)->lastReturnBeforeForModel($modelType, $modelId, $before);
+        $floorSql = $floor ? ' AND sub_at.updated_at > ?' : '';
 
         $row = DB::selectOne(
             "
@@ -2409,23 +2339,30 @@ trait ApproverDashboardHelper
               AND sub_at.approval_order = 0
               AND sub_at.action IN ('submitted', 'resubmitted')
               AND sub_at.is_archived = 0
+              {$floorSql}
             ",
-            [
-                $modelType, $modelId, $forwardWorkflowId,
-                $modelType, $matrixType, $modelId, $forwardWorkflowId,
-                $modelType, $activityType, $modelId, $forwardWorkflowId,
-                $modelType, $matrixType, $activityType,
-            ]
+            array_merge(
+                [
+                    $modelType, $modelId, $forwardWorkflowId,
+                    $modelType, $matrixType, $modelId, $forwardWorkflowId,
+                    $modelType, $activityType, $modelId, $forwardWorkflowId,
+                    $modelType, $matrixType, $activityType,
+                ],
+                $floor ? [$floor->toDateTimeString()] : []
+            )
         );
 
         return $row->t ?? null;
     }
 
     /**
-     * Latest approved/rejected trail strictly before the given approval order (same workflow).
+     * Latest approved/rejected trail strictly before the given approval order (same workflow), after last return.
      */
-    protected function selectMaxPreviousApprovalBefore(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive): ?string
+    protected function selectMaxPreviousApprovalBefore(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive, ?Carbon $before = null): ?string
     {
+        $floor = app(ApprovalReceiptTimeCalculator::class)->lastReturnBeforeForModel($modelType, $modelId, $before);
+        $floorSql = $floor ? ' AND prev_at.updated_at > ?' : '';
+
         $row = DB::selectOne(
             "
             SELECT MAX(prev_at.updated_at) as t
@@ -2436,8 +2373,12 @@ trait ApproverDashboardHelper
               AND prev_at.approval_order < ?
               AND prev_at.action IN ('approved', 'rejected')
               AND prev_at.is_archived = 0
+              {$floorSql}
             ",
-            [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive]
+            array_merge(
+                [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive],
+                $floor ? [$floor->toDateTimeString()] : []
+            )
         );
 
         return $row->t ?? null;
@@ -2467,16 +2408,17 @@ trait ApproverDashboardHelper
 
         $type = $model->getMorphClass();
         $id = (int) $model->getKey();
+        $before = Carbon::now();
 
         if ($level >= 3) {
-            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, $level);
+            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, $level, $before);
         } elseif ($level === 2) {
-            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, 2);
+            $t = $this->selectMaxPreviousApprovalBefore($type, $id, $wf, 2, $before);
             if ($t === null) {
-                $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf);
+                $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf, $before);
             }
         } else {
-            $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf);
+            $t = $this->selectLastSubmittedTimeForModel($type, $id, $wf, $before);
         }
 
         return $t ? Carbon::parse($t) : null;
