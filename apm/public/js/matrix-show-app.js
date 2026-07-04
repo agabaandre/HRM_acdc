@@ -159,6 +159,14 @@
         return Array.from(codes).filter(Boolean);
     }
 
+    function singleMemoRowBackground(memo) {
+        const status = String(memo?.overall_status || '').toLowerCase();
+        if (status !== 'approved' && status !== 'passed') {
+            return '#ffe8b8';
+        }
+        return '#b8dfc4';
+    }
+
     function canShowSingleMemoDeleteButton(memo, cfg) {
         if (!memo || memo.overall_status !== 'draft') return false;
         const userId = cfg.currentUserId;
@@ -404,12 +412,14 @@
                 function mapSingleMemoRow(memo, index) {
                     const status = getSingleMemoStatus(memo);
                     const budget = calculateBudget(memo.budget_breakdown);
+                    const rowClass = memo.overall_status !== 'approved' ? 'mx-row-single-memo mx-row-warning' : 'mx-row-single-memo mx-row-approved';
                     return {
                         ...memo,
                         row_num: ((singleMemoPage.value - 1) * singleMemoPerPage.value) + index + 1,
                         _status: status,
                         _budget: budget,
-                        _rowClass: ['mx-row-single-memo', memo.overall_status !== 'approved' ? 'mx-row-warning' : 'mx-row-approved'].join(' '),
+                        _rowClass: rowClass,
+                        _rowStyle: { backgroundColor: singleMemoRowBackground(memo) },
                         _canDelete: canShowSingleMemoDeleteButton(memo, cfg),
                     };
                 }
@@ -1133,7 +1143,8 @@
         :loading="singleMemosLoading"
         :items-per-page="-1"
         hide-default-footer
-        :row-props="(data) => ({ class: data.item._rowClass })"
+        :row-props="(data) => ({ class: data.item._rowClass, style: data.item._rowStyle })"
+        :cell-props="({ item }) => ({ style: item._rowStyle || {} })"
         class="apm-list-table mx-matrix-table mx-single-memos-table"
         density="comfortable"
       >

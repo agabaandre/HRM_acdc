@@ -68,35 +68,51 @@
         padding-top: 0.25rem;
     }
     #matrix-show-app .mx-single-memos-section {
-        border: 1px solid rgba(17, 154, 72, 0.22) !important;
-        background: #f6fbf8;
-        box-shadow: 0 2px 8px rgba(17, 154, 72, 0.06) !important;
+        border: 1px solid rgba(17, 154, 72, 0.28) !important;
+        background: #edf7f1;
+        box-shadow: 0 2px 8px rgba(17, 154, 72, 0.08) !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-section-head {
-        background: linear-gradient(135deg, #f0fdf4 0%, #e8f5ee 100%) !important;
-        border-bottom: 1px solid rgba(17, 154, 72, 0.16) !important;
+        background: linear-gradient(135deg, #e8f7ed 0%, #d8f0e0 100%) !important;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.2) !important;
     }
     #matrix-show-app .mx-single-memos-section .mx-filter-bar {
-        background: #f3faf6;
-        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
+        background: #e9f5ed;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.14);
     }
     #matrix-show-app .mx-single-memos-section .mx-table-meta {
-        background: #f4faf7;
-        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
-        color: rgba(15, 107, 52, 0.78);
+        background: #e6f4eb;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.14);
+        color: rgba(15, 107, 52, 0.85);
     }
     #matrix-show-app .mx-single-memos-table thead th {
-        background: #ecf7f0 !important;
-        color: rgba(15, 107, 52, 0.82) !important;
+        background: #c8e6d0 !important;
+        color: rgba(15, 107, 52, 0.95) !important;
     }
-    #matrix-show-app .mx-single-memos-section .mx-row-single-memo td {
-        background-color: #f8fcf9 !important;
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr td,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-data-table__td,
+    #matrix-show-app .mx-single-memos-table tbody tr,
+    #matrix-show-app .mx-single-memos-table tbody tr td {
+        background-color: #c5e8ce !important;
     }
-    #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-warning td {
-        background-color: #fff8eb !important;
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr.mx-row-warning,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr.mx-row-warning td,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table tr.mx-row-warning .v-data-table__td,
+    #matrix-show-app .mx-single-memos-table tbody tr.mx-row-warning,
+    #matrix-show-app .mx-single-memos-table tbody tr.mx-row-warning td {
+        background-color: #ffe8b8 !important;
     }
-    #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-approved td {
-        background-color: #e3f5ea !important;
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr.mx-row-approved,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr.mx-row-approved td,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table tr.mx-row-approved .v-data-table__td,
+    #matrix-show-app .mx-single-memos-table tbody tr.mx-row-approved,
+    #matrix-show-app .mx-single-memos-table tbody tr.mx-row-approved td {
+        background-color: #b8dfc4 !important;
+    }
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr:hover,
+    #matrix-show-app .mx-single-memos-section .v-data-table.mx-single-memos-table .v-table__wrapper table tbody tr:hover td {
+        background-color: #aed9b8 !important;
     }
     #matrix-show-app .mx-section-head {
         background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%) !important;
