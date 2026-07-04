@@ -686,35 +686,15 @@ class FundCodeWorkingBalanceService
     }
 
     /**
+     * Budget overage is advisory only (frontend warning). Finance validates on review.
+     *
      * @param  array<int, float>  $totalsPerFundCodeId
      * @param  array<string, int|null>  $exclude
      * @return list<string>
      */
     public function validateTotals(array $totalsPerFundCodeId, int $fundTypeId, array $exclude = []): array
     {
-        if ($fundTypeId === 3) {
-            return [];
-        }
-
-        $errors = [];
-        foreach ($totalsPerFundCodeId as $fundCodeId => $requested) {
-            $fundCodeId = (int) $fundCodeId;
-            $requested = round((float) $requested, 2);
-            if ($requested <= 0) {
-                continue;
-            }
-            $available = $this->getWorkingBalance($fundCodeId, $exclude);
-            if ($requested > $available + 0.009) {
-                $code = FundCode::query()->whereKey($fundCodeId)->value('code') ?? (string) $fundCodeId;
-                $errors[] = sprintf(
-                    'Budget exceeded for fund code %s. Available: $%s',
-                    $code,
-                    number_format($available, 2)
-                );
-            }
-        }
-
-        return $errors;
+        return [];
     }
 
     /**
@@ -740,7 +720,7 @@ class FundCodeWorkingBalanceService
     }
 
     /**
-     * Change requests: only net increases over the parent memo must fit in working balance.
+     * Change-request budget increases are advisory only (frontend warning).
      *
      * @param  array<mixed, mixed>  $newBreakdown
      * @param  array<mixed, mixed>  $parentBreakdown
@@ -755,35 +735,7 @@ class FundCodeWorkingBalanceService
         bool $useQuantity = false,
         bool $useDays = true
     ): array {
-        if ($fundTypeId === 3) {
-            return [];
-        }
-
-        $style = $useQuantity
-            ? BudgetBreakdownTotal::STYLE_NON_TRAVEL
-            : BudgetBreakdownTotal::STYLE_CHANGE_REQUEST;
-        $newTotals = BudgetBreakdownTotal::fundCodeTotals($newBreakdown, $style);
-        $errors = [];
-
-        foreach ($newTotals as $fundCodeId => $newTotal) {
-            $parentTotal = $this->sumBreakdownForFundCode($parentBreakdown, (int) $fundCodeId, $style);
-            $delta = round(max(0, $newTotal - $parentTotal), 2);
-            if ($delta <= 0) {
-                continue;
-            }
-            $available = $this->getWorkingBalance((int) $fundCodeId, $exclude);
-            if ($delta > $available + 0.009) {
-                $code = FundCode::query()->whereKey($fundCodeId)->value('code') ?? (string) $fundCodeId;
-                $errors[] = sprintf(
-                    'Budget increase for fund code %s exceeds available balance. Additional needed: $%s · Available: $%s',
-                    $code,
-                    number_format($delta, 2),
-                    number_format($available, 2)
-                );
-            }
-        }
-
-        return $errors;
+        return [];
     }
 
     /**
