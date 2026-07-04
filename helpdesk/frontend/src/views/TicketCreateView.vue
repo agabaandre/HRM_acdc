@@ -7,6 +7,7 @@ import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { PRIORITY_ITEMS, type SelectNumberItem, type TicketPriority } from '../lib/helpdeskForm'
+import { canReassignTickets } from '../lib/canReassignTickets'
 import { notifyError, notifyWarning } from '../lib/notify'
 import { hasRichTextContent, htmlContainsDataUriImages } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
@@ -22,7 +23,7 @@ interface StaffRow {
 
 const router = useRouter()
 const auth = useAuthStore()
-const cats = ref<{ id: number; name: string }[]>([])
+const cats = ref<{ id: number; name: string; default_priority?: TicketPriority }[]>([])
 const form = reactive({
   category_id: undefined as number | undefined,
   description: '',
@@ -51,8 +52,14 @@ let skipStaffSearchWatch = false
 /** End user: open ticket for another staff member (loads directory picker). */
 const forSomeoneElse = ref(false)
 
-const canSetPriority = computed(
-  () => auth.me?.profile?.role && auth.me.profile.role !== 'user',
+const canChangePriority = computed(() => canReassignTickets(auth.me?.profile))
+
+const selectedCategory = computed(() =>
+  cats.value.find((c) => c.id === form.category_id) ?? null,
+)
+
+const categoryDefaultPriority = computed(
+  (): TicketPriority => selectedCategory.value?.default_priority ?? 'medium',
 )
 
 const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !== 'user')
@@ -154,7 +161,7 @@ async function loadCats() {
   catsErr.value = null
   catsLoading.value = true
   try {
-    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
+    const { data } = await api.get<{ data: { id: number; name: string; default_priority?: TicketPriority }[] }>('/api/v1/categories')
     cats.value = Array.isArray(data.data) ? data.data : []
     if (cats.value.length === 0) {
       catsErr.value =
@@ -241,6 +248,15 @@ watch(forSomeoneElse, (v) => {
   }
 })
 
+watch(
+  () => form.category_id,
+  () => {
+    if (canChangePriority.value) {
+      form.priority = categoryDefaultPriority.value
+    }
+  },
+)
+
 async function retryDirectory() {
   await loadReferenceData()
   await fetchStaffList()
@@ -313,7 +329,7 @@ async function submit() {
       category_id: form.category_id,
       description: form.description,
     }
-    if (canSetPriority.value) {
+    if (canChangePriority.value) {
       body.priority = form.priority
     }
     if (needsDirectoryPicker.value) {
@@ -435,10 +451,14 @@ async function submit() {
           </template>
         </UFormField>
 
-        <UFormField v-if="canSetPriority" label="Priority" name="priority" class="full">
-          <USelect v-model="form.priority" :items="PRIORITY_ITEMS" :disabled="busy" class="w-full" />
+        <UFormField v-if="canChangePriority" label="Priority" name="priority">
+          <USelect v-model="form.priority" :items="PRIORITY_ITEMS" :disabled="busy" icon="mdi-flag-outline" />
         </UFormField>
-        <p v-else class="muted full">Priority defaults to <strong>medium</strong> for requesters.</p>
+        <p v-else-if="form.category_id" class="muted full">
+          Priority will be set from the category default:
+          <strong>{{ categoryDefaultPriority }}</strong>.
+        </p>
+        <p v-else class="muted full">Priority is taken from the category default when you submit.</p>
 
         <div class="full hd-form-actions">
           <UButton type="submit" color="primary" :loading="busy" :disabled="!canSubmit">

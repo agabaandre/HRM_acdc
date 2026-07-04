@@ -34,6 +34,7 @@ class AdminHelpdeskCategoryController extends Controller
             'slug' => ['nullable', 'string', 'max:191', Rule::unique('helpdesk_categories', 'slug')],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999999'],
             'is_active' => ['sometimes', 'boolean'],
+            'default_priority' => ['sometimes', 'string', Rule::in(['low', 'medium', 'high', 'critical'])],
         ]);
 
         $slug = $validated['slug'] ?? Str::slug($validated['name']);
@@ -46,6 +47,7 @@ class AdminHelpdeskCategoryController extends Controller
             'slug' => $slug,
             'sort_order' => $validated['sort_order'] ?? 0,
             'is_active' => $validated['is_active'] ?? true,
+            'default_priority' => $validated['default_priority'] ?? 'medium',
         ]);
 
         return response()->json(['data' => $row], 201);
@@ -60,6 +62,7 @@ class AdminHelpdeskCategoryController extends Controller
             'slug' => ['sometimes', 'string', 'max:191', Rule::unique('helpdesk_categories', 'slug')->ignore($category->id)],
             'sort_order' => ['sometimes', 'integer', 'min:0', 'max:999999'],
             'is_active' => ['sometimes', 'boolean'],
+            'default_priority' => ['sometimes', 'string', Rule::in(['low', 'medium', 'high', 'critical'])],
         ]);
 
         $category->fill($validated);

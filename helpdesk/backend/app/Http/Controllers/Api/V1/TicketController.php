@@ -153,9 +153,13 @@ class TicketController extends Controller
         $subjectName = $requesterName;
         $subject = $subjects->generate($category, $subjectName, $description);
 
-        $priority = $isEndUser
-            ? 'medium'
-            : ($request->validated('priority') ?? 'medium');
+        $defaultPriority = in_array($category->default_priority, ['low', 'medium', 'high', 'critical'], true)
+            ? $category->default_priority
+            : 'medium';
+        $canOverridePriority = $profile->canReassignTickets();
+        $priority = $canOverridePriority && $request->filled('priority')
+            ? (string) $request->validated('priority')
+            : $defaultPriority;
 
         $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
         $ticketMeta = $requesterDutyStation !== null && $requesterDutyStation !== ''
@@ -221,6 +225,8 @@ class TicketController extends Controller
 
         if ($profile && $profile->role === HelpdeskProfile::ROLE_USER) {
             unset($data['status'], $data['assigned_user_id'], $data['category_id'], $data['priority']);
+        } elseif (array_key_exists('priority', $data) && ! $profile?->canReassignTickets()) {
+            unset($data['priority']);
         }
 
         if (array_key_exists('category_id', $data)) {

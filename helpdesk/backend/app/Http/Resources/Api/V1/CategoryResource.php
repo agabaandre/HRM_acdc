@@ -20,6 +20,7 @@ class CategoryResource extends JsonResource
             'slug' => $this->slug,
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
+            'default_priority' => $this->default_priority ?? 'medium',
         ];
     }
 }

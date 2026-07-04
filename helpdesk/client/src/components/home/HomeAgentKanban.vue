@@ -12,8 +12,10 @@ withDefaults(
   defineProps<{
     /** Hide “Open full agent desk” when already on the agent dashboard. */
     embedded?: boolean
+    /** Hide time-of-day greeting (shown once on the agent desk hero). */
+    hideGreeting?: boolean
   }>(),
-  { embedded: false },
+  { embedded: false, hideGreeting: false },
 )
 
 export interface KanbanTicket {
@@ -201,10 +203,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="hd-kanban" aria-label="Your ticket board">
+  <section class="hd-kanban" :class="{ 'hd-kanban--embedded': embedded }" aria-label="Your ticket board">
     <header class="hd-kanban-head">
       <div>
-        <p class="hd-kanban-eyebrow">{{ greeting }}</p>
+        <p v-if="!hideGreeting" class="hd-kanban-eyebrow">{{ greeting }}</p>
         <h2 class="hd-kanban-title">Your ticket board</h2>
         <p class="hd-kanban-sub">
           Drag cards between columns to update status. Click a card to open the ticket.

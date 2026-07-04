@@ -26,7 +26,7 @@ class UpdateTicketRequest extends FormRequest
             'subject' => ['sometimes', 'string', 'max:500'],
             'description' => ['sometimes', 'nullable', 'string'],
             'priority' => [
-                Rule::prohibitedIf(fn () => $this->user()?->helpdeskProfile?->role === HelpdeskProfile::ROLE_USER),
+                Rule::prohibitedIf(fn () => ! $this->user()?->helpdeskProfile?->canReassignTickets()),
                 'nullable',
                 'string',
                 'in:low,medium,high,critical',

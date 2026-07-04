@@ -36,8 +36,10 @@ class AdminCategoriesApiTest extends TestCase
             'name' => 'Test Category',
             'sort_order' => 99,
             'is_active' => true,
+            'default_priority' => 'high',
         ])->assertCreated()
-            ->assertJsonPath('data.name', 'Test Category');
+            ->assertJsonPath('data.name', 'Test Category')
+            ->assertJsonPath('data.default_priority', 'high');
 
         $cat = HelpdeskCategory::query()->where('name', 'Test Category')->firstOrFail();
 

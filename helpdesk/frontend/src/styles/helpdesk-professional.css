@@ -287,6 +287,14 @@ html.helpdesk-theme-dark .hd-btn--outline {
   margin-bottom: 1rem;
 }
 
+.hd-kanban--embedded .hd-kanban-title {
+  font-size: 1.05rem;
+}
+
+.hd-kanban--embedded .hd-kanban-head {
+  align-items: center;
+}
+
 .hd-kanban-eyebrow {
   margin: 0 0 0.2rem;
   font-size: 0.78rem;

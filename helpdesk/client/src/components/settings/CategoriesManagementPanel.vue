@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError } from '../../lib/helpdeskForm'
+import { fieldError, PRIORITY_ITEMS, type TicketPriority } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess } from '../../lib/notify'
 
 interface CategoryRow {
@@ -12,7 +13,17 @@ interface CategoryRow {
   slug: string
   sort_order: number
   is_active: boolean
+  default_priority: TicketPriority
 }
+
+const headers: DataTableHeader[] = [
+  { title: 'Name', key: 'name', sortable: false, minWidth: '280px' },
+  { title: 'Slug', key: 'slug', sortable: false, minWidth: '160px' },
+  { title: 'Default priority', key: 'default_priority', sortable: false, width: '180px' },
+  { title: 'Order', key: 'sort_order', sortable: false, width: '110px' },
+  { title: 'Active', key: 'is_active', sortable: false, width: '90px', align: 'center' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '180px', align: 'end' },
+]
 
 const rows = ref<CategoryRow[]>([])
 const busyId = ref<number | null>(null)
@@ -22,6 +33,7 @@ const draft = reactive({
   slug: '',
   sort_order: 0,
   is_active: true,
+  default_priority: 'medium' as TicketPriority,
 })
 
 function validateDraft(state: typeof draft): FormError[] {
@@ -33,10 +45,18 @@ function validateDraft(state: typeof draft): FormError[] {
   return errors
 }
 
+function normalizeRow(row: CategoryRow): CategoryRow {
+  const priority = row.default_priority
+  return {
+    ...row,
+    default_priority: (['low', 'medium', 'high', 'critical'].includes(priority) ? priority : 'medium') as TicketPriority,
+  }
+}
+
 async function load() {
   try {
     const { data } = await api.get<{ data: CategoryRow[] }>('/api/v1/admin/categories')
-    rows.value = Array.isArray(data.data) ? data.data : []
+    rows.value = (Array.isArray(data.data) ? data.data : []).map(normalizeRow)
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to load categories.'))
   }
@@ -50,6 +70,7 @@ async function save(row: CategoryRow) {
       slug: row.slug,
       sort_order: row.sort_order,
       is_active: row.is_active,
+      default_priority: row.default_priority,
     })
     notifySuccess(`Updated “${row.name}”.`)
     await load()
@@ -68,12 +89,14 @@ async function onCreate(_event: FormSubmitEvent<typeof draft>) {
       slug: draft.slug.trim() || undefined,
       sort_order: draft.sort_order,
       is_active: draft.is_active,
+      default_priority: draft.default_priority,
     })
     notifySuccess('Category created.')
     draft.name = ''
     draft.slug = ''
     draft.sort_order = 0
     draft.is_active = true
+    draft.default_priority = 'medium'
     await load()
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Create failed'))
@@ -106,65 +129,95 @@ onMounted(() => {
 <template>
   <section class="panel" aria-labelledby="cat-heading">
     <h2 id="cat-heading">Issue categories</h2>
-    <p class="hint">Used on tickets and agent routing. Inactive categories stay hidden from new requests where the public list filters active only.</p>
+    <p class="hint">
+      Used on tickets and agent routing. Each category’s <strong>default priority</strong> is applied when a ticket is created.
+      Only agents with <strong>Reassign tickets</strong> permission may override priority on new or existing tickets.
+    </p>
 
-    <UCard class="new-card">
-      <template #header>
-        <h3>Add category</h3>
-      </template>
-      <UForm
-        :state="draft"
-        :validate="validateDraft"
-        class="hd-form hd-form--grid"
-        @submit="onCreate"
+    <v-card class="new-card" variant="outlined">
+      <v-card-item>
+        <v-card-title class="text-subtitle-1 font-weight-bold pa-0">Add category</v-card-title>
+      </v-card-item>
+      <v-divider />
+      <v-card-text>
+        <UForm
+          :state="draft"
+          :validate="validateDraft"
+          class="hd-form hd-form--grid"
+          @submit="onCreate"
+        >
+          <UFormField label="Name" name="name" required class="span-2">
+            <UInput v-model="draft.name" maxlength="191" icon="mdi-tag-outline" />
+          </UFormField>
+          <UFormField label="Slug (optional)" name="slug" stacked-label description="Leave blank to auto-generate from the name">
+            <UInput v-model="draft.slug" maxlength="191" placeholder="auto from name" />
+          </UFormField>
+          <UFormField label="Default priority" name="default_priority">
+            <USelect v-model="draft.default_priority" :items="PRIORITY_ITEMS" icon="mdi-flag-outline" />
+          </UFormField>
+          <UFormField label="Sort order" name="sort_order">
+            <UInput v-model.number="draft.sort_order" type="number" min="0" icon="mdi-sort-numeric-ascending" />
+          </UFormField>
+          <UFormField name="is_active">
+            <UCheckbox v-model="draft.is_active" label="Active" />
+          </UFormField>
+          <div class="full hd-form-actions">
+            <UButton type="submit" color="primary" :loading="busyId === -1">Create category</UButton>
+          </div>
+        </UForm>
+      </v-card-text>
+    </v-card>
+
+    <v-card v-if="rows.length" class="cat-table-card" variant="outlined">
+      <v-data-table
+        :headers="headers"
+        :items="rows"
+        item-value="id"
+        density="comfortable"
+        class="hd-data-table cat-table"
+        hide-default-footer
       >
-        <UFormField label="Name" name="name" required>
-          <UInput v-model="draft.name" maxlength="191" class="w-full" />
-        </UFormField>
-        <UFormField label="Slug (optional)" name="slug" description="Leave blank to auto-generate from the name">
-          <UInput v-model="draft.slug" maxlength="191" placeholder="auto from name" class="w-full" />
-        </UFormField>
-        <UFormField label="Sort order" name="sort_order">
-          <UInput v-model.number="draft.sort_order" type="number" min="0" class="w-full" />
-        </UFormField>
-        <UFormField name="is_active">
-          <UCheckbox v-model="draft.is_active" label="Active" />
-        </UFormField>
-        <div class="full hd-form-actions">
-          <UButton type="submit" color="primary" :loading="busyId === -1">Create category</UButton>
-        </div>
-      </UForm>
-    </UCard>
-
-    <div v-if="rows.length" class="table-wrap">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Slug</th>
-            <th>Order</th>
-            <th>Active</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in rows" :key="r.id">
-            <td><UInput v-model="r.name" class="w-full" /></td>
-            <td><UInput v-model="r.slug" class="w-full" /></td>
-            <td><UInput v-model.number="r.sort_order" type="number" min="0" class="w-24" /></td>
-            <td><UCheckbox v-model="r.is_active" /></td>
-            <td class="actions">
-              <UButton type="button" color="neutral" variant="outline" size="xs" :loading="busyId === r.id" @click="save(r)">
-                Save
-              </UButton>
-              <UButton type="button" color="error" variant="soft" size="xs" :disabled="busyId === r.id" @click="remove(r)">
-                Delete
-              </UButton>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <template #item.name="{ item }">
+          <UInput v-model="item.name" class="cat-name-input" />
+        </template>
+        <template #item.slug="{ item }">
+          <UInput v-model="item.slug" />
+        </template>
+        <template #item.default_priority="{ item }">
+          <USelect v-model="item.default_priority" :items="PRIORITY_ITEMS" />
+        </template>
+        <template #item.sort_order="{ item }">
+          <UInput v-model.number="item.sort_order" type="number" min="0" class="cat-order-input" />
+        </template>
+        <template #item.is_active="{ item }">
+          <UCheckbox v-model="item.is_active" hide-details />
+        </template>
+        <template #item.actions="{ item }">
+          <div class="actions">
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outlined"
+              size="small"
+              :loading="busyId === item.id"
+              @click="save(item)"
+            >
+              Save
+            </UButton>
+            <UButton
+              type="button"
+              color="error"
+              variant="soft"
+              size="small"
+              :disabled="busyId === item.id"
+              @click="remove(item)"
+            >
+              Delete
+            </UButton>
+          </div>
+        </template>
+      </v-data-table>
+    </v-card>
     <p v-else class="muted">No categories loaded.</p>
   </section>
 </template>
@@ -173,43 +226,32 @@ onMounted(() => {
 .panel h2 {
   font-size: 1.1rem;
   margin: 0 0 0.35rem;
-}
-.panel h3 {
-  font-size: 0.95rem;
-  margin: 0;
+  font-weight: 700;
 }
 .hint {
   color: var(--cdc-ink-muted, #3d5247);
   font-size: 0.88rem;
   margin: 0 0 1rem;
-  line-height: 1.5;
+  line-height: 1.55;
+  max-width: 52rem;
 }
 .new-card {
   margin-bottom: 1rem;
 }
-.table-wrap {
-  overflow-x: auto;
-  border-radius: 4px;
-  border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
-  background: var(--cdc-white, #fff);
+.cat-table-card {
+  overflow: hidden;
 }
-.tbl {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
+.cat-table :deep(.cat-name-input) {
+  min-width: 260px;
 }
-.tbl th,
-.tbl td {
-  text-align: left;
-  padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid #e2e8f0;
-  vertical-align: middle;
+.cat-table :deep(.cat-order-input) {
+  max-width: 5.5rem;
 }
 .actions {
-  white-space: nowrap;
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .muted {
   color: #64748b;

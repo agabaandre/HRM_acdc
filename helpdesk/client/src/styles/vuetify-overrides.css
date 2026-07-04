@@ -64,6 +64,16 @@ html.helpdesk-theme-dark {
   border-color: var(--hd-line) !important;
 }
 
+.v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  font-weight: 800 !important;
+  color: #334155 !important;
+}
+
+.v-application .v-data-table .v-data-table__th,
+.v-application .v-data-table .v-data-table-header__content {
+  font-weight: 800 !important;
+}
+
 .v-application .v-data-table .v-data-table-footer {
   border-top-color: var(--hd-line) !important;
 }

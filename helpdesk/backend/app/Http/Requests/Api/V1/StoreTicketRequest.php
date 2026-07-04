@@ -28,7 +28,7 @@ class StoreTicketRequest extends FormRequest
             'category_id' => ['required', 'integer', 'exists:helpdesk_categories,id'],
             'description' => ['required', 'string', 'max:65000'],
             'priority' => [
-                Rule::prohibitedIf(fn () => $this->user()?->helpdeskProfile?->role === HelpdeskProfile::ROLE_USER),
+                Rule::prohibitedIf(fn () => ! $this->user()?->helpdeskProfile?->canReassignTickets()),
                 'nullable',
                 'string',
                 'in:low,medium,high,critical',

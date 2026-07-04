@@ -14,6 +14,7 @@ class HelpdeskCategory extends Model
         'slug',
         'sort_order',
         'is_active',
+        'default_priority',
     ];
 
     protected function casts(): array

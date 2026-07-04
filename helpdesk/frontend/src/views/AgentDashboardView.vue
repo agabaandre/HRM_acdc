@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -184,6 +184,83 @@ const filterChips = computed(() => {
   ]
 })
 
+interface KpiCardDef {
+  key: FilterKey
+  label: string
+  icon: string
+  value: number
+  sub: string
+  accent: string
+  accentSoft: string
+  alert?: boolean
+}
+
+const kpiCards = computed((): KpiCardDef[] => {
+  const c = counts.value
+  if (!c) return []
+  return [
+    {
+      key: 'pending',
+      label: 'Open queue',
+      icon: '🗂',
+      value: c.pending,
+      sub: "Tickets you're working on",
+      accent: '#2563eb',
+      accentSoft: '#dbeafe',
+    },
+    {
+      key: 'awaiting',
+      label: 'Awaiting confirm',
+      icon: '⏳',
+      value: c.awaiting_requester_confirmation,
+      sub: 'Resolution sent — waiting on requester',
+      accent: '#d97706',
+      accentSoft: '#fef3c7',
+    },
+    {
+      key: 'overdue',
+      label: 'Overdue',
+      icon: '⚠️',
+      value: c.overdue,
+      sub: c.overdue > 0 ? 'Past SLA — handle now' : 'No SLA breaches',
+      accent: c.overdue > 0 ? '#dc2626' : '#94a3b8',
+      accentSoft: c.overdue > 0 ? '#fee2e2' : '#e2e8f0',
+      alert: c.overdue > 0,
+    },
+    {
+      key: 'due_today',
+      label: 'Due today',
+      icon: '📅',
+      value: c.due_today,
+      sub: 'SLA expires before midnight',
+      accent: '#7c3aed',
+      accentSoft: '#ede9fe',
+    },
+    {
+      key: 'high',
+      label: 'High priority',
+      icon: '🔥',
+      value: c.high_priority_pending,
+      sub: 'High or urgent — still open',
+      accent: '#ea580c',
+      accentSoft: '#ffedd5',
+    },
+    {
+      key: 'resolved',
+      label: 'Resolved (7 days)',
+      icon: '✅',
+      value: c.resolved_this_week,
+      sub: `${c.new_today} new today · ${c.total_received} all-time`,
+      accent: '#16a34a',
+      accentSoft: '#dcfce7',
+    },
+  ]
+})
+
+function toggleWorkMode(mode: 'remote' | 'onsite'): void {
+  void setWorkMode(currentWorkMode.value === mode ? null : mode)
+}
+
 const now = ref(Date.now())
 function refreshNow(): void {
   now.value = Date.now()
@@ -364,208 +441,177 @@ onUnmounted(() => {
       </template>
     </CbpPageHeading>
 
-    <HomeAgentKanban embedded class="agent-kanban" />
-
-    <header class="dash-hello">
-      <div>
-        <p class="dash-greet">{{ greeting }} <span class="dash-wave" aria-hidden="true">👋</span></p>
-        <p class="dash-date">{{ todayLabel }}</p>
-      </div>
-      <div class="dash-tools">
-        <div class="work-mode" role="group" aria-label="Set your current location">
-          <span class="work-mode-label">Working from</span>
-          <div class="work-mode-seg">
-            <button
-              type="button"
-              class="seg-btn"
-              :class="{ active: currentWorkMode === 'remote' }"
-              :disabled="workModeSaving !== null"
-              :aria-pressed="currentWorkMode === 'remote'"
-              :title="currentWorkMode === 'remote' ? 'You are marked remote' : 'Mark yourself as working remotely'"
-              @click="setWorkMode(currentWorkMode === 'remote' ? null : 'remote')"
-            >
-              <span class="seg-dot remote" aria-hidden="true" />
-              {{ workModeSaving === 'remote' ? 'Saving…' : 'Remote' }}
-            </button>
-            <button
-              type="button"
-              class="seg-btn"
-              :class="{ active: currentWorkMode === 'onsite' }"
-              :disabled="workModeSaving !== null"
-              :aria-pressed="currentWorkMode === 'onsite'"
-              :title="currentWorkMode === 'onsite' ? 'You are marked onsite' : 'Mark yourself as working from the office'"
-              @click="setWorkMode(currentWorkMode === 'onsite' ? null : 'onsite')"
-            >
-              <span class="seg-dot onsite" aria-hidden="true" />
-              {{ workModeSaving === 'onsite' ? 'Saving…' : 'Onsite' }}
-            </button>
-          </div>
-        </div>
-        <span v-if="generatedLabel" class="dash-updated">{{ generatedLabel }}</span>
-        <button type="button" class="btn-ghost" :disabled="loading" @click="load">
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
-        </button>
-      </div>
-    </header>
-
     <template v-if="counts">
-      <!-- KPI cards -->
-      <section class="kpis" aria-label="Key metrics">
-        <article
-          class="kpi kpi-pending kpi-action"
-          :class="{ 'kpi-active': activeFilter === 'pending' }"
-          role="button"
-          tabindex="0"
-          aria-label="Open queue — view tickets you are working on"
-          @click="focusFilter('pending')"
-          @keydown="onKpiKeydown($event, 'pending')"
+      <v-sheet class="dash-hero" rounded="lg" elevation="3">
+        <v-row align="center" justify="space-between" class="dash-hero__row">
+          <v-col cols="12" md="auto">
+            <p class="dash-greet">
+              {{ greeting }}
+              <span class="dash-wave" aria-hidden="true">👋</span>
+            </p>
+            <p class="dash-date">{{ todayLabel }}</p>
+          </v-col>
+          <v-col cols="12" md="auto">
+            <div class="dash-tools">
+              <div class="work-mode" role="group" aria-label="Set your current location">
+                <span class="work-mode-label">Working from</span>
+                <v-btn-toggle
+                  class="work-mode-toggle"
+                  divided
+                  rounded="pill"
+                  density="compact"
+                  variant="flat"
+                  :model-value="currentWorkMode"
+                  :disabled="workModeSaving !== null"
+                >
+                  <v-btn
+                    value="remote"
+                    size="small"
+                    :active="currentWorkMode === 'remote'"
+                    @click="toggleWorkMode('remote')"
+                  >
+                    <span class="seg-dot remote" aria-hidden="true" />
+                    {{ workModeSaving === 'remote' ? 'Saving…' : 'Remote' }}
+                  </v-btn>
+                  <v-btn
+                    value="onsite"
+                    size="small"
+                    :active="currentWorkMode === 'onsite'"
+                    @click="toggleWorkMode('onsite')"
+                  >
+                    <span class="seg-dot onsite" aria-hidden="true" />
+                    {{ workModeSaving === 'onsite' ? 'Saving…' : 'Onsite' }}
+                  </v-btn>
+                </v-btn-toggle>
+              </div>
+              <span v-if="generatedLabel" class="dash-updated">{{ generatedLabel }}</span>
+              <v-btn
+                variant="outlined"
+                size="small"
+                class="dash-refresh-btn"
+                :loading="loading"
+                prepend-icon="mdi-refresh"
+                @click="load"
+              >
+                Refresh
+              </v-btn>
+            </div>
+          </v-col>
+        </v-row>
+      </v-sheet>
+
+      <v-row class="kpis" aria-label="Key metrics">
+        <v-col
+          v-for="kpi in kpiCards"
+          :key="kpi.key"
+          cols="12"
+          sm="6"
+          lg="4"
+          xl="2"
         >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">🗂</span>
-            <span class="kpi-label">Open queue</span>
-          </header>
-          <p class="kpi-value">{{ counts.pending }}</p>
-          <p class="kpi-sub">Tickets you're working on</p>
-        </article>
+          <v-card
+            class="kpi-card"
+            :class="{
+              'kpi-card--active': activeFilter === kpi.key,
+              'kpi-card--alert': kpi.alert,
+            }"
+            variant="outlined"
+            :style="{
+              '--kpi-accent': kpi.accent,
+              '--kpi-accent-soft': kpi.accentSoft,
+            }"
+            role="button"
+            tabindex="0"
+            :aria-label="`${kpi.label} — ${kpi.sub}`"
+            @click="focusFilter(kpi.key)"
+            @keydown="onKpiKeydown($event, kpi.key)"
+          >
+            <v-card-text class="kpi-card__body">
+              <div class="kpi-card__head">
+                <v-avatar size="28" rounded="sm" class="kpi-card__icon" :color="kpi.accentSoft">
+                  <span aria-hidden="true">{{ kpi.icon }}</span>
+                </v-avatar>
+                <span class="kpi-card__label">{{ kpi.label }}</span>
+              </div>
+              <p class="kpi-card__value">{{ kpi.value }}</p>
+              <p class="kpi-card__sub">{{ kpi.sub }}</p>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
-        <article
-          class="kpi kpi-awaiting kpi-action"
-          :class="{ 'kpi-active': activeFilter === 'awaiting' }"
-          role="button"
-          tabindex="0"
-          aria-label="Awaiting confirm — view tickets waiting on requester"
-          @click="focusFilter('awaiting')"
-          @keydown="onKpiKeydown($event, 'awaiting')"
-        >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">⏳</span>
-            <span class="kpi-label">Awaiting confirm</span>
-          </header>
-          <p class="kpi-value">{{ counts.awaiting_requester_confirmation }}</p>
-          <p class="kpi-sub">Resolution sent — waiting on requester</p>
-        </article>
+      <HomeAgentKanban embedded hide-greeting class="agent-kanban" />
 
-        <article
-          class="kpi kpi-overdue kpi-action"
-          :class="{ alert: counts.overdue > 0, 'kpi-active': activeFilter === 'overdue' }"
-          role="button"
-          tabindex="0"
-          aria-label="Overdue — view tickets past SLA"
-          @click="focusFilter('overdue')"
-          @keydown="onKpiKeydown($event, 'overdue')"
-        >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">⚠️</span>
-            <span class="kpi-label">Overdue</span>
-          </header>
-          <p class="kpi-value">{{ counts.overdue }}</p>
-          <p class="kpi-sub">{{ counts.overdue > 0 ? 'Past SLA — handle now' : 'No SLA breaches' }}</p>
-        </article>
+      <v-row v-if="breakdown" class="charts" aria-label="Workload breakdown">
+        <v-col cols="12" md="6">
+          <v-card variant="outlined" class="chart-card">
+            <v-card-item>
+              <v-card-title class="chart-card__title">By status</v-card-title>
+              <template #append>
+                <v-chip size="small" variant="tonal">{{ totalForStatusBar }} tickets</v-chip>
+              </template>
+            </v-card-item>
+            <v-card-text>
+              <div v-if="statusSegments.length" class="bar" role="img" aria-label="Tickets grouped by status">
+                <span
+                  v-for="s in statusSegments"
+                  :key="s.key"
+                  class="bar-seg"
+                  :style="{ width: s.pct + '%', background: s.color }"
+                  :title="`${s.label}: ${s.count}`"
+                />
+              </div>
+              <v-list v-if="statusSegments.length" density="compact" class="legend-list">
+                <v-list-item v-for="s in statusSegments" :key="s.key" class="legend-item">
+                  <template #prepend>
+                    <span class="dot" :style="{ background: s.color }" />
+                  </template>
+                  <v-list-item-title class="legend-label">{{ s.label }}</v-list-item-title>
+                  <template #append>
+                    <span class="legend-count">{{ s.count }}</span>
+                  </template>
+                </v-list-item>
+              </v-list>
+              <p v-else class="muted">No tickets yet.</p>
+            </v-card-text>
+          </v-card>
+        </v-col>
 
-        <article
-          class="kpi kpi-due-today kpi-action"
-          :class="{ 'kpi-active': activeFilter === 'due_today' }"
-          role="button"
-          tabindex="0"
-          aria-label="Due today — view tickets with SLA expiring today"
-          @click="focusFilter('due_today')"
-          @keydown="onKpiKeydown($event, 'due_today')"
-        >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">📅</span>
-            <span class="kpi-label">Due today</span>
-          </header>
-          <p class="kpi-value">{{ counts.due_today }}</p>
-          <p class="kpi-sub">SLA expires before midnight</p>
-        </article>
+        <v-col cols="12" md="6">
+          <v-card variant="outlined" class="chart-card">
+            <v-card-item>
+              <v-card-title class="chart-card__title">By priority</v-card-title>
+              <template #append>
+                <v-chip size="small" variant="tonal">{{ totalForPriorityBar }} tickets</v-chip>
+              </template>
+            </v-card-item>
+            <v-card-text>
+              <div v-if="prioritySegments.length" class="bar" role="img" aria-label="Tickets grouped by priority">
+                <span
+                  v-for="s in prioritySegments"
+                  :key="s.key"
+                  class="bar-seg"
+                  :style="{ width: s.pct + '%', background: s.color }"
+                  :title="`${s.label}: ${s.count}`"
+                />
+              </div>
+              <v-list v-if="prioritySegments.length" density="compact" class="legend-list">
+                <v-list-item v-for="s in prioritySegments" :key="s.key" class="legend-item">
+                  <template #prepend>
+                    <span class="dot" :style="{ background: s.color }" />
+                  </template>
+                  <v-list-item-title class="legend-label">{{ s.label }}</v-list-item-title>
+                  <template #append>
+                    <span class="legend-count">{{ s.count }}</span>
+                  </template>
+                </v-list-item>
+              </v-list>
+              <p v-else class="muted">No tickets yet.</p>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
-        <article
-          class="kpi kpi-high kpi-action"
-          :class="{ 'kpi-active': activeFilter === 'high' }"
-          role="button"
-          tabindex="0"
-          aria-label="High priority — view urgent open tickets"
-          @click="focusFilter('high')"
-          @keydown="onKpiKeydown($event, 'high')"
-        >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">🔥</span>
-            <span class="kpi-label">High priority</span>
-          </header>
-          <p class="kpi-value">{{ counts.high_priority_pending }}</p>
-          <p class="kpi-sub">High or urgent — still open</p>
-        </article>
-
-        <article
-          class="kpi kpi-resolved kpi-action"
-          :class="{ 'kpi-active': activeFilter === 'resolved' }"
-          role="button"
-          tabindex="0"
-          aria-label="Resolved — view recently resolved tickets"
-          @click="focusFilter('resolved')"
-          @keydown="onKpiKeydown($event, 'resolved')"
-        >
-          <header>
-            <span class="kpi-icon" aria-hidden="true">✅</span>
-            <span class="kpi-label">Resolved (7 days)</span>
-          </header>
-          <p class="kpi-value">{{ counts.resolved_this_week }}</p>
-          <p class="kpi-sub">{{ counts.new_today }} new today · {{ counts.total_received }} all-time</p>
-        </article>
-      </section>
-
-      <!-- Breakdowns -->
-      <section v-if="breakdown" class="charts" aria-label="Workload breakdown">
-        <article class="chart cbp-card">
-          <header class="chart-head">
-            <h2>By status</h2>
-            <span class="chart-total">{{ totalForStatusBar }} tickets</span>
-          </header>
-          <div v-if="statusSegments.length" class="bar" role="img" aria-label="Tickets grouped by status">
-            <span
-              v-for="s in statusSegments"
-              :key="s.key"
-              class="bar-seg"
-              :style="{ width: s.pct + '%', background: s.color }"
-              :title="`${s.label}: ${s.count}`"
-            />
-          </div>
-          <ul v-if="statusSegments.length" class="legend">
-            <li v-for="s in statusSegments" :key="s.key">
-              <span class="dot" :style="{ background: s.color }" />
-              <span class="legend-label">{{ s.label }}</span>
-              <span class="legend-count">{{ s.count }}</span>
-            </li>
-          </ul>
-          <p v-else class="muted">No tickets yet.</p>
-        </article>
-
-        <article class="chart cbp-card">
-          <header class="chart-head">
-            <h2>By priority</h2>
-            <span class="chart-total">{{ totalForPriorityBar }} tickets</span>
-          </header>
-          <div v-if="prioritySegments.length" class="bar" role="img" aria-label="Tickets grouped by priority">
-            <span
-              v-for="s in prioritySegments"
-              :key="s.key"
-              class="bar-seg"
-              :style="{ width: s.pct + '%', background: s.color }"
-              :title="`${s.label}: ${s.count}`"
-            />
-          </div>
-          <ul v-if="prioritySegments.length" class="legend">
-            <li v-for="s in prioritySegments" :key="s.key">
-              <span class="dot" :style="{ background: s.color }" />
-              <span class="legend-label">{{ s.label }}</span>
-              <span class="legend-count">{{ s.count }}</span>
-            </li>
-          </ul>
-          <p v-else class="muted">No tickets yet.</p>
-        </article>
-      </section>
-
-      <!-- Recent activity -->
       <section ref="recentSectionRef" aria-labelledby="recent-heading">
         <v-card class="hd-data-table-card" variant="outlined">
           <v-card-text class="hd-data-table-card__head hd-desk-recent-head">
@@ -574,23 +620,40 @@ onUnmounted(() => {
                 <h2 id="recent-heading">Recent tickets</h2>
                 <p class="recent-sub">Newest 25 tickets assigned to you</p>
               </div>
-              <RouterLink to="/tickets" class="see-all">See all tickets →</RouterLink>
+              <v-btn
+                to="/tickets"
+                variant="text"
+                color="primary"
+                size="small"
+                append-icon="mdi-arrow-right"
+              >
+                See all tickets
+              </v-btn>
             </header>
 
-            <div class="chips" role="tablist" aria-label="Filter recent tickets">
-              <button
+            <v-chip-group
+              v-model="activeFilter"
+              mandatory
+              selected-class="hd-filter-chip--active"
+              class="hd-filter-chips"
+            >
+              <v-chip
                 v-for="c in filterChips"
                 :key="c.key"
-                role="tab"
-                type="button"
-                class="chip"
-                :class="{ 'is-active': activeFilter === c.key, 'chip-warn': c.key === 'overdue' && c.count > 0, 'chip-hot': c.key === 'high' && c.count > 0 }"
-                :aria-selected="activeFilter === c.key"
+                :value="c.key"
+                filter
+                variant="outlined"
+                size="small"
+                :class="{
+                  'hd-filter-chip--warn': c.key === 'overdue' && c.count > 0,
+                  'hd-filter-chip--hot': c.key === 'high' && c.count > 0,
+                }"
                 @click="focusFilter(c.key)"
               >
-                {{ c.label }} <span class="chip-count">{{ c.count }}</span>
-              </button>
-            </div>
+                {{ c.label }}
+                <span class="hd-filter-chip-count">{{ c.count }}</span>
+              </v-chip>
+            </v-chip-group>
 
             <p v-if="filteredRecent.length" class="table-count" role="status">
               Showing <strong>{{ tableCountLabel }}</strong>
@@ -695,9 +758,8 @@ onUnmounted(() => {
       </section>
     </template>
 
-    <p v-else class="muted">Loading…</p>
+    <v-skeleton-loader v-else type="article, table" class="agent-dash-loading" />
 
-    <!-- Reassign modal -->
     <TicketReassignModal
       :ticket="reassignTicket"
       @close="closeReassign"
@@ -714,47 +776,59 @@ onUnmounted(() => {
 }
 
 .agent-kanban {
-  margin-bottom: 0.25rem;
+  margin-top: 0.25rem;
 }
 
-.dash-hello {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 1rem 1.1rem;
-  background: linear-gradient(135deg, #0d7a3a 0%, #119a48 100%);
-  color: #fff;
+.agent-dash-loading {
   border-radius: 4px;
-  box-shadow: 0 6px 18px rgba(13, 122, 58, 0.18);
 }
+
+.dash-hero {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #0d7a3a 0%, #119a48 100%) !important;
+  color: #fff;
+}
+
+.dash-hero__row {
+  margin: 0;
+}
+
 .dash-greet {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
+  line-height: 1.3;
 }
+
 .dash-wave {
   display: inline-block;
   margin-left: 0.25rem;
 }
+
 .dash-date {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  opacity: 0.85;
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+  opacity: 0.88;
 }
+
 .dash-tools {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.65rem;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
+
 .dash-updated {
   font-size: 0.78rem;
   opacity: 0.9;
 }
 
-/* Working-from segmented control */
+.dash-refresh-btn {
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #fff !important;
+}
+
 .work-mode {
   display: flex;
   align-items: center;
@@ -764,6 +838,7 @@ onUnmounted(() => {
   border-radius: 999px;
   padding: 0.25rem 0.4rem 0.25rem 0.85rem;
 }
+
 .work-mode-label {
   font-size: 0.72rem;
   font-weight: 700;
@@ -771,113 +846,54 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
   opacity: 0.92;
 }
-.work-mode-seg {
-  display: inline-flex;
-  background: rgba(15, 23, 42, 0.32);
-  border-radius: 999px;
-  padding: 2px;
+
+.work-mode-toggle {
+  background: rgba(15, 23, 42, 0.32) !important;
 }
-.seg-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.82rem;
+
+.work-mode-toggle :deep(.v-btn) {
+  color: rgba(255, 255, 255, 0.9) !important;
+  text-transform: none;
+  letter-spacing: 0;
   font-weight: 600;
-  padding: 0.32rem 0.8rem;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
-  font-family: inherit;
+  font-size: 0.82rem;
 }
-.seg-btn:hover:not(:disabled):not(.active) {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+
+.work-mode-toggle :deep(.v-btn--active) {
+  background: #fff !important;
+  color: #0f172a !important;
 }
-.seg-btn.active {
-  background: #fff;
-  color: #0f172a;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
-}
-.seg-btn:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
+
 .seg-dot {
   width: 7px;
   height: 7px;
   border-radius: 999px;
   display: inline-block;
-}
-.seg-dot.remote {
-  background: #38bdf8;
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.32);
-}
-.seg-dot.onsite {
-  background: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.32);
-}
-.seg-btn.active .seg-dot.remote {
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55);
-}
-.seg-btn.active .seg-dot.onsite {
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.55);
-}
-.btn-ghost {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  padding: 0.45rem 0.9rem;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.28);
-}
-.btn-ghost:disabled {
-  opacity: 0.7;
-  cursor: wait;
+  margin-right: 0.15rem;
 }
 
-/* KPI grid */
+.seg-dot.remote {
+  background: #38bdf8;
+}
+
+.seg-dot.onsite {
+  background: #22c55e;
+}
+
 .kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 0.85rem;
+  margin: 0;
 }
-.kpi {
-  background: #fff;
-  border-radius: 4px;
-  padding: 1rem 1.1rem;
-  border: 1px solid var(--hd-line);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-.kpi:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-}
-.kpi-action {
+
+.kpi-card {
   cursor: pointer;
   user-select: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  border-color: var(--hd-line) !important;
 }
-.kpi-action:focus-visible {
-  outline: 2px solid #0d7a3a;
-  outline-offset: 2px;
-}
-.kpi-active {
-  border-color: var(--kpi-accent, #119a48);
-  box-shadow: 0 0 0 2px var(--kpi-accent-soft, rgba(17, 154, 72, 0.2)), 0 6px 18px rgba(15, 23, 42, 0.08);
-}
-.kpi::before {
+
+.kpi-card::before {
   content: '';
   position: absolute;
   left: 0;
@@ -886,102 +902,76 @@ onUnmounted(() => {
   width: 4px;
   background: var(--kpi-accent, #119a48);
 }
-.kpi header {
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.kpi-card:focus-visible {
+  outline: 2px solid #0d7a3a;
+  outline-offset: 2px;
+}
+
+.kpi-card--active {
+  border-color: var(--kpi-accent, #119a48) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--kpi-accent, #119a48) 22%, transparent);
+}
+
+.kpi-card--alert {
+  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.kpi-card--alert .kpi-card__value {
+  color: #b91c1c;
+}
+
+.kpi-card__body {
+  padding: 1rem 1.1rem !important;
+}
+
+.kpi-card__head {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.45rem;
 }
-.kpi-icon {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--kpi-accent-soft, rgba(17, 154, 72, 0.12));
-  border-radius: 4px;
+
+.kpi-card__icon {
   font-size: 0.95rem;
 }
-.kpi-label {
+
+.kpi-card__label {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #475569;
 }
-.kpi-value {
+
+.kpi-card__value {
   font-size: 2rem;
   font-weight: 800;
   margin: 0;
   color: #0f172a;
   line-height: 1;
 }
-.kpi-sub {
+
+.kpi-card__sub {
   margin: 0.45rem 0 0;
   font-size: 0.82rem;
   color: #64748b;
 }
 
-/* KPI accents */
-.kpi-pending {
-  --kpi-accent: #2563eb;
-  --kpi-accent-soft: #dbeafe;
-}
-.kpi-awaiting {
-  --kpi-accent: #d97706;
-  --kpi-accent-soft: #fef3c7;
-}
-.kpi-overdue {
-  --kpi-accent: #94a3b8;
-  --kpi-accent-soft: #e2e8f0;
-}
-.kpi-overdue.alert {
-  --kpi-accent: #dc2626;
-  --kpi-accent-soft: #fee2e2;
-  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
-}
-.kpi-overdue.alert .kpi-value {
-  color: #b91c1c;
-}
-.kpi-due-today {
-  --kpi-accent: #7c3aed;
-  --kpi-accent-soft: #ede9fe;
-}
-.kpi-high {
-  --kpi-accent: #ea580c;
-  --kpi-accent-soft: #ffedd5;
-}
-.kpi-resolved {
-  --kpi-accent: #16a34a;
-  --kpi-accent-soft: #dcfce7;
+.charts {
+  margin: 0;
 }
 
-/* Charts */
-.charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.85rem;
+.chart-card__title {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
 }
-.chart {
-  padding: 1rem 1.1rem;
-}
-.chart-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.7rem;
-}
-.chart-head h2 {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #1f2937;
-}
-.chart-total {
-  font-size: 0.78rem;
-  color: #64748b;
-  font-weight: 600;
-}
+
 .bar {
   display: flex;
   width: 100%;
@@ -990,44 +980,40 @@ onUnmounted(() => {
   overflow: hidden;
   background: #f1f5f9;
 }
+
 .bar-seg {
   display: block;
   height: 100%;
 }
-.legend {
-  list-style: none;
-  margin: 0.7rem 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.4rem 0.8rem;
+
+.legend-list {
+  padding: 0.5rem 0 0 !important;
+  background: transparent !important;
 }
-.legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
-  color: #334155;
+
+.legend-item {
+  min-height: 32px !important;
+  padding-inline: 0 !important;
 }
+
 .dot {
   width: 10px;
   height: 10px;
   border-radius: 999px;
   flex-shrink: 0;
+  margin-right: 0.5rem;
 }
+
 .legend-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.82rem !important;
+  color: #334155;
 }
+
 .legend-count {
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
 }
 
-/* Recent */
 .hd-desk-recent-head {
   display: flex;
   flex-direction: column;
@@ -1039,141 +1025,61 @@ onUnmounted(() => {
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
   flex-wrap: wrap;
 }
+
 .recent-head h2 {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
   color: #1f2937;
 }
+
 .recent-sub {
   margin: 0.2rem 0 0;
   font-size: 0.82rem;
   color: #64748b;
 }
-.see-all {
-  color: #0d7a3a;
-  font-weight: 700;
-  font-size: 0.9rem;
-  text-decoration: none;
+
+.hd-filter-chips {
+  gap: 0.35rem;
 }
-.see-all:hover {
-  text-decoration: underline;
-}
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.85rem;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--hd-line);
-  background: #fff;
-  color: #475569;
-  font-size: 0.82rem;
+
+.hd-filter-chips :deep(.v-chip) {
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
-.chip:hover {
-  background: #f8fafc;
-}
-.chip.is-active {
-  background: #0d7a3a;
-  border-color: #0d7a3a;
-  color: #fff;
-}
-.chip-count {
-  background: rgba(15, 23, 42, 0.08);
-  color: #1f2937;
+
+.hd-filter-chip-count {
+  margin-left: 0.35rem;
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
-  font-weight: 700;
+  background: rgba(15, 23, 42, 0.08);
+  font-weight: 800;
   font-size: 0.74rem;
 }
-.chip.is-active .chip-count {
+
+.hd-filter-chips :deep(.hd-filter-chip--active) {
+  background: #0d7a3a !important;
+  color: #fff !important;
+  border-color: #0d7a3a !important;
+}
+
+.hd-filter-chips :deep(.hd-filter-chip--active .hd-filter-chip-count) {
   background: rgba(255, 255, 255, 0.25);
   color: #fff;
 }
-.chip-warn {
-  border-color: #fecaca;
-  color: #b91c1c;
-  background: #fef2f2;
-}
-.chip-warn .chip-count {
-  background: #fee2e2;
-  color: #991b1b;
-}
-.chip-warn.is-active {
-  background: #b91c1c;
-  border-color: #b91c1c;
-}
-.chip-hot {
-  border-color: #fed7aa;
-  color: #9a3412;
-  background: #fff7ed;
-}
-.chip-hot .chip-count {
-  background: #ffedd5;
-  color: #9a3412;
-}
-.chip-hot.is-active {
-  background: #ea580c;
-  border-color: #ea580c;
+
+.hd-filter-chips :deep(.hd-filter-chip--warn) {
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: #0f172a;
-  color: #fff;
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-  z-index: 60;
-  max-width: 360px;
-}
-.toast-enter-active,
-.toast-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.toast-enter-from,
-.toast-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
+.hd-filter-chips :deep(.hd-filter-chip--hot) {
+  border-color: #fed7aa !important;
+  color: #9a3412 !important;
 }
 
 .muted {
   color: #64748b;
-}
-.err {
-  margin: 0;
-  padding: 0.7rem 0.9rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  border-radius: 4px;
 }
 </style>
