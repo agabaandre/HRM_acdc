@@ -51,7 +51,7 @@
             <div class="card-body">
                 <div class="text-muted small text-uppercase fw-semibold mb-1">Committed</div>
                 <div class="fs-4 fw-bold text-danger">− ${{ number_format($snap['committed_total'], 2) }}</div>
-                <div class="small text-muted">{{ count($committed) }} memo(s)</div>
+                <div class="small text-muted">{{ count($committed) }} memo(s) listed below</div>
             </div>
         </div>
     </div>
@@ -177,10 +177,19 @@
                             </tbody>
                             <tfoot class="table-light">
                                 <tr>
-                                    <th colspan="4" class="text-end">Committed total</th>
-                                    <th class="text-end text-danger">${{ number_format($snap['committed_total'], 2) }}</th>
+                                    <th colspan="4" class="text-end">Listed memos total ({{ count($committed) }})</th>
+                                    <th class="text-end text-danger">${{ number_format($ledger['totals']['committed_sum'] ?? 0, 2) }}</th>
                                     <th colspan="2"></th>
                                 </tr>
+                                @if(abs(($ledger['totals']['committed_sum'] ?? 0) - $snap['committed_total']) > 0.01)
+                                    <tr>
+                                        <td colspan="7" class="text-warning small py-2">
+                                            <i class="bx bx-error me-1"></i>
+                                            Listed total differs from computed commitment (${{ number_format($snap['committed_total'], 2) }}).
+                                            Refresh the page after deploy; if this persists, contact support.
+                                        </td>
+                                    </tr>
+                                @endif
                             </tfoot>
                         </table>
                     </div>

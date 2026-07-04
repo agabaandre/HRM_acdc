@@ -72,6 +72,8 @@ class FundCodeBudgetLedgerService
         $lines = array_merge($lines, $this->linesFromNonTravelMemos($fundCode, $activeCrs));
         $lines = array_merge($lines, $this->linesFromChangeRequests($fundCode, $activeCrs));
 
+        $lines = $this->dedupeLines($lines);
+
         $committed = [];
         $skipped = [];
         foreach ($lines as $line) {
@@ -215,7 +217,10 @@ class FundCodeBudgetLedgerService
             ->all();
 
         $query = Activity::query()
-            ->where($this->breakdownScope($fundCodeId));
+            ->whereNotNull('budget_breakdown')
+            ->where('budget_breakdown', '!=', '')
+            ->where('budget_breakdown', '!=', '[]')
+            ->where('budget_breakdown', '!=', '{}');
 
         if ($coveredIds !== []) {
             $query->whereNotIn('id', $coveredIds);
@@ -276,7 +281,11 @@ class FundCodeBudgetLedgerService
     private function linesFromSpecialMemos(FundCode $fundCode, array $activeCrs): array
     {
         return $this->linesFromBreakdownMemos(
-            SpecialMemo::query()->where($this->breakdownScope((int) $fundCode->id)),
+            SpecialMemo::query()
+                ->whereNotNull('budget_breakdown')
+                ->where('budget_breakdown', '!=', '')
+                ->where('budget_breakdown', '!=', '[]')
+                ->where('budget_breakdown', '!=', '{}'),
             $fundCode,
             $activeCrs,
             'special_memo',
@@ -291,7 +300,11 @@ class FundCodeBudgetLedgerService
     private function linesFromNonTravelMemos(FundCode $fundCode, array $activeCrs): array
     {
         return $this->linesFromBreakdownMemos(
-            NonTravelMemo::query()->where($this->breakdownScope((int) $fundCode->id)),
+            NonTravelMemo::query()
+                ->whereNotNull('budget_breakdown')
+                ->where('budget_breakdown', '!=', '')
+                ->where('budget_breakdown', '!=', '[]')
+                ->where('budget_breakdown', '!=', '{}'),
             $fundCode,
             $activeCrs,
             'non_travel',
@@ -358,8 +371,12 @@ class FundCodeBudgetLedgerService
         $fundCodeId = (int) $fundCode->id;
         $latestIds = array_map('intval', array_keys($activeCrs['by_id'] ?? []));
 
-        $query = ChangeRequest::query()->where($this->breakdownScope($fundCodeId));
-        $models = $query->get([
+        $models = ChangeRequest::query()
+            ->whereNotNull('budget_breakdown')
+            ->where('budget_breakdown', '!=', '')
+            ->where('budget_breakdown', '!=', '[]')
+            ->where('budget_breakdown', '!=', '{}')
+            ->get([
             'id',
             'activity_title',
             'document_number',
@@ -642,6 +659,26 @@ class FundCodeBudgetLedgerService
         };
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @return list<array<string, mixed>>
+     */
+    private function dedupeLines(array $lines): array
+    {
+        $seen = [];
+        $out = [];
+        foreach ($lines as $line) {
+            $key = ($line['type'] ?? '') . ':' . ($line['id'] ?? 0);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $line;
+        }
+
+        return $out;
+    }
+
     private function memoUrl(string $type, int $id, ?int $matrixId = null): ?string
     {
         try {
@@ -656,16 +693,6 @@ class FundCodeBudgetLedgerService
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    private function breakdownScope(int $fundCodeId): \Closure
-    {
-        return function ($query) use ($fundCodeId) {
-            $needle = '"' . $fundCodeId . '":';
-            $query->where(function ($q) use ($needle) {
-                $q->where('budget_breakdown', 'like', '%' . $needle . '%');
-            });
-        };
     }
 
     /**
@@ -700,13 +727,16 @@ class FundCodeBudgetLedgerService
         if (is_array($value)) {
             return $value;
         }
-        if (is_string($value) && $value !== '') {
-            $decoded = json_decode($value, true);
-
-            return is_array($decoded) ? $decoded : [];
+        if (! is_string($value) || $value === '') {
+            return [];
         }
 
-        return [];
+        $decoded = json_decode($value, true);
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     private function cacheRemember(string $key, int $ttl, callable $callback): mixed
