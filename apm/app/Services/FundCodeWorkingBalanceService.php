@@ -55,27 +55,31 @@ class FundCodeWorkingBalanceService
     {
         $fundCode = FundCode::query()->find($fundCodeId);
         if (! $fundCode) {
-            return [
-                'approved_budget' => 0.0,
-                'committed_total' => 0.0,
-                'working_balance' => 0.0,
-            ];
+            return $this->emptySnapshot();
         }
 
         $excludeKey = md5(json_encode($exclude, JSON_THROW_ON_ERROR));
         $version = $this->version($fundCodeId);
         $cacheKey = "apm:fc:{$fundCodeId}:snap:v{$version}:{$excludeKey}";
 
-        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($fundCode, $exclude) {
-            $approved = $this->resolveApprovedBudget($fundCode);
-            $committed = $this->computeCommittedTotal($fundCode, $exclude);
-
-            return [
-                'approved_budget' => round($approved, 2),
-                'committed_total' => round($committed, 2),
-                'working_balance' => round(max(0, $approved - $committed), 2),
-            ];
+        return $this->cacheRemember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($fundCode, $exclude) {
+            return $this->buildSnapshot($fundCode, $exclude);
         });
+    }
+
+    /**
+     * @return array{approved_budget: float, committed_total: float, working_balance: float}
+     */
+    public function buildSnapshot(FundCode $fundCode, array $exclude = []): array
+    {
+        $approved = $this->resolveApprovedBudget($fundCode);
+        $committed = $this->computeCommittedTotal($fundCode, $exclude);
+
+        return [
+            'approved_budget' => round($approved, 2),
+            'committed_total' => round($committed, 2),
+            'working_balance' => round(max(0, $approved - $committed), 2),
+        ];
     }
 
     public function getWorkingBalance(int $fundCodeId, array $exclude = []): float
@@ -102,14 +106,18 @@ class FundCodeWorkingBalanceService
 
     public function bust(int|array $fundCodeIds): void
     {
-        $store = Cache::getStore();
-        foreach ((array) $fundCodeIds as $id) {
-            $id = (int) $id;
-            if ($id <= 0) {
-                continue;
+        try {
+            $store = Cache::getStore();
+            foreach ((array) $fundCodeIds as $id) {
+                $id = (int) $id;
+                if ($id <= 0) {
+                    continue;
+                }
+                $versionKey = $this->versionKey($id);
+                $store->put($versionKey, (string) microtime(true), 86400 * 7);
             }
-            $versionKey = $this->versionKey($id);
-            $store->put($versionKey, (string) microtime(true), 86400 * 7);
+        } catch (\Throwable) {
+            // Cache store unavailable — balances are computed live on the next read.
         }
     }
 
@@ -594,6 +602,36 @@ class FundCodeWorkingBalanceService
 
     private function version(int $fundCodeId): string
     {
-        return (string) Cache::get($this->versionKey($fundCodeId), '1');
+        return (string) $this->cacheGet($this->versionKey($fundCodeId), '1');
+    }
+
+    /**
+     * @return array{approved_budget: float, committed_total: float, working_balance: float}
+     */
+    private function emptySnapshot(): array
+    {
+        return [
+            'approved_budget' => 0.0,
+            'committed_total' => 0.0,
+            'working_balance' => 0.0,
+        ];
+    }
+
+    private function cacheGet(string $key, mixed $default = null): mixed
+    {
+        try {
+            return Cache::get($key, $default);
+        } catch (\Throwable) {
+            return $default;
+        }
+    }
+
+    private function cacheRemember(string $key, int $ttl, callable $callback): mixed
+    {
+        try {
+            return Cache::remember($key, $ttl, $callback);
+        } catch (\Throwable) {
+            return $callback();
+        }
     }
 }
