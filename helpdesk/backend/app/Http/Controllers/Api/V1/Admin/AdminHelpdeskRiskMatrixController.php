@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskRiskMatrixEntry;
 use App\Services\StaffDirectoryLookupService;
 use Illuminate\Http\JsonResponse;
@@ -99,6 +100,92 @@ class AdminHelpdeskRiskMatrixController extends Controller
         return response()->json(['data' => $row->load('category:id,name')], 201);
     }
 
+    public function bulkStore(Request $request, StaffDirectoryLookupService $directory): JsonResponse
+    {
+        $this->ensureHelpdeskAdmin($request);
+
+        $validated = $request->validate([
+            'staff_ids' => ['required', 'array', 'min:1'],
+            'staff_ids.*' => ['integer', 'min:1'],
+            'category_ids' => ['required', 'array', 'min:1'],
+            'category_ids.*' => ['integer', 'min:0'],
+            'priority' => ['required', 'string', Rule::in(['low', 'medium', 'high', 'critical'])],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $staffIds = array_values(array_unique(array_map('intval', $validated['staff_ids'])));
+        $scopeRaw = array_values(array_unique(array_map('intval', $validated['category_ids'])));
+        $categoryIds = [];
+        foreach ($scopeRaw as $raw) {
+            if ($raw === 0) {
+                $categoryIds[] = null;
+
+                continue;
+            }
+            if (! HelpdeskCategory::query()->whereKey($raw)->exists()) {
+                throw ValidationException::withMessages([
+                    'category_ids' => "Category #{$raw} is invalid.",
+                ]);
+            }
+            $categoryIds[] = $raw;
+        }
+
+        $notes = isset($validated['notes']) ? trim((string) $validated['notes']) : null;
+        $notes = $notes !== '' ? $notes : null;
+        $isActive = $validated['is_active'] ?? true;
+        $priority = $validated['priority'];
+
+        $created = 0;
+        $skipped = 0;
+        $skippedDetails = [];
+
+        foreach ($staffIds as $staffId) {
+            if ($directory->resolveByStaffId($staffId) === null) {
+                throw ValidationException::withMessages([
+                    'staff_ids' => "Staff member #{$staffId} not found in the directory. Run directory sync in Settings → Jobs.",
+                ]);
+            }
+
+            foreach ($categoryIds as $categoryId) {
+                $duplicate = HelpdeskRiskMatrixEntry::query()
+                    ->where('staff_id', $staffId)
+                    ->when($categoryId === null, fn ($q) => $q->whereNull('category_id'), fn ($q) => $q->where('category_id', $categoryId))
+                    ->exists();
+
+                if ($duplicate) {
+                    $skipped++;
+                    $skippedDetails[] = [
+                        'staff_id' => $staffId,
+                        'category_id' => $categoryId,
+                    ];
+
+                    continue;
+                }
+
+                HelpdeskRiskMatrixEntry::query()->create([
+                    'staff_id' => $staffId,
+                    'priority' => $priority,
+                    'category_id' => $categoryId,
+                    'notes' => $notes,
+                    'is_active' => $isActive,
+                ]);
+                $created++;
+            }
+        }
+
+        return response()->json([
+            'data' => [
+                'created' => $created,
+                'skipped' => $skipped,
+                'skipped_details' => $skippedDetails,
+            ],
+            'message' => $created > 0
+                ? "Added {$created} priority matrix ".($created === 1 ? 'entry' : 'entries').($skipped > 0 ? "; {$skipped} already existed." : '.')
+                : 'No new entries were added — all selected combinations already exist.',
+        ], $created > 0 ? 201 : 200);
+    }
+
     public function update(Request $request, HelpdeskRiskMatrixEntry $riskMatrixEntry, StaffDirectoryLookupService $directory): JsonResponse
     {
         $this->ensureHelpdeskAdmin($request);
@@ -158,8 +245,8 @@ class AdminHelpdeskRiskMatrixController extends Controller
 
         if ($exists) {
             $message = $categoryId === null
-                ? 'This staff member already has a global risk matrix entry.'
-                : 'This staff member already has a risk matrix entry for that category.';
+                ? 'This staff member already has a global priority matrix entry.'
+                : 'This staff member already has a priority matrix entry for that category.';
 
             throw ValidationException::withMessages(['staff_id' => $message]);
         }

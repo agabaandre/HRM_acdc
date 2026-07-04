@@ -125,6 +125,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'destroy']);
         Route::get('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'index']);
         Route::post('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'store']);
+        Route::post('/admin/risk-matrix/bulk', [AdminHelpdeskRiskMatrixController::class, 'bulkStore']);
         Route::put('/admin/risk-matrix/{riskMatrixEntry}', [AdminHelpdeskRiskMatrixController::class, 'update']);
         Route::delete('/admin/risk-matrix/{riskMatrixEntry}', [AdminHelpdeskRiskMatrixController::class, 'destroy']);
         Route::get('/admin/sla-rules', [AdminHelpdeskSlaRuleController::class, 'index']);

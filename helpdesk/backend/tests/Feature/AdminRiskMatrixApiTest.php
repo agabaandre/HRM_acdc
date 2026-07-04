@@ -64,6 +64,28 @@ class AdminRiskMatrixApiTest extends TestCase
         $this->assertDatabaseMissing('helpdesk_risk_matrix_entries', ['id' => $id]);
     }
 
+    public function test_admin_can_bulk_create_priority_matrix_entries(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        Sanctum::actingAs($this->adminUser());
+
+        $this->seedHelpdeskStaffDirectoryCache(88010, 'a@example.org', 'Alpha', 'One');
+
+        $category = HelpdeskCategory::query()->firstOrFail();
+
+        $this->postJson('/api/v1/admin/risk-matrix/bulk', [
+            'staff_ids' => [88010],
+            'category_ids' => [0, $category->id],
+            'priority' => 'high',
+            'notes' => 'Bulk test',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.created', 2)
+            ->assertJsonPath('data.skipped', 0);
+
+        $this->assertDatabaseCount('helpdesk_risk_matrix_entries', 2);
+    }
+
     public function test_duplicate_global_entry_is_rejected(): void
     {
         Sanctum::actingAs($this->adminUser());

@@ -132,7 +132,7 @@ onMounted(() => {
     <h2 id="cat-heading">Issue categories</h2>
     <p class="hint">
       Used on tickets and agent routing. Each category’s <strong>default priority</strong> applies when no
-      <RouterLink to="/settings/risk-matrix">risk matrix</RouterLink> rule matches the requester.
+      <RouterLink to="/settings/risk-matrix">priority matrix</RouterLink> rule matches the requester.
       Priority is not shown on the new-ticket form; agents with <strong>Reassign tickets</strong> may change it later.
     </p>
 

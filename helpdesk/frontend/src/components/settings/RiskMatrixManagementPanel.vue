@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../../types/form'
@@ -43,7 +43,7 @@ interface Summary {
 const headers: DataTableHeader[] = [
   { title: 'Staff member', key: 'staff', sortable: false, minWidth: '220px' },
   { title: 'Priority', key: 'priority', sortable: false, width: '150px' },
-  { title: 'Scope', key: 'scope', sortable: false, minWidth: '180px' },
+  { title: 'Scope', key: 'scope', sortable: false, minWidth: '200px' },
   { title: 'Notes', key: 'notes', sortable: false, minWidth: '200px' },
   { title: 'Active', key: 'is_active', sortable: false, width: '90px', align: 'center' },
   { title: 'Actions', key: 'actions', sortable: false, width: '170px', align: 'end' },
@@ -58,44 +58,28 @@ const priorityFilter = ref<TicketPriority | 'all'>('all')
 const scopeFilter = ref<'all' | 'global' | 'category'>('all')
 
 const staffRows = ref<StaffRow[]>([])
-const staffSearch = ref('')
-const staffResultsOpen = ref(false)
-const selectedStaffId = ref<number | null>(null)
-let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
+const selectedStaffIds = ref<number[]>([])
+const selectedScopeIds = ref<number[]>([0])
 
 const draft = reactive({
   priority: 'high' as TicketPriority,
-  category_id: undefined as number | undefined,
   notes: '',
   is_active: true,
 })
 
-const categoryItems = computed((): SelectNumberItem[] => [
+const scopeItems = computed((): SelectNumberItem[] => [
   { label: 'All categories (global)', value: 0 },
   ...categories.value.map((c) => ({ label: c.name, value: c.id })),
 ])
 
-const draftCategoryScope = computed({
-  get: () => draft.category_id ?? 0,
-  set: (v: number) => {
-    draft.category_id = v > 0 ? v : undefined
-  },
-})
-
-const selectedStaff = computed(() =>
-  selectedStaffId.value ? staffRows.value.find((s) => s.id === selectedStaffId.value) ?? null : null,
+const staffSelectItems = computed((): SelectNumberItem[] =>
+  staffRows.value.map((s) => ({
+    value: s.id,
+    label: s.duty_station_name
+      ? `${s.name} · ${s.duty_station_name}`
+      : s.name,
+  })),
 )
-
-const filteredStaffRows = computed(() => {
-  const q = staffSearch.value.trim().toLowerCase()
-  if (!q) return staffRows.value.slice(0, 40)
-  return staffRows.value
-    .filter((s) => {
-      const hay = `${s.name} ${s.work_email ?? ''} ${s.duty_station_name ?? ''}`.toLowerCase()
-      return hay.includes(q)
-    })
-    .slice(0, 40)
-})
 
 const filteredRows = computed(() => {
   const q = listFilter.value.trim().toLowerCase()
@@ -138,10 +122,19 @@ const prioritySummaryChips = computed(() => {
   }))
 })
 
+const mappingPreviewCount = computed(() => {
+  const staffCount = selectedStaffIds.value.length
+  const scopeCount = selectedScopeIds.value.length
+  return staffCount > 0 && scopeCount > 0 ? staffCount * scopeCount : 0
+})
+
 function validateDraft(): FormError[] {
   const errors: FormError[] = []
-  if (!selectedStaffId.value) {
-    errors.push({ name: 'staff_id', message: 'Choose a staff member from the directory' })
+  if (selectedStaffIds.value.length === 0) {
+    errors.push({ name: 'staff_ids', message: 'Select at least one staff member' })
+  }
+  if (selectedScopeIds.value.length === 0) {
+    errors.push({ name: 'category_ids', message: 'Select at least one scope (global and/or categories)' })
   }
   return errors
 }
@@ -157,11 +150,7 @@ async function loadCategories() {
 
 async function loadStaff() {
   try {
-    const params: Record<string, string> = {}
-    if (staffSearch.value.trim()) {
-      params.q = staffSearch.value.trim()
-    }
-    const { data } = await api.get<{ data: { staff: StaffRow[] } }>('/api/v1/reference-data/staff', { params })
+    const { data } = await api.get<{ data: { staff: StaffRow[] } }>('/api/v1/reference-data/staff')
     staffRows.value = Array.isArray(data.data?.staff) ? data.data.staff : []
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Could not load staff directory.'))
@@ -175,14 +164,8 @@ async function load() {
     rows.value = Array.isArray(data.data) ? data.data : []
     summary.value = data.meta?.summary ?? null
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to load risk matrix.'))
+    notifyError(apiErrorMessage(e, 'Failed to load priority matrix.'))
   }
-}
-
-function pickStaff(s: StaffRow) {
-  selectedStaffId.value = s.id
-  staffSearch.value = s.name
-  staffResultsOpen.value = false
 }
 
 async function onCreate(_event: FormSubmitEvent<typeof draft>) {
@@ -193,23 +176,25 @@ async function onCreate(_event: FormSubmitEvent<typeof draft>) {
   }
   busyId.value = -1
   try {
-    await api.post('/api/v1/admin/risk-matrix', {
-      staff_id: selectedStaffId.value,
-      priority: draft.priority,
-      category_id: draft.category_id ?? null,
-      notes: draft.notes.trim() || null,
-      is_active: draft.is_active,
-    })
-    notifySuccess('Risk matrix entry added.')
-    selectedStaffId.value = null
-    staffSearch.value = ''
+    const { data } = await api.post<{ message?: string; data?: { created: number; skipped: number } }>(
+      '/api/v1/admin/risk-matrix/bulk',
+      {
+        staff_ids: selectedStaffIds.value,
+        category_ids: selectedScopeIds.value,
+        priority: draft.priority,
+        notes: draft.notes.trim() || null,
+        is_active: draft.is_active,
+      },
+    )
+    notifySuccess(data.message ?? 'Priority matrix updated.')
+    selectedStaffIds.value = []
+    selectedScopeIds.value = [0]
     draft.priority = 'high'
-    draft.category_id = undefined
     draft.notes = ''
     draft.is_active = true
     await load()
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Could not add entry.'))
+    notifyError(apiErrorMessage(e, 'Could not add entries.'))
   } finally {
     busyId.value = null
   }
@@ -235,7 +220,7 @@ async function save(row: MatrixRow) {
 
 async function remove(row: MatrixRow) {
   const label = row.staff_name ?? `Staff #${row.staff_id}`
-  if (!window.confirm(`Remove risk matrix entry for “${label}”?`)) {
+  if (!window.confirm(`Remove priority matrix entry for “${label}”?`)) {
     return
   }
   busyId.value = row.id
@@ -259,23 +244,15 @@ function setRowCategoryScope(row: MatrixRow, value: number): void {
   row.category = value > 0 ? categories.value.find((c) => c.id === value) ?? null : null
 }
 
-watch(staffSearch, () => {
-  staffResultsOpen.value = true
-  if (staffSearchTimer) clearTimeout(staffSearchTimer)
-  staffSearchTimer = setTimeout(() => {
-    void loadStaff()
-  }, 250)
-})
-
 onMounted(async () => {
   await Promise.all([loadCategories(), loadStaff(), load()])
 })
 </script>
 
 <template>
-  <section class="risk-matrix" aria-labelledby="risk-matrix-heading">
-    <header class="risk-matrix__intro">
-      <h2 id="risk-matrix-heading">Risk matrix</h2>
+  <section class="priority-matrix" aria-labelledby="priority-matrix-heading">
+    <header class="priority-matrix__intro">
+      <h2 id="priority-matrix-heading">Priority matrix</h2>
       <p class="hint">
         Map prioritised staff to ticket priority levels. When someone on the matrix opens a request, their ticket
         priority is set automatically — requesters never choose priority on
@@ -285,15 +262,15 @@ onMounted(async () => {
       </p>
     </header>
 
-    <v-alert type="info" variant="tonal" density="comfortable" class="risk-matrix__alert">
+    <v-alert type="info" variant="tonal" density="comfortable" class="priority-matrix__alert">
       <strong>Priority order on create:</strong>
-      1) Active risk matrix rule for the requester (category-specific, else global) →
+      1) Active priority matrix rule for the requester (category-specific, else global) →
       2) Issue category default →
       3) Medium if neither applies.
       Agents with <strong>Reassign tickets</strong> may change priority after submission.
     </v-alert>
 
-    <div v-if="summary" class="risk-matrix__summary">
+    <div v-if="summary" class="priority-matrix__summary">
       <v-chip variant="outlined" size="small">{{ summary.active }} active / {{ summary.total }} total</v-chip>
       <v-chip
         v-for="chip in prioritySummaryChips"
@@ -308,9 +285,10 @@ onMounted(async () => {
 
     <v-card class="new-card" variant="outlined">
       <v-card-item>
-        <v-card-title class="text-subtitle-1 font-weight-bold pa-0">Add matrix entry</v-card-title>
+        <v-card-title class="text-subtitle-1 font-weight-bold pa-0">Add matrix entries</v-card-title>
         <v-card-subtitle class="pa-0 mt-1">
-          Global entries apply to every category; category-scoped entries take precedence for that issue type.
+          Select one or more staff and one or more scopes — each combination becomes a mapping.
+          Global applies to every category; category scopes take precedence for that issue type.
         </v-card-subtitle>
       </v-card-item>
       <v-divider />
@@ -321,55 +299,42 @@ onMounted(async () => {
           class="hd-form hd-form--grid"
           @submit="onCreate"
         >
-          <UFormField label="Staff member" name="staff_id" required class="span-2 staff-combo">
-            <UInput
-              v-model="staffSearch"
-              type="search"
-              icon="i-lucide-search"
-              placeholder="Search name, email, or duty station…"
-              autocomplete="off"
-              @focus="staffResultsOpen = true"
+          <UFormField label="Staff members" name="staff_ids" required class="span-2">
+            <USelectMenu
+              v-model="selectedStaffIds"
+              :items="staffSelectItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-account-multiple"
+              placeholder="Search and select staff…"
             />
-            <ul
-              v-if="staffResultsOpen && filteredStaffRows.length"
-              class="combo-results"
-              role="listbox"
-            >
-              <li
-                v-for="s in filteredStaffRows"
-                :key="s.id"
-                role="option"
-                class="combo-result"
-                :class="{ selected: selectedStaffId === s.id }"
-                @mousedown.prevent
-                @click="pickStaff(s)"
-              >
-                <span class="combo-result-name">{{ s.name }}</span>
-                <span class="combo-result-meta">
-                  {{ s.work_email || '—' }}
-                  <template v-if="s.duty_station_name"> · {{ s.duty_station_name }}</template>
-                </span>
-              </li>
-            </ul>
-            <p v-if="selectedStaff" class="selected-staff" role="status">
-              Selected: <strong>{{ selectedStaff.name }}</strong>
-              <span v-if="selectedStaff.work_email"> · {{ selectedStaff.work_email }}</span>
-            </p>
           </UFormField>
 
           <UFormField label="Ticket priority" name="priority" required>
             <USelect v-model="draft.priority" :items="PRIORITY_ITEMS" icon="mdi-flag-outline" />
           </UFormField>
 
-          <UFormField label="Scope" name="category_id" stacked-label description="Global or one issue category">
-            <USelect
-              v-model="draftCategoryScope"
-              :items="categoryItems"
+          <UFormField
+            label="Scopes"
+            name="category_ids"
+            required
+            class="span-2"
+            stacked-label
+            description="Pick global, one category, or several at once"
+          >
+            <USelectMenu
+              v-model="selectedScopeIds"
+              :items="scopeItems"
               value-key="value"
+              multiple
+              searchable
+              icon="mdi-tag-multiple-outline"
+              placeholder="Global and/or categories…"
             />
           </UFormField>
 
-          <UFormField label="Notes" name="notes" class="span-2" stacked-label description="Why this person is prioritised (optional)">
+          <UFormField label="Notes" name="notes" class="span-2" stacked-label description="Shared note for all new mappings (optional)">
             <UTextarea v-model="draft.notes" :rows="2" maxlength="2000" placeholder="e.g. Director — escalate all ICT requests" />
           </UFormField>
 
@@ -377,8 +342,15 @@ onMounted(async () => {
             <UCheckbox v-model="draft.is_active" label="Active" />
           </UFormField>
 
-          <div class="full hd-form-actions">
-            <UButton type="submit" color="primary" :loading="busyId === -1">Add to matrix</UButton>
+          <div class="full hd-form-actions add-actions">
+            <p v-if="mappingPreviewCount > 0" class="mapping-preview" role="status">
+              Will create up to <strong>{{ mappingPreviewCount }}</strong>
+              {{ mappingPreviewCount === 1 ? 'mapping' : 'mappings' }}
+              (existing combinations are skipped).
+            </p>
+            <UButton type="submit" color="primary" :loading="busyId === -1">
+              Add to matrix
+            </UButton>
           </div>
         </UForm>
       </v-card-text>
@@ -389,7 +361,7 @@ onMounted(async () => {
         <UInput
           v-model="listFilter"
           type="search"
-          icon="i-lucide-search"
+          icon="mdi-magnify"
           placeholder="Filter matrix…"
           class="matrix-filter"
           clearable
@@ -434,10 +406,13 @@ onMounted(async () => {
         </template>
 
         <template #item.scope="{ item }">
-          <USelect
+          <USelectMenu
             :model-value="rowCategoryScope(item)"
-            :items="categoryItems"
+            :items="scopeItems"
             value-key="value"
+            searchable
+            icon="mdi-tag-outline"
+            placeholder="Select scope…"
             @update:model-value="setRowCategoryScope(item, $event as number)"
           />
         </template>
@@ -476,7 +451,7 @@ onMounted(async () => {
         </template>
 
         <template #no-data>
-          <p class="muted matrix-empty">No risk matrix entries yet. Add prioritised staff above.</p>
+          <p class="muted matrix-empty">No priority matrix entries yet. Add mappings above.</p>
         </template>
       </v-data-table>
     </v-card>
@@ -484,7 +459,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.risk-matrix__intro h2 {
+.priority-matrix__intro h2 {
   margin: 0 0 0.35rem;
   font-size: 1.1rem;
   font-weight: 700;
@@ -500,10 +475,10 @@ onMounted(async () => {
   color: #0d7a3a;
   font-weight: 600;
 }
-.risk-matrix__alert {
+.priority-matrix__alert {
   margin-bottom: 1rem;
 }
-.risk-matrix__summary {
+.priority-matrix__summary {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -530,47 +505,17 @@ onMounted(async () => {
   flex: 0 1 180px;
   min-width: 160px;
 }
-.staff-combo {
-  position: relative;
+.add-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
 }
-.combo-results {
-  list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0;
-  border: 1px solid var(--hd-line);
-  border-radius: 4px;
-  background: #fff;
-  max-height: 220px;
-  overflow: auto;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-}
-.combo-result {
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  border-bottom: 1px solid var(--hd-line-subtle);
-}
-.combo-result:last-child {
-  border-bottom: none;
-}
-.combo-result:hover,
-.combo-result.selected {
-  background: #f0fdf4;
-}
-.combo-result-name {
-  display: block;
-  font-weight: 600;
-  color: #0f172a;
-}
-.combo-result-meta {
-  display: block;
-  font-size: 0.78rem;
-  color: #64748b;
-  margin-top: 0.1rem;
-}
-.selected-staff {
-  margin: 0.45rem 0 0;
-  font-size: 0.82rem;
+.mapping-preview {
+  margin: 0;
+  font-size: 0.85rem;
   color: #475569;
+  flex: 1 1 100%;
 }
 .staff-cell strong {
   display: block;
