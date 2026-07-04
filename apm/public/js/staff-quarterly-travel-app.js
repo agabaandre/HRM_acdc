@@ -56,7 +56,10 @@
                 });
 
                 const sortBy = ref([{ key: 'division_name', order: 'asc' }]);
+                const page = ref(1);
+                const itemsPerPage = ref(cfg.perPage || 50);
                 const items = ref([]);
+                const pagination = ref({ total: 0, from: 0, to: 0, last_page: 1 });
                 const summary = ref({
                     total_rows: 0,
                     staff_count: 0,
@@ -110,6 +113,11 @@
                     { title: 'Approved travel days', key: 'approved_travel_days', sortable: true, align: 'center', width: 150 },
                 ];
 
+                const showingRange = computed(() => {
+                    if (!pagination.value.total) return '0–0';
+                    return `${pagination.value.from}–${pagination.value.to}`;
+                });
+
                 const summaryKpis = computed(() => [
                     { key: 'staff', icon: 'mdi-account-group', accent: '#119a48', value: summary.value.staff_count, label: 'Staff in report' },
                     { key: 'rows', icon: 'mdi-table', accent: '#0284c7', value: summary.value.total_rows, label: 'Rows' },
@@ -137,6 +145,8 @@
 
                 function buildQueryParams(includeSort = true) {
                     const params = new URLSearchParams();
+                    params.set('page', String(page.value));
+                    params.set('per_page', String(itemsPerPage.value));
                     if (filters.value.division_id) params.set('division_id', filters.value.division_id);
                     if (filters.value.staff_id) params.set('staff_id', filters.value.staff_id);
                     if (filters.value.year) params.set('year', filters.value.year);
@@ -170,16 +180,22 @@
                         }
                         items.value = (json.data || []).map((row, index) => ({
                             ...row,
-                            row_num: index + 1,
+                            row_num: (json.pagination?.from || 1) + index,
                         }));
+                        pagination.value = {
+                            total: json.pagination?.total ?? items.value.length,
+                            from: json.pagination?.from ?? 0,
+                            to: json.pagination?.to ?? 0,
+                            last_page: json.pagination?.last_page ?? 1,
+                        };
                         summary.value = {
-                            total_rows: json.summary?.total_rows ?? items.value.length,
                             staff_count: json.summary?.staff_count ?? 0,
                             total_travel_days: json.summary?.total_travel_days ?? 0,
                             total_activities: json.summary?.total_activities ?? 0,
                         };
                     } catch (e) {
                         items.value = [];
+                        pagination.value = { total: 0, from: 0, to: 0, last_page: 1 };
                         summary.value = { total_rows: 0, staff_count: 0, total_travel_days: 0, total_activities: 0 };
                         notify(e.message || 'Could not load report.');
                     } finally {
@@ -242,10 +258,15 @@
                         quarter: cfg.defaults?.quarter ?? cfg.currentQuarter ?? '',
                     };
                     sortBy.value = [{ key: 'division_name', order: 'asc' }];
+                    page.value = 1;
                     loadReport();
                 }
 
-                watch(sortBy, () => loadReport(), { deep: true });
+                watch(page, () => loadReport());
+                watch(sortBy, () => {
+                    page.value = 1;
+                    loadReport();
+                }, { deep: true });
 
                 loadReport();
 
@@ -253,7 +274,11 @@
                     cfg,
                     filters,
                     sortBy,
+                    page,
+                    itemsPerPage,
                     items,
+                    pagination,
+                    showingRange,
                     summaryKpis,
                     headers,
                     loading,
@@ -319,7 +344,7 @@
             <v-select v-model="filters.quarter" :items="quarterItems" label="Quarter"></v-select>
           </v-col>
           <v-col cols="12" md="2" class="d-flex gap-2">
-            <v-btn color="primary" block @click="loadReport">Apply</v-btn>
+            <v-btn color="primary" block @click="page = 1; loadReport()">Apply</v-btn>
             <v-btn variant="outlined" block @click="resetFilters">Reset</v-btn>
           </v-col>
         </v-row>
@@ -365,25 +390,37 @@
           must-sort
         >
           <template #item.row_num="{ item }">
-            <v-chip size="small" variant="tonal" color="secondary">{{ item.row_num }}</v-chip>
+            <span class="sqt-row-num">{{ item.row_num }}</span>
           </template>
           <template #item.staff_name="{ item }">
-            <v-btn variant="text" color="primary" class="px-0 text-none font-weight-medium" @click="openBreakdown(item)">
-              {{ item.staff_name }}
-            </v-btn>
+            <button type="button" class="sqt-staff-link" @click="openBreakdown(item)">{{ item.staff_name }}</button>
+          </template>
+          <template #item.division_name="{ item }">
+            <span class="sqt-cell-text">{{ item.division_name }}</span>
+          </template>
+          <template #item.year_quarter="{ item }">
+            <span class="sqt-cell-text">{{ item.year_quarter }}</span>
           </template>
           <template #item.activity_count="{ item }">
-            <v-chip size="small" variant="tonal" color="info">{{ item.activity_count }}</v-chip>
+            <span class="sqt-metric">{{ item.activity_count }}</span>
           </template>
           <template #item.approved_travel_days="{ item }">
-            <v-chip size="small" variant="tonal" color="warning">{{ item.approved_travel_days }}</v-chip>
+            <span class="sqt-metric sqt-metric--days">{{ item.approved_travel_days }}</span>
           </template>
           <template #no-data>
             <v-alert type="info" variant="tonal" class="ma-4">No data for the selected filters.</v-alert>
           </template>
           <template #bottom>
-            <div class="px-4 py-3 text-body-2 text-medium-emphasis">
-              Showing {{ items.length }} row{{ items.length === 1 ? '' : 's' }}
+            <div class="d-flex flex-wrap align-center justify-space-between gap-3 px-4 py-3">
+              <span class="text-body-2 sqt-footer-text">Showing {{ showingRange }} of {{ pagination.total }} rows</span>
+              <v-pagination
+                v-model="page"
+                :length="Math.max(1, pagination.last_page)"
+                :total-visible="7"
+                density="comfortable"
+                rounded="circle"
+                active-color="primary"
+              ></v-pagination>
             </div>
           </template>
         </v-data-table>
@@ -435,7 +472,7 @@
                   <span v-else>{{ row.activity_title }}</span>
                 </td>
                 <td>{{ row.year_quarter }}</td>
-                <td class="text-center">{{ row.travel_days }}</td>
+                <td class="text-center sqt-metric">{{ row.travel_days }}</td>
               </tr>
             </tbody>
           </v-table>

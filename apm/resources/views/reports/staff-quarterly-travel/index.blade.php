@@ -26,11 +26,59 @@
     #staff-quarterly-travel-app .sqt-table thead th,
     #staff-quarterly-travel-app .sqt-breakdown-table thead th {
         background: #f8fafc !important;
-        color: rgba(0, 0, 0, 0.7) !important;
+        color: rgba(0, 0, 0, 0.72) !important;
         font-weight: 600 !important;
         font-size: 0.75rem !important;
         text-transform: uppercase;
         letter-spacing: 0.03em;
+    }
+    #staff-quarterly-travel-app .sqt-table tbody td {
+        color: rgba(0, 0, 0, 0.87) !important;
+        font-size: 0.875rem;
+    }
+    #staff-quarterly-travel-app .sqt-row-num {
+        color: rgba(0, 0, 0, 0.55);
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+    }
+    #staff-quarterly-travel-app .sqt-cell-text {
+        color: rgba(0, 0, 0, 0.87);
+    }
+    #staff-quarterly-travel-app .sqt-staff-link {
+        background: none;
+        border: 0;
+        padding: 0;
+        color: #0d7a3a;
+        font-weight: 600;
+        font-size: inherit;
+        text-align: left;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    #staff-quarterly-travel-app .sqt-staff-link:hover {
+        text-decoration: underline;
+        color: #095c2c;
+    }
+    #staff-quarterly-travel-app .sqt-metric {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.87);
+    }
+    #staff-quarterly-travel-app .sqt-metric--days {
+        color: #9a3412;
+    }
+    #staff-quarterly-travel-app .sqt-footer-text {
+        color: rgba(0, 0, 0, 0.65) !important;
+    }
+    #staff-quarterly-travel-app .sqt-breakdown-table tbody td {
+        color: rgba(0, 0, 0, 0.87);
+    }
+    #staff-quarterly-travel-app .sqt-breakdown-table tbody a {
+        color: #0d7a3a;
+        font-weight: 500;
+    }
+    #staff-quarterly-travel-app .sqt-kpi-value {
+        color: rgba(0, 0, 0, 0.87) !important;
     }
 </style>
 @endpush

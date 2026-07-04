@@ -85,6 +85,7 @@ class StaffQuarterlyTravelReportController extends Controller
             'divisions' => $divisions,
             'staffOptions' => $staffOptions,
             'years' => $years,
+            'perPage' => 50,
             'routes' => [
                 'data' => route('reports.staff-quarterly-travel.data'),
                 'exportExcel' => route('reports.staff-quarterly-travel.export.excel'),
@@ -110,7 +111,7 @@ class StaffQuarterlyTravelReportController extends Controller
         $this->validateReportFilters($request);
 
         $keyParts = $this->apmCacheKeyFromRequest($request, [
-            'division_id', 'staff_id', 'year', 'quarter', 'sort_column', 'sort_dir',
+            'division_id', 'staff_id', 'year', 'quarter', 'sort_column', 'sort_dir', 'page', 'per_page',
         ], ['report' => 'staff_quarterly_travel']);
 
         return $this->apmCachedJson('reports', $request, $keyParts, function () use ($request): array {
@@ -120,10 +121,25 @@ class StaffQuarterlyTravelReportController extends Controller
                 $request->get('sort_dir', 'asc')
             );
 
+            $perPage = max(10, min(100, (int) $request->get('per_page', 50)));
+            $page = max(1, (int) $request->get('page', 1));
+            $total = count($rows);
+            $slice = array_slice($rows, ($page - 1) * $perPage, $perPage);
+            $start = $total > 0 ? (($page - 1) * $perPage) + 1 : 0;
+            $end = min($page * $perPage, $total);
+
             return [
                 'success' => true,
-                'data' => $rows,
+                'data' => array_values($slice),
                 'summary' => $this->summarizeRows($rows),
+                'pagination' => [
+                    'current_page' => $page,
+                    'last_page' => max(1, (int) ceil($total / $perPage)),
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'from' => $start,
+                    'to' => $end,
+                ],
             ];
         });
     }
@@ -301,6 +317,8 @@ class StaffQuarterlyTravelReportController extends Controller
             'quarter' => 'nullable|string|in:Q1,Q2,Q3,Q4',
             'sort_column' => 'nullable|string|in:staff_name,division_name,year_quarter,activity_count,approved_travel_days',
             'sort_dir' => 'nullable|string|in:asc,desc',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:10|max:100',
         ]);
     }
 
