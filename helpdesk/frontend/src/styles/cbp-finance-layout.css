@@ -23,6 +23,13 @@ html.helpdesk-theme-light {
   --cbp-dd-hover-bg: #e8f5ee;
   --cbp-dd-hover-text: #0d7a3a;
   --cbp-page-max: 1360px;
+  /* Nav / topbar typography — match APM .nav-container.primary-menu */
+  --hd-nav-font-size: 12px;
+  --hd-nav-font-weight: 500;
+  --hd-nav-icon-size: 20px;
+  --hd-topbar-font-size: 14px;
+  --hd-topbar-font-weight: 500;
+  --hd-topbar-user-font-size: 15px;
 }
 
 html.helpdesk-theme-dark {
@@ -115,8 +122,8 @@ html.helpdesk-theme-dark {
 .cbp-topbar-menu > a {
   color: #fff;
   text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: var(--hd-topbar-font-size, 14px);
+  font-weight: var(--hd-topbar-font-weight, 500);
   padding: 0.45rem 0.65rem;
   border-radius: 4px;
   display: inline-flex;
@@ -147,8 +154,8 @@ html.helpdesk-theme-dark {
   border: none;
   background: transparent;
   color: #fff;
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: var(--hd-topbar-font-size, 14px);
+  font-weight: var(--hd-topbar-font-weight, 500);
   font-family: inherit;
   cursor: pointer;
   white-space: nowrap;
@@ -176,8 +183,8 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-topbar-dd-toggle-label {
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: var(--hd-topbar-font-size, 14px);
+  font-weight: var(--hd-topbar-font-weight, 500);
 }
 
 .cbp-topbar-dd-caret {
@@ -383,8 +390,8 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-topbar-user-name {
-  font-weight: 500;
-  font-size: 0.82rem;
+  font-weight: var(--hd-topbar-font-weight, 500);
+  font-size: var(--hd-topbar-user-font-size, 15px);
   color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -414,7 +421,7 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-primary-nav {
-  --bs-body-font-size: 0.75rem;
+  --bs-body-font-size: var(--hd-nav-font-size, 12px);
   --bs-body-font-weight: var(--hd-nav-font-weight, 500);
   position: fixed;
   top: 60px;
@@ -428,13 +435,19 @@ html.helpdesk-theme-dark {
   display: flex;
   align-items: center;
   padding: 0 12px;
-  font-size: var(--bs-body-font-size);
-  font-weight: var(--bs-body-font-weight);
+  font-size: var(--hd-nav-font-size, 12px);
+  font-weight: var(--hd-nav-font-weight, 500);
 }
 
 @media (min-width: 768px) {
   .cbp-primary-nav {
     padding: 0 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .cbp-primary-nav {
+    padding: 0 30px;
   }
 }
 
@@ -514,8 +527,8 @@ html.helpdesk-theme-dark {
 
 .cbp-nav-link {
   color: var(--cbp-nav-text) !important;
-  font-size: var(--bs-body-font-size, 0.75rem);
-  font-weight: var(--bs-body-font-weight, var(--hd-nav-font-weight, 500));
+  font-size: var(--hd-nav-font-size, 12px);
+  font-weight: var(--hd-nav-font-weight, 500);
   text-decoration: none !important;
   padding: 0.55rem 1rem;
   border-radius: 4px;
@@ -524,13 +537,15 @@ html.helpdesk-theme-dark {
   gap: 0.45rem;
   transition: background 0.15s ease, color 0.15s ease;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .cbp-nav-link-icon {
   flex-shrink: 0;
-  font-size: 1rem;
+  font-size: var(--hd-nav-icon-size, 20px);
   line-height: 1;
   opacity: 0.92;
+  margin-right: 0.05rem;
 }
 
 .cbp-nav-link:hover .cbp-nav-link-icon,
@@ -543,6 +558,16 @@ html.helpdesk-theme-dark {
     width: 100%;
     padding: 0.65rem 1rem;
     border-radius: 0;
+    min-height: unset;
+  }
+}
+
+@media (min-width: 1200px) {
+  .cbp-nav-link,
+  .cbp-nav-dd-toggle {
+    min-height: 60px;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 }
 
@@ -617,15 +642,15 @@ html.helpdesk-theme-dark {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  font-size: var(--bs-body-font-size, 1rem);
+  font-size: var(--hd-ui-font-size, 14px);
   color: var(--cbp-dd-text) !important;
   text-decoration: none !important;
-  font-weight: var(--bs-body-font-weight, 400);
+  font-weight: var(--hd-ui-font-weight, 500);
 }
 
 .cbp-nav-dd-item-icon {
   flex-shrink: 0;
-  font-size: 1.05rem;
+  font-size: var(--hd-nav-icon-size, 20px);
   line-height: 1;
   color: #119a48;
   opacity: 0.9;
@@ -706,10 +731,10 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-settings-page-title {
-  font-size: 1.35rem;
+  font-size: var(--hd-title-size, 1.45rem);
   margin: 0 0 1rem;
   color: #2c3e50;
-  font-weight: 700;
+  font-weight: var(--hd-title-weight, 700);
 }
 
 .cbp-flash {

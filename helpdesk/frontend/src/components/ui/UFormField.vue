@@ -1,21 +1,37 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
-import { formErrorsKey } from './formContext'
+import { computed, inject, provide, ref, useAttrs } from 'vue'
+import { fieldLabelKey, fieldRequiredKey, formErrorsKey } from './formContext'
 
 const props = defineProps<{
   label?: string
   name?: string
   required?: boolean
   description?: string
+  /** When true, label renders above the control instead of on the Vuetify field. */
+  stackedLabel?: boolean
 }>()
 
+const attrs = useAttrs()
 const errors = inject(formErrorsKey, ref([]))
 const fieldError = computed(() => errors.value.find((e) => e.name === props.name)?.message)
+
+const isRichField = computed(() => String(attrs.class ?? '').includes('hd-rich-field'))
+
+const useStackedLabel = computed(() => {
+  if (props.stackedLabel !== undefined) return props.stackedLabel
+  return isRichField.value
+})
+
+const injectedLabel = computed(() => (useStackedLabel.value ? undefined : props.label))
+const injectedRequired = computed(() => props.required ?? false)
+
+provide(fieldLabelKey, injectedLabel)
+provide(fieldRequiredKey, injectedRequired)
 </script>
 
 <template>
   <div class="hd-v-form-field" :class="$attrs.class">
-    <div v-if="label" class="hd-v-form-field__label">
+    <div v-if="useStackedLabel && label" class="hd-v-form-field__label">
       {{ label }}
       <span v-if="required" class="hd-v-form-field__required">*</span>
     </div>

@@ -335,6 +335,8 @@ onMounted(() => {
 .hd-shortcut-btn {
   text-transform: none;
   letter-spacing: normal;
+  font-size: var(--hd-ui-font-size, 14px) !important;
+  font-weight: var(--hd-ui-font-weight, 500) !important;
 }
 .kb-panels {
   background: transparent !important;

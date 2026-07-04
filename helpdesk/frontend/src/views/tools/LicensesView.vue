@@ -195,8 +195,8 @@ onMounted(() => void load())
 
       <UCard v-if="showForm" class="form-panel">
         <template #header><h3>{{ editing ? 'Edit license' : 'New license' }}</h3></template>
-        <div class="form-grid">
-          <UFormField label="License name" required class="span-2"><UInput v-model="form.name" class="w-full" /></UFormField>
+        <div class="hd-form hd-form--grid">
+          <UFormField label="License name" required class="span-3"><UInput v-model="form.name" class="w-full" /></UFormField>
           <UFormField label="Vendor"><UInput v-model="form.vendor" class="w-full" /></UFormField>
           <UFormField label="License key"><UInput v-model="form.license_key" class="w-full" /></UFormField>
           <UFormField label="Purchase date"><UInput v-model="form.purchase_date" type="date" class="w-full" /></UFormField>
@@ -204,7 +204,7 @@ onMounted(() => void load())
           <UFormField label="Seats total"><UInput v-model.number="form.seats_total" type="number" class="w-full" /></UFormField>
           <UFormField label="Seats used"><UInput v-model.number="form.seats_used" type="number" class="w-full" /></UFormField>
           <UFormField label="Cost"><UInput v-model.number="form.cost" type="number" class="w-full" /></UFormField>
-          <UFormField label="Notes" class="span-2"><UTextarea v-model="form.notes" :rows="3" class="w-full" /></UFormField>
+          <UFormField label="Notes" class="span-3"><UTextarea v-model="form.notes" :rows="3" class="w-full" /></UFormField>
         </div>
         <div class="form-actions">
           <UButton color="neutral" variant="outline" @click="showForm = false">Cancel</UButton>
@@ -261,8 +261,6 @@ onMounted(() => void load())
 .status-warning { background: #fffbeb; color: #b45309; }
 .status-expired { background: #fef2f2; color: #b91c1c; }
 .form-panel { border-style: dashed; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-.span-2 { grid-column: span 2; }
 .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.75rem; }
 .table-wrap { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }

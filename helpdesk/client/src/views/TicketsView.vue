@@ -144,14 +144,13 @@ function resetSearch() {
     <v-card class="hd-data-table-card hd-page-toolbar" variant="outlined">
       <v-card-text class="hd-page-toolbar__search">
         <UForm :state="searchState" class="hd-search-form" @submit="doSearch">
-          <UFormField name="q" class="hd-form-toolbar-grow">
+          <UFormField name="q" label="Search" class="hd-form-toolbar-grow">
             <UInput
               v-model="searchState.q"
               type="search"
               icon="i-lucide-search"
-              placeholder="Search by ticket #, subject, requester, assignee, category, status…"
-              aria-label="Search tickets"
-              class="w-full"
+              placeholder="Search by ticket #, subject, requester, assignee…"
+              clearable
             />
           </UFormField>
           <UButton type="submit" color="primary">Search</UButton>

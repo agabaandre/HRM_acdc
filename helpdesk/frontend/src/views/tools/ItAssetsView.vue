@@ -228,12 +228,12 @@ onMounted(() => void load())
         <template #header>
           <h3>{{ editing ? 'Edit asset' : 'New asset' }}</h3>
         </template>
-        <div class="form-grid">
+        <div class="hd-form hd-form--grid">
           <UFormField label="Asset tag" required><UInput v-model="form.asset_tag" class="w-full" /></UFormField>
           <UFormField label="Category" required>
             <USelect v-model="form.category_id" :items="categoryItems" class="w-full" />
           </UFormField>
-          <UFormField label="Name" required class="span-2"><UInput v-model="form.name" class="w-full" /></UFormField>
+          <UFormField label="Name" required class="span-3"><UInput v-model="form.name" class="w-full" /></UFormField>
           <UFormField label="Brand"><UInput v-model="form.brand" class="w-full" /></UFormField>
           <UFormField label="Model"><UInput v-model="form.model" class="w-full" /></UFormField>
           <UFormField label="Serial"><UInput v-model="form.serial_number" class="w-full" /></UFormField>
@@ -249,8 +249,8 @@ onMounted(() => void load())
               class="w-full"
             />
           </UFormField>
-          <UFormField label="Location" class="span-2"><UInput v-model="form.location" class="w-full" /></UFormField>
-          <UFormField label="Notes" class="span-2"><UTextarea v-model="form.notes" :rows="3" class="w-full" /></UFormField>
+          <UFormField label="Location" class="span-3"><UInput v-model="form.location" class="w-full" /></UFormField>
+          <UFormField label="Notes" class="span-3"><UTextarea v-model="form.notes" :rows="3" class="w-full" /></UFormField>
         </div>
         <div class="form-actions">
           <UButton color="neutral" variant="outline" @click="showForm = false">Cancel</UButton>
@@ -305,8 +305,6 @@ onMounted(() => void load())
 .toolbar-field--grow { flex: 1; min-width: 220px; }
 .toolbar-btn { margin-bottom: 0.15rem; }
 .form-panel { border-style: dashed; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-.span-2 { grid-column: span 2; }
 .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.75rem; }
 .table-wrap { overflow-x: auto; padding: 0; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }

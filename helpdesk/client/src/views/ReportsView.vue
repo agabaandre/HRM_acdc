@@ -553,7 +553,7 @@ onMounted(async () => {
           </h2>
           <span v-if="myFilterCount" class="hd-filter-panel__badge">{{ myFilterCount }} active</span>
         </header>
-        <UForm :state="mySearchState" class="hd-form hd-filter-panel__body reports-filters__body" @submit="mySearch">
+        <UForm :state="mySearchState" class="hd-form hd-form--grid reports-filters__body" @submit="mySearch">
           <UFormField label="Search" name="q" class="full">
             <UInput
               v-model="mySearchState.q"
@@ -561,29 +561,50 @@ onMounted(async () => {
               icon="i-lucide-search"
               placeholder="Ticket #, subject, status, assignee…"
               aria-label="Search my tickets"
-              class="w-full"
+              clearable
             />
           </UFormField>
-          <UFormField label="Status" name="statuses" class="full">
-            <USelectMenu v-model="mySearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
+          <UFormField label="Status" name="statuses">
+            <USelectMenu
+              v-model="mySearchState.statuses"
+              :items="statusSelectItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-flag-outline"
+              placeholder="All statuses"
+            />
           </UFormField>
-          <UFormField label="Category" name="categoryIds" class="full">
-            <USelectMenu v-model="mySearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
+          <UFormField label="Category" name="categoryIds">
+            <USelectMenu
+              v-model="mySearchState.categoryIds"
+              :items="categoryItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-tag-outline"
+              placeholder="All categories"
+            />
           </UFormField>
-          <UFormField label="Priority" name="priorities" class="full">
-            <USelectMenu v-model="mySearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
+          <UFormField label="Priority" name="priorities">
+            <USelectMenu
+              v-model="mySearchState.priorities"
+              :items="prioritySelectItems"
+              value-key="value"
+              multiple
+              icon="mdi-alert-circle-outline"
+              placeholder="All priorities"
+            />
           </UFormField>
-          <div class="hd-form hd-form--grid hd-form--grid-2 full">
-            <UFormField label="Date field" name="dateField">
-              <USelect v-model="mySearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
-            </UFormField>
-            <UFormField label="From date" name="dateFrom">
-              <UInput v-model="mySearchState.dateFrom" type="date" class="w-full" />
-            </UFormField>
-            <UFormField label="To date" name="dateTo">
-              <UInput v-model="mySearchState.dateTo" type="date" class="w-full" />
-            </UFormField>
-          </div>
+          <UFormField label="Date field" name="dateField">
+            <USelect v-model="mySearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
+          </UFormField>
+          <UFormField label="From date" name="dateFrom">
+            <UInput v-model="mySearchState.dateFrom" type="date" icon="mdi-calendar-start" />
+          </UFormField>
+          <UFormField label="To date" name="dateTo">
+            <UInput v-model="mySearchState.dateTo" type="date" icon="mdi-calendar-end" />
+          </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
             <UButton type="button" color="neutral" variant="outline" @click="myClear">
@@ -733,7 +754,7 @@ onMounted(async () => {
           </h2>
           <span v-if="adminFilterCount" class="hd-filter-panel__badge">{{ adminFilterCount }} active</span>
         </header>
-        <UForm :state="adminSearchState" class="hd-form hd-filter-panel__body reports-filters__body" @submit="adminSearch">
+        <UForm :state="adminSearchState" class="hd-form hd-form--grid reports-filters__body" @submit="adminSearch">
           <UFormField label="Search" name="q" class="full">
             <UInput
               v-model="adminSearchState.q"
@@ -741,43 +762,72 @@ onMounted(async () => {
               icon="i-lucide-search"
               placeholder="Ticket #, subject, requester, assignee…"
               aria-label="Search admin recent activity"
-              class="w-full"
+              clearable
             />
           </UFormField>
-          <UFormField label="Agents" name="agentIds" class="full">
+          <UFormField label="Agents" name="agentIds">
             <USelectMenu
               v-model="adminSearchState.agentIds"
               :items="adminAgentItems"
               value-key="value"
               multiple
               searchable
+              icon="mdi-account-group"
               placeholder="All agents"
-              class="w-full"
             />
           </UFormField>
-          <UFormField label="Support groups" name="groupIds" class="full">
-            <USelectMenu v-model="adminSearchState.groupIds" :items="adminGroupItems" value-key="value" multiple searchable placeholder="All groups" class="w-full" />
+          <UFormField label="Support groups" name="groupIds">
+            <USelectMenu
+              v-model="adminSearchState.groupIds"
+              :items="adminGroupItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-account-multiple"
+              placeholder="All groups"
+            />
           </UFormField>
-          <UFormField label="Category" name="categoryIds" class="full">
-            <USelectMenu v-model="adminSearchState.categoryIds" :items="categoryItems" value-key="value" multiple searchable placeholder="All categories" class="w-full" />
+          <UFormField label="Category" name="categoryIds">
+            <USelectMenu
+              v-model="adminSearchState.categoryIds"
+              :items="categoryItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-tag-outline"
+              placeholder="All categories"
+            />
           </UFormField>
-          <UFormField label="Status" name="statuses" class="full">
-            <USelectMenu v-model="adminSearchState.statuses" :items="statusSelectItems" value-key="value" multiple searchable placeholder="All statuses" class="w-full" />
+          <UFormField label="Status" name="statuses">
+            <USelectMenu
+              v-model="adminSearchState.statuses"
+              :items="statusSelectItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-flag-outline"
+              placeholder="All statuses"
+            />
           </UFormField>
-          <UFormField label="Priority" name="priorities" class="full">
-            <USelectMenu v-model="adminSearchState.priorities" :items="prioritySelectItems" value-key="value" multiple placeholder="All priorities" class="w-full" />
+          <UFormField label="Priority" name="priorities">
+            <USelectMenu
+              v-model="adminSearchState.priorities"
+              :items="prioritySelectItems"
+              value-key="value"
+              multiple
+              icon="mdi-alert-circle-outline"
+              placeholder="All priorities"
+            />
           </UFormField>
-          <div class="hd-form hd-form--grid hd-form--grid-2 full">
-            <UFormField label="Date field" name="dateField">
-              <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" class="w-full" />
-            </UFormField>
-            <UFormField label="From date" name="dateFrom">
-              <UInput v-model="adminSearchState.dateFrom" type="date" class="w-full" />
-            </UFormField>
-            <UFormField label="To date" name="dateTo">
-              <UInput v-model="adminSearchState.dateTo" type="date" class="w-full" />
-            </UFormField>
-          </div>
+          <UFormField label="Date field" name="dateField">
+            <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
+          </UFormField>
+          <UFormField label="From date" name="dateFrom">
+            <UInput v-model="adminSearchState.dateFrom" type="date" icon="mdi-calendar-start" />
+          </UFormField>
+          <UFormField label="To date" name="dateTo">
+            <UInput v-model="adminSearchState.dateTo" type="date" icon="mdi-calendar-end" />
+          </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
             <UButton type="button" color="neutral" variant="outline" @click="adminClear">
@@ -945,22 +995,22 @@ onMounted(async () => {
 
     <template v-else-if="tab === 'monthly' && isStaff">
       <div class="monthly-toolbar">
-        <div class="hd-form hd-form--grid hd-form--grid-2">
+        <div class="hd-form hd-form--grid">
           <UFormField label="Year" name="monthlyYear">
-            <UInput v-model.number="monthlyYear" type="number" min="2020" max="2100" class="w-full" />
+            <UInput v-model.number="monthlyYear" type="number" min="2020" max="2100" icon="mdi-calendar" />
           </UFormField>
           <UFormField label="Month" name="monthlyMonth">
-            <UInput v-model.number="monthlyMonth" type="number" min="1" max="12" class="w-full" />
+            <UInput v-model.number="monthlyMonth" type="number" min="1" max="12" icon="mdi-calendar-month" />
           </UFormField>
-          <UFormField v-if="isAdmin" label="Agent" name="monthlyAgentId" class="full">
+          <UFormField v-if="isAdmin" label="Agent" name="monthlyAgentId">
             <USelectMenu
               v-model="monthlyAgentId"
               :items="adminAgentItems"
               value-key="value"
               searchable
               clearable
+              icon="mdi-account"
               placeholder="All agents"
-              class="w-full"
             />
           </UFormField>
         </div>

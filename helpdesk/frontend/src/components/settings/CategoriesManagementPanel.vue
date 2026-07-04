@@ -115,7 +115,7 @@ onMounted(() => {
       <UForm
         :state="draft"
         :validate="validateDraft"
-        class="hd-form hd-form--grid hd-form--grid-2"
+        class="hd-form hd-form--grid"
         @submit="onCreate"
       >
         <UFormField label="Name" name="name" required>

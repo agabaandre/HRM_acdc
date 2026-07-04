@@ -255,24 +255,24 @@ onMounted(() => {
       <UCard v-if="showForm" class="form-panel">
         <template #header><h3>New software request</h3></template>
         <p class="form-intro">Fields mirror the official Software Request Form (requester, business case, timeline, and budget).</p>
-        <div class="form-grid">
+        <div class="hd-form hd-form--grid">
           <UFormField label="Requester name" required><UInput v-model="form.requester_name" class="w-full" /></UFormField>
           <UFormField label="Department"><UInput v-model="form.department" class="w-full" /></UFormField>
           <UFormField label="Email"><UInput v-model="form.email" type="email" class="w-full" /></UFormField>
           <UFormField label="Phone"><UInput v-model="form.phone" class="w-full" /></UFormField>
-          <UFormField label="Request title" required class="span-2"><UInput v-model="form.request_title" class="w-full" /></UFormField>
-          <UFormField label="Problem statement" class="span-2"><UTextarea v-model="form.problem_statement" :rows="3" class="w-full" /></UFormField>
-          <UFormField label="Proposed solution" class="span-2"><UTextarea v-model="form.proposed_solution" :rows="3" class="w-full" /></UFormField>
-          <UFormField label="Business justification" class="span-2"><UTextarea v-model="form.business_justification" :rows="3" class="w-full" /></UFormField>
-          <UFormField label="Affected stakeholders" class="span-2"><UTextarea v-model="form.affected_stakeholders" :rows="2" class="w-full" /></UFormField>
+          <UFormField label="Request title" required class="span-3"><UInput v-model="form.request_title" class="w-full" /></UFormField>
+          <UFormField label="Problem statement" class="span-3"><UTextarea v-model="form.problem_statement" :rows="3" class="w-full" /></UFormField>
+          <UFormField label="Proposed solution" class="span-3"><UTextarea v-model="form.proposed_solution" :rows="3" class="w-full" /></UFormField>
+          <UFormField label="Business justification" class="span-3"><UTextarea v-model="form.business_justification" :rows="3" class="w-full" /></UFormField>
+          <UFormField label="Affected stakeholders" class="span-3"><UTextarea v-model="form.affected_stakeholders" :rows="2" class="w-full" /></UFormField>
           <UFormField label="Mandate alignment"><UInput v-model="form.mandate_alignment" class="w-full" /></UFormField>
           <UFormField label="Priority">
             <USelect v-model="form.priority" :items="priorityItems" class="w-full" />
           </UFormField>
           <UFormField label="Desired timeline"><UInput v-model="form.desired_timeline" class="w-full" /></UFormField>
           <UFormField label="Budget estimate"><UInput v-model.number="form.budget_estimate" type="number" class="w-full" /></UFormField>
-          <UFormField label="Existing alternatives" class="span-2"><UTextarea v-model="form.existing_alternatives" :rows="2" class="w-full" /></UFormField>
-          <UFormField label="Additional comments" class="span-2"><UTextarea v-model="form.additional_comments" :rows="2" class="w-full" /></UFormField>
+          <UFormField label="Existing alternatives" class="span-3"><UTextarea v-model="form.existing_alternatives" :rows="2" class="w-full" /></UFormField>
+          <UFormField label="Additional comments" class="span-3"><UTextarea v-model="form.additional_comments" :rows="2" class="w-full" /></UFormField>
         </div>
         <div class="form-actions">
           <UButton color="neutral" variant="outline" :disabled="busy" @click="showForm = false">Cancel</UButton>
@@ -342,7 +342,7 @@ onMounted(() => {
 
           <section v-if="canManage" class="sub-section">
             <h4>Official use — review &amp; decision</h4>
-            <div class="form-grid">
+            <div class="hd-form hd-form--grid">
               <UFormField label="Approval role">
                 <USelect
                   v-model="approveForm.approval_role"
@@ -365,9 +365,9 @@ onMounted(() => {
                   class="w-full"
                 />
               </UFormField>
-              <UFormField label="Assigned BA" class="span-2"><UInput v-model="approveForm.assigned_ba_name" class="w-full" /></UFormField>
-              <UFormField label="Project ID" class="span-2"><UInput v-model="approveForm.project_id" class="w-full" /></UFormField>
-              <UFormField label="Notes" class="span-2"><UTextarea v-model="approveForm.notes" :rows="2" class="w-full" /></UFormField>
+              <UFormField label="Assigned BA" class="span-3"><UInput v-model="approveForm.assigned_ba_name" class="w-full" /></UFormField>
+              <UFormField label="Project ID" class="span-3"><UInput v-model="approveForm.project_id" class="w-full" /></UFormField>
+              <UFormField label="Notes" class="span-3"><UTextarea v-model="approveForm.notes" :rows="2" class="w-full" /></UFormField>
             </div>
             <UButton color="primary" size="sm" :loading="busy" @click="submitApproval">Record decision</UButton>
           </section>
@@ -398,8 +398,6 @@ onMounted(() => {
 .toolbar-spacer { flex: 1; }
 .form-panel { border-style: dashed; }
 .form-intro { margin: 0 0 0.75rem; color: #64748b; font-size: 0.88rem; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-.span-2 { grid-column: span 2; }
 .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.75rem; flex-wrap: wrap; }
 .layout-split { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 @media (min-width: 960px) {

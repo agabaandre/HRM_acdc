@@ -37,15 +37,16 @@ defineProps<{
   text-decoration: underline;
 }
 .cbp-view-title {
-  font-size: 1.35rem;
+  font-size: var(--hd-title-size, 1.45rem);
   margin: 0 0 0.35rem;
   color: #2c3e50;
-  font-weight: 700;
+  font-weight: var(--hd-title-weight, 700);
 }
 .cbp-view-lede {
   margin: 0;
   color: #5c6c7c;
   line-height: 1.55;
-  font-size: 0.95rem;
+  font-size: var(--hd-lede-size, 1rem);
+  font-weight: var(--hd-lede-weight, 500);
 }
 </style>

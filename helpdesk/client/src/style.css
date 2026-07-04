@@ -13,9 +13,20 @@ html.helpdesk-theme-light {
   --cdc-shadow: 0 18px 48px rgba(6, 95, 44, 0.12);
   --font-sans: Arial, Roboto, sans-serif, Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
   --font-display: Arial, Roboto, sans-serif, Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-  /* Base 400 → body +20% ≈ 500; nav was 600, reduced 15% → 510 ≈ 500 */
-  --hd-body-font-weight: 500;
+  /* Typography — aligned with APM / staff-portal chrome (app.css primary-menu) */
+  --hd-nav-font-size: 12px;
   --hd-nav-font-weight: 500;
+  --hd-nav-icon-size: 20px;
+  --hd-topbar-font-size: 14px;
+  --hd-topbar-font-weight: 500;
+  --hd-topbar-user-font-size: 15px;
+  --hd-title-size: 1.45rem;
+  --hd-title-weight: 700;
+  --hd-lede-size: 1rem;
+  --hd-lede-weight: 500;
+  --hd-ui-font-size: 14px;
+  --hd-ui-font-weight: 500;
+  --hd-body-font-weight: 500;
 }
 
 html.helpdesk-theme-dark {

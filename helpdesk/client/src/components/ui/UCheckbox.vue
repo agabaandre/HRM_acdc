@@ -1,17 +1,23 @@
 <script setup lang="ts">
+import { computed, inject } from 'vue'
+import { fieldLabelKey } from './formContext'
+
 const model = defineModel<boolean | 'indeterminate'>({ default: false })
 
-defineProps<{
+const props = defineProps<{
   label?: string
   disabled?: boolean
 }>()
+
+const injectedLabel = inject(fieldLabelKey, undefined)
+const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
 </script>
 
 <template>
   <v-checkbox
     :model-value="model === true"
     :indeterminate="model === 'indeterminate'"
-    :label="$slots.label ? undefined : label"
+    :label="$slots.label ? undefined : fieldLabel"
     :disabled="disabled"
     color="primary"
     hide-details

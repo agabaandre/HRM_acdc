@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
+import { fieldLabelKey, fieldRequiredKey } from './formContext'
 
 const model = defineModel<string>({ default: '' })
 
 const props = withDefaults(
   defineProps<{
     rows?: number
+    label?: string
     placeholder?: string
     disabled?: boolean
     autoGrow?: boolean
@@ -18,17 +20,24 @@ const props = withDefaults(
   },
 )
 
+const injectedLabel = inject(fieldLabelKey, undefined)
+const injectedRequired = inject(fieldRequiredKey, undefined)
+
+const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
+const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const maxRowsValue = computed(() => props.maxRows ?? props.rows + 2)
 </script>
 
 <template>
   <v-textarea
     v-model="model"
+    :label="fieldLabel"
     :rows="rows"
     :placeholder="placeholder"
     :disabled="disabled"
     :auto-grow="autoGrow"
     :max-rows="autoGrow ? maxRowsValue : undefined"
+    :required="fieldRequired"
     density="compact"
     hide-details="auto"
     class="hd-v-textarea w-full"

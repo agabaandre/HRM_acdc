@@ -36,11 +36,15 @@ html.helpdesk-theme-dark {
 
 .cbp-view-title {
   font-family: var(--font-sans);
+  font-size: var(--hd-title-size, 1.45rem);
+  font-weight: var(--hd-title-weight, 700);
   letter-spacing: -0.02em;
 }
 
 .cbp-view-lede {
   max-width: 52rem;
+  font-size: var(--hd-lede-size, 1rem);
+  font-weight: var(--hd-lede-weight, 500);
 }
 
 /* Hero strip on overview */
@@ -294,15 +298,16 @@ html.helpdesk-theme-dark .hd-btn--outline {
 
 .hd-kanban-title {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 800;
+  font-size: var(--hd-title-size, 1.45rem);
+  font-weight: var(--hd-title-weight, 700);
   color: #1e293b;
   letter-spacing: -0.02em;
 }
 
 .hd-kanban-sub {
   margin: 0.35rem 0 0;
-  font-size: 0.88rem;
+  font-size: var(--hd-lede-size, 1rem);
+  font-weight: var(--hd-lede-weight, 500);
   color: var(--hd-muted);
   max-width: 36rem;
   line-height: 1.45;

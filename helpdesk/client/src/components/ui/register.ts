@@ -14,7 +14,6 @@ import USelect from './USelect.vue'
 import USelectMenu from './USelectMenu.vue'
 import USwitch from './USwitch.vue'
 import UTextarea from './UTextarea.vue'
-import UiParentCard from '../../materialpro/components/shared/UiParentCard.vue'
 
 const components = {
   UApp,
@@ -32,7 +31,6 @@ const components = {
   USelectMenu,
   USwitch,
   UTextarea,
-  UiParentCard,
 } as const
 
 export function registerUiComponents(app: App): void {
