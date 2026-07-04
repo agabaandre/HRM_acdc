@@ -31,6 +31,7 @@ use App\Services\FundCodeWorkingBalanceService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
+use App\Http\Controllers\Concerns\ActivityListIndexResponses;
 use App\Http\Controllers\Concerns\CachesApmPageResponses;
 use App\Support\MemoFundTypeFilter;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
@@ -38,6 +39,7 @@ use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 class ActivityController extends Controller
 {
     use CachesApmPageResponses;
+    use ActivityListIndexResponses;
     use SendsSelfDocumentPdfEmail;
 
     
@@ -2108,25 +2110,9 @@ class ActivityController extends Controller
         $fundTypeFilterOptions = MemoFundTypeFilter::options();
         $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
 
-        return view('activities.single-memos.index', compact(
-            'myMemos',
-            'allMemos',
-            'sharedMemos',
-            'staff',
-            'divisions',
-            'searchTerm',
-            'years',
-            'quarters',
-            'selectedYear',
-            'selectedQuarter',
-            'showCreateSingleMemoInstructions',
-            'currentQuarterMatrix',
-            'currentQuarterLabel',
-            'apmCurrentYear',
-            'apmCurrentQuarter',
-            'fundTypeFilterOptions',
-            'selectedFundTypeId',
-        ));
+        return view('activities.single-memos.index', [
+            'pageConfig' => $this->buildSingleMemosIndexPageConfig($request),
+        ]);
     }
 
     /**
@@ -2448,9 +2434,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             ], ['page' => 'index']);
             if (! $request->boolean('nocache')) {
                 $cachedPage = \App\Services\ApmPageCache::get('activities', $pageKey);
-                if (is_array($cachedPage)) {
-                    return view('activities.index', $cachedPage);
-                }
+            if (is_array($cachedPage)) {
+                return view('activities.index', [
+                    'pageConfig' => $this->buildActivitiesIndexPageConfig($request),
+                ]);
+            }
             }
         }
         
@@ -2688,28 +2676,11 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
             return \App\Support\ApmListFragment::json($payload);
         }
 
-        $viewData = compact(
-            'allActivities',
-            'myDivisionActivities',
-            'sharedActivities',
-            'divisions',
-            'staff',
-            'years',
-            'quarters',
-            'selectedYear',
-            'selectedQuarter',
-            'selectedDivisionId',
-            'selectedDocumentNumber',
-            'selectedStaffId',
-            'selectedStatus',
-            'searchTerm',
-            'fundTypeFilterOptions',
-            'selectedFundTypeId',
-            'userDivisionId'
-        );
-        \App\Services\ApmPageCache::put('activities', $pageKey, $viewData);
+        \App\Services\ApmPageCache::put('activities', $pageKey, ['cached' => true]);
 
-        return view('activities.index', $viewData);
+        return view('activities.index', [
+            'pageConfig' => $this->buildActivitiesIndexPageConfig($request),
+        ]);
     }
 
     /**

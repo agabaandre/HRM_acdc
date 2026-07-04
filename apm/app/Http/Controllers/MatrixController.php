@@ -105,15 +105,16 @@ class MatrixController extends Controller
         if (! $request->boolean('nocache')) {
             $cachedPage = \App\Services\ApmPageCache::get('matrices', $pageKeyParts);
             if (is_array($cachedPage) && isset($cachedPage['myDivisionMatricesCount'])) {
-                return view('matrices.index', array_merge($cachedPage, [
-                    'title' => user_session('division_name'),
-                    'module' => 'Quarterly Matrix',
-                    'divisions' => \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all()),
-                    'focalPersons' => \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get()),
-                    'selectedYear' => $selectedYear,
-                    'selectedQuarter' => $selectedQuarter,
-                    'selectedStatus' => $selectedStatus,
-                ]));
+                return view('matrices.index', [
+                    'pageConfig' => $this->buildMatricesIndexPageConfig(
+                        $request,
+                        $selectedYear,
+                        $selectedQuarter,
+                        $selectedStatus,
+                        (int) ($cachedPage['myDivisionMatricesCount'] ?? 0),
+                        (int) ($cachedPage['allMatricesCount'] ?? 0)
+                    ),
+                ]);
             }
         }
 
@@ -126,35 +127,256 @@ class MatrixController extends Controller
                 $allMatricesCount = (int) $allCountQuery->count();
             }
 
-            $initialMyDivisionMatrices = null;
-            $initialAllMatrices = null;
-            if ($myDivisionMatricesCount > 0) {
-                $initialMyDivisionMatrices = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus)
-                    ->paginate(24, ['*'], 'my_division_page');
-            } elseif ($allMatricesCount > 0 && $allCountQuery !== null) {
-                $allMatricesBuilder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
-                if ($allMatricesBuilder !== null) {
-                    $initialAllMatrices = $allMatricesBuilder->paginate(24, ['*'], 'all_matrices_page');
-                }
-            }
-
             return [
                 'myDivisionMatricesCount' => $myDivisionMatricesCount,
                 'allMatricesCount' => $allMatricesCount,
-                'initialMyDivisionMatrices' => $initialMyDivisionMatrices,
-                'initialAllMatrices' => $initialAllMatrices,
             ];
         });
 
-        return view('matrices.index', array_merge($pageData, [
-            'title' => user_session('division_name'),
-            'module' => 'Quarterly Matrix',
-            'divisions' => \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all()),
-            'focalPersons' => \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get()),
-            'selectedYear' => $selectedYear,
-            'selectedQuarter' => $selectedQuarter,
-            'selectedStatus' => $selectedStatus,
-        ]));
+        return view('matrices.index', [
+            'pageConfig' => $this->buildMatricesIndexPageConfig(
+                $request,
+                $selectedYear,
+                $selectedQuarter,
+                $selectedStatus,
+                (int) ($pageData['myDivisionMatricesCount'] ?? 0),
+                (int) ($pageData['allMatricesCount'] ?? 0)
+            ),
+        ]);
+    }
+
+    public function getMatricesAjax(Request $request)
+    {
+        try {
+            $tab = $request->get('tab', 'myDivision');
+            $selectedYear = $request->get('year', '');
+            $selectedQuarter = $request->get('quarter', '');
+            $selectedStatus = $request->get('status', 'active');
+            $page = max(1, (int) $request->get('page', 1));
+            $pageSize = min(100, max(1, (int) $request->get('pageSize', 24)));
+
+            if ($selectedYear === '' && ! $request->has('year')) {
+                $selectedYear = now()->year;
+            }
+
+            if ($tab === 'allMatrices') {
+                if (! in_array(87, user_session('permissions', []))) {
+                    return response()->json(['error' => 'You do not have access to this list.'], 403);
+                }
+                $builder = $this->newAllMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+                if ($builder === null) {
+                    return response()->json(['error' => 'You do not have access to this list.'], 403);
+                }
+            } else {
+                $builder = $this->newMyDivisionMatricesBuilder($request, $selectedYear, $selectedQuarter, $selectedStatus);
+            }
+
+            $paginator = $builder->paginate($pageSize, ['*'], 'page', $page);
+            $startIndex = ($paginator->currentPage() - 1) * $paginator->perPage();
+
+            $items = $paginator->getCollection()
+                ->values()
+                ->map(fn (Matrix $matrix, int $index) => $this->serializeMatrixIndexRow($matrix, $startIndex + $index + 1));
+
+            $myDivisionCount = (int) $this->newMyDivisionMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus)->count();
+            $allCount = 0;
+            $allCountQuery = $this->newAllMatricesCountQuery($request, $selectedYear, $selectedQuarter, $selectedStatus);
+            if ($allCountQuery !== null) {
+                $allCount = (int) $allCountQuery->count();
+            }
+
+            return response()->json([
+                'data' => $items,
+                'pagination' => [
+                    'total' => $paginator->total(),
+                    'from' => $paginator->firstItem() ?? 0,
+                    'to' => $paginator->lastItem() ?? 0,
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'per_page' => $paginator->perPage(),
+                ],
+                'counts' => [
+                    'my_division' => $myDivisionCount,
+                    'all' => $allCount,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Matrices AJAX error: '.$e->getMessage());
+
+            return response()->json(['error' => 'An error occurred while loading matrices.'], 500);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildMatricesIndexPageConfig(
+        Request $request,
+        mixed $selectedYear,
+        mixed $selectedQuarter,
+        string $selectedStatus,
+        int $myDivisionMatricesCount,
+        int $allMatricesCount
+    ): array {
+        $currentYear = now()->year;
+        $currentQuarter = 'Q'.now()->quarter;
+        $divisions = \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all());
+        $focalPersons = \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get());
+
+        $yearOptions = [['title' => 'All years', 'value' => '']];
+        foreach (range($currentYear + 1, $currentYear - 5) as $year) {
+            $yearOptions[] = ['title' => (string) $year, 'value' => (string) $year];
+        }
+
+        $divisionOptions = [['title' => 'All divisions', 'value' => '']];
+        foreach ($divisions as $division) {
+            $divisionId = $division->id ?? $division->division_id ?? null;
+            if ($divisionId === null) {
+                continue;
+            }
+            $divisionOptions[] = [
+                'title' => $division->division_name ?? '',
+                'value' => (string) $divisionId,
+            ];
+        }
+
+        $focalOptions = [['title' => 'All focal persons', 'value' => '']];
+        foreach ($focalPersons as $person) {
+            $staffId = $person->staff_id ?? $person->id ?? null;
+            if ($staffId === null) {
+                continue;
+            }
+            $focalOptions[] = [
+                'title' => $person->name ?? trim(($person->fname ?? '').' '.($person->lname ?? '')),
+                'value' => (string) $staffId,
+            ];
+        }
+
+        $defaultYear = $request->has('year')
+            ? (string) $request->get('year', '')
+            : (string) ($selectedYear ?: $currentYear);
+
+        return [
+            'currentYear' => $currentYear,
+            'currentQuarter' => $currentQuarter,
+            'defaults' => [
+                'year' => $defaultYear,
+                'quarter' => (string) ($selectedQuarter ?? ''),
+                'division' => (string) $request->get('division', ''),
+                'focal_person' => (string) $request->get('focal_person', ''),
+                'status' => (string) ($selectedStatus ?: 'active'),
+                'tab' => ($myDivisionMatricesCount > 0) ? 'myDivision' : 'allMatrices',
+            ],
+            'counts' => [
+                'my_division' => $myDivisionMatricesCount,
+                'all' => $allMatricesCount,
+            ],
+            'canViewAllMatrices' => in_array(87, user_session('permissions', [])),
+            'isFocalPerson' => function_exists('isfocal_person') ? isfocal_person() : false,
+            'perPage' => 24,
+            'yearOptions' => $yearOptions,
+            'quarterOptions' => [
+                ['title' => 'All quarters', 'value' => ''],
+                ['title' => 'Q1', 'value' => 'Q1'],
+                ['title' => 'Q2', 'value' => 'Q2'],
+                ['title' => 'Q3', 'value' => 'Q3'],
+                ['title' => 'Q4', 'value' => 'Q4'],
+            ],
+            'divisionOptions' => $divisionOptions,
+            'focalOptions' => $focalOptions,
+            'statusOptions' => [
+                ['title' => 'Active only', 'value' => 'active'],
+                ['title' => 'Archived only', 'value' => 'archived'],
+                ['title' => 'All', 'value' => 'all'],
+            ],
+            'routes' => [
+                'ajax' => route('matrices.ajax'),
+                'create' => route('matrices.create'),
+                'exportDivisionCsv' => route('matrices.export.division-csv'),
+                'exportCsv' => route('matrices.export.csv'),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeMatrixIndexRow(Matrix $matrix, int $rowNum): array
+    {
+        $kras = is_string($matrix->key_result_area)
+            ? json_decode($matrix->key_result_area, true)
+            : $matrix->key_result_area;
+        if (! is_array($kras)) {
+            $kras = [];
+        }
+
+        $workflow = $matrix->workflow_definition;
+        $actor = $matrix->current_actor;
+        $status = $matrix->overall_status ?? 'draft';
+
+        return [
+            'row_num' => $rowNum,
+            'id' => $matrix->id,
+            'year' => $matrix->year,
+            'quarter' => $matrix->quarter,
+            'division_name' => $matrix->division->division_name ?? 'N/A',
+            'focal_person_name' => $matrix->focalPerson->name ?? 'N/A',
+            'kra_count' => count($kras),
+            'kras' => array_values(array_filter(array_map(
+                fn ($kra) => is_array($kra) ? ($kra['description'] ?? '') : '',
+                $kras
+            ))),
+            'activity_count' => $matrix->activities->count(),
+            'activities' => $matrix->activities->map(fn ($activity) => [
+                'title' => $activity->activity_title,
+                'participants' => (int) ($activity->total_participants ?? 0),
+                'budget' => $this->matrixActivityBudgetTotal($activity),
+            ])->values()->all(),
+            'approval_level' => $matrix->approval_level ?? 'N/A',
+            'overall_status' => $status,
+            'workflow_role' => $workflow->role ?? null,
+            'current_actor_name' => $actor
+                ? trim(($actor->fname ?? '').' '.($actor->lname ?? ''))
+                : null,
+            'show_url' => route('matrices.show', $matrix->id),
+            'edit_url' => in_array($status, ['draft', 'returned'], true)
+                ? route('matrices.edit', $matrix->id)
+                : null,
+        ];
+    }
+
+    private function matrixActivityBudgetTotal($activity): float
+    {
+        if (isset($activity->total_budget) && (float) $activity->total_budget > 0) {
+            return (float) $activity->total_budget;
+        }
+
+        $totalBudget = 0.0;
+        $budgetBreakdown = $activity->budget_breakdown;
+        if (is_string($budgetBreakdown)) {
+            $budgetBreakdown = json_decode($budgetBreakdown, true);
+        }
+
+        if (! is_array($budgetBreakdown)) {
+            return $totalBudget;
+        }
+
+        foreach ($budgetBreakdown as $key => $entries) {
+            if ($key === 'grand_total' || ! is_array($entries)) {
+                continue;
+            }
+            foreach ($entries as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $unitCost = (float) ($item['unit_cost'] ?? 0);
+                $units = (float) ($item['units'] ?? 0);
+                $days = (float) ($item['days'] ?? 1);
+                $totalBudget += $days > 1 ? $unitCost * $units * $days : $unitCost * $units;
+            }
+        }
+
+        return $totalBudget;
     }
 
     /**

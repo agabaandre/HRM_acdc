@@ -185,237 +185,31 @@
             </div>
         </div>
     @else
-        <!-- Main activities page view -->
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body py-3 px-4 bg-light rounded-3">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top">
-                    <h4 class="mb-0 text-success fw-bold"><i class="bx bx-task me-2 text-success"></i> Activity Details</h4>
-                </div>
-
-                <div class="row g-3 align-items-end" id="activityFilters" autocomplete="off">
-                    <input type="hidden" name="tab" id="filter_tab" value="{{ request('tab', in_array(87, user_session('permissions', [])) ? 'all-activities' : 'my-division') }}">
-                    @include('partials.apm-memo-list-filters', [
-                        'filterId' => 'activityFilters',
-                        'resetUrl' => route('activities.index'),
-                        'showQuarter' => true,
-                        'showFundType' => true,
-                        'searchLabel' => 'Search Activity Title',
-                        'searchPlaceholder' => 'Enter activity title to search...',
-                        'staffLabel' => 'Responsible Person',
-                        'staff' => $staff,
-                        'divisions' => $divisions,
-                        'years' => $years,
-                        'quarters' => $quarters,
-                        'selectedYear' => $selectedYear,
-                        'selectedQuarter' => $selectedQuarter,
-                        'selectedDivisionId' => $selectedDivisionId,
-                        'selectedStatus' => $selectedStatus,
-                        'selectedFundTypeId' => $selectedFundTypeId,
-                        'searchTerm' => $searchTerm,
-                        'fundTypeFilterOptions' => $fundTypeFilterOptions ?? [],
-                    ])
-                </div>
+        @push('head-meta')
+        <style>
+            #activities-index-app .ai-vuetify-app { background: transparent !important; }
+            #activities-index-app .v-application__wrap { min-height: 0 !important; }
+            #activities-index-app .ai-list-table thead th {
+                background: #f8fafc !important;
+                color: rgba(0, 0, 0, 0.7) !important;
+                font-weight: 600 !important;
+                font-size: 0.75rem !important;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+            #activities-index-app .ai-list-table tbody td {
+                color: rgba(0, 0, 0, 0.87) !important;
+                vertical-align: middle !important;
+            }
+        </style>
+        @endpush
+        <div id="activities-index-app" data-apm-vuetify-page="activities-index">
+            <script type="application/json" class="apm-page-config">@json($pageConfig)</script>
+            <div class="text-center py-5 text-muted">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="mt-2 mb-0">Loading activities…</p>
             </div>
         </div>
-
-        <div class="card shadow-sm">
-        <div class="card-body p-0">
-                <!-- Bootstrap Tabs Navigation -->
-                <ul class="nav nav-tabs nav-fill" id="activitiesTabs" role="tablist">
-                    @if(in_array(87, user_session('permissions', [])))
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="all-activities-tab" data-bs-toggle="tab" data-bs-target="#all-activities" type="button" role="tab" aria-controls="all-activities" aria-selected="true">
-                            <i class="bx bx-grid me-2"></i> All Activities
-                            <span class="badge bg-primary text-white ms-2" id="badge-all-activities">{{ $allActivities->total() ?? 0 }}</span>
-                        </button>
-                    </li>
-                    @endif
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link {{ !in_array(87, user_session('permissions', [])) ? 'active' : '' }}" id="my-division-tab" data-bs-toggle="tab" data-bs-target="#my-division" type="button" role="tab" aria-controls="my-division" aria-selected="{{ !in_array(87, user_session('permissions', [])) ? 'true' : 'false' }}">
-                            <i class="bx bx-home me-2"></i> My Division Activities
-                            <span class="badge bg-success text-white ms-2" id="badge-my-division">{{ $myDivisionActivities->total() ?? 0 }}</span>
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="shared-activities-tab" data-bs-toggle="tab" data-bs-target="#shared-activities" type="button" role="tab" aria-controls="shared-activities" aria-selected="false">
-                            <i class="bx bx-share me-2"></i> Shared Activities
-                            <span class="badge bg-info text-white ms-2" id="badge-shared-activities">{{ $sharedActivities->total() ?? 0 }}</span>
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content" id="activitiesTabsContent">
-                    <!-- All Activities Tab -->
-                    @if(in_array(87, user_session('permissions', [])))
-                    <div class="tab-pane fade show active" id="all-activities" role="tabpanel" aria-labelledby="all-activities-tab">
-                        <div class="p-3">
-                            @include('activities.partials.all-activities-tab')
-                        </div>
-                    </div>
-                @endif
-                
-                <!-- My Division Activities Tab -->
-                <div class="tab-pane fade {{ !in_array(87, user_session('permissions', [])) ? 'show active' : '' }}" id="my-division" role="tabpanel" aria-labelledby="my-division-tab">
-                    <div class="p-3">
-                        @include('activities.partials.my-division-activities-tab')
-                                            </div>
-                                        </div>
-
-                <!-- Shared Activities Tab -->
-                <div class="tab-pane fade" id="shared-activities" role="tabpanel" aria-labelledby="shared-activities-tab">
-                    <div class="p-3">
-                        @include('activities.partials.shared-activities-tab')
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     @endif
 </div>
-
-<script>
-function initActivitiesIndexPage() {
-    if (!document.getElementById('activitiesTabs')) return;
-    var filtersEl = document.getElementById('activityFilters');
-    if (!filtersEl) return;
-    function applyFilters() {
-        var activeTab = document.querySelector('#activitiesTabsContent .tab-pane.active');
-        if (activeTab) loadTabData(activeTab.id);
-    }
-    document.addEventListener('apm-memo-filters:apply', function(e) {
-        if (e.detail && e.detail.filterId === 'activityFilters') applyFilters();
-    });
-    // Keep hidden tab in sync so form submit opens the right tab
-    var filterTabInput = document.getElementById('filter_tab');
-    
-    // Handle tab switching based on URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-    
-    if (tabParam) {
-        setTimeout(function() {
-            var tabEl = null;
-            if (tabParam === 'all' || tabParam === 'all-activities') tabEl = document.getElementById('all-activities-tab');
-            else if (tabParam === 'my-division') tabEl = document.getElementById('my-division-tab');
-            else if (tabParam === 'shared' || tabParam === 'shared-activities') tabEl = document.getElementById('shared-activities-tab');
-            if (tabEl && typeof bootstrap !== 'undefined') {
-                var tab = new bootstrap.Tab(tabEl);
-                tab.show();
-            }
-        }, 50);
-    }
-    
-    // Attach initial pagination handlers for all tabs
-    attachPaginationHandlers('all-activities');
-    attachPaginationHandlers('my-division');
-    attachPaginationHandlers('shared-activities');
-    
-    // Add click handlers to tabs to load data via AJAX
-    const tabButtons = document.querySelectorAll('#activitiesTabs [data-bs-toggle="tab"]');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.querySelectorAll('#activitiesTabs .nav-link').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('#activitiesTabsContent .tab-pane').forEach(pane => pane.classList.remove('active', 'show'));
-            this.classList.add('active');
-            const tabId = this.getAttribute('aria-controls');
-            if (filterTabInput) filterTabInput.value = tabId;
-            const tabPane = document.getElementById(tabId);
-            if (tabPane) tabPane.classList.add('active', 'show');
-            loadTabData(tabId);
-        });
-    });
-    
-    // Function to load tab data via AJAX
-    function loadTabData(tabId, page = 1) {
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set('page', page);
-        currentUrl.searchParams.set('tab', tabId);
-        
-        // Include current filter values
-        const frag = window.APMListFragment;
-        if (frag && frag.applyFilterValues) {
-            frag.applyFilterValues(currentUrl, {
-                year: document.getElementById('year')?.value,
-                quarter: document.getElementById('quarter')?.value,
-                division_id: document.getElementById('division_id')?.value,
-                staff_id: document.getElementById('staff_id')?.value,
-                status: document.getElementById('status')?.value,
-                fund_type_id: document.getElementById('fund_type_id')?.value,
-                document_number: document.getElementById('document_number')?.value,
-                search: document.getElementById('search')?.value,
-            });
-        }
-
-        window.history.replaceState({}, '', currentUrl.toString());
-
-        // Show loading indicator
-        const tabContent = document.getElementById(tabId);
-        if (tabContent) {
-            tabContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        }
-
-        // Make AJAX request
-        fetch(currentUrl.toString(), {
-            method: 'GET',
-            headers: (window.APMListFragment && window.APMListFragment.headers) ? window.APMListFragment.headers() : {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-APM-List-Fragment': '1'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.html) {
-                if (tabContent) {
-                    tabContent.innerHTML = data.html;
-                    attachPaginationHandlers(tabId);
-                }
-            } else {
-                if (tabContent) {
-                    tabContent.innerHTML = '<div class="text-center py-4 text-warning">No data received.</div>';
-                }
-            }
-            if (data.count_all_activities !== undefined) {
-                const b = document.getElementById('badge-all-activities');
-                if (b) b.textContent = data.count_all_activities;
-            }
-            if (data.count_my_division !== undefined) {
-                const b = document.getElementById('badge-my-division');
-                if (b) b.textContent = data.count_my_division;
-            }
-            if (data.count_shared_activities !== undefined) {
-                const b = document.getElementById('badge-shared-activities');
-                if (b) b.textContent = data.count_shared_activities;
-            }
-        })
-        .catch(error => {
-            if (tabContent) {
-                tabContent.innerHTML = '<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>';
-            }
-        });
-    }
-    
-    function attachPaginationHandlers(tabId) {
-        const tabContent = document.getElementById(tabId);
-        if (!tabContent) return;
-        
-        const paginationLinks = tabContent.querySelectorAll('.pagination a');
-        paginationLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const url = new URL(this.href);
-                const page = url.searchParams.get('page') || 1;
-                loadTabData(tabId, page);
-            });
-        });
-    }
-}
-document.addEventListener('DOMContentLoaded', initActivitiesIndexPage);
-document.addEventListener('livewire:navigated', function() {
-    if (!document.getElementById('activitiesTabs')) return;
-    setTimeout(initActivitiesIndexPage, 0);
-});
-</script>
 @endsection

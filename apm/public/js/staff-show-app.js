@@ -85,14 +85,13 @@
                     { label: 'Phone', value: formatLabel(staff.value.tel_1) },
                     { label: 'WhatsApp', value: formatLabel(staff.value.whatsapp) },
                     { label: 'Gender', value: formatLabel(staff.value.gender) },
-                    { label: 'Date of birth', value: formatLabel(staff.value.date_of_birth) },
                 ]);
 
                 const employmentFields = computed(() => [
                     { label: 'Division', value: formatLabel(staff.value.division) },
                     { label: 'Directorate', value: formatLabel(staff.value.directorate) },
                     { label: 'Duty station', value: formatLabel(staff.value.duty_station) },
-                    { label: 'Job title', value: formatLabel(staff.value.title) },
+                    { label: 'Salutation', value: formatLabel(staff.value.title) },
                     { label: 'Job name', value: formatLabel(staff.value.job_name) },
                     { label: 'Grade', value: formatLabel(staff.value.grade) },
                     { label: 'Contract type', value: formatLabel(staff.value.contract_type) },
@@ -128,7 +127,7 @@
         <v-btn color="primary" variant="flat" :href="routes.index" prepend-icon="mdi-arrow-left">
           Back to list
         </v-btn>
-        <v-btn color="warning" variant="flat" :href="routes.edit" prepend-icon="mdi-pencil">
+        <v-btn color="primary" variant="outlined" :href="routes.edit" prepend-icon="mdi-pencil">
           Edit
         </v-btn>
         <v-btn color="error" variant="outlined" prepend-icon="mdi-delete" @click="deleteDialog = true">
@@ -149,12 +148,13 @@
             </v-avatar>
 
             <div class="text-h6 font-weight-bold mb-1">{{ staff.display_name }}</div>
-            <div class="text-body-2 text-medium-emphasis mb-3">{{ staff.title || 'Staff member' }}</div>
+            <div class="text-body-2 text-medium-emphasis mb-3">{{ staff.job_name || 'Staff member' }}</div>
 
             <v-chip
               :color="staff.active ? 'success' : 'error'"
-              variant="flat"
+              variant="tonal"
               size="small"
+              label
               class="mb-4"
             >
               {{ staff.active ? 'Active' : 'Inactive' }}
@@ -173,7 +173,7 @@
               </v-btn>
               <v-btn
                 v-if="staff.tel_1"
-                color="info"
+                color="primary"
                 variant="outlined"
                 block
                 :href="'tel:' + staff.tel_1"
@@ -197,9 +197,9 @@
       </v-col>
 
       <v-col cols="12" md="8">
-        <v-card class="mb-4">
-          <v-card-title class="d-flex align-center gap-2 bg-info text-white rounded-t-lg">
-            <v-icon icon="mdi-account" />
+        <v-card class="mb-4 ss-section-card">
+          <v-card-title class="ss-section-title d-flex align-center gap-2">
+            <v-icon icon="mdi-account" color="primary" />
             Personal information
           </v-card-title>
           <v-card-text class="pa-4">
@@ -218,9 +218,9 @@
           </v-card-text>
         </v-card>
 
-        <v-card class="mb-4">
-          <v-card-title class="d-flex align-center gap-2 bg-info text-white rounded-t-lg">
-            <v-icon icon="mdi-briefcase" />
+        <v-card class="mb-4 ss-section-card">
+          <v-card-title class="ss-section-title d-flex align-center gap-2">
+            <v-icon icon="mdi-briefcase" color="primary" />
             Employment information
           </v-card-title>
           <v-card-text class="pa-4">
@@ -239,8 +239,8 @@
           </v-card-text>
         </v-card>
 
-        <v-card>
-          <v-card-title class="d-flex align-center gap-2">
+        <v-card class="ss-section-card">
+          <v-card-title class="ss-section-title d-flex align-center gap-2">
             <v-icon icon="mdi-cog" color="primary" />
             System information
           </v-card-title>
@@ -256,8 +256,8 @@
       </v-col>
     </v-row>
 
-    <v-card v-if="activities.length" class="mt-4">
-      <v-card-title class="d-flex align-center gap-2">
+    <v-card v-if="activities.length" class="mt-4 ss-section-card">
+      <v-card-title class="ss-section-title d-flex align-center gap-2">
         <v-icon icon="mdi-clipboard-list" color="primary" />
         Recent activities
       </v-card-title>
@@ -273,7 +273,7 @@
           <span class="text-truncate d-inline-block" style="max-width: 320px;">{{ item.title }}</span>
         </template>
         <template #item.status="{ item }">
-          <v-chip :color="statusColor(item.status)" size="small" variant="flat">
+          <v-chip :color="statusColor(item.status)" size="small" variant="tonal" label>
             {{ item.status }}
           </v-chip>
         </template>
@@ -283,7 +283,7 @@
             icon="mdi-eye"
             size="small"
             variant="text"
-            color="info"
+            color="primary"
             :href="item.show_url"
           />
         </template>

@@ -331,6 +331,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('/matrices/export/approved-by-me-csv', [MatrixController::class, 'exportApprovedByMeCsv'])->name('matrices.export.approved-by-me-csv');
     Route::get('/matrices/{matrix}/export/pdf', [MatrixController::class, 'exportPdf'])->name('matrices.export.pdf');
     Route::get('/matrices/{matrix}/export/excel', [MatrixController::class, 'exportExcel'])->name('matrices.export.excel');
+    Route::get('/matrices/ajax', [MatrixController::class, 'getMatricesAjax'])->name('matrices.ajax');
 
     Route::resource('matrices', MatrixController::class);
     
@@ -381,6 +382,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     
     // Single Memo Routes
     Route::get('/single-memos', [ActivityController::class, 'singlememos'])->name('activities.single-memos.index');
+    Route::get('/single-memos/ajax', [ActivityController::class, 'getSingleMemosIndexAjax'])->name('activities.single-memos.ajax');
     Route::get('/single-memos/pending-approvals', [ActivityController::class, 'singleMemoPendingApprovals'])->name('activities.single-memos.pending-approvals');
     Route::get('/single-memos/create', [ActivityController::class, 'createSingleMemo'])->name('activities.single-memos.create');
     Route::post('/single-memos', [ActivityController::class, 'storeSingleMemo'])->name('activities.single-memos.store');
@@ -574,6 +576,7 @@ Route::post('service-requests/{serviceRequest}/update-status', [App\Http\Control
 Route::get('service-requests/{serviceRequest}/status', [App\Http\Controllers\ServiceRequestController::class, 'status'])->name('service-requests.status');
 
 // Activities Routes
+Route::get('/activities/ajax', [App\Http\Controllers\ActivityController::class, 'getActivitiesIndexAjax'])->name('activities.index.ajax');
 Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'activitiesIndex'])->name('activities.index')->middleware(CheckSessionMiddleware::class);
 
 // General single memo route - must come last to avoid conflicts

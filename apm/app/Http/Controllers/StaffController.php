@@ -481,7 +481,6 @@ class StaffController extends Controller
                 'tel_1' => $staff->tel_1,
                 'whatsapp' => $staff->whatsapp,
                 'gender' => $staff->gender,
-                'date_of_birth' => $staff->date_of_birth?->format('M d, Y'),
                 'division' => $staff->division?->division_name ?? $staff->division_name,
                 'directorate' => $staff->directorate?->name,
                 'duty_station' => $staff->dutyStation?->name ?? $staff->duty_station_name,

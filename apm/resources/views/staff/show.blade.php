@@ -12,6 +12,16 @@
     #staff-show-app .v-application__wrap {
         min-height: 0 !important;
     }
+    #staff-show-app .ss-section-card {
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    }
+    #staff-show-app .ss-section-title {
+        color: rgba(0, 0, 0, 0.87) !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding-bottom: 12px !important;
+    }
     #staff-show-app .ss-info-label {
         color: rgba(0, 0, 0, 0.55) !important;
         font-size: 0.75rem;
