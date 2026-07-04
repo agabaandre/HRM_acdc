@@ -18,6 +18,7 @@ export const SETTINGS_NAV_ICONS: Record<string, string> = {
   ai: 'bx bx-bot',
   agents: 'bx bx-group',
   categories: 'bx bx-category-alt',
+  'risk-matrix': 'bx bx-shield-quarter',
   jobs: 'bx bx-time-five',
   integrations: 'bx bx-plug',
   logging: 'bx bx-list-check',

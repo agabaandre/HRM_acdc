@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskRiskMatrixEntry;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
 use Database\Seeders\HelpdeskCategorySeeder;
@@ -75,7 +76,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         $this->assertSame('high', $res->json('data.priority'));
     }
 
-    public function test_agent_with_reassign_can_set_priority_on_create(): void
+    public function test_nobody_can_set_priority_on_create(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);
         $cat = HelpdeskCategory::query()->firstOrFail();
@@ -83,14 +84,34 @@ class TicketPriorityAndSubjectTest extends TestCase
 
         $this->seedHelpdeskStaffDirectoryCache(999001, 'affected@example.org', 'Affected', 'User');
 
-        $res = $this->postJson('/api/v1/tickets', [
+        $this->postJson('/api/v1/tickets', [
             'category_id' => $cat->id,
             'description' => 'Urgent outage',
             'priority' => 'high',
             'requester_staff_id' => 999001,
+        ])->assertStatus(422);
+    }
+
+    public function test_risk_matrix_overrides_category_default_on_create(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+        $cat->forceFill(['default_priority' => 'low'])->save();
+
+        $this->seedHelpdeskStaffDirectoryCache(999003, 'exec@example.org', 'Exec', 'User');
+
+        HelpdeskRiskMatrixEntry::query()->create([
+            'staff_id' => 999003,
+            'priority' => 'critical',
+            'is_active' => true,
         ]);
 
-        $res->assertCreated()->assertJsonPath('data.priority', 'high');
+        Sanctum::actingAs($this->user(999003));
+
+        $this->postJson('/api/v1/tickets', [
+            'category_id' => $cat->id,
+            'description' => 'Need access restored',
+        ])->assertCreated()->assertJsonPath('data.priority', 'critical');
     }
 
     public function test_agent_without_reassign_gets_category_default_on_create(): void

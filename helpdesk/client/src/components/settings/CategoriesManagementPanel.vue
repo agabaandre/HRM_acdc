@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { api } from '../../lib/api'
@@ -130,8 +131,9 @@ onMounted(() => {
   <section class="panel" aria-labelledby="cat-heading">
     <h2 id="cat-heading">Issue categories</h2>
     <p class="hint">
-      Used on tickets and agent routing. Each category’s <strong>default priority</strong> is applied when a ticket is created.
-      Only agents with <strong>Reassign tickets</strong> permission may override priority on new or existing tickets.
+      Used on tickets and agent routing. Each category’s <strong>default priority</strong> applies when no
+      <RouterLink to="/settings/risk-matrix">risk matrix</RouterLink> rule matches the requester.
+      Priority is not shown on the new-ticket form; agents with <strong>Reassign tickets</strong> may change it later.
     </p>
 
     <v-card class="new-card" variant="outlined">

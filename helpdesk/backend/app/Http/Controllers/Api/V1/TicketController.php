@@ -20,6 +20,7 @@ use App\Services\RequesterTicketFollowUpService;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketNumberGenerator;
+use App\Services\TicketPriorityResolver;
 use App\Services\TicketReadCache;
 use App\Services\TicketSubjectGenerator;
 use App\Support\StaffPhotoUrl;
@@ -70,6 +71,7 @@ class TicketController extends Controller
         TicketNumberGenerator $numbers,
         TicketSubjectGenerator $subjects,
         StaffDirectoryLookupService $directoryLookup,
+        TicketPriorityResolver $priorityResolver,
     ): JsonResponse {
         $user = $request->user();
         $profile = $user->helpdeskProfile;
@@ -153,13 +155,7 @@ class TicketController extends Controller
         $subjectName = $requesterName;
         $subject = $subjects->generate($category, $subjectName, $description);
 
-        $defaultPriority = in_array($category->default_priority, ['low', 'medium', 'high', 'critical'], true)
-            ? $category->default_priority
-            : 'medium';
-        $canOverridePriority = $profile->canReassignTickets();
-        $priority = $canOverridePriority && $request->filled('priority')
-            ? (string) $request->validated('priority')
-            : $defaultPriority;
+        $priority = $priorityResolver->resolveForCreate($category, $requesterStaffId);
 
         $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
         $ticketMeta = $requesterDutyStation !== null && $requesterDutyStation !== ''

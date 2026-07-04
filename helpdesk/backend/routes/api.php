@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
+use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskRiskMatrixController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSupportGroupController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
@@ -122,11 +123,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/categories', [AdminHelpdeskCategoryController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'update']);
         Route::delete('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'destroy']);
+        Route::get('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'index']);
+        Route::post('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'store']);
+        Route::put('/admin/risk-matrix/{riskMatrixEntry}', [AdminHelpdeskRiskMatrixController::class, 'update']);
+        Route::delete('/admin/risk-matrix/{riskMatrixEntry}', [AdminHelpdeskRiskMatrixController::class, 'destroy']);
         Route::get('/admin/sla-rules', [AdminHelpdeskSlaRuleController::class, 'index']);
         Route::post('/admin/sla-rules', [AdminHelpdeskSlaRuleController::class, 'store']);
         Route::put('/admin/sla-rules/{slaRule}', [AdminHelpdeskSlaRuleController::class, 'update']);
         Route::post('/admin/reference-sync', [AdminReferenceSyncController::class, 'store']);
         Route::get('/admin/audit-logs', [AdminAuditLogController::class, 'index']);
+        Route::post('/admin/audit-logs/{auditLog}/reverse', [AdminAuditLogController::class, 'reverse']);
 
         // Tools — IT Assets, Licenses, Software requests
         Route::get('/tools/it-assets/summary', [ItAssetController::class, 'summary']);

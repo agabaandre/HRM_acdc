@@ -9,6 +9,7 @@ import AiModelsSettingsPanel from '../components/settings/AiModelsSettingsPanel.
 import FaqSourcesSettingsPanel from '../components/settings/FaqSourcesSettingsPanel.vue'
 import AgentsManagementPanel from '../components/settings/AgentsManagementPanel.vue'
 import CategoriesManagementPanel from '../components/settings/CategoriesManagementPanel.vue'
+import RiskMatrixManagementPanel from '../components/settings/RiskMatrixManagementPanel.vue'
 import JobsSlaManagementPanel from '../components/settings/JobsSlaManagementPanel.vue'
 import IntegrationsSettingsPanel from '../components/settings/IntegrationsSettingsPanel.vue'
 import LoggingAuditPanel from '../components/settings/LoggingAuditPanel.vue'
@@ -88,6 +89,12 @@ const router = createRouter({
           name: 'settings-categories',
           component: CategoriesManagementPanel,
           meta: { settingsTitle: 'Issue categories' },
+        },
+        {
+          path: 'risk-matrix',
+          name: 'settings-risk-matrix',
+          component: RiskMatrixManagementPanel,
+          meta: { settingsTitle: 'Risk matrix' },
         },
         {
           path: 'jobs',
