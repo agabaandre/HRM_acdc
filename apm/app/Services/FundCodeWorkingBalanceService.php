@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Working balance = approved budget − commitments (draft, pending, submitted, approved).
+ * Working balance = approved budget − commitments (configurable statuses; see App settings → Budget).
+ * Stale drafts older than budget_draft_max_age_months do not commit funds.
  * Returned, archived, cancelled, and other non-committing statuses do not reduce working balance.
  * Cached in Redis/default store; busted on budget writes and archive/unarchive.
  */
@@ -60,7 +61,8 @@ class FundCodeWorkingBalanceService
 
         $excludeKey = md5(json_encode($exclude, JSON_THROW_ON_ERROR));
         $version = $this->version($fundCodeId);
-        $cacheKey = "apm:fc:{$fundCodeId}:snap:v{$version}:{$excludeKey}";
+        $settingsToken = $this->commitmentSettings()->cacheToken();
+        $cacheKey = "apm:fc:{$fundCodeId}:snap:v{$version}:cfg{$settingsToken}:{$excludeKey}";
 
         return $this->cacheRemember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($fundCode, $exclude) {
             return $this->buildSnapshot($fundCode, $exclude);
@@ -266,6 +268,8 @@ class FundCodeWorkingBalanceService
     }
 
     /**
+     * Active change requests that commit budget — at most one (the latest) per parent memo.
+     *
      * @param  array<string, int|null>  $exclude
      * @return array{
      *   activity_ids: list<int>,
@@ -276,22 +280,165 @@ class FundCodeWorkingBalanceService
      */
     private function activeChangeRequests(array $exclude): array
     {
+        $statuses = $this->commitmentSettings()->committedChangeRequestStatuses();
         $query = ChangeRequest::query()
-            ->whereIn('overall_status', self::ACTIVE_CHANGE_REQUEST_STATUSES)
+            ->whereIn('overall_status', $statuses)
             ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
         if (! empty($exclude['change_request_id'])) {
             $query->where('id', '!=', (int) $exclude['change_request_id']);
         }
 
-        $rows = $query->get(['id', 'activity_id', 'special_memo_id', 'non_travel_memo_id', 'budget_breakdown']);
+        $this->commitmentSettings()->applyDraftAgeFilter($query, 'change_requests', $statuses);
+
+        $rows = $query->get([
+            'id',
+            'activity_id',
+            'special_memo_id',
+            'non_travel_memo_id',
+            'parent_memo_id',
+            'parent_memo_model',
+            'budget_breakdown',
+            'updated_at',
+        ]);
+
+        $latestByParent = $this->selectLatestChangeRequestsPerParent($rows);
+
+        if (! empty($exclude['change_request_id'])) {
+            $excludedCr = ChangeRequest::query()->find((int) $exclude['change_request_id']);
+            if ($excludedCr) {
+                $this->ensureParentSuppressedForExcludedChangeRequest($excludedCr, $latestByParent);
+            }
+        }
+
+        $latest = array_values($latestByParent);
 
         return [
-            'activity_ids' => $rows->pluck('activity_id')->filter()->map(fn ($v) => (int) $v)->values()->all(),
-            'special_memo_ids' => $rows->pluck('special_memo_id')->filter()->map(fn ($v) => (int) $v)->values()->all(),
-            'non_travel_memo_ids' => $rows->pluck('non_travel_memo_id')->filter()->map(fn ($v) => (int) $v)->values()->all(),
-            'by_id' => $rows->keyBy('id')->all(),
+            'activity_ids' => $this->parentIdsFromChangeRequests($latest, 'activity_id'),
+            'special_memo_ids' => $this->parentIdsFromChangeRequests($latest, 'special_memo_id'),
+            'non_travel_memo_ids' => $this->parentIdsFromChangeRequests($latest, 'non_travel_memo_id'),
+            'by_id' => collect($latest)->keyBy('id')->all(),
         ];
+    }
+
+    /**
+     * @param  iterable<int, ChangeRequest>  $rows
+     * @return array<string, ChangeRequest>
+     */
+    public function selectLatestChangeRequestsPerParent(iterable $rows): array
+    {
+        $latestByParent = [];
+
+        foreach ($rows as $cr) {
+            if (! $cr instanceof ChangeRequest) {
+                continue;
+            }
+            $key = $this->changeRequestParentKey($cr) ?? ('cr:' . (int) $cr->id);
+            if (
+                ! isset($latestByParent[$key])
+                || $this->isNewerChangeRequest($cr, $latestByParent[$key])
+            ) {
+                $latestByParent[$key] = $cr;
+            }
+        }
+
+        return $latestByParent;
+    }
+
+    /**
+     * When editing a CR that was excluded from the query, keep its parent memo out of parent-side commitment.
+     *
+     * @param  array<string, ChangeRequest>  $latestByParent
+     */
+    private function ensureParentSuppressedForExcludedChangeRequest(ChangeRequest $excludedCr, array &$latestByParent): void
+    {
+        $key = $this->changeRequestParentKey($excludedCr);
+        if ($key === null) {
+            return;
+        }
+
+        if (isset($latestByParent[$key])) {
+            return;
+        }
+
+        $latestByParent[$key] = $excludedCr;
+    }
+
+    private function changeRequestParentKey(ChangeRequest $cr): ?string
+    {
+        if ((int) ($cr->activity_id ?? 0) > 0) {
+            return 'activity:' . (int) $cr->activity_id;
+        }
+        if ((int) ($cr->special_memo_id ?? 0) > 0) {
+            return 'special_memo:' . (int) $cr->special_memo_id;
+        }
+        if ((int) ($cr->non_travel_memo_id ?? 0) > 0) {
+            return 'non_travel:' . (int) $cr->non_travel_memo_id;
+        }
+
+        $parentId = (int) ($cr->parent_memo_id ?? 0);
+        $parentModel = strtolower(str_replace('\\', '', (string) ($cr->parent_memo_model ?? '')));
+        if ($parentId <= 0 || $parentModel === '') {
+            return null;
+        }
+
+        if (str_contains($parentModel, 'activity')) {
+            return 'activity:' . $parentId;
+        }
+        if (str_contains($parentModel, 'specialmemo')) {
+            return 'special_memo:' . $parentId;
+        }
+        if (str_contains($parentModel, 'nontravelmemo')) {
+            return 'non_travel:' . $parentId;
+        }
+
+        return null;
+    }
+
+    private function isNewerChangeRequest(ChangeRequest $candidate, ChangeRequest $incumbent): bool
+    {
+        $candidateTs = $candidate->updated_at ?? null;
+        $incumbentTs = $incumbent->updated_at ?? null;
+        if ($candidateTs && $incumbentTs && $candidateTs != $incumbentTs) {
+            return $candidateTs->greaterThan($incumbentTs);
+        }
+
+        return (int) $candidate->id > (int) $incumbent->id;
+    }
+
+    /**
+     * @param  list<ChangeRequest>  $changeRequests
+     * @return list<int>
+     */
+    private function parentIdsFromChangeRequests(array $changeRequests, string $column): array
+    {
+        $ids = [];
+        foreach ($changeRequests as $cr) {
+            $id = (int) ($cr->{$column} ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+                continue;
+            }
+
+            $parentId = (int) ($cr->parent_memo_id ?? 0);
+            $parentModel = strtolower(str_replace('\\', '', (string) ($cr->parent_memo_model ?? '')));
+            if ($parentId <= 0) {
+                continue;
+            }
+
+            $matches = match ($column) {
+                'activity_id' => str_contains($parentModel, 'activity'),
+                'special_memo_id' => str_contains($parentModel, 'specialmemo'),
+                'non_travel_memo_id' => str_contains($parentModel, 'nontravelmemo'),
+                default => false,
+            };
+
+            if ($matches) {
+                $ids[] = $parentId;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**
@@ -305,16 +452,19 @@ class FundCodeWorkingBalanceService
      */
     private function committedFromActivityBudgets(FundCode $fundCode, array $exclude, array $activeCrs): float
     {
+        $statuses = $this->commitmentSettings()->committedActivityStatuses();
         $query = DB::table('activity_budgets')
             ->join('activities', 'activities.id', '=', 'activity_budgets.activity_id')
             ->join('matrices', 'matrices.id', '=', 'activities.matrix_id')
-            ->whereIn('activities.overall_status', self::COMMITTED_ACTIVITY_STATUSES)
+            ->whereIn('activities.overall_status', $statuses)
             ->whereNotIn('activities.overall_status', self::NON_COMMITTING_STATUSES)
             ->where('matrices.overall_status', '!=', 'archived')
             ->where(function ($q) use ($fundCode) {
                 $q->where('activity_budgets.fund_code', (string) $fundCode->id)
                     ->orWhere('activity_budgets.fund_code', (string) $fundCode->code);
             });
+
+        $this->commitmentSettings()->applyDraftAgeFilter($query, 'activities', $statuses);
 
         if (! empty($exclude['activity_id'])) {
             $query->where('activities.id', '!=', (int) $exclude['activity_id']);
@@ -338,9 +488,12 @@ class FundCodeWorkingBalanceService
      */
     private function committedFromNonTravelMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
+        $statuses = $this->commitmentSettings()->committedMemoStatuses();
         $query = NonTravelMemo::query()
-            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES)
+            ->whereIn('overall_status', $statuses)
             ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
+
+        $this->commitmentSettings()->applyDraftAgeFilter($query, 'non_travel_memos', $statuses);
 
         if (! empty($exclude['non_travel_memo_id'])) {
             $query->where('id', '!=', (int) $exclude['non_travel_memo_id']);
@@ -364,9 +517,12 @@ class FundCodeWorkingBalanceService
      */
     private function committedFromSpecialMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
+        $statuses = $this->commitmentSettings()->committedMemoStatuses();
         $query = SpecialMemo::query()
-            ->whereIn('overall_status', self::COMMITTED_MEMO_STATUSES)
+            ->whereIn('overall_status', $statuses)
             ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
+
+        $this->commitmentSettings()->applyDraftAgeFilter($query, 'special_memos', $statuses);
 
         if (! empty($exclude['special_memo_id'])) {
             $query->where('id', '!=', (int) $exclude['special_memo_id']);
@@ -633,5 +789,10 @@ class FundCodeWorkingBalanceService
         } catch (\Throwable) {
             return $callback();
         }
+    }
+
+    private function commitmentSettings(): BudgetCommitmentSettings
+    {
+        return app(BudgetCommitmentSettings::class);
     }
 }

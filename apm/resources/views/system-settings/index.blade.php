@@ -46,6 +46,7 @@
                     <option value="locale">Locale</option>
                     <option value="ui">UI</option>
                     <option value="approvals">Approvals &amp; reminders</option>
+                    <option value="budget">Budget commitment</option>
                     <option value="service_requests">Service requests</option>
                 </select>
             </div>
@@ -62,9 +63,17 @@
     @method('PUT')
 
     @php
-        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'approvals' => 'fa-bell', 'service_requests' => 'fa-concierge-bell', 'general' => 'fa-list'];
+        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'approvals' => 'fa-bell', 'budget' => 'fa-wallet', 'service_requests' => 'fa-concierge-bell', 'general' => 'fa-list'];
         $typeLabels = ['text' => 'Text', 'password' => 'Password', 'number' => 'Number', 'boolean' => 'Yes/No', 'color' => 'Color'];
         $typeClass = ['text' => 'secondary', 'password' => 'warning', 'number' => 'info', 'boolean' => 'primary', 'color' => 'success'];
+        $keyDescriptions = [
+            'budget_draft_max_age_months' => 'Draft memos not updated for this many months stop committing budget (0 = no age limit). Default: 2.',
+            'budget_committed_activity_statuses' => 'Activity / single-memo overall_status values that commit fund codes (comma-separated).',
+            'budget_committed_memo_statuses' => 'Special & non-travel memo statuses that commit fund codes (comma-separated).',
+            'budget_committed_change_request_statuses' => 'Change request statuses that commit fund codes (comma-separated).',
+            'budget_stale_draft_reminders_enabled' => 'Email + in-app reminders to delete stale drafts that still hold budget.',
+            'approval_warning_days' => 'Days before pending approvals trigger a stale reminder at the approver\'s level.',
+        ];
     @endphp
     @foreach($groups as $groupKey => $groupData)
     @php
@@ -90,7 +99,12 @@
                     <tbody data-group="{{ $groupKey }}">
                         @forelse($items as $item)
                         <tr data-key="{{ $item['key'] }}">
-                            <td class="ps-3"><code class="text-dark">{{ $item['key'] }}</code></td>
+                            <td class="ps-3">
+                                <code class="text-dark">{{ $item['key'] }}</code>
+                                @if(!empty($keyDescriptions[$item['key']]))
+                                    <div class="text-muted small mt-1">{{ $keyDescriptions[$item['key']] }}</div>
+                                @endif
+                            </td>
                             <td>
                                 @php $t = $item['type'] ?? 'text'; @endphp
                                 <span class="badge bg-{{ $typeClass[$t] ?? 'secondary' }}">{{ $typeLabels[$t] ?? $t }}</span>

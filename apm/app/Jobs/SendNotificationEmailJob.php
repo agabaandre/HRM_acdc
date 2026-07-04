@@ -166,6 +166,15 @@ class SendNotificationEmailJob implements ShouldQueue
             $viewData = array_merge($viewData, $this->emailViewContext);
         }
 
+        if ($this->template === 'emails.stale-draft-memos-reminder' && $this->emailViewContext !== []) {
+            $viewData = array_merge($viewData, [
+                'staffName' => $this->recipient->fname . ' ' . $this->recipient->lname,
+                'staleDraftItems' => $this->emailViewContext['staleDraftItems'] ?? [],
+                'staleCount' => $this->emailViewContext['staleCount'] ?? 0,
+                'draftMaxAgeMonths' => $this->emailViewContext['draftMaxAgeMonths'] ?? 2,
+            ]);
+        }
+
         if ($this->template === 'emails.weekly-briefing-notification') {
             $viewData = array_merge($viewData, [
                 'headerTitle' => (string) ($this->emailViewContext['headerTitle'] ?? 'Weekly brief'),

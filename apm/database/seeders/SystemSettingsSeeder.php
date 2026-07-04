@@ -45,6 +45,13 @@ class SystemSettingsSeeder extends Seeder
             // Approvals (group: approvals) — aging reminder threshold (days at your level)
             ['key' => 'approval_warning_days', 'value' => '7', 'group' => 'approvals', 'type' => 'number'],
 
+            // Budget commitment (group: budget)
+            ['key' => 'budget_draft_max_age_months', 'value' => '2', 'group' => 'budget', 'type' => 'number'],
+            ['key' => 'budget_committed_activity_statuses', 'value' => 'draft,pending,submitted,approved', 'group' => 'budget', 'type' => 'text'],
+            ['key' => 'budget_committed_memo_statuses', 'value' => 'draft,pending,approved', 'group' => 'budget', 'type' => 'text'],
+            ['key' => 'budget_committed_change_request_statuses', 'value' => 'draft,pending,submitted', 'group' => 'budget', 'type' => 'text'],
+            ['key' => 'budget_stale_draft_reminders_enabled', 'value' => '1', 'group' => 'budget', 'type' => 'boolean'],
+
             // Service requests (group: service_requests)
             ['key' => 'allow_child_service_requests', 'value' => '1', 'group' => 'service_requests', 'type' => 'boolean'],
         ];

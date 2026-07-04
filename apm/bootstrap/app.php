@@ -75,6 +75,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Stale draft memos holding budget — remind creators to delete or submit (App settings → Budget)
+        $schedule->command('reminders:stale-draft-memos')
+            ->dailyAt('09:30')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Sync users from staff app user table into apm_api_users (hourly)
         $schedule->command('users:sync')
             ->hourly()

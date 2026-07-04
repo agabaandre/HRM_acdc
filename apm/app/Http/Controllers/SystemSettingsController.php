@@ -21,6 +21,7 @@ class SystemSettingsController extends Controller
         'locale'     => 'Locale & format',
         'ui'         => 'UI',
         'approvals'  => 'Approvals & reminders',
+        'budget'     => 'Budget commitment',
         'service_requests' => 'Service requests',
         'general'    => 'Other settings',
     ];
@@ -34,7 +35,7 @@ class SystemSettingsController extends Controller
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
-        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'service_requests', 'general'];
+        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'general'];
         $groups = [];
         foreach ($order as $g) {
             $groups[$g] = [
@@ -165,6 +166,11 @@ class SystemSettingsController extends Controller
             'date_format' => 'locale', 'date_time_format' => 'locale', 'locale' => 'locale',
             'items_per_page' => 'ui', 'pagination_size' => 'ui', 'maintenance_mode' => 'ui',
             'approval_warning_days' => 'approvals',
+            'budget_draft_max_age_months' => 'budget',
+            'budget_committed_activity_statuses' => 'budget',
+            'budget_committed_memo_statuses' => 'budget',
+            'budget_committed_change_request_statuses' => 'budget',
+            'budget_stale_draft_reminders_enabled' => 'budget',
         ];
         return $map[$key] ?? 'general';
     }

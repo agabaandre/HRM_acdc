@@ -148,6 +148,52 @@ class NotificationService
     }
 
     /**
+     * Remind memo creators about stale draft documents that still hold budget (see budget_stale_draft_reminders_enabled).
+     *
+     * @return list<Notification>
+     */
+    public function createStaleDraftMemosReminders(): array
+    {
+        $settings = new BudgetCommitmentSettings();
+        if (! $settings->staleDraftRemindersEnabled() || $settings->draftBudgetCutoff() === null) {
+            return [];
+        }
+
+        $service = new StaleDraftMemosService($settings);
+        $staffIds = $service->staffIdsWithStaleDrafts();
+        $notifications = [];
+        $months = $settings->draftMaxAgeMonths();
+
+        foreach ($staffIds as $staffId) {
+            $items = $service->getStaleDraftsForStaff((int) $staffId);
+            if ($items === []) {
+                continue;
+            }
+
+            $count = count($items);
+            $message = "You have {$count} stale draft memo(s) older than {$months} month(s) with budget allocated. "
+                . 'Please delete or submit them to release fund code balances.';
+
+            $notifications[] = $this->createNotification([
+                'staff_id' => (int) $staffId,
+                'model_id' => null,
+                'model_type' => null,
+                'message' => $message,
+                'title' => 'Stale draft memos',
+                'type' => 'stale_draft_memos_reminder',
+                'send_email' => true,
+                'email_view_context' => [
+                    'staleDraftItems' => $items,
+                    'staleCount' => $count,
+                    'draftMaxAgeMonths' => $months,
+                ],
+            ]);
+        }
+
+        return $notifications;
+    }
+
+    /**
      * Dispatch email notification to queue
      */
     private function dispatchEmailNotification(Notification $notification, array $data): void
@@ -169,6 +215,7 @@ class NotificationService
             $template = match ($notification->type) {
                 'daily_pending_approvals' => 'emails.daily-pending-approvals-notification',
                 'stale_pending_approvals_reminder' => 'emails.stale-pending-approvals-reminder',
+                'stale_draft_memos_reminder' => 'emails.stale-draft-memos-reminder',
                 default => 'emails.generic-notification',
             };
 

@@ -142,6 +142,15 @@ class ScheduleServiceProvider extends ServiceProvider
                 Log::error('Evening returned memos notification failed');
             });
 
+        $schedule->command('reminders:stale-draft-memos')
+            ->dailyAt('09:30')
+            ->description('Remind creators about stale draft memos holding budget')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Stale draft memos reminder failed');
+            });
+
         // Deactivate fund codes from previous years on the first day of each new year
         $schedule->command('fund-codes:deactivate-past-year')
             ->yearlyOn(1, 1, '01:00')
