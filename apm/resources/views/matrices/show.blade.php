@@ -53,6 +53,57 @@
         border: 1px solid rgba(17, 154, 72, 0.12);
         overflow: hidden;
     }
+    #matrix-show-app .mx-activities-section {
+        border-color: rgba(17, 154, 72, 0.12);
+    }
+    #matrix-show-app .mx-activities-section .mx-section-head {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%) !important;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
+    }
+    #matrix-show-app .mx-activities-section .mx-filter-bar {
+        background: #fafbfc;
+    }
+    #matrix-show-app .mx-single-memos-wrap {
+        margin-top: 1.5rem !important;
+        padding-top: 0.25rem;
+    }
+    #matrix-show-app .mx-single-memos-section {
+        border: 1px solid rgba(37, 99, 235, 0.2) !important;
+        background: #f8fafc;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06) !important;
+    }
+    #matrix-show-app .mx-single-memos-section .mx-section-head {
+        background: linear-gradient(135deg, #eff6ff 0%, #e0ecff 100%) !important;
+        border-bottom: 1px solid rgba(37, 99, 235, 0.14) !important;
+    }
+    #matrix-show-app .mx-single-memos-section .mx-filter-bar {
+        background: #f3f7fd;
+        border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+    }
+    #matrix-show-app .mx-single-memos-section .mx-table-meta {
+        background: #f5f9ff;
+        border-bottom: 1px solid rgba(37, 99, 235, 0.08);
+        color: rgba(30, 64, 175, 0.75);
+    }
+    #matrix-show-app .mx-single-memos-table thead th {
+        background: #eef4fc !important;
+        color: rgba(30, 58, 138, 0.78) !important;
+    }
+    #matrix-show-app .mx-single-memos-section .mx-row-single-memo td {
+        background-color: #fafcff !important;
+    }
+    #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-warning td {
+        background-color: #fff7eb !important;
+    }
+    #matrix-show-app .mx-single-memos-section .mx-row-single-memo.mx-row-approved td {
+        background-color: #e8f1ff !important;
+    }
+    #matrix-show-app .mx-doc-chip--memo.v-chip {
+        background-color: #2563eb !important;
+    }
+    #matrix-show-app .mx-doc-chip--memo .v-chip__content {
+        color: #fff !important;
+    }
     #matrix-show-app .mx-section-head {
         background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%) !important;
         border-bottom: 1px solid rgba(17, 154, 72, 0.1);

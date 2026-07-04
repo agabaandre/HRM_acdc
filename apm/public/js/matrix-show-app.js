@@ -409,7 +409,7 @@
                         row_num: ((singleMemoPage.value - 1) * singleMemoPerPage.value) + index + 1,
                         _status: status,
                         _budget: budget,
-                        _rowClass: memo.overall_status !== 'approved' ? 'mx-row-warning' : 'mx-row-approved',
+                        _rowClass: ['mx-row-single-memo', memo.overall_status !== 'approved' ? 'mx-row-warning' : 'mx-row-approved'].join(' '),
                         _canDelete: canShowSingleMemoDeleteButton(memo, cfg),
                     };
                 }
@@ -825,7 +825,7 @@
             template: `
 <v-app class="mx-show-vuetify-app" theme="apmLight">
   <v-container fluid class="pa-0">
-    <v-card class="mb-0 mx-section-card elevation-2">
+    <v-card class="mb-0 mx-section-card mx-activities-section elevation-2">
       <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
         <div>
           <div class="text-h6 font-weight-bold d-flex align-center gap-2">
@@ -1063,12 +1063,12 @@
       </v-card>
     </v-dialog>
 
-    <div v-if="cfg.approvedSingleMemosCount > 0" ref="singleMemosCardRef" class="mt-4">
-    <v-card class="mx-section-card elevation-2">
+    <div v-if="cfg.approvedSingleMemosCount > 0" ref="singleMemosCardRef" class="mt-4 mx-single-memos-wrap">
+    <v-card class="mx-section-card mx-single-memos-section elevation-2">
       <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
         <div>
           <div class="text-h6 font-weight-bold d-flex align-center gap-2">
-            <v-icon icon="mdi-file-document-outline" color="primary" />
+            <v-icon icon="mdi-file-document-outline" color="info" />
             Single Memos
           </div>
           <div class="text-body-2 text-medium-emphasis mt-1">
@@ -1130,11 +1130,11 @@
         :items-per-page="-1"
         hide-default-footer
         :row-props="(data) => ({ class: data.item._rowClass })"
-        class="apm-list-table mx-matrix-table"
+        class="apm-list-table mx-matrix-table mx-single-memos-table"
         density="comfortable"
       >
         <template #item.document_number="{ item }">
-          <v-chip color="primary" variant="flat" class="mx-doc-chip" label>{{ item.document_number || 'N/A' }}</v-chip>
+          <v-chip color="info" variant="flat" class="mx-doc-chip mx-doc-chip--memo" label>{{ item.document_number || 'N/A' }}</v-chip>
         </template>
         <template #item.activity_title="{ item }">
           <div class="font-weight-medium">{{ item.activity_title }}</div>
