@@ -514,7 +514,7 @@ class FundCodeWorkingBalanceService
         }
 
         $query = Activity::query()
-            ->whereIn('id', $activityIds)
+            ->whereIn('activities.id', $activityIds)
             ->join('matrices', 'matrices.id', '=', 'activities.matrix_id')
             ->whereIn('activities.overall_status', $statuses)
             ->whereNotIn('activities.overall_status', self::NON_COMMITTING_STATUSES)
