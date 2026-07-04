@@ -13,6 +13,7 @@ use App\Services\OtherMemoApproverNotifier;
 use App\Support\ApprovedMemoReferenceResolver;
 use App\Support\OtherMemoCc;
 use App\Support\RichTextDataUriExternalizer;
+use App\Http\Controllers\Concerns\OtherMemoListIndexResponses;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,76 +30,17 @@ use Illuminate\Support\Str;
 
 class OtherMemoController extends Controller
 {
+    use OtherMemoListIndexResponses;
+
     public function index(Request $request): View|JsonResponse
     {
-        $currentStaffId = $this->staffId();
-
-        $staff = Cache::remember('other_memos_index_staff', 60 * 60, fn () => Staff::active()->orderBy('lname')->orderBy('fname')->get());
-        $divisions = Cache::remember('other_memos_index_divisions', 60 * 60, fn () => Division::query()->orderBy('division_name')->get());
-
-        $year = $this->resolveOtherMemoYearString($request);
-
         if (\App\Support\ApmListFragment::wants($request)) {
-            try {
-                $tab = $request->get('tab', '');
-                $yearApplied = $this->resolveOtherMemoYearString($request);
-
-                [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
-
-                $countMySubmitted = $mySubmittedMemos->total();
-                $countMyDivision = $myDivisionMemos->total();
-                $countAllMemos = $allMemos instanceof LengthAwarePaginator ? $allMemos->total() : $allMemos->count();
-
-                $html = match ($tab) {
-                    'mySubmitted' => view('other-memos.partials.my-submitted-tab', compact('mySubmittedMemos'))->render(),
-                    'myDivision' => view('other-memos.partials.my-division-tab', compact('myDivisionMemos'))->render(),
-                    'allMemos' => view('other-memos.partials.all-memos-tab', compact('allMemos'))->render(),
-                    default => '',
-                };
-
-                return \App\Support\ApmListFragment::json([
-                    'html' => $html,
-                    'year_applied' => $yearApplied,
-                    'count_my_submitted' => $countMySubmitted,
-                    'count_my_division' => $countMyDivision,
-                    'count_all_memos' => $countAllMemos,
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('Other memos index fragment failed', [
-                    'tab' => $request->get('tab'),
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return \App\Support\ApmListFragment::json([
-                    'error' => config('app.debug')
-                        ? $e->getMessage()
-                        : 'Error loading data. Please try again.',
-                    'html' => '',
-                    'count_my_submitted' => 0,
-                    'count_my_division' => 0,
-                    'count_all_memos' => 0,
-                ]);
-            }
+            return $this->getOtherMemosIndexAjax($request);
         }
 
-        [$mySubmittedMemos, $myDivisionMemos, $allMemos] = $this->paginateOtherMemoTabs($request, $currentStaffId);
-
-        $currentYear = (int) date('Y');
-        $minYear = max(2025, $currentYear - 10);
-        $yearRange = range($currentYear, $minYear);
-        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
-
-        return view('other-memos.index', compact(
-            'mySubmittedMemos',
-            'myDivisionMemos',
-            'allMemos',
-            'staff',
-            'divisions',
-            'year',
-            'years',
-            'currentStaffId',
-        ));
+        return view('other-memos.index', [
+            'pageConfig' => $this->buildOtherMemosIndexPageConfig($request),
+        ]);
     }
 
     /**

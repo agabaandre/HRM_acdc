@@ -426,6 +426,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     // Non-Travel Memo Export Routes
     Route::get('non-travel/export/my-submitted', [App\Http\Controllers\NonTravelMemoController::class, 'exportMySubmittedCsv'])->name('non-travel.export.my-submitted');
     Route::get('non-travel/export/all', [App\Http\Controllers\NonTravelMemoController::class, 'exportAllCsv'])->name('non-travel.export.all');
+    Route::get('non-travel/ajax', [App\Http\Controllers\NonTravelMemoController::class, 'getNonTravelMemosIndexAjax'])->name('non-travel.ajax');
     Route::get('non-travel/{nonTravel}/copy', [App\Http\Controllers\NonTravelMemoController::class, 'copy'])
         ->name('non-travel.copy')
         ->whereNumber('nonTravel');
@@ -440,6 +441,7 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     Route::get('special-memo/export/my-submitted', [App\Http\Controllers\SpecialMemoController::class, 'exportMySubmittedCsv'])->name('special-memo.export.my-submitted');
 Route::get('special-memo/export/all', [App\Http\Controllers\SpecialMemoController::class, 'exportAllCsv'])->name('special-memo.export.all');
 Route::get('special-memo/export/shared', [App\Http\Controllers\SpecialMemoController::class, 'exportSharedCsv'])->name('special-memo.export.shared');
+    Route::get('special-memo/ajax', [App\Http\Controllers\SpecialMemoController::class, 'getSpecialMemosIndexAjax'])->name('special-memo.ajax');
 Route::post('special-memo/{specialMemo}/archive', [App\Http\Controllers\SpecialMemoController::class, 'archive'])->name('special-memo.archive');
 Route::post('special-memo/{specialMemo}/unarchive', [App\Http\Controllers\SpecialMemoController::class, 'unarchive'])->name('special-memo.unarchive');
     Route::get('special-memo/{specialMemo}/copy', [App\Http\Controllers\SpecialMemoController::class, 'copy'])
@@ -453,6 +455,7 @@ Route::post('special-memo/{specialMemo}/unarchive', [App\Http\Controllers\Specia
     Route::get('request-arf/export/my-submitted', [App\Http\Controllers\RequestARFController::class, 'exportMySubmittedCsv'])->name('request-arf.export.my-submitted');
     Route::get('request-arf/export/all', [App\Http\Controllers\RequestARFController::class, 'exportAllCsv'])->name('request-arf.export.all');
     Route::get('request-arf/pending-approvals', [App\Http\Controllers\RequestARFController::class, 'pendingApprovals'])->name('request-arf.pending-approvals');
+    Route::get('request-arf/ajax', [App\Http\Controllers\RequestARFController::class, 'getRequestArfIndexAjax'])->name('request-arf.ajax');
     
     Route::post('request-arf/store-from-modal', [App\Http\Controllers\RequestARFController::class, 'storeFromModal'])->name('request-arf.store-from-modal');
     Route::post('request-arf/{requestARF}/archive', [App\Http\Controllers\RequestARFController::class, 'archive'])->name('request-arf.archive');
@@ -482,6 +485,7 @@ Route::post('special-memo/{specialMemo}/unarchive', [App\Http\Controllers\Specia
     Route::post('other-memos/{other_memo}/return-memo', [App\Http\Controllers\OtherMemoController::class, 'returnMemo'])->name('other-memos.return-memo');
     Route::post('other-memos/{other_memo}/archive', [App\Http\Controllers\OtherMemoController::class, 'archive'])->name('other-memos.archive');
     Route::post('other-memos/{other_memo}/unarchive', [App\Http\Controllers\OtherMemoController::class, 'unarchive'])->name('other-memos.unarchive');
+    Route::get('other-memos/ajax', [App\Http\Controllers\OtherMemoController::class, 'getOtherMemosIndexAjax'])->name('other-memos.ajax');
     Route::resource('other-memos', App\Http\Controllers\OtherMemoController::class);
 
     Route::delete('special-memo/{specialMemo}/remove-attachment', [App\Http\Controllers\SpecialMemoController::class, 'removeAttachment'])->name('special-memo.remove-attachment');
@@ -500,6 +504,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('service-requests/pending-approvals', [App\Http\Controllers\ServiceRequestController::class, 'pendingApprovals'])->name('service-requests.pending-approvals');
     Route::get('service-requests/export/my-submitted', [App\Http\Controllers\ServiceRequestController::class, 'exportMySubmitted'])->name('service-requests.export.my-submitted');
     Route::get('service-requests/export/all', [App\Http\Controllers\ServiceRequestController::class, 'exportAll'])->name('service-requests.export.all');
+    Route::get('service-requests/ajax', [App\Http\Controllers\ServiceRequestController::class, 'getServiceRequestsIndexAjax'])->name('service-requests.ajax');
     Route::post('service-requests/get-source-data', [App\Http\Controllers\ServiceRequestController::class, 'getSourceData'])->name('service-requests.get-source-data');
     Route::post('service-requests/store-from-modal', [App\Http\Controllers\ServiceRequestController::class, 'storeFromModal'])->name('service-requests.store-from-modal');
     Route::get('service-requests/cost-items', [App\Http\Controllers\ServiceRequestController::class, 'getCostItems'])->name('service-requests.cost-items');
@@ -512,6 +517,7 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
 
     // Change Request Routes
     Route::get('change-requests/pending-approvals', [App\Http\Controllers\ChangeRequestController::class, 'pendingApprovals'])->name('change-requests.pending-approvals');
+    Route::get('change-requests/ajax', [App\Http\Controllers\ChangeRequestController::class, 'getChangeRequestsIndexAjax'])->name('change-requests.ajax');
     Route::resource('change-requests', App\Http\Controllers\ChangeRequestController::class);
     Route::resource('faqs', App\Http\Controllers\FaqController::class)->except(['show']);
     Route::resource('faq-categories', App\Http\Controllers\FaqCategoryController::class)->except(['show']);

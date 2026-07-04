@@ -18,11 +18,14 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use App\Models\ApprovalTrail;
 use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Concerns\RequestArfListIndexResponses;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 use App\Support\MemoFundTypeFilter;
+use Illuminate\Http\JsonResponse;
 
 class RequestARFController extends Controller
 {
+    use RequestArfListIndexResponses;
     use SendsSelfDocumentPdfEmail;
 
     protected ApprovalService $approvalService;
@@ -34,183 +37,18 @@ class RequestARFController extends Controller
     /**
      * Display a listing of ARF requests.
      */
-    public function index(Request $request)
+    public function index(Request $request): View|JsonResponse
     {
-        $currentStaffId = user_session('staff_id');
-        $currentYear = (int) date('Y');
-        // Default to current year when year is missing, empty, or invalid (e.g. 0); filter by created_at
-        $selectedYear = $request->get('year');
-        if ($selectedYear === null || $selectedYear === '' || (is_numeric($selectedYear) && (int) $selectedYear === 0)) {
-            $selectedYear = (string) $currentYear;
-        }
-        $selectedYear = (string) $selectedYear;
-        $minYear = max(2025, $currentYear - 10);
-        $yearRange = range($currentYear, $minYear);
-        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
-
-        // Get My ARFs (created by current user)
-        $mySubmittedArfsQuery = RequestARF::with([
-            'staff',
-            'division',
-            'forwardWorkflow.workflowDefinitions.approvers.staff',
-        ])
-            ->where('staff_id', $currentStaffId);
-
-        if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
-            $mySubmittedArfsQuery->whereYear('created_at', $selectedYear);
-        }
-
-        // Apply filters to My ARFs
-        if ($request->filled('document_number')) {
-            $mySubmittedArfsQuery->where(function($q) use ($request) {
-                $q->where('document_number', 'like', '%' . $request->document_number . '%')
-                  ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
-            });
-        }
-
-        if ($request->has('division_id') && $request->division_id) {
-            $mySubmittedArfsQuery->where('division_id', $request->division_id);
-        }
-
-        if ($request->has('status') && $request->status) {
-            $mySubmittedArfsQuery->where('overall_status', $request->status);
-        }
-
-        if ($request->filled('search')) {
-            $mySubmittedArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
-        MemoFundTypeFilter::apply($mySubmittedArfsQuery, $request);
-
-        $mySubmittedArfs = $mySubmittedArfsQuery->orderByDesc('created_at')->paginate(20)->withQueryString();
-
-        // My Division ARFs (latest first)
-        $currentDivisionId = user_session('division_id');
-        $myDivisionArfsQuery = RequestARF::with([
-            'staff',
-            'division',
-            'forwardWorkflow.workflowDefinitions.approvers.staff',
-        ])
-            ->orderByDesc('created_at');
-        if ($currentDivisionId) {
-            $myDivisionArfsQuery->where('division_id', $currentDivisionId);
-        } else {
-            $myDivisionArfsQuery->whereRaw('1=0');
-        }
-        $myDivisionArfsQuery->where('overall_status', '!=', 'archived');
-        if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
-            $myDivisionArfsQuery->whereYear('created_at', $selectedYear);
-        }
-        if ($request->filled('document_number')) {
-            $myDivisionArfsQuery->where(function($q) use ($request) {
-                $q->where('document_number', 'like', '%' . $request->document_number . '%')
-                  ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
-            });
-        }
-        if ($request->has('division_id') && $request->division_id) {
-            $myDivisionArfsQuery->where('division_id', $request->division_id);
-        }
-        if ($request->has('staff_id') && $request->staff_id) {
-            $myDivisionArfsQuery->where('staff_id', $request->staff_id);
-        }
-        if ($request->has('status') && $request->status) {
-            $myDivisionArfsQuery->where('overall_status', $request->status);
-        }
-        if ($request->filled('search')) {
-            $myDivisionArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
-        }
-        MemoFundTypeFilter::apply($myDivisionArfsQuery, $request);
-        $myDivisionArfs = $myDivisionArfsQuery->paginate(20)->withQueryString();
-
-        // Get All ARFs (only for users with permission 87)
-        $allArfs = collect();
-        if (in_array(87, user_session('permissions', []))) {
-            $allArfsQuery = RequestARF::with([
-                'staff',
-                'division',
-                'forwardWorkflow.workflowDefinitions.approvers.staff',
-            ])
-                ->orderByDesc('created_at');
-
-            if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
-                $allArfsQuery->whereYear('created_at', $selectedYear);
-            }
-
-            // Apply filters to All ARFs
-            if ($request->filled('document_number')) {
-                $allArfsQuery->where(function($q) use ($request) {
-                    $q->where('document_number', 'like', '%' . $request->document_number . '%')
-                      ->orWhere('arf_number', 'like', '%' . $request->document_number . '%');
-                });
-            }
-
-            if ($request->has('division_id') && $request->division_id) {
-                $allArfsQuery->where('division_id', $request->division_id);
-            }
-
-            if ($request->has('staff_id') && $request->staff_id) {
-                $allArfsQuery->where('staff_id', $request->staff_id);
-            }
-
-            if ($request->has('status') && $request->status) {
-                $allArfsQuery->where('overall_status', $request->status);
-            }
-
-            if ($request->filled('search')) {
-                $allArfsQuery->where('activity_title', 'like', '%' . $request->search . '%');
-            }
-            MemoFundTypeFilter::apply($allArfsQuery, $request);
-
-            $allArfs = $allArfsQuery->paginate(20)->withQueryString();
-        }
-
-        $divisions = Division::orderBy('division_name')->get();
-        $staff = Staff::active()->get();
-
-        // Handle AJAX requests for tab content only (not initial Livewire navigation)
         if (\App\Support\ApmListFragment::wants($request)) {
-            $tab = $request->get('tab', '');
-            $html = '';
-            $countMy = $mySubmittedArfs->total();
-            $countMyDivision = $myDivisionArfs->total();
-            $countAll = $allArfs instanceof \Illuminate\Pagination\LengthAwarePaginator ? $allArfs->total() : 0;
-
-            switch($tab) {
-                case 'mySubmitted':
-                    $html = view('request-arf.partials.my-submitted-tab', compact('mySubmittedArfs'))->render();
-                    break;
-                case 'myDivision':
-                    $html = view('request-arf.partials.my-division-tab', compact('myDivisionArfs'))->render();
-                    break;
-                case 'allArfs':
-                    $html = view('request-arf.partials.all-arfs-tab', compact('allArfs'))->render();
-                    break;
-            }
-
-            return \App\Support\ApmListFragment::json([
-                'html' => $html,
-                'count_my_submitted' => $countMy,
-                'count_my_division' => $countMyDivision,
-                'count_all_arfs' => $countAll,
-            ]);
+            return $this->getRequestArfIndexAjax($request);
         }
 
-        $pendingArfCount = get_pending_arf_count((int) $currentStaffId);
+        $pendingArfCount = get_pending_arf_count((int) user_session('staff_id'));
 
-        $fundTypeFilterOptions = MemoFundTypeFilter::options();
-        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
-
-        return view('request-arf.index', compact(
-            'mySubmittedArfs',
-            'myDivisionArfs',
-            'allArfs',
-            'divisions',
-            'staff',
-            'years',
-            'selectedYear',
-            'pendingArfCount',
-            'fundTypeFilterOptions',
-            'selectedFundTypeId',
-        ));
+        return view('request-arf.index', [
+            'pageConfig' => $this->buildRequestArfIndexPageConfig($request),
+            'pendingArfCount' => $pendingArfCount,
+        ]);
     }
 
     /**

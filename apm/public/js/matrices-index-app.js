@@ -126,7 +126,7 @@
                     { title: 'Activities', key: 'activity_count', sortable: false, width: 120, align: 'center' },
                     { title: 'Level', key: 'approval_level', sortable: false, width: 80, align: 'center' },
                     { title: 'Status', key: 'overall_status', sortable: false, minWidth: 160 },
-                    { title: '', key: 'actions', sortable: false, align: 'end', width: 120 },
+                    { title: '', key: 'actions', sortable: false, align: 'end', width: 180 },
                 ];
 
                 const activityDialogHeaders = [
@@ -335,7 +335,7 @@
           :loading="loading"
           :items-per-page="itemsPerPage"
           hide-default-footer
-          class="mx-matrix-table"
+          class="mx-matrix-table apm-list-table"
           density="comfortable"
           hover
         >
@@ -392,17 +392,26 @@
           </template>
 
           <template #item.actions="{ item }">
-            <div class="d-flex gap-1 justify-end">
-              <v-btn icon="mdi-eye" size="small" variant="text" color="info" :href="item.show_url" title="Open" />
+            <div class="d-flex gap-1 justify-end flex-wrap">
+              <v-btn
+                size="small"
+                variant="outlined"
+                color="info"
+                prepend-icon="mdi-eye"
+                :href="item.show_url"
+              >
+                Open
+              </v-btn>
               <v-btn
                 v-if="item.edit_url"
-                icon="mdi-pencil"
                 size="small"
-                variant="text"
+                variant="outlined"
                 color="warning"
+                prepend-icon="mdi-pencil"
                 :href="item.edit_url"
-                title="Edit"
-              />
+              >
+                Edit
+              </v-btn>
             </div>
           </template>
 

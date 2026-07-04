@@ -163,7 +163,7 @@
                     { title: 'Dates', key: 'date_range', sortable: false, width: 130 },
                     { title: 'Fund type', key: 'fund_type_name', sortable: false, minWidth: 140 },
                     { title: 'Status', key: 'overall_status', sortable: false, minWidth: 140 },
-                    { title: 'Actions', key: 'actions', sortable: false, align: 'end', width: 160 },
+                    { title: 'Actions', key: 'actions', sortable: false, align: 'end', width: 220 },
                 ];
 
                 const showingRange = computed(() => {
@@ -470,7 +470,7 @@
           :loading="loading"
           :items-per-page="itemsPerPage"
           hide-default-footer
-          class="sm-list-table"
+          class="sm-list-table apm-list-table"
           density="comfortable"
           hover
         >
@@ -532,42 +532,10 @@
 
           <template #item.actions="{ item }">
             <div class="d-flex flex-wrap gap-1 justify-end">
-              <v-btn
-                icon="mdi-eye"
-                size="small"
-                variant="text"
-                color="info"
-                :href="item.show_url"
-                title="Open"
-              />
-              <v-btn
-                v-if="item.copy_url"
-                icon="mdi-content-copy"
-                size="small"
-                variant="text"
-                color="secondary"
-                title="Copy"
-                @click="confirmCopy(item)"
-              />
-              <v-btn
-                v-if="item.delete_url"
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                title="Delete"
-                @click="confirmDelete(item)"
-              />
-              <v-btn
-                v-if="item.print_url"
-                icon="mdi-printer"
-                size="small"
-                variant="text"
-                color="success"
-                :href="item.print_url"
-                target="_blank"
-                title="Print"
-              />
+              <v-btn size="small" variant="outlined" color="info" prepend-icon="mdi-eye" :href="item.show_url">Open</v-btn>
+              <v-btn v-if="item.copy_url" size="small" variant="outlined" color="secondary" prepend-icon="mdi-content-copy" @click="confirmCopy(item)">Copy</v-btn>
+              <v-btn v-if="item.delete_url" size="small" variant="outlined" color="error" prepend-icon="mdi-delete" @click="confirmDelete(item)">Delete</v-btn>
+              <v-btn v-if="item.print_url" size="small" variant="outlined" color="success" prepend-icon="mdi-printer" :href="item.print_url" target="_blank">Print</v-btn>
             </div>
           </template>
 

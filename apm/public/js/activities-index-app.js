@@ -387,7 +387,7 @@
           :loading="loading"
           :items-per-page="itemsPerPage"
           hide-default-footer
-          class="ai-list-table"
+          class="ai-list-table apm-list-table"
           density="comfortable"
           hover
         >
@@ -460,14 +460,7 @@
 
           <template #item.actions="{ item }">
             <div class="d-flex gap-1 justify-end flex-wrap">
-              <v-btn
-                icon="mdi-eye"
-                size="small"
-                variant="text"
-                color="info"
-                :href="item.show_url"
-                title="Open"
-              />
+              <v-btn size="small" variant="outlined" color="info" prepend-icon="mdi-eye" :href="item.show_url">Open</v-btn>
               <form
                 v-if="item.delete_url"
                 :action="item.delete_url"
@@ -477,25 +470,17 @@
               >
                 <input type="hidden" name="_token" :value="cfg.csrf">
                 <input type="hidden" name="_method" value="DELETE">
-                <v-btn
-                  icon="mdi-delete"
-                  size="small"
-                  variant="text"
-                  color="error"
-                  type="submit"
-                  title="Delete"
-                />
+                <v-btn size="small" variant="outlined" color="error" prepend-icon="mdi-delete" type="submit">Delete</v-btn>
               </form>
               <v-btn
                 v-if="item.print_url"
-                icon="mdi-printer"
                 size="small"
-                variant="text"
+                variant="outlined"
                 color="success"
+                prepend-icon="mdi-printer"
                 :href="item.print_url"
                 target="_blank"
-                title="Print"
-              />
+              >Print</v-btn>
             </div>
           </template>
 

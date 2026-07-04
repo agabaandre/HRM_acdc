@@ -7,7 +7,8 @@
 <style>
     #single-memos-index-app .sm-vuetify-app { background: transparent !important; }
     #single-memos-index-app .v-application__wrap { min-height: 0 !important; }
-    #single-memos-index-app .sm-list-table thead th {
+    #single-memos-index-app .sm-list-table thead th,
+    #single-memos-index-app .apm-list-table thead th {
         background: #f8fafc !important;
         color: rgba(0, 0, 0, 0.7) !important;
         font-weight: 600 !important;
@@ -15,7 +16,8 @@
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
-    #single-memos-index-app .sm-list-table tbody td {
+    #single-memos-index-app .sm-list-table tbody td,
+    #single-memos-index-app .apm-list-table tbody td {
         color: rgba(0, 0, 0, 0.87) !important;
         vertical-align: middle !important;
     }

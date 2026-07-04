@@ -30,11 +30,13 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use App\Http\Controllers\Concerns\ServiceRequestListIndexResponses;
 use App\Http\Controllers\Concerns\SendsSelfDocumentPdfEmail;
 use App\Support\MemoFundTypeFilter;
 
 class ServiceRequestController extends Controller
 {
+    use ServiceRequestListIndexResponses;
     use SendsSelfDocumentPdfEmail;
 
     protected ApprovalService $approvalService;
@@ -47,124 +49,15 @@ class ServiceRequestController extends Controller
     /**
      * Display a listing of service requests.
      */
-    public function index(Request $request)
+    public function index(Request $request): View|JsonResponse
     {
-        $currentStaffId = user_session('staff_id');
-        $currentYear = (int) date('Y');
-        // Default to current year when year is missing, empty, or invalid (e.g. 0); filter by created_at
-        $selectedYear = $request->get('year');
-        if ($selectedYear === null || $selectedYear === '' || (is_numeric($selectedYear) && (int) $selectedYear === 0)) {
-            $selectedYear = (string) $currentYear;
-        }
-        $selectedYear = (string) $selectedYear;
-        $minYear = max(2025, $currentYear - 10);
-        $yearRange = range($currentYear, $minYear);
-        $years = ['all' => 'All years'] + array_combine($yearRange, $yearRange);
-
-        // Base query for filtering (most recent first)
-        $baseQuery = ServiceRequest::with(['staff', 'responsiblePerson', 'division', 'workflowDefinition'])
-            ->orderByDesc('created_at');
-
-        if ($selectedYear !== '' && $selectedYear !== 'all' && (int) $selectedYear > 0) {
-            $baseQuery->whereYear('created_at', $selectedYear);
-        }
-            
-        // Apply filters
-        if ($request->has('staff_id') && $request->staff_id) {
-            $baseQuery->where('responsible_person_id', $request->staff_id);
-        }
-        
-        if ($request->has('division_id') && $request->division_id) {
-            $baseQuery->where('division_id', $request->division_id);
-        }
-        
-        if ($request->has('service_type') && $request->service_type) {
-            $baseQuery->where('service_type', $request->service_type);
-        }
-        
-        if ($request->has('status') && $request->status) {
-            $baseQuery->where('overall_status', $request->status);
-        }
-        
-        if ($request->filled('search')) {
-            $search = trim((string) $request->search);
-            $baseQuery->where(function ($query) use ($search) {
-                $query->where('service_title', 'like', '%' . $search . '%')
-                    ->orWhere('title', 'like', '%' . $search . '%')
-                    ->orWhere('request_number', 'like', '%' . $search . '%')
-                    ->orWhere('document_number', 'like', '%' . $search . '%');
-            });
-        }
-        MemoFundTypeFilter::apply($baseQuery, $request);
-        
-        // My Submitted Requests (current user's requests)
-        $mySubmittedQuery = clone $baseQuery;
-        $mySubmittedRequests = $mySubmittedQuery->where('staff_id', $currentStaffId)->paginate(20)->withQueryString();
-
-        // My Division Requests (latest first)
-        $myDivisionQuery = clone $baseQuery;
-        $currentDivisionId = user_session('division_id');
-        if ($currentDivisionId) {
-            $myDivisionRequests = $myDivisionQuery
-                ->where('division_id', $currentDivisionId)
-                ->where('overall_status', '!=', 'archived')
-                ->paginate(20)
-                ->withQueryString();
-        } else {
-            $myDivisionRequests = $myDivisionQuery->whereRaw('1=0')->paginate(20)->withQueryString();
-        }
-        
-        // All Requests (for users with permission)
-        $allRequests = null;
-        if (in_array(87, user_session('permissions', []))) {
-            $allRequests = $baseQuery->paginate(20)->withQueryString();
-        }
-        
-        $staff = Staff::all();
-        $divisions = Division::all();
-
-        // Handle AJAX requests for tab content only (not initial Livewire navigation)
         if (\App\Support\ApmListFragment::wants($request)) {
-            $tab = $request->get('tab', '');
-            $html = '';
-            $countMy = $mySubmittedRequests->total();
-            $countMyDivision = $myDivisionRequests->total();
-            $countAll = $allRequests ? $allRequests->total() : 0;
-            
-            switch($tab) {
-                case 'mySubmitted':
-                    $html = view('service-requests.partials.my-submitted-tab', compact('mySubmittedRequests'))->render();
-                    break;
-                case 'myDivision':
-                    $html = view('service-requests.partials.my-division-tab', compact('myDivisionRequests'))->render();
-                    break;
-                case 'allRequests':
-                    $html = view('service-requests.partials.all-requests-tab', compact('allRequests'))->render();
-                    break;
-            }
-            
-            return \App\Support\ApmListFragment::json([
-                'html' => $html,
-                'count_my_submitted' => $countMy,
-                'count_my_division' => $countMyDivision,
-                'count_all_requests' => $countAll,
-            ]);
+            return $this->getServiceRequestsIndexAjax($request);
         }
 
-        $fundTypeFilterOptions = MemoFundTypeFilter::options();
-        $selectedFundTypeId = MemoFundTypeFilter::selectedId($request);
-
-        return view('service-requests.index', compact(
-            'mySubmittedRequests',
-            'myDivisionRequests',
-            'allRequests',
-            'staff',
-            'divisions',
-            'years',
-            'selectedYear',
-            'fundTypeFilterOptions',
-            'selectedFundTypeId',
-        ));
+        return view('service-requests.index', [
+            'pageConfig' => $this->buildServiceRequestsIndexPageConfig($request),
+        ]);
     }
 
     /**
