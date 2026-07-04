@@ -13,22 +13,177 @@ use App\Models\RequestARF;
 use App\Models\RequestType;
 use App\Models\ServiceRequest;
 use App\Models\SpecialMemo;
+use App\Services\ApmPageCache;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
 {
     use CachesApmPageResponses;
 
-    /** Default year for filters: current year. Use "all" for all years. */
+    /** Default year for filters: current year unless "all" is chosen. */
     private function defaultYear(Request $request)
     {
         $y = $request->get('year');
         if ($y === null || $y === '') {
             return (string) (int) date('Y');
         }
+
         return (string) $y;
+    }
+
+    private function currentQuarterLabel(): string
+    {
+        return 'Q'.(int) ceil((int) date('n') / 3);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildReportFiltersPageConfig(): array
+    {
+        $currentYear = (string) (int) date('Y');
+        $currentQuarter = $this->currentQuarterLabel();
+
+        $divisions = ApmPageCache::rememberLookups('reports_divisions', function () {
+            return Division::orderBy('division_name')->get(['id', 'division_name']);
+        });
+
+        $memoTypes = DocumentCounter::getDocumentTypes();
+        $memoTypeOptions = [];
+        foreach ($memoTypes as $code => $label) {
+            $memoTypeOptions[] = ['code' => $code, 'label' => $label];
+        }
+
+        $years = ApmPageCache::rememberLookups('reports_matrix_years', function () use ($currentYear) {
+            $fromDb = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
+            if ($fromDb->isEmpty()) {
+                return collect(range((int) $currentYear - 3, (int) $currentYear + 1))->values()->all();
+            }
+            if (! $fromDb->contains((int) $currentYear)) {
+                $fromDb = $fromDb->push((int) $currentYear)->sortDesc()->values();
+            }
+
+            return $fromDb->all();
+        });
+
+        return [
+            'defaults' => [
+                'year' => $currentYear,
+                'quarter' => $currentQuarter,
+            ],
+            'currentYear' => $currentYear,
+            'currentQuarter' => $currentQuarter,
+            'quarters' => ['Q1', 'Q2', 'Q3', 'Q4'],
+            'divisions' => $divisions,
+            'memoTypeOptions' => $memoTypeOptions,
+            'years' => $years,
+            'statusOptions' => [
+                ['value' => '', 'label' => 'All statuses'],
+                ['value' => 'approved', 'label' => 'Approved'],
+                ['value' => 'pending', 'label' => 'Pending'],
+                ['value' => 'returned', 'label' => 'Returned'],
+                ['value' => 'rejected', 'label' => 'Rejected'],
+                ['value' => 'draft', 'label' => 'Draft'],
+            ],
+            'routes' => [
+                'reportsIndex' => route('reports.index'),
+            ],
+        ];
+    }
+
+    /**
+     * @param  object  $row
+     */
+    private function memoListShowUrl(object $row): string
+    {
+        $type = $row->document_type ?? '';
+        $id = (int) ($row->id ?? 0);
+
+        return match ($type) {
+            DocumentCounter::TYPE_QUARTERLY_MATRIX => ! empty($row->matrix_id)
+                ? route('matrices.activities.show', [$row->matrix_id, $id])
+                : '#',
+            DocumentCounter::TYPE_SINGLE_MEMO => route('activities.single-memos.show', $id),
+            DocumentCounter::TYPE_SPECIAL_MEMO => route('special-memo.show', $id),
+            DocumentCounter::TYPE_NON_TRAVEL_MEMO => route('non-travel.show', $id),
+            DocumentCounter::TYPE_CHANGE_REQUEST => route('change-requests.show', $id),
+            DocumentCounter::TYPE_SERVICE_REQUEST => route('service-requests.show', $id),
+            DocumentCounter::TYPE_ARF => route('request-arf.show', $id),
+            default => '#',
+        };
+    }
+
+    /**
+     * @param  object  $row
+     * @param  \Illuminate\Support\Collection<int, Division>  $divisions
+     * @param  array<string, string>  $memoTypeLabels
+     * @return array<string, mixed>
+     */
+    private function serializeMemoListRow(object $row, $divisions, array $memoTypeLabels): array
+    {
+        $divisionId = $row->division_id ?? null;
+        $divisionName = $divisionId ? ($divisions->firstWhere('id', $divisionId)->division_name ?? 'N/A') : 'N/A';
+        $dateFrom = $row->date_from ? \Carbon\Carbon::parse($row->date_from)->format('d M Y') : '—';
+        $dateTo = $row->date_to ? \Carbon\Carbon::parse($row->date_to)->format('d M Y') : '—';
+        $status = (string) ($row->overall_status ?? '');
+        $pendingLevel = $row->next_approval_level ?? $row->approval_level ?? null;
+
+        return [
+            'id' => (int) ($row->id ?? 0),
+            'document_type' => $row->document_type ?? '',
+            'type_label' => $memoTypeLabels[$row->document_type ?? ''] ?? ($row->document_type ?? ''),
+            'document_number' => $row->document_number ?? '—',
+            'title' => $row->title ?? '—',
+            'division_id' => $divisionId,
+            'division_name' => $divisionName,
+            'year' => $row->year ?? null,
+            'quarter' => $row->quarter ?? '',
+            'year_quarter' => trim(($row->year ?? '—').' '.($row->quarter ?? '')),
+            'overall_status' => $status,
+            'status_label' => match ($status) {
+                'approved' => 'Approved',
+                'pending' => $pendingLevel ? "Pending (Level {$pendingLevel})" : 'Pending',
+                'returned', 'rejected' => 'Returned',
+                default => $status !== '' ? ucfirst($status) : '—',
+            },
+            'status_color' => match ($status) {
+                'approved' => 'success',
+                'pending' => 'warning',
+                'returned', 'rejected' => 'error',
+                'draft' => 'secondary',
+                default => 'secondary',
+            },
+            'date_range' => $dateFrom.' – '.$dateTo,
+            'responsible_person_name' => $row->responsible_person_name ?? 'N/A',
+            'show_url' => $this->memoListShowUrl($row),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<string, int>
+     */
+    private function summarizeDivisionCounts(array $rows): array
+    {
+        $summary = [
+            'total_divisions' => count($rows),
+            'total_approved' => 0,
+            'total_pending' => 0,
+            'total_returned' => 0,
+            'total_draft' => 0,
+            'total_count' => 0,
+        ];
+        foreach ($rows as $row) {
+            $summary['total_approved'] += (int) ($row['approved_count'] ?? 0);
+            $summary['total_pending'] += (int) ($row['pending_count'] ?? 0);
+            $summary['total_returned'] += (int) ($row['returned_count'] ?? 0);
+            $summary['total_draft'] += (int) ($row['draft_count'] ?? 0);
+            $summary['total_count'] += (int) ($row['total_count'] ?? 0);
+        }
+
+        return $summary;
     }
 
     /** Apply common filters to activity+matrix query (division, year, quarter, request_type_id, status). Used for memo list (activities only). memo_type = request_type id when numeric. */
@@ -357,32 +512,29 @@ class ReportsController extends Controller
      */
     public function divisionCounts(Request $request)
     {
-        $divisions = Division::orderBy('division_name')->get();
-        $memoTypes = DocumentCounter::getDocumentTypes();
-        $years = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
-        $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-        $currentYear = (string) (int) date('Y');
-
-        return view('reports.division-counts', [
-            'divisions' => $divisions,
-            'memoTypes' => $memoTypes,
-            'years' => $years,
-            'quarters' => $quarters,
-            'currentYear' => $currentYear,
+        $base = $this->buildReportFiltersPageConfig();
+        $pageConfig = array_merge($base, [
+            'routes' => array_merge($base['routes'], [
+                'data' => route('reports.division-counts.data'),
+                'exportExcel' => route('reports.division-counts.export.excel'),
+                'memoList' => route('reports.memo-list'),
+            ]),
         ]);
+
+        return view('reports.division-counts', compact('pageConfig'));
     }
 
     /**
      * AJAX: division counts table HTML.
      * memo_type = document type code (QM, SM, SPM, NT, CR, SR, ARF) or empty for all.
      */
-    public function divisionCountsData(Request $request)
+    public function divisionCountsData(Request $request): JsonResponse
     {
         $keyParts = $this->apmCacheKeyFromRequest($request, [
             'memo_type', 'division', 'year', 'quarter', 'status', 'sort_column', 'sort_dir',
         ]);
 
-        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'division_counts']), function () use ($request) {
+        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'division_counts']), function () use ($request): array {
             $memoType = $request->filled('memo_type') ? $request->memo_type : null;
             $counts = $this->getDivisionCountsByMemoType($request, $memoType);
             $divisionIds = $counts->keys()->filter()->unique()->values()->toArray();
@@ -412,17 +564,33 @@ class ReportsController extends Controller
                 return $sortDir === 'asc' ? $cmp : -$cmp;
             });
 
-            $detailsUrl = route('reports.memo-list');
-            $html = view('reports.partials.counts-table', [
-                'counts' => collect($countsArray),
-                'divisionsForCounts' => $divisionsForCounts,
-                'detailsUrl' => $detailsUrl,
-                'request' => $request,
-                'sortColumn' => $sortColumn,
-                'sortDir' => $sortDir,
-            ])->render();
+            $rows = [];
+            foreach ($countsArray as $row) {
+                $divisionId = (int) ($row->division_id ?? 0);
+                $division = $divisionsForCounts->get($divisionId);
+                $linkParams = array_filter([
+                    'division' => $divisionId,
+                    'year' => $request->get('year'),
+                    'quarter' => $request->get('quarter'),
+                    'memo_type' => $request->get('memo_type'),
+                ], fn ($v) => $v !== null && $v !== '');
+                $rows[] = [
+                    'division_id' => $divisionId,
+                    'division_name' => $division ? $division->division_name : ('Division #'.$divisionId),
+                    'approved_count' => (int) ($row->approved_count ?? 0),
+                    'pending_count' => (int) ($row->pending_count ?? 0),
+                    'returned_count' => (int) ($row->returned_count ?? 0),
+                    'draft_count' => (int) ($row->draft_count ?? 0),
+                    'total_count' => (int) ($row->total_count ?? 0),
+                    'memo_list_url' => route('reports.memo-list').'?'.http_build_query($linkParams),
+                ];
+            }
 
-            return response()->json(['html' => $html]);
+            return [
+                'success' => true,
+                'data' => $rows,
+                'summary' => $this->summarizeDivisionCounts($rows),
+            ];
         });
     }
 
@@ -433,26 +601,15 @@ class ReportsController extends Controller
      */
     public function memoList(Request $request)
     {
-        $divisions = Division::orderBy('division_name')->get();
-        $memoTypes = DocumentCounter::getDocumentTypes();
-        $years = Matrix::distinct()->pluck('year')->filter()->sortDesc()->values();
-        $quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-        $currentYear = (string) (int) date('Y');
-        // Default to "all" so first load and "no filters" show all years; otherwise use request year
-        $year = $request->filled('year') ? $this->defaultYear($request) : 'all';
-
-        return view('reports.memo-list', [
-            'divisions' => $divisions,
-            'memoTypes' => $memoTypes,
-            'years' => $years,
-            'quarters' => $quarters,
-            'currentYear' => $currentYear,
-            'filterDivision' => $request->get('division'),
-            'filterYear' => $year,
-            'filterQuarter' => $request->get('quarter'),
-            'filterMemoType' => $request->get('memo_type'),
-            'filterStatus' => $request->get('status'),
+        $base = $this->buildReportFiltersPageConfig();
+        $pageConfig = array_merge($base, [
+            'routes' => array_merge($base['routes'], [
+                'data' => route('reports.memo-list.data'),
+                'exportExcel' => route('reports.memo-list.export.excel'),
+            ]),
         ]);
+
+        return view('reports.memo-list', compact('pageConfig'));
     }
 
     /** Valid document type codes for memo list. */
@@ -467,19 +624,19 @@ class ReportsController extends Controller
     ];
 
     /**
-     * AJAX: memo list table HTML (body + pagination). Uses unified rows from one or all document types.
+     * AJAX: memo list rows (JSON) with pagination.
      */
-    public function memoListData(Request $request)
+    public function memoListData(Request $request): JsonResponse
     {
         $keyParts = $this->apmCacheKeyFromRequest($request, [
             'memo_type', 'division', 'year', 'quarter', 'status', 'page',
             'sort_column', 'sort_dir', 'document_number', 'search',
         ]);
 
-        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'memo_list']), function () use ($request) {
+        return $this->apmCachedJson('reports', $request, array_merge($keyParts, ['report' => 'memo_list']), function () use ($request): array {
             $memoType = $request->filled('memo_type') ? $request->memo_type : null;
             $perPage = 20;
-            $page = (int) $request->get('page', 1);
+            $page = max(1, (int) $request->get('page', 1));
 
             if ($memoType && in_array($memoType, self::MEMO_LIST_DOC_TYPES, true)) {
                 $allRows = $this->getMemoListRowsForType($memoType, $request);
@@ -532,35 +689,28 @@ class ReportsController extends Controller
 
             $total = $allRows->count();
             $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
-            $paginator = new LengthAwarePaginator(
-                $slice,
-                $total,
-                $perPage,
-                $page,
-                ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
-            );
-
             $divisions = Division::orderBy('division_name')->get();
             $memoTypeLabels = DocumentCounter::getDocumentTypes();
 
-            $html = view('reports.partials.memo-list-table', [
-                'memoList' => $paginator,
-                'divisions' => $divisions,
-                'memoTypeLabels' => $memoTypeLabels,
-                'sortColumn' => $sortColumn,
-                'sortDir' => $sortDir,
-            ])->render();
+            $data = $slice->map(fn ($row) => $this->serializeMemoListRow($row, $divisions, $memoTypeLabels))->values()->all();
+            $start = $total > 0 ? (($page - 1) * $perPage) + 1 : 0;
+            $end = min($page * $perPage, $total);
 
-            return response()->json([
-                'html' => $html,
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'total' => $paginator->total(),
-                'debug' => $request->has('_debug') ? [
-                    'received' => ['division' => $request->get('division'), 'year' => $request->get('year'), 'quarter' => $request->get('quarter')],
-                    'total_rows' => $total,
-                ] : null,
-            ]);
+            return [
+                'success' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $page,
+                    'last_page' => max(1, (int) ceil($total / $perPage)),
+                    'per_page' => $perPage,
+                    'total' => $total,
+                    'from' => $start,
+                    'to' => $end,
+                ],
+                'summary' => [
+                    'total_memos' => $total,
+                ],
+            ];
         });
     }
 

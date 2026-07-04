@@ -17,18 +17,18 @@ class DivisionController extends Controller
      */
     public function index(Request $request)
     {
-        $initialSearch = $request->get('search', '');
-        $initialPage = (int) $request->get('page', 1);
-        $initialPageSize = (int) $request->get('per_page', 15);
-        $initialSortBy = $request->get('sort_by', 'division_name');
-        $initialSortDirection = $request->get('sort_direction', 'asc');
-
         return view('divisions.index', [
-            'initialSearch' => $initialSearch,
-            'initialPage' => $initialPage,
-            'initialPageSize' => min(max($initialPageSize, 5), 100),
-            'initialSortBy' => $initialSortBy,
-            'initialSortDirection' => $initialSortDirection,
+            'pageConfig' => [
+                'routes' => [
+                    'ajax' => route('divisions.ajax'),
+                    'show' => url('divisions'),
+                    'exportExcel' => route('divisions.export.excel'),
+                ],
+                'flash' => [
+                    'success' => session('success'),
+                    'error' => session('error'),
+                ],
+            ],
         ]);
     }
 
@@ -68,11 +68,17 @@ class DivisionController extends Controller
         $skip = ($page - 1) * $pageSize;
         $data = $query->skip($skip)->take($pageSize)->get();
 
+        $totalDivisions = Division::count();
+
         return response()->json([
             'data' => $data,
             'recordsTotal' => $recordsTotal,
             'totalPages' => $totalPages,
             'currentPage' => $page,
+            'summary' => [
+                'total_divisions' => $totalDivisions,
+                'filtered_divisions' => $recordsTotal,
+            ],
         ]);
     }
 

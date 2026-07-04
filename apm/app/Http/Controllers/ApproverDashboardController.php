@@ -203,12 +203,22 @@ class ApproverDashboardController extends Controller
             usort($allApproversWithCounts, function ($a, $b) use ($sortField, $orderDirection) {
                 $aValue = $a[$sortField] ?? 0;
                 $bValue = $b[$sortField] ?? 0;
-                // For last_approval_date use empty string for null so datetime comparison works and nulls sort last when desc
-                if ($sortField === 'last_approval_date') {
+
+                if (in_array($sortField, ['avg_last_5_hours', 'avg_approval_time_hours'], true)) {
+                    $aHas = is_numeric($aValue) && (float) $aValue > 0;
+                    $bHas = is_numeric($bValue) && (float) $bValue > 0;
+                    if ($aHas !== $bHas) {
+                        return $orderDirection === 'asc'
+                            ? ($aHas ? 1 : -1)
+                            : ($aHas ? -1 : 1);
+                    }
+                    $aValue = (float) $aValue;
+                    $bValue = (float) $bValue;
+                } elseif ($sortField === 'last_approval_date') {
                     $aValue = $aValue ?: '';
                     $bValue = $bValue ?: '';
                 }
-                // Handle array fields (like roles)
+
                 if (is_array($aValue)) {
                     $aValue = implode(', ', $aValue);
                 }
@@ -216,11 +226,9 @@ class ApproverDashboardController extends Controller
                     $bValue = implode(', ', $bValue);
                 }
 
-                // Handle string comparison
                 if (is_string($aValue) && is_string($bValue)) {
                     $result = strcasecmp($aValue, $bValue);
                 } else {
-                    // Numeric comparison
                     $result = ($aValue <=> $bValue);
                 }
 

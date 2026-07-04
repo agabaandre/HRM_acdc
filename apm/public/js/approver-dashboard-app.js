@@ -20,11 +20,11 @@
     };
 
     const SORT_KEY_TO_COLUMN = {
-        avg_last_5_display: 2,
-        avg_approval_time_display: 3,
+        avg_last_5_hours: 2,
+        avg_approval_time_hours: 3,
         total_pending: 4,
         total_handled: 5,
-        last_approval_date_display: 8,
+        last_approval_date: 8,
     };
 
     const AVATAR_COLORS = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
@@ -144,7 +144,7 @@
 
                 const page = ref(1);
                 const itemsPerPage = ref(25);
-                const sortBy = ref([{ key: 'avg_last_5_display', order: 'desc' }]);
+                const sortBy = ref([{ key: 'avg_last_5_hours', order: 'desc' }]);
                 const items = ref([]);
                 const totalItems = ref(0);
                 const tableLoading = ref(false);
@@ -207,13 +207,13 @@
                 const tableHeaders = [
                     { title: '#', key: 'row_num', sortable: false, width: 48 },
                     { title: 'Approver', key: 'approver_name', sortable: false, minWidth: 200 },
-                    { title: 'Avg. last 5 docs', key: 'avg_last_5_display', sortable: true },
-                    { title: 'Avg. all docs', key: 'avg_approval_time_display', sortable: true },
+                    { title: 'Avg. last 5 docs', key: 'avg_last_5_hours', sortable: true },
+                    { title: 'Avg. all docs', key: 'avg_approval_time_hours', sortable: true },
                     { title: 'Total pending', key: 'total_pending', sortable: true, align: 'center' },
                     { title: 'Total handled', key: 'total_handled', sortable: true, align: 'center' },
                     { title: 'Pending items', key: 'pending_items', sortable: false, minWidth: 180 },
                     { title: 'Role', key: 'roles_display', sortable: false, minWidth: 200 },
-                    { title: 'Last approval', key: 'last_approval_date_display', sortable: true },
+                    { title: 'Last approval', key: 'last_approval_date', sortable: true },
                 ];
 
                 const summaryKpis = computed(() => [
@@ -1058,7 +1058,7 @@
             </div>
           </div>
         </template>
-        <template #item.avg_last_5_display="{ item }">
+        <template #item.avg_last_5_hours="{ item }">
           <v-chip
             v-if="canLinkTiming(item.staff_id)"
             :href="timingReportUrl(item.staff_id)"
@@ -1069,7 +1069,7 @@
           >{{ item.avg_last_5_display || 'No data' }}</v-chip>
           <v-chip v-else variant="flat" size="small" class="ad-chip-link ad-chip-last5">{{ item.avg_last_5_display || 'No data' }}</v-chip>
         </template>
-        <template #item.avg_approval_time_display="{ item }">
+        <template #item.avg_approval_time_hours="{ item }">
           <v-chip
             v-if="canLinkTiming(item.staff_id)"
             :href="timingReportUrl(item.staff_id)"
@@ -1117,7 +1117,7 @@
             <span v-if="!item.roles_list.length" class="ad-table-muted text-body-2">{{ item.role || 'N/A' }}</span>
           </div>
         </template>
-        <template #item.last_approval_date_display="{ item }">
+        <template #item.last_approval_date="{ item }">
           <span v-if="item.last_approval_date_display" class="ad-table-date text-nowrap">{{ item.last_approval_date_display }}</span>
           <span v-else class="ad-table-muted">—</span>
         </template>

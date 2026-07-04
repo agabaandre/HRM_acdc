@@ -14,27 +14,77 @@ class DirectorateController extends Controller
      */
     public function index(Request $request)
     {
+        return view('directorates.index', [
+            'pageConfig' => [
+                'routes' => [
+                    'ajax' => route('directorates.ajax'),
+                    'show' => url('directorates'),
+                    'create' => route('directorates.create'),
+                ],
+                'flash' => [
+                    'success' => session('success'),
+                    'error' => session('error'),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Directorates data for AJAX table (search, status filter, sort, pagination).
+     */
+    public function getDirectoratesAjax(Request $request)
+    {
+        $search = trim((string) ($request->get('search') ?? ''));
+        $status = trim((string) ($request->get('status') ?? ''));
+        $page = max(1, (int) $request->get('page', 1));
+        $pageSize = max(5, min(100, (int) $request->get('pageSize', 25)));
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        $allowedSortColumns = ['id', 'name', 'code', 'is_active', 'created_at', 'updated_at'];
+        if (! in_array($sortBy, $allowedSortColumns, true)) {
+            $sortBy = 'created_at';
+        }
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $baseQuery = Directorate::query();
+        $allDirectorates = (clone $baseQuery)->get(['id', 'is_active']);
+
         $query = Directorate::query()->with('director');
 
-        // Search filter
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%')
+                    ->orWhere('description', 'like', '%'.$search.'%');
             });
         }
 
-        // Status filter
-        if ($request->has('status') && !empty($request->status)) {
-            $status = $request->status === 'active' ? 1 : 0;
-            $query->where('is_active', $status);
+        if ($status === 'active') {
+            $query->where('is_active', 1);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', 0);
         }
 
-        $directorates = $query->latest()->paginate(10);
+        $recordsTotal = $query->count();
+        $totalPages = $pageSize > 0 ? (int) ceil($recordsTotal / $pageSize) : 0;
+        $skip = ($page - 1) * $pageSize;
+        $data = $query->orderBy($sortBy, $sortDirection)->skip($skip)->take($pageSize)->get();
 
-        return view('directorates.index', compact('directorates'));
+        return response()->json([
+            'data' => $data,
+            'recordsTotal' => $recordsTotal,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'summary' => [
+                'total_directorates' => $allDirectorates->count(),
+                'active_directorates' => $allDirectorates->where('is_active', 1)->count(),
+                'inactive_directorates' => $allDirectorates->where('is_active', 0)->count(),
+                'filtered_directorates' => $recordsTotal,
+            ],
+        ]);
     }
 
     /**

@@ -1,109 +1,47 @@
 @extends('layouts.app')
 
 @section('title', 'Directorates')
-
 @section('header', 'Directorates')
 
-@section('header-actions')
-<a wire:navigate href="{{ route('directorates.create') }}" class="btn btn-success">
-    <i class="bx bx-plus"></i> Add Directorate
-</a>
-@endsection
-
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-header bg-light">
-        <h5 class="mb-3"><i class="bx bx-list-ul me-2 text-primary"></i>Directorates Management</h5>
-        
-        <form action="{{ route('directorates.index') }}" method="GET" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" name="search" class="form-control" placeholder="Search..." value="{{ request('search') }}">
-            </div>
-            <div class="col-md-3">
-                <select name="status" class="form-select">
-                    <option value="">All Status</option>
-                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bx bx-filter-alt"></i>
-                </button>
-            </div>
-        </form>
+<div id="directorates-app" data-apm-vuetify-page="directorates">
+    <script type="application/json" class="apm-page-config">@json($pageConfig)</script>
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2 mb-0">Loading directorates…</p>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Director</th>
-                        <th>Status</th>
-                        <th>Created At</th>
-                        <th>Updated At</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($directorates as $directorate)
-                        <tr>
-                            <td>{{ $directorate->id }}</td>
-                            <td><strong>{{ $directorate->name }}</strong></td>
-                            <td>
-                                @if($directorate->director)
-                                    <span class="text-nowrap">{{ $directorate->director->lname }} {{ $directorate->director->fname }}</span>
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($directorate->is_active)
-                                    <span class="badge bg-success">Active</span>
-                                @else
-                                    <span class="badge bg-danger">Inactive</span>
-                                @endif
-                            </td>
-                            <td>{{ $directorate->created_at }}</td>
-                            <td>{{ $directorate->updated_at }}</td>
-                            <td class="text-end">
-                                <a wire:navigate href="{{ route('directorates.show', $directorate) }}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="View">
-                                    <i class="bx bx-show me-1"></i>View
-                                </a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="text-muted">
-                                    <i class="bx bx-folder-open fs-1"></i>
-                                    <p class="mt-2">No directorates found</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-    @if($directorates->hasPages())
-        <div class="card-footer">
-            {{ $directorates->appends(request()->except('page'))->links() }}
-        </div>
-    @endif
 </div>
 @endsection
 
-@push('scripts')
-<script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
-    });
-</script>
+@push('head-meta')
+<style>
+    #directorates-app .dr-vuetify-app { background: transparent !important; }
+    #directorates-app .v-application__wrap { min-height: 0 !important; }
+    #directorates-app .dr-kpi-card {
+        background: #fff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        border-left: 3px solid var(--dr-kpi-accent, #119a48) !important;
+        height: 100%;
+    }
+    #directorates-app .dr-kpi-icon-wrap {
+        width: 40px; height: 40px; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    #directorates-app .dr-kpi-value {
+        color: rgba(0, 0, 0, 0.87) !important;
+        font-size: 1.375rem; font-weight: 700; line-height: 1.2;
+    }
+    #directorates-app .dr-kpi-label {
+        color: rgba(0, 0, 0, 0.55) !important;
+        font-size: 0.75rem; font-weight: 500; margin-top: 2px;
+    }
+    #directorates-app .dr-table thead th {
+        background: #f8fafc !important;
+        color: rgba(0, 0, 0, 0.7) !important;
+        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+</style>
 @endpush

@@ -188,6 +188,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::get('divisions/ajax', [App\Http\Controllers\DivisionController::class, 'getDivisionsAjax'])->name('divisions.ajax');
     Route::get('divisions/export/excel', [App\Http\Controllers\DivisionController::class, 'exportExcel'])->name('divisions.export.excel');
     Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
+    Route::get('directorates/ajax', [App\Http\Controllers\DirectorateController::class, 'getDirectoratesAjax'])->name('directorates.ajax');
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     
     // Staff specific routes (must come before resource route)

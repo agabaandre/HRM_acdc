@@ -431,19 +431,167 @@ class WeeklyBriefingController extends Controller
             $filedOnBehalfBy = Staff::query()->find($filedOnBehalfStaffId);
         }
 
-        return view('weekly-briefing.edit', compact(
-            'report',
-            'settings',
-            'window',
-            'canContributorEdit',
-            'canDirectorEdit',
-            'canContributorSubmit',
-            'canMarkDirectorReview',
-            'formEditable',
-            'unlockOverrideActive',
-            'filingAsAdminAssistant',
-            'filedOnBehalfBy'
-        ));
+        $pageConfig = $this->buildWeeklyBriefingEditPageConfig(
+            $report,
+            $settings,
+            $canContributorEdit,
+            $canDirectorEdit,
+            $canContributorSubmit,
+            $canMarkDirectorReview,
+            $formEditable,
+            $unlockOverrideActive,
+            $filingAsAdminAssistant,
+            $filedOnBehalfBy
+        );
+
+        return view('weekly-briefing.edit', compact('pageConfig'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildWeeklyBriefingEditPageConfig(
+        WeeklyBriefingReport $report,
+        WeeklyBriefingSetting $settings,
+        bool $canContributorEdit,
+        bool $canDirectorEdit,
+        bool $canContributorSubmit,
+        bool $canMarkDirectorReview,
+        bool $formEditable,
+        bool $unlockOverrideActive,
+        bool $filingAsAdminAssistant,
+        ?Staff $filedOnBehalfBy,
+    ): array {
+        $submissionDeadline = $report->submissionDeadline($settings);
+        $s1 = old('section1', $report->section1RowsForForm());
+        while (count($s1) < 3) {
+            $s1[] = ['major_happening' => '', 'description_key_actions' => '', 'strategic_relevance' => ''];
+        }
+        $s1 = array_slice($s1, 0, 3);
+
+        $s2 = old('section2', $report->section2RowsForForm());
+        if (count($s2) === 0) {
+            $s2[] = ['issue' => '', 'impact_risk' => '', 'required_action' => ''];
+        }
+
+        $section2 = [];
+        foreach (array_values($s2) as $idx => $row) {
+            $section2[] = [
+                'uid' => 'e'.$idx,
+                'issue' => (string) ($row['issue'] ?? ''),
+                'impact_risk' => (string) ($row['impact_risk'] ?? ''),
+                'required_action' => (string) ($row['required_action'] ?? ''),
+            ];
+        }
+
+        $deadlinePassed = \Carbon\Carbon::now()->greaterThan($submissionDeadline);
+        $hubViewOnly = ! $formEditable;
+
+        $deadlineBadge = ['label' => 'Open for edits', 'color' => 'success'];
+        if ($report->status === WeeklyBriefingReport::STATUS_LOCKED && ! $unlockOverrideActive) {
+            $deadlineBadge = ['label' => 'Locked', 'color' => 'secondary'];
+        } elseif ($report->status === WeeklyBriefingReport::STATUS_LOCKED && $unlockOverrideActive) {
+            $deadlineBadge = ['label' => 'Locked — open for edits (admin unlock)', 'color' => 'warning'];
+        } elseif ($deadlinePassed) {
+            $deadlineBadge = ['label' => 'Closed — deadline passed', 'color' => 'error'];
+        } elseif ($hubViewOnly) {
+            $deadlineBadge = ['label' => 'View only — not assigned to edit', 'color' => 'secondary'];
+        } elseif ($report->status === WeeklyBriefingReport::STATUS_SUBMITTED) {
+            $deadlineBadge = ['label' => 'Submitted — contributor edits closed', 'color' => 'secondary'];
+        } elseif (! $formEditable) {
+            $deadlineBadge = ['label' => 'Not open for edits', 'color' => 'secondary'];
+        }
+
+        $statusColor = match ((string) $report->status) {
+            WeeklyBriefingReport::STATUS_SUBMITTED => 'success',
+            WeeklyBriefingReport::STATUS_LOCKED => 'secondary',
+            default => 'warning',
+        };
+
+        $submittedByName = '';
+        if ($report->submitted_by_staff_id && $report->submittedBy) {
+            $submittedByName = trim((string) ($report->submittedBy->name ?? ''));
+            if ($submittedByName === '') {
+                $submittedByName = 'Staff #'.$report->submitted_by_staff_id;
+            }
+        }
+
+        $filedOnBehalfName = null;
+        if ($filedOnBehalfBy) {
+            $filedOnBehalfName = trim((string) ($filedOnBehalfBy->name ?? ''));
+            if ($filedOnBehalfName === '') {
+                $filedOnBehalfName = 'Staff #'.(int) $filedOnBehalfBy->staff_id;
+            }
+        }
+
+        $assignedDirectorName = $report->requiresDirectorReview() ? $report->assignedDirectorDisplayName() : '';
+        $reviewerName = '';
+        if ($report->isDirectorReviewed() && $report->directorReviewedBy) {
+            $reviewerName = trim((string) ($report->directorReviewedBy->name ?? ''));
+            if ($reviewerName === '') {
+                $reviewerName = 'Staff #'.(int) $report->director_reviewed_by_staff_id;
+            }
+        }
+        $directorLabel = $reviewerName !== '' ? $reviewerName : $assignedDirectorName;
+
+        return [
+            'csrfToken' => csrf_token(),
+            'flash' => [
+                'status' => session('status'),
+                'error' => session('error'),
+            ],
+            'formEditable' => $formEditable,
+            'hubViewOnly' => $hubViewOnly,
+            'filingAsAdminAssistant' => $filingAsAdminAssistant,
+            'unlockOverrideActive' => $unlockOverrideActive,
+            'unlockUntil' => $unlockOverrideActive && $settings->report_unlock_override_until
+                ? $settings->report_unlock_override_until->timezone(config('app.timezone'))->format('M j, Y g:i A')
+                : null,
+            'timezone' => config('app.timezone'),
+            'deadline' => [
+                'date' => $submissionDeadline->format('l, F j, Y'),
+                'time' => $submissionDeadline->format('g:i A'),
+                'alert_color' => $formEditable ? 'info' : 'secondary',
+                'badge' => $deadlineBadge,
+            ],
+            'report' => [
+                'id' => (int) $report->id,
+                'week_range' => WeeklyBriefingReport::humanIsoWeekRangeInline(
+                    (int) $report->report_iso_week_year,
+                    (int) $report->report_iso_week
+                ),
+                'directorate_name' => $report->directorate?->name,
+                'unit_label' => $report->contributionEntityLabel(),
+                'division_name' => ($report->division && str_starts_with((string) ($report->contribution_key ?? ''), 'dr-'))
+                    ? $report->division->division_name
+                    : null,
+                'status' => (string) $report->status,
+                'status_color' => $statusColor,
+                'submitted_by' => $submittedByName ?: null,
+                'submitted_at' => $report->submitted_at?->format('M j, Y g:i A'),
+                'filed_on_behalf_by' => $filedOnBehalfName,
+                'requires_director_review' => $report->requiresDirectorReview(),
+                'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
+                'director_review_reviewed' => $report->isDirectorReviewed(),
+                'director_label' => $directorLabel,
+                'show_director_review_block' => $report->requiresDirectorReview()
+                    && $report->status === WeeklyBriefingReport::STATUS_SUBMITTED,
+            ],
+            'canMarkDirectorReview' => $canMarkDirectorReview && ! $report->isDirectorReviewed(),
+            'canContributorSubmit' => $canContributorSubmit,
+            'saveLabel' => ($canDirectorEdit && ! $canContributorEdit) ? 'Save changes (director)' : 'Save draft',
+            'submitConfirm' => $unlockOverrideActive
+                ? 'Submit this weekly brief now? After submission, normal rules apply again when the unlock window ends.'
+                : 'Submit this weekly briefing? You can still edit until the deadline if submission is allowed.',
+            'section1' => $s1,
+            'section2' => $section2,
+            'updateUrl' => route('weekly-briefing.update', $report),
+            'directorReviewUrl' => route('weekly-briefing.director-review', $report),
+            'routes' => [
+                'index' => route('weekly-briefing.index'),
+                'pdf' => route('weekly-briefing.pdf', $report),
+            ],
+        ];
     }
 
     public function update(Request $request, WeeklyBriefingReport $report): RedirectResponse
