@@ -784,11 +784,76 @@ class MatrixController extends Controller
                 ->values();
         }
 
-        // Filter division staff by name if provided
-        //dd($matrix);
-    
-        return view('matrices.show', compact('matrix', 'activities', 'approvedSingleMemosCount'));
+        $pageConfig = $this->buildMatrixShowPageConfig($matrix, $approvedSingleMemosCount);
+
+        return view('matrices.show', compact('matrix', 'activities', 'approvedSingleMemosCount', 'pageConfig'));
      }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildMatrixShowPageConfig(Matrix $matrix, int $approvedSingleMemosCount): array
+    {
+        $matrixActivities = $matrix->activities;
+        $intramuralCount = $matrixActivities->where('fund_type_id', 1)->count();
+        $extramuralCount = $matrixActivities->where('fund_type_id', 2)->count();
+        $externalCount = $matrixActivities->where('fund_type_id', 3)->count();
+        $totalCount = $matrixActivities->count();
+        $singleMemosCount = $matrixActivities->where('is_single_memo', 1)->count();
+
+        return [
+            'matrixId' => $matrix->id,
+            'matrixStatus' => $matrix->overall_status,
+            'approvalLevel' => (int) $matrix->approval_level,
+            'quarter' => $matrix->quarter,
+            'year' => $matrix->year,
+            'divisionName' => $matrix->division->division_name ?? '',
+            'activitySummary' => [
+                'total' => $totalCount,
+                'singleMemos' => $singleMemosCount,
+                'intramural' => $intramuralCount,
+                'extramural' => $extramuralCount,
+                'external' => $externalCount,
+            ],
+            'approvedSingleMemosCount' => $approvedSingleMemosCount,
+            'permissions' => [
+                'canShowCheckbox' => can_take_action($matrix)
+                    && get_approvable_activities($matrix)->count() > 0
+                    && $matrix->overall_status !== 'draft'
+                    && $matrix->approval_level != 5,
+                'isLevel5Approver' => $matrix->approval_level == 5 && is_finance_officer($matrix),
+                'canShowDeleteButton' => in_array($matrix->overall_status, ['draft', 'returned', 'onhold'], true),
+                'canShowCopyButton' => $matrix->overall_status === 'draft'
+                    || ($matrix->overall_status === 'returned' && in_array((int) $matrix->approval_level, [0, 1], true)),
+                'showFinanceNotice' => can_take_action($matrix) && is_finance_officer($matrix) && $matrix->approval_level == 5,
+                'showApprovalGuidelines' => $matrix->overall_status === 'pending',
+            ],
+            'currentUserId' => user_session('staff_id'),
+            'matrixDivisionHead' => $matrix->division->division_head ?? null,
+            'matrixFocalPerson' => $matrix->staff_id,
+            'routes' => [
+                'activitiesAjax' => route('matrices.activities-for-approver', $matrix),
+                'singleMemosAjax' => route('matrices.single-memos-for-approver', $matrix),
+                'divisionStaffAjax' => route('matrices.division-staff-ajax', $matrix),
+                'activityShowBase' => url('matrices/'.$matrix->id.'/activities'),
+                'activityCopyBase' => url('matrices/'.$matrix->id.'/activities'),
+                'activityDestroyBase' => url('matrices/'.$matrix->id.'/activities'),
+                'singleMemoShowBase' => url('single-memos'),
+                'staffShowBase' => url('staff'),
+                'staffMatrixActivitiesBase' => url('staff'),
+            ],
+            'csrf' => csrf_token(),
+            'defaults' => [
+                'activitiesPerPage' => 50,
+                'singleMemosPerPage' => 10,
+                'participantsPerPage' => 25,
+                'activitiesSearch' => request('search', ''),
+                'activitiesDocumentNumber' => request('document_number', ''),
+                'singleMemosSearch' => request('single_memo_search', ''),
+                'singleMemosDocumentNumber' => request('single_memo_document_number', ''),
+            ],
+        ];
+    }
 
     /**
      * Attach locations + internal participants to single memo rows (batch queries; same pattern as activities AJAX).
