@@ -245,6 +245,9 @@
                 const participantPagination = ref({ recordsTotal: 0, totalPages: 1, currentPage: 1 });
                 const participantSummary = ref({ total_staff: 0, total_division_days: 0, over_limit_count: 0 });
                 const participantsLoading = ref(false);
+                const participantsLoaded = ref(false);
+                const participantsMountReady = ref(false);
+                let participantsObserver = null;
 
                 const activityHeaders = computed(() => {
                     const base = [
@@ -459,6 +462,9 @@
                 }
 
                 async function loadParticipants() {
+                    if (!participantsLoaded.value) {
+                        participantsLoaded.value = true;
+                    }
                     participantsLoading.value = true;
                     try {
                         const params = new URLSearchParams({
@@ -537,6 +543,46 @@
                     });
                 }
 
+                function setupParticipantsLazyLoad() {
+                    const target = document.getElementById('matrix-show-participants-mount');
+                    if (!target) {
+                        setTimeout(() => {
+                            participantsLoaded.value = true;
+                            loadParticipants();
+                        }, 200);
+                        return;
+                    }
+
+                    const trigger = () => {
+                        if (participantsLoaded.value) return;
+                        loadParticipants();
+                        if (participantsObserver) {
+                            participantsObserver.disconnect();
+                            participantsObserver = null;
+                        }
+                    };
+
+                    if (typeof IntersectionObserver !== 'undefined') {
+                        participantsObserver = new IntersectionObserver((entries) => {
+                            entries.forEach((entry) => {
+                                if (entry.isIntersecting) trigger();
+                            });
+                        }, { root: null, rootMargin: '120px 0px', threshold: 0 });
+                        participantsObserver.observe(target);
+                        requestAnimationFrame(() => {
+                            const rect = target.getBoundingClientRect();
+                            const vh = window.innerHeight || 800;
+                            if (rect.top < vh + 200) trigger();
+                        });
+                    } else {
+                        setTimeout(trigger, 200);
+                    }
+
+                    setTimeout(() => {
+                        if (!participantsLoaded.value) trigger();
+                    }, 12000);
+                }
+
                 function setupSingleMemosLazyLoad() {
                     if (!cfg.approvedSingleMemosCount || singleMemosLoaded.value) return;
 
@@ -592,12 +638,6 @@
                     singleMemoPage.value = 1;
                     if (singleMemosLoaded.value) loadSingleMemos();
                 });
-                watch(participantPage, () => loadParticipants());
-                watch(participantPerPage, () => {
-                    participantPage.value = 1;
-                    loadParticipants();
-                });
-
                 watch(selectedActivities, (items) => {
                     syncApproveSection(items, permissions);
                 }, { deep: true });
@@ -633,6 +673,7 @@
                     }, 500);
                 });
                 watch(participantSearch, () => {
+                    if (!participantsLoaded.value) return;
                     clearTimeout(participantSearchTimer);
                     participantSearchTimer = setTimeout(() => {
                         participantPage.value = 1;
@@ -640,9 +681,19 @@
                     }, 500);
                 });
 
-                onMounted(() => {
-                    loadActivities();
+                watch(participantPage, () => {
+                    if (participantsLoaded.value) loadParticipants();
+                });
+                watch(participantPerPage, () => {
+                    if (!participantsLoaded.value) return;
+                    participantPage.value = 1;
                     loadParticipants();
+                });
+
+                onMounted(() => {
+                    participantsMountReady.value = !!document.getElementById('matrix-show-participants-mount');
+                    loadActivities();
+                    setTimeout(setupParticipantsLazyLoad, 50);
                     setTimeout(setupSingleMemosLazyLoad, 100);
                 });
 
@@ -650,6 +701,10 @@
                     if (singleMemosObserver) {
                         singleMemosObserver.disconnect();
                         singleMemosObserver = null;
+                    }
+                    if (participantsObserver) {
+                        participantsObserver.disconnect();
+                        participantsObserver = null;
                     }
                 });
 
@@ -690,6 +745,8 @@
                     participantPagination,
                     participantSummary,
                     participantsLoading,
+                    participantsLoaded,
+                    participantsMountReady,
                     participantHeaders,
                     participantShowingRange,
                     loadActivities,
@@ -709,8 +766,8 @@
             template: `
 <v-app class="mx-show-vuetify-app" theme="apmLight">
   <v-container fluid class="pa-0">
-    <v-card class="mb-0">
-      <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4 bg-grey-lighten-4">
+    <v-card class="mb-0 mx-section-card elevation-2">
+      <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
         <div>
           <div class="text-h6 font-weight-bold d-flex align-center gap-2">
             <v-icon icon="mdi-calendar-range" color="primary" />
@@ -720,7 +777,7 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="px-4 pt-4 pb-2">
+      <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
         <v-row dense>
           <v-col cols="12" md="5">
             <v-text-field v-model="activitySearch" label="Search activities" prepend-inner-icon="mdi-magnify" clearable />
@@ -856,8 +913,8 @@
     </div>
 
     <div v-if="cfg.approvedSingleMemosCount > 0" ref="singleMemosCardRef" class="mt-4">
-    <v-card>
-      <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4 bg-grey-lighten-4">
+    <v-card class="mx-section-card elevation-2">
+      <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
         <div>
           <div class="text-h6 font-weight-bold d-flex align-center gap-2">
             <v-icon icon="mdi-file-document-outline" color="primary" />
@@ -869,7 +926,7 @@
         </div>
       </v-card-title>
 
-      <v-card-text class="px-4 pt-4 pb-2">
+      <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
         <v-row dense>
           <v-col cols="12" md="5">
             <v-text-field v-model="singleMemoSearch" label="Search single memos" prepend-inner-icon="mdi-magnify" clearable />
@@ -971,9 +1028,9 @@
     </v-card>
     </div>
 
-    <Teleport to="#matrix-show-participants-mount">
-      <v-card>
-        <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4 bg-grey-lighten-4">
+    <Teleport to="#matrix-show-participants-mount" :disabled="!participantsMountReady">
+      <v-card class="mx-section-card elevation-2">
+        <v-card-title class="mx-section-head d-flex flex-wrap align-center justify-space-between gap-3 py-4 px-4">
           <div>
             <div class="text-h6 font-weight-bold d-flex align-center gap-2">
               <v-icon icon="mdi-calendar-account" color="primary" />
@@ -985,7 +1042,7 @@
           </div>
         </v-card-title>
 
-        <v-card-text class="px-4 pt-4 pb-2">
+        <v-card-text class="mx-filter-bar px-4 pt-4 pb-2">
           <v-row dense>
             <v-col cols="12" md="8">
               <v-text-field
@@ -1011,7 +1068,7 @@
         <v-data-table
           :headers="participantHeaders"
           :items="participants"
-          :loading="participantsLoading"
+          :loading="participantsLoading && participantsLoaded"
           :items-per-page="-1"
           hide-default-footer
           :row-props="(data) => ({ class: data.item._rowClass })"
@@ -1033,7 +1090,11 @@
             <span v-else class="font-weight-bold">{{ item.total_days }}</span>
           </template>
           <template #no-data>
-            <div class="text-center py-6 text-medium-emphasis">No staff found. Try adjusting your search.</div>
+            <div class="text-center py-6 text-medium-emphasis">
+              <v-progress-circular v-if="participantsLoading && participantsLoaded" indeterminate color="primary" size="28" class="mb-2" />
+              <div v-if="!participantsLoaded">Division schedule loads when you scroll to this section.</div>
+              <div v-else>No staff found. Try adjusting your search.</div>
+            </div>
           </template>
         </v-data-table>
 
@@ -1054,16 +1115,16 @@
             />
           </div>
           <v-spacer />
-          <div class="d-flex flex-wrap gap-6">
-            <div class="text-center">
+          <div class="d-flex flex-wrap gap-3">
+            <div class="mx-stat-chip">
               <div class="text-h6 font-weight-bold text-success" id="totalStaff">{{ participantSummary.total_staff }}</div>
               <div class="text-caption text-medium-emphasis">Total Staff</div>
             </div>
-            <div class="text-center">
+            <div class="mx-stat-chip">
               <div class="text-h6 font-weight-bold text-primary" id="totalDivisionDays">{{ participantSummary.total_division_days }}</div>
               <div class="text-caption text-medium-emphasis">Division Days</div>
             </div>
-            <div class="text-center">
+            <div class="mx-stat-chip">
               <div class="text-h6 font-weight-bold text-error" id="overLimitCount">{{ participantSummary.over_limit_count }}</div>
               <div class="text-caption text-medium-emphasis">Over Limit</div>
             </div>

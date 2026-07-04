@@ -694,35 +694,19 @@ class MatrixController extends Controller
     {
         $matrix->normalizeFocalReturnStatus();
 
-        // Load primary relationships
-        //(can_take_action($matrix));
+        $matrix->load(['division', 'staff', 'matrixApprovalTrails.staff', 'matrixApprovalTrails.oicStaff']);
 
-        $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails.staff','matrixApprovalTrails.oicStaff']);
-    //dd($matrix);
-        // Separate regular activities and single memos
-        $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
-
-        // Approvers at current level only see activities they can approve (get_approvable_activities respects allowed_funders)
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
         $isApprover = $userStaffId && $this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId);
+        $approvableCount = 0;
         $approvableIds = [];
+
         if ($isApprover) {
-            $approvable = get_approvable_activities($matrix);
-            $approvableIds = $approvable->pluck('id')->toArray();
-            if (!empty($approvableIds)) {
-                $activitiesQuery->whereIn('id', $approvableIds);
-            } else {
-                $activitiesQuery->whereRaw('1 = 0');
-            }
+            $approvableIds = get_approvable_activities($matrix)->pluck('id')->map(static fn ($id) => (int) $id)->all();
+            $approvableCount = count($approvableIds);
         }
 
-        // Apply document number filter if provided
-        if ($request->filled('document_number')) {
-            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-
-        // Approved single memos: count only on initial page load; list loads via AJAX (lazy). Same approver scope as activities.
         $approvedSingleMemosCountQuery = $matrix->activities()
             ->where('is_single_memo', 1)
             ->where('overall_status', 'approved');
@@ -735,72 +719,41 @@ class MatrixController extends Controller
         }
         $approvedSingleMemosCount = (int) $approvedSingleMemosCountQuery->count();
 
-        $perPage = $request->get('per_page', 20);
-        $activities = $activitiesQuery->latest()->paginate($perPage);
+        $activitySummary = $this->getMatrixActivitySummaryCounts($matrix);
+        $hasActivities = $activitySummary['total'] > 0;
+        $pageConfig = $this->buildMatrixShowPageConfig($matrix, $approvedSingleMemosCount, $activitySummary, $approvableCount);
 
-        // Batch-resolve locations/internal participants for regular activities only
-        $allRows = collect($activities->items());
-        $rowMeta = [];
-        $allLocationIds = [];
-        $allStaffIds = [];
-
-        foreach ($allRows as $row) {
-            $locationIds = is_array($row->location_id)
-                ? $row->location_id
-                : json_decode($row->location_id ?? '[]', true);
-            $locationIds = array_values(array_filter((array) $locationIds, static fn ($id) => (int) $id > 0));
-
-            $internalRaw = is_string($row->internal_participants)
-                ? json_decode($row->internal_participants ?? '[]', true)
-                : ($row->internal_participants ?? []);
-            $internalParticipantIds = collect((array) $internalRaw)
-                ->pluck('staff_id')
-                ->filter(static fn ($id) => (int) $id > 0)
-                ->map(static fn ($id) => (int) $id)
-                ->values()
-                ->all();
-
-            $rowMeta[$row->id] = [
-                'location_ids' => $locationIds,
-                'staff_ids' => $internalParticipantIds,
-            ];
-
-            $allLocationIds = array_merge($allLocationIds, $locationIds);
-            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
-        }
-
-        $locationsById = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
-        $staffByStaffId = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
-
-        foreach ($activities as $activity) {
-            $meta = $rowMeta[$activity->id] ?? ['location_ids' => [], 'staff_ids' => []];
-            $activity->locations = collect($meta['location_ids'])
-                ->map(static fn ($id) => $locationsById->get((int) $id))
-                ->filter()
-                ->values();
-            $activity->internalParticipants = collect($meta['staff_ids'])
-                ->map(static fn ($id) => $staffByStaffId->get((int) $id))
-                ->filter()
-                ->values();
-        }
-
-        $pageConfig = $this->buildMatrixShowPageConfig($matrix, $approvedSingleMemosCount);
-
-        return view('matrices.show', compact('matrix', 'activities', 'approvedSingleMemosCount', 'pageConfig'));
+        return view('matrices.show', compact('matrix', 'approvedSingleMemosCount', 'pageConfig', 'hasActivities'));
      }
 
     /**
+     * @return array{total: int, singleMemos: int, intramural: int, extramural: int, external: int}
+     */
+    protected function getMatrixActivitySummaryCounts(Matrix $matrix): array
+    {
+        $row = $matrix->activities()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN is_single_memo = 1 THEN 1 ELSE 0 END) as single_memos')
+            ->selectRaw('SUM(CASE WHEN fund_type_id = 1 THEN 1 ELSE 0 END) as intramural')
+            ->selectRaw('SUM(CASE WHEN fund_type_id = 2 THEN 1 ELSE 0 END) as extramural')
+            ->selectRaw('SUM(CASE WHEN fund_type_id = 3 THEN 1 ELSE 0 END) as external_source')
+            ->first();
+
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'singleMemos' => (int) ($row->single_memos ?? 0),
+            'intramural' => (int) ($row->intramural ?? 0),
+            'extramural' => (int) ($row->extramural ?? 0),
+            'external' => (int) ($row->external_source ?? 0),
+        ];
+    }
+
+    /**
+     * @param  array{total: int, singleMemos: int, intramural: int, extramural: int, external: int}  $activitySummary
      * @return array<string, mixed>
      */
-    protected function buildMatrixShowPageConfig(Matrix $matrix, int $approvedSingleMemosCount): array
+    protected function buildMatrixShowPageConfig(Matrix $matrix, int $approvedSingleMemosCount, array $activitySummary, int $approvableCount = 0): array
     {
-        $matrixActivities = $matrix->activities;
-        $intramuralCount = $matrixActivities->where('fund_type_id', 1)->count();
-        $extramuralCount = $matrixActivities->where('fund_type_id', 2)->count();
-        $externalCount = $matrixActivities->where('fund_type_id', 3)->count();
-        $totalCount = $matrixActivities->count();
-        $singleMemosCount = $matrixActivities->where('is_single_memo', 1)->count();
-
         return [
             'matrixId' => $matrix->id,
             'matrixStatus' => $matrix->overall_status,
@@ -808,17 +761,11 @@ class MatrixController extends Controller
             'quarter' => $matrix->quarter,
             'year' => $matrix->year,
             'divisionName' => $matrix->division->division_name ?? '',
-            'activitySummary' => [
-                'total' => $totalCount,
-                'singleMemos' => $singleMemosCount,
-                'intramural' => $intramuralCount,
-                'extramural' => $extramuralCount,
-                'external' => $externalCount,
-            ],
+            'activitySummary' => $activitySummary,
             'approvedSingleMemosCount' => $approvedSingleMemosCount,
             'permissions' => [
                 'canShowCheckbox' => can_take_action($matrix)
-                    && get_approvable_activities($matrix)->count() > 0
+                    && $approvableCount > 0
                     && $matrix->overall_status !== 'draft'
                     && $matrix->approval_level != 5,
                 'isLevel5Approver' => $matrix->approval_level == 5 && is_finance_officer($matrix),
@@ -942,170 +889,182 @@ class MatrixController extends Controller
         }
 
         // Use get_approvable_activities so matrix view shows only what user can approve (respects allowed_funders)
-        $approvable = get_approvable_activities($matrix);
-        $approvableIds = $approvable->pluck('id')->toArray();
+        $approvableIds = get_approvable_activities($matrix)->pluck('id')->map(static fn ($id) => (int) $id)->all();
+        $perPage = (int) $request->get('per_page', 20);
+
         if (empty($approvableIds)) {
-            $filteredActivities = collect();
-        } else {
-            $filteredActivities = $matrix->activities()
-                ->where('is_single_memo', 0)
-                ->whereIn('id', $approvableIds)
-                ->with([
-                    'requestType',
-                    'fundType',
-                    'responsiblePerson',
-                    'activity_budget',
-                    'activity_budget.fundcode',
-                    'activity_budget.fundcode.funder',
-                    'matrix.division',
-                    'matrix.forwardWorkflow'
-                ])
-                ->get();
+            $activities = new \Illuminate\Pagination\LengthAwarePaginator(
+                [],
+                0,
+                max(1, $perPage),
+                1,
+                ['path' => $request->url(), 'pageName' => 'page']
+            );
+
+            return $this->activitiesApproverJsonResponse($activities, $userWorkflowDefinition);
         }
 
-        // Apply search and document number filters to the filtered activities
-        $activitiesQuery = $filteredActivities;
+        $activitiesQuery = $this->buildMatrixActivitiesListQuery($matrix, $request, $approvableIds);
+        $activities = $activitiesQuery->latest()->paginate($perPage);
+        $this->hydrateActivitiesPageForApproverJson($activities, $userWorkflowDefinition);
 
-        // Apply document number filter if provided
+        return $this->activitiesApproverJsonResponse($activities, $userWorkflowDefinition);
+    }
+
+    /**
+     * @param  array<int>|null  $limitIds
+     */
+    private function buildMatrixActivitiesListQuery(Matrix $matrix, Request $request, ?array $limitIds = null)
+    {
+        $activitiesQuery = $matrix->activities()
+            ->where('is_single_memo', 0)
+            ->with([
+                'requestType',
+                'fundType',
+                'responsiblePerson',
+                'activity_budget',
+                'activity_budget.fundcode',
+                'activity_budget.fundcode.funder',
+            ]);
+
+        if ($limitIds !== null) {
+            $activitiesQuery->whereIn('id', $limitIds);
+        }
+
         if ($request->filled('document_number')) {
-            $activitiesQuery = $activitiesQuery->filter(function($activity) use ($request) {
-                return stripos($activity->document_number ?? '', $request->document_number) !== false;
-            });
+            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
         }
 
-        // Apply general search filter if provided
         if ($request->filled('search')) {
             $searchTerm = $request->search;
-            $activitiesQuery = $activitiesQuery->filter(function($activity) use ($searchTerm) {
-                return stripos($activity->activity_title ?? '', $searchTerm) !== false
-                    || stripos($activity->document_number ?? '', $searchTerm) !== false
-                    || stripos($activity->background ?? '', $searchTerm) !== false
-                    || stripos($activity->activity_request_remarks ?? '', $searchTerm) !== false
-                    || stripos($activity->responsiblePerson->fname ?? '', $searchTerm) !== false
-                    || stripos($activity->responsiblePerson->lname ?? '', $searchTerm) !== false
-                    || stripos($activity->fundType->name ?? '', $searchTerm) !== false;
+            $activitiesQuery->where(function ($query) use ($searchTerm) {
+                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('background', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
+                    ->orWhereHas('responsiblePerson', function ($q) use ($searchTerm) {
+                        $q->where('fname', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
+                    })
+                    ->orWhereHas('fundType', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', '%' . $searchTerm . '%');
+                    });
             });
         }
 
-        // Sort by latest (created_at desc)
-        $activitiesQuery = $activitiesQuery->sortByDesc('created_at');
+        return $activitiesQuery;
+    }
 
-        // Apply pagination manually
-        $perPage = $request->get('per_page', 20);
-        $currentPage = $request->get('page', 1);
-        $offset = ($currentPage - 1) * $perPage;
-        $activities = $activitiesQuery->slice($offset, $perPage)->values();
-        
-        // Create pagination object
-        $total = $activitiesQuery->count();
-        $activities = new \Illuminate\Pagination\LengthAwarePaginator(
-            $activities,
-            $total,
-            $perPage,
-            $currentPage,
-            ['path' => $request->url(), 'pageName' => 'page']
-        );
-
-        // Collect all location and staff IDs for batch loading
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $activities
+     */
+    private function hydrateActivitiesPageForApproverJson($activities, $userWorkflowDefinition = null): void
+    {
         $allLocationIds = [];
         $allStaffIds = [];
         $activitiesData = [];
+        $budgetFundCodeIds = [];
 
         foreach ($activities->items() as $activity) {
-            // Decode JSON arrays
             $locationIds = is_array($activity->location_id)
                 ? $activity->location_id
                 : json_decode($activity->location_id ?? '[]', true);
+            $locationIds = array_values(array_filter((array) ($locationIds ?: []), static fn ($id) => (int) $id > 0));
 
             $internalRaw = is_string($activity->internal_participants)
                 ? json_decode($activity->internal_participants ?? '[]', true)
                 : ($activity->internal_participants ?? []);
+            $internalParticipantIds = collect((array) $internalRaw)->pluck('staff_id')->filter(static fn ($id) => (int) $id > 0)->map(static fn ($id) => (int) $id)->values()->all();
 
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-
-            // Collect IDs for batch loading
-            $allLocationIds = array_merge($allLocationIds, $locationIds ?: []);
-            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds ?: []);
-
-            // Store activity data for processing
             $activitiesData[] = [
                 'activity' => $activity,
-                'location_ids' => $locationIds ?: [],
-                'staff_ids' => $internalParticipantIds ?: []
+                'location_ids' => $locationIds,
+                'staff_ids' => $internalParticipantIds,
             ];
-        }
 
-        // Batch load all locations and staff
-        $locations = Location::whereIn('id', array_unique($allLocationIds))->get()->keyBy('id');
-        $staff = Staff::whereIn('staff_id', array_unique($allStaffIds))->get()->keyBy('staff_id');
+            $allLocationIds = array_merge($allLocationIds, $locationIds);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
 
-        // Cache workflow definition data to avoid repeated queries
-        $workflowDefinitionData = [
-            'id' => $userWorkflowDefinition->id,
-            'approval_order' => $userWorkflowDefinition->approval_order,
-            'allowed_funders' => $userWorkflowDefinition->allowed_funders
-        ];
-
-        // Process activities with pre-loaded data
-        $processedActivities = collect();
-        foreach ($activitiesData as $data) {
-            $activity = $data['activity'];
-            
-            // Attach related models from pre-loaded collections
-            $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
-            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
-            
-            // Add funder information from budget_breakdown if not available from activity_budget
-            if (!$activity->activity_budget || count($activity->activity_budget) === 0) {
-                if ($activity->budget_breakdown) {
-                    $budgetBreakdown = is_string($activity->budget_breakdown) 
-                        ? json_decode($activity->budget_breakdown, true) 
-                        : $activity->budget_breakdown;
-                    
-                    if (is_array($budgetBreakdown)) {
-                        // Get the first fund code ID from budget breakdown
-                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
-                            return $key !== 'grand_total';
-                        });
-                        
-                        if (!empty($fundCodeIds)) {
-                            $firstFundCodeId = $fundCodeIds[0];
-                            $fundCode = \App\Models\FundCode::with('funder')->find($firstFundCodeId);
-                            if ($fundCode && $fundCode->funder) {
-                                // Add funder info to activity
-                                $activity->funder_from_budget_breakdown = $fundCode->funder;
-                                $activity->fund_code_from_budget_breakdown = $fundCode;
-                            }
+            if ((!$activity->activity_budget || count($activity->activity_budget) === 0) && $activity->budget_breakdown) {
+                $budgetBreakdown = is_string($activity->budget_breakdown)
+                    ? json_decode($activity->budget_breakdown, true)
+                    : $activity->budget_breakdown;
+                if (is_array($budgetBreakdown)) {
+                    foreach (array_keys($budgetBreakdown) as $key) {
+                        if ($key !== 'grand_total' && $key !== 'total' && (int) $key > 0) {
+                            $budgetFundCodeIds[] = (int) $key;
+                            break;
                         }
                     }
                 }
             }
-            
-            // Add approval-related data (optimized with caching)
-            $activity->can_approve = can_approve_activity($activity);
-            $activity->allow_print = allow_print_activity($activity);
-            $activity->my_last_action = $activity->my_last_action ?? null;
-            $activity->my_current_level_action = $activity->my_current_level_action ?? null;
-            $activity->has_passed_at_current_level = $activity->has_passed_at_current_level ?? false;
-            
-            // Check if user's approval order has already passed this activity
-            $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
-            
+        }
+
+        $locations = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
+        $staff = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
+        $fundCodesById = !empty($budgetFundCodeIds)
+            ? \App\Models\FundCode::with('funder')->whereIn('id', array_values(array_unique($budgetFundCodeIds)))->get()->keyBy('id')
+            : collect();
+
+        $processedActivities = collect();
+        foreach ($activitiesData as $data) {
+            $activity = $data['activity'];
+            $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
+            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
+
+            if ((!$activity->activity_budget || count($activity->activity_budget) === 0) && $activity->budget_breakdown) {
+                $budgetBreakdown = is_string($activity->budget_breakdown)
+                    ? json_decode($activity->budget_breakdown, true)
+                    : $activity->budget_breakdown;
+                if (is_array($budgetBreakdown)) {
+                    foreach (array_keys($budgetBreakdown) as $key) {
+                        if ($key === 'grand_total' || $key === 'total') {
+                            continue;
+                        }
+                        $fundCode = $fundCodesById->get((int) $key);
+                        if ($fundCode && $fundCode->funder) {
+                            $activity->funder_from_budget_breakdown = $fundCode->funder;
+                            $activity->fund_code_from_budget_breakdown = $fundCode;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if ($userWorkflowDefinition) {
+                $activity->can_approve = can_approve_activity($activity);
+                $activity->allow_print = allow_print_activity($activity);
+                $activity->my_last_action = $activity->my_last_action ?? null;
+                $activity->my_current_level_action = $activity->my_current_level_action ?? null;
+                $activity->has_passed_at_current_level = $activity->has_passed_at_current_level ?? false;
+                $activity->user_has_passed = $this->hasUserPassedActivity($activity, $userWorkflowDefinition);
+            } else {
+                $activity->can_approve = false;
+                $activity->allow_print = false;
+                $activity->my_last_action = null;
+                $activity->user_has_passed = false;
+            }
+
             $processedActivities->push($activity);
         }
 
-        // Update the paginated collection with processed activities
         $activities->setCollection($processedActivities);
+    }
 
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator  $activities
+     */
+    private function activitiesApproverJsonResponse($activities, $userWorkflowDefinition = null)
+    {
         return response()->json([
             'activities' => $activities,
-            'user_workflow_definition' => [
+            'user_workflow_definition' => $userWorkflowDefinition ? [
                 'id' => $userWorkflowDefinition->id,
                 'role' => $userWorkflowDefinition->role,
                 'approval_order' => $userWorkflowDefinition->approval_order,
                 'allowed_funders' => $userWorkflowDefinition->allowed_funders,
                 'is_division_specific' => $userWorkflowDefinition->is_division_specific,
-            ],
+            ] : null,
             'pagination' => [
                 'current_page' => $activities->currentPage(),
                 'last_page' => $activities->lastPage(),
@@ -1113,8 +1072,22 @@ class MatrixController extends Controller
                 'total' => $activities->total(),
                 'from' => $activities->firstItem(),
                 'to' => $activities->lastItem(),
-            ]
+            ],
         ]);
+    }
+
+    /**
+     * Cached travel-day map for division schedule (expensive: scans activity participants).
+     *
+     * @return array<int, array{division_days: int, other_days: int}>
+     */
+    protected function getMatrixTravelMap(Matrix $matrix): array
+    {
+        return \Cache::remember(
+            'matrix_travel_map_' . $matrix->id,
+            300,
+            static fn () => $matrix->getTravelDaysFromInternalParticipants()
+        );
     }
 
     /**
@@ -1128,7 +1101,6 @@ class MatrixController extends Controller
 
         // Get current approval level workflow definitions
         $workflowDefinitions = WorkflowDefinition::where('workflow_id', $matrix->forward_workflow_id)
-            ->where('approval_order', $matrix->approval_level)
             ->where('is_enabled', 1)
             ->get();
 
@@ -1389,132 +1361,12 @@ class MatrixController extends Controller
      */
     private function getAllActivities(Matrix $matrix, Request $request)
     {
-        // Build activities query without filtering and eager loading
-        $activitiesQuery = $matrix->activities()
-            ->where('is_single_memo', 0)
-            ->with([
-                'requestType', 
-                'fundType', 
-                'responsiblePerson', 
-                'activity_budget', 
-                'activity_budget.fundcode',
-                'activity_budget.fundcode.funder',
-                'matrix.division',
-                'matrix.forwardWorkflow'
-            ]);
-
-        // Apply document number filter if provided
-        if ($request->filled('document_number')) {
-            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
-        }
-
-        // Apply general search filter if provided
-        if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $activitiesQuery->where(function($query) use ($searchTerm) {
-                $query->where('activity_title', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('document_number', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('background', 'like', '%' . $searchTerm . '%')
-                      ->orWhere('activity_request_remarks', 'like', '%' . $searchTerm . '%')
-                      ->orWhereHas('responsiblePerson', function($q) use ($searchTerm) {
-                          $q->where('fname', 'like', '%' . $searchTerm . '%')
-                            ->orWhere('lname', 'like', '%' . $searchTerm . '%');
-                      })
-                      ->orWhereHas('fundType', function($q) use ($searchTerm) {
-                          $q->where('name', 'like', '%' . $searchTerm . '%');
-                      });
-            });
-        }
-
-        $perPage = $request->get('per_page', 20);
+        $perPage = (int) $request->get('per_page', 20);
+        $activitiesQuery = $this->buildMatrixActivitiesListQuery($matrix, $request);
         $activities = $activitiesQuery->latest()->paginate($perPage);
+        $this->hydrateActivitiesPageForApproverJson($activities);
 
-        // Collect all location and staff IDs for batch loading
-        $allLocationIds = [];
-        $allStaffIds = [];
-        $activitiesData = [];
-
-        foreach ($activities as $activity) {
-            // Decode JSON arrays
-            $locationIds = is_array($activity->location_id)
-                ? $activity->location_id
-                : json_decode($activity->location_id ?? '[]', true);
-
-            $internalRaw = is_string($activity->internal_participants)
-                ? json_decode($activity->internal_participants ?? '[]', true)
-                : ($activity->internal_participants ?? []);
-
-            $internalParticipantIds = collect($internalRaw)->pluck('staff_id')->toArray();
-
-            // Collect IDs for batch loading
-            $allLocationIds = array_merge($allLocationIds, $locationIds ?: []);
-            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds ?: []);
-
-            // Store activity data for processing
-            $activitiesData[] = [
-                'activity' => $activity,
-                'location_ids' => $locationIds ?: [],
-                'staff_ids' => $internalParticipantIds ?: []
-            ];
-        }
-
-        // Batch load all locations and staff
-        $locations = Location::whereIn('id', array_unique($allLocationIds))->get()->keyBy('id');
-        $staff = Staff::whereIn('staff_id', array_unique($allStaffIds))->get()->keyBy('staff_id');
-
-        // Process activities with pre-loaded data
-        foreach ($activitiesData as $data) {
-            $activity = $data['activity'];
-            
-            // Attach related models from pre-loaded collections
-            $activity->locations = $locations->whereIn('id', $data['location_ids'])->values();
-            $activity->internalParticipants = $staff->whereIn('staff_id', $data['staff_ids'])->values();
-            
-            // Add funder information from budget_breakdown if not available from activity_budget
-            if (!$activity->activity_budget || count($activity->activity_budget) === 0) {
-                if ($activity->budget_breakdown) {
-                    $budgetBreakdown = is_string($activity->budget_breakdown) 
-                        ? json_decode($activity->budget_breakdown, true) 
-                        : $activity->budget_breakdown;
-                    
-                    if (is_array($budgetBreakdown)) {
-                        // Get the first fund code ID from budget breakdown
-                        $fundCodeIds = array_filter(array_keys($budgetBreakdown), function($key) {
-                            return $key !== 'grand_total';
-                        });
-                        
-                        if (!empty($fundCodeIds)) {
-                            $firstFundCodeId = $fundCodeIds[0];
-                            $fundCode = \App\Models\FundCode::with('funder')->find($firstFundCodeId);
-                            if ($fundCode && $fundCode->funder) {
-                                // Add funder info to activity
-                                $activity->funder_from_budget_breakdown = $fundCode->funder;
-                                $activity->fund_code_from_budget_breakdown = $fundCode;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Add approval-related data (default to false for non-authenticated users)
-            $activity->can_approve = false;
-            $activity->allow_print = false;
-            $activity->my_last_action = null;
-            $activity->user_has_passed = false;
-        }
-
-        return response()->json([
-            'activities' => $activities,
-            'user_workflow_definition' => null,
-            'pagination' => [
-                'current_page' => $activities->currentPage(),
-                'last_page' => $activities->lastPage(),
-                'per_page' => $activities->perPage(),
-                'total' => $activities->total(),
-                'from' => $activities->firstItem(),
-                'to' => $activities->lastItem(),
-            ]
-        ]);
+        return $this->activitiesApproverJsonResponse($activities);
     }
 
     /**
@@ -1676,14 +1528,12 @@ class MatrixController extends Controller
     {
         try {
             $search = $request->get('search', '');
-            $page = $request->get('page', 1);
-            $pageSize = $request->get('pageSize', 25);
+            $page = max(1, (int) $request->get('page', 1));
+            $pageSize = max(1, (int) $request->get('pageSize', 25));
             $start = ($page - 1) * $pageSize;
 
-            // Travel days from activities' internal_participants (same source as staff-quarterly-travel)
-            $travelMap = $matrix->getTravelDaysFromInternalParticipants();
+            $travelMap = $this->getMatrixTravelMap($matrix);
 
-            // Build query for filtered staff
             $query = Staff::where('division_id', $matrix->division_id)
                 ->whereNotIn('status', ['Expired', 'Separated']);
 
@@ -1696,8 +1546,8 @@ class MatrixController extends Controller
                 });
             }
 
-            $totalRecords = $query->count();
-            $divisionStaff = $query->skip($start)->take($pageSize)->get();
+            $totalRecords = (clone $query)->count();
+            $divisionStaff = $query->orderBy('fname')->skip($start)->take($pageSize)->get(['staff_id', 'title', 'fname', 'lname', 'job_name', 'duty_station_name']);
 
             $staffData = [];
             foreach ($divisionStaff as $staff) {
@@ -1706,7 +1556,6 @@ class MatrixController extends Controller
                 $division_days = $d['division_days'];
                 $other_days = $d['other_days'];
                 $total_days = $division_days + $other_days;
-                $isOverLimit = $total_days > 21;
 
                 $staffData[] = [
                     'staff_id' => $staff->staff_id,
@@ -1718,19 +1567,20 @@ class MatrixController extends Controller
                     'division_days' => $division_days,
                     'other_days' => $other_days,
                     'total_days' => $total_days,
-                    'is_over_limit' => $isOverLimit
+                    'is_over_limit' => $total_days > 21,
                 ];
             }
 
-            // Summary from all division staff using same travel map
-            $allDivisionStaff = Staff::where('division_id', $matrix->division_id)
+            $divisionStaffIds = Staff::where('division_id', $matrix->division_id)
                 ->whereNotIn('status', ['Expired', 'Separated'])
-                ->get();
-            $totalStaff = $allDivisionStaff->count();
+                ->pluck('staff_id')
+                ->map(static fn ($id) => (int) $id)
+                ->all();
+
+            $totalStaff = count($divisionStaffIds);
             $totalDivisionDays = 0;
             $overLimitCount = 0;
-            foreach ($allDivisionStaff as $staff) {
-                $sid = (int) $staff->staff_id;
+            foreach ($divisionStaffIds as $sid) {
                 $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
                 $totalDivisionDays += $d['division_days'];
                 if (($d['division_days'] + $d['other_days']) >= 21) {
@@ -1743,12 +1593,12 @@ class MatrixController extends Controller
                 'recordsTotal' => $totalRecords,
                 'currentPage' => $page,
                 'pageSize' => $pageSize,
-                'totalPages' => ceil($totalRecords / $pageSize),
+                'totalPages' => max(1, (int) ceil($totalRecords / $pageSize)),
                 'summary' => [
                     'total_staff' => $totalStaff,
                     'total_division_days' => $totalDivisionDays,
-                    'over_limit_count' => $overLimitCount
-                ]
+                    'over_limit_count' => $overLimitCount,
+                ],
             ]);
 
         } catch (\Exception $e) {

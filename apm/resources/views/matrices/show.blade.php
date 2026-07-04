@@ -46,6 +46,31 @@
     #matrix-show-app .v-application__wrap {
         min-height: 0 !important;
     }
+    #matrix-show-participants-mount .mx-section-card {
+        border: 1px solid rgba(17, 154, 72, 0.12);
+    }
+    #matrix-show-app .mx-section-card {
+        border: 1px solid rgba(17, 154, 72, 0.12);
+        overflow: hidden;
+    }
+    #matrix-show-app .mx-section-head {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef7f1 100%) !important;
+        border-bottom: 1px solid rgba(17, 154, 72, 0.1);
+    }
+    #matrix-show-app .mx-filter-bar {
+        background: #fafbfc;
+        border-bottom: 1px solid #e8edf2;
+    }
+    #matrix-show-app .mx-stat-chip {
+        min-width: 88px;
+        text-align: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 0.65rem;
+        background: #fff;
+        border: 1px solid #e8edf2;
+    }
+
+    .avatar-sm {
         width: 35px;
         height: 35px;
         border-radius: 50%;
@@ -304,12 +329,7 @@
 <!-- Division Schedule and Approval Trail Section -->
 <div class="row mt-4">
     <div class="col-lg-7">
-        <div id="matrix-show-participants-mount">
-            <div class="text-center py-4 text-muted">
-                <div class="spinner-border text-success spinner-border-sm" role="status"></div>
-                <div class="mt-2 small">Loading division schedule…</div>
-            </div>
-        </div>
+        <div id="matrix-show-participants-mount"></div>
     </div>
 
     <div class="col-lg-5">
@@ -327,7 +347,7 @@
             </div>
         @endif
         @if(
-            $matrix->activities->count() > 0
+            ($hasActivities ?? false)
             && (
                 ($matrix->overall_status === 'draft' && $isMatrixQm)
                 || ($matrix->overall_status === 'returned' && can_division_head_edit($matrix))

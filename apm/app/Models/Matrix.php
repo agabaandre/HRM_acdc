@@ -299,6 +299,7 @@ class Matrix extends Model
     {
         $activities = $this->activities()
             ->where('overall_status', '!=', 'cancelled')
+            ->select(['id', 'internal_participants'])
             ->get();
 
         $byStaff = [];
