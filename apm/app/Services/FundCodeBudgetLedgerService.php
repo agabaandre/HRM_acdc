@@ -52,6 +52,40 @@ class FundCodeBudgetLedgerService
     }
 
     /**
+     * Degraded ledger when build fails (page still loads legacy transactions).
+     *
+     * @return array<string, mixed>
+     */
+    public function fallbackLedger(FundCode $fundCode): array
+    {
+        $fundCodeId = (int) $fundCode->id;
+        $approved = round($this->balanceService->resolveApprovedBudget($fundCode), 2);
+
+        return [
+            'fund_code' => [
+                'id' => $fundCodeId,
+                'code' => (string) $fundCode->code,
+                'name' => $fundCode->name,
+            ],
+            'snapshot' => [
+                'approved_budget' => $approved,
+                'committed_total' => 0.0,
+                'working_balance' => $approved,
+            ],
+            'settings' => [
+                'draft_max_age_months' => $this->settings->draftMaxAgeMonths(),
+                'activity_statuses' => $this->settings->committedActivityStatuses(),
+                'memo_statuses' => $this->settings->committedMemoStatuses(),
+                'change_request_statuses' => $this->settings->committedChangeRequestStatuses(),
+            ],
+            'committed' => [],
+            'skipped' => [],
+            'totals' => ['committed_count' => 0, 'skipped_count' => 0, 'committed_sum' => 0.0],
+            'build_failed' => true,
+        ];
+    }
+
+    /**
      * @return array{
      *   fund_code: array{id: int, code: string, name: string|null},
      *   snapshot: array{approved_budget: float, committed_total: float, working_balance: float},
@@ -87,8 +121,8 @@ class FundCodeBudgetLedgerService
         usort($committed, fn (array $a, array $b): int => strcmp((string) $b['updated_at'], (string) $a['updated_at']));
         usort($skipped, fn (array $a, array $b): int => strcmp((string) $b['updated_at'], (string) $a['updated_at']));
 
-        $snapshot = $this->balanceService->buildSnapshot($fundCode, []);
         $committedSum = round(array_sum(array_column($committed, 'amount')), 2);
+        $approved = round($this->balanceService->resolveApprovedBudget($fundCode), 2);
 
         return [
             'fund_code' => [
@@ -96,7 +130,11 @@ class FundCodeBudgetLedgerService
                 'code' => (string) $fundCode->code,
                 'name' => $fundCode->name,
             ],
-            'snapshot' => $snapshot,
+            'snapshot' => [
+                'approved_budget' => $approved,
+                'committed_total' => $committedSum,
+                'working_balance' => round(max(0, $approved - $committedSum), 2),
+            ],
             'settings' => [
                 'draft_max_age_months' => $this->settings->draftMaxAgeMonths(),
                 'activity_statuses' => $this->settings->committedActivityStatuses(),
@@ -136,13 +174,11 @@ class FundCodeBudgetLedgerService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $breakdownActivityIds = Activity::query()
-            ->whereNotNull('budget_breakdown')
-            ->where('budget_breakdown', '!=', '')
-            ->where('budget_breakdown', '!=', '[]')
-            ->where('budget_breakdown', '!=', '{}')
-            ->get(['id', 'budget_breakdown'])
-            ->filter(fn ($activity) => BudgetBreakdownTotal::hasFundCodeEntries($activity->budget_breakdown, $fundCodeId))
+        $breakdownActivityIds = BudgetBreakdownTotal::constrainFundCodeId(
+            Activity::query(),
+            'budget_breakdown',
+            $fundCodeId
+        )
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -227,11 +263,11 @@ class FundCodeBudgetLedgerService
     private function linesFromSpecialMemos(FundCode $fundCode, array $activeCrs): array
     {
         return $this->linesFromBreakdownMemos(
-            SpecialMemo::query()
-                ->whereNotNull('budget_breakdown')
-                ->where('budget_breakdown', '!=', '')
-                ->where('budget_breakdown', '!=', '[]')
-                ->where('budget_breakdown', '!=', '{}'),
+            BudgetBreakdownTotal::constrainFundCodeId(
+                SpecialMemo::query(),
+                'budget_breakdown',
+                (int) $fundCode->id
+            ),
             $fundCode,
             $activeCrs,
             'special_memo',
@@ -246,11 +282,11 @@ class FundCodeBudgetLedgerService
     private function linesFromNonTravelMemos(FundCode $fundCode, array $activeCrs): array
     {
         return $this->linesFromBreakdownMemos(
-            NonTravelMemo::query()
-                ->whereNotNull('budget_breakdown')
-                ->where('budget_breakdown', '!=', '')
-                ->where('budget_breakdown', '!=', '[]')
-                ->where('budget_breakdown', '!=', '{}'),
+            BudgetBreakdownTotal::constrainFundCodeId(
+                NonTravelMemo::query(),
+                'budget_breakdown',
+                (int) $fundCode->id
+            ),
             $fundCode,
             $activeCrs,
             'non_travel',
@@ -318,12 +354,11 @@ class FundCodeBudgetLedgerService
         $fundCodeId = (int) $fundCode->id;
         $latestIds = array_map('intval', array_keys($activeCrs['by_id'] ?? []));
 
-        $models = ChangeRequest::query()
-            ->whereNotNull('budget_breakdown')
-            ->where('budget_breakdown', '!=', '')
-            ->where('budget_breakdown', '!=', '[]')
-            ->where('budget_breakdown', '!=', '{}')
-            ->get([
+        $models = BudgetBreakdownTotal::constrainFundCodeId(
+            ChangeRequest::query(),
+            'budget_breakdown',
+            $fundCodeId
+        )->get([
             'id',
             'activity_title',
             'document_number',

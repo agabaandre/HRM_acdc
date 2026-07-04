@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+
 /**
  * Compute memo / activity budget totals from budget_breakdown JSON.
  * Each calculator mirrors the matching show view (views are the source of truth).
@@ -177,6 +180,37 @@ class BudgetBreakdownTotal
         }
 
         return false;
+    }
+
+    /**
+     * SQL prefilter: budget_breakdown JSON keys are fund code ids (e.g. "277":[...]).
+     *
+     * @param  EloquentBuilder<mixed>|QueryBuilder  $query
+     * @return EloquentBuilder<mixed>|QueryBuilder
+     */
+    public static function constrainNonEmptyBreakdown(EloquentBuilder|QueryBuilder $query, string $column): EloquentBuilder|QueryBuilder
+    {
+        return $query
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->where($column, '!=', '[]')
+            ->where($column, '!=', '{}');
+    }
+
+    /**
+     * Narrow queries to rows whose breakdown includes a given fund code id key.
+     *
+     * @param  EloquentBuilder<mixed>|QueryBuilder  $query
+     * @return EloquentBuilder<mixed>|QueryBuilder
+     */
+    public static function constrainFundCodeId(EloquentBuilder|QueryBuilder $query, string $column, int $fundCodeId): EloquentBuilder|QueryBuilder
+    {
+        if ($fundCodeId <= 0) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return self::constrainNonEmptyBreakdown($query, $column)
+            ->where($column, 'like', '%"' . $fundCodeId . '":%');
     }
 
     /**

@@ -336,7 +336,15 @@ class FundCodeController extends Controller
 
         $fundCodeTransactions = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        $ledger = app(\App\Services\FundCodeBudgetLedgerService::class)->ledger((int) $fundCode->id);
+        try {
+            $ledger = app(\App\Services\FundCodeBudgetLedgerService::class)->ledger((int) $fundCode->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Fund code ledger build failed', [
+                'fund_code_id' => $fundCode->id,
+                'message' => $e->getMessage(),
+            ]);
+            $ledger = app(\App\Services\FundCodeBudgetLedgerService::class)->fallbackLedger($fundCode);
+        }
 
         return view('fund-codes.transactions', compact('fundCodeTransactions', 'fundCode', 'ledger'));
     }

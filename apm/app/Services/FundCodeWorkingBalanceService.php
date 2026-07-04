@@ -499,16 +499,12 @@ class FundCodeWorkingBalanceService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $breakdownActivityIds = Activity::query()
-            ->whereNotNull('budget_breakdown')
-            ->where('budget_breakdown', '!=', '')
-            ->where('budget_breakdown', '!=', '[]')
-            ->where('budget_breakdown', '!=', '{}')
-            ->pluck('id', 'budget_breakdown')
-            ->filter(function ($id, $breakdown) use ($fundCodeId) {
-                return BudgetBreakdownTotal::hasFundCodeEntries($breakdown, $fundCodeId);
-            })
-            ->values()
+        $breakdownActivityIds = BudgetBreakdownTotal::constrainFundCodeId(
+            Activity::query(),
+            'budget_breakdown',
+            $fundCodeId
+        )
+            ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
 
@@ -571,7 +567,11 @@ class FundCodeWorkingBalanceService
     private function committedFromNonTravelMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
         $statuses = $this->commitmentSettings()->committedMemoStatuses();
-        $query = NonTravelMemo::query()
+        $query = BudgetBreakdownTotal::constrainFundCodeId(
+            NonTravelMemo::query(),
+            'budget_breakdown',
+            $fundCodeId
+        )
             ->whereIn('overall_status', $statuses)
             ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
@@ -604,7 +604,11 @@ class FundCodeWorkingBalanceService
     private function committedFromSpecialMemos(int $fundCodeId, array $exclude, array $activeCrs): float
     {
         $statuses = $this->commitmentSettings()->committedMemoStatuses();
-        $query = SpecialMemo::query()
+        $query = BudgetBreakdownTotal::constrainFundCodeId(
+            SpecialMemo::query(),
+            'budget_breakdown',
+            $fundCodeId
+        )
             ->whereIn('overall_status', $statuses)
             ->whereNotIn('overall_status', self::NON_COMMITTING_STATUSES);
 
