@@ -10,7 +10,7 @@
     $isStrictAdmin = user_session('role') == 10;
     $effectiveHodId = effective_division_head_staff_id($matrix->division);
     $isDivisionHod = $effectiveHodId !== null && (int) $effectiveHodId === $currentStaffIdForQm;
-    $matrixRegularActivityCount = (int) ($activityCounts['regular'] ?? $matrix->activities()->where('is_single_memo', 0)->count());
+    $matrixRegularActivityCount = $matrix->activities()->where('is_single_memo', 0)->count();
     $canEnvelopeOnHoldStatus = in_array($matrix->overall_status, ['draft', 'returned'], true);
     $canEnvelopeOnHold = ($isDivisionHod || $isStrictAdmin) && $canEnvelopeOnHoldStatus && $matrixRegularActivityCount === 0;
 @endphp
@@ -277,20 +277,13 @@
                     </h5>
                     <small class="text-muted d-block mt-1">
                         @php
-                            $activityCounts = $activityCounts ?? [
-                                'total' => 0,
-                                'intramural' => 0,
-                                'extramural' => 0,
-                                'external' => 0,
-                                'regular' => 0,
-                                'single_memos' => 0,
-                            ];
-                            $intramuralCount = (int) ($activityCounts['intramural'] ?? 0);
-                            $extramuralCount = (int) ($activityCounts['extramural'] ?? 0);
-                            $externalCount = (int) ($activityCounts['external'] ?? 0);
-                            $totalCount = (int) ($activityCounts['total'] ?? 0);
-                            $regularActivitiesCount = (int) ($activityCounts['regular'] ?? 0);
-                            $singleMemosCount = (int) ($activityCounts['single_memos'] ?? 0);
+                            $activities = $matrix->activities;
+                            $intramuralCount = $activities->where('fund_type_id', 1)->count();
+                            $extramuralCount = $activities->where('fund_type_id', 2)->count();
+                            $externalCount = $activities->where('fund_type_id', 3)->count();
+                            $totalCount = $activities->count();
+                            $regularActivitiesCount = $activities->where('is_single_memo', 0)->count();
+                            $singleMemosCount = $activities->where('is_single_memo', 1)->count();
                         @endphp
                         {{ $totalCount }} activities in this matrix 
                         @if($singleMemosCount > 0)
@@ -396,7 +389,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="bg-light">
                         <tr>
-                             @if($showActivityBulkCheckbox ?? false)
+                             @if(can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5)
                                 <th class="border-0 px-3 py-3 text-muted fw-semibold" style="width: 50px;">
                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                 </th>
@@ -639,7 +632,7 @@
             </div>
         @endif
         @if(
-            ($activityCounts['total'] ?? 0) > 0
+            $matrix->activities->count() > 0
             && (
                 ($matrix->overall_status === 'draft' && $isMatrixQm)
                 || ($matrix->overall_status === 'returned' && can_division_head_edit($matrix))
@@ -1034,7 +1027,7 @@ function getActivityUrl(activityId) {
 
 // Check if checkbox column should be shown
 function canShowCheckbox() {
-    return {{ ($showActivityBulkCheckbox ?? false) ? 'true' : 'false' }};
+    return {{ can_take_action($matrix) && get_approvable_activities($matrix)->count()>0 && $matrix->overall_status!=='draft' && $matrix->approval_level != 5 ? 'true' : 'false' }};
 }
 
 // Check if current user is a finance officer at level 5

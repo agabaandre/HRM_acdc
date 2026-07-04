@@ -486,7 +486,7 @@ class ApproverDashboardController extends Controller
     public function getTimingTrend(Request $request): JsonResponse
     {
         $keyParts = $this->apmCacheKeyFromRequest($request, [
-            'division_id', 'doc_type', 'month', 'year', 'granularity', 'iso_week', 'iso_week_year',
+            'division_id', 'doc_type', 'month', 'year', 'granularity',
         ]);
 
         return $this->apmCachedJson('approver_dashboard', $request, array_merge($keyParts, ['timing_trend' => 1]), function () use ($request): JsonResponse {
@@ -500,8 +500,6 @@ class ApproverDashboardController extends Controller
                 $docType = $request->get('doc_type') ?: null;
                 $month = $request->get('month') ? (int) $request->get('month') : null;
                 $year = $request->get('year') ? (int) $request->get('year') : null;
-                $isoWeek = $request->get('iso_week') ? (int) $request->get('iso_week') : null;
-                $isoWeekYear = $request->get('iso_week_year') ? (int) $request->get('iso_week_year') : null;
                 $granularity = $request->get('granularity') === 'weekly' ? 'weekly' : 'monthly';
 
                 if ($docType && ! $this->isValidApproverDashboardDocType($docType)) {
@@ -520,8 +518,6 @@ class ApproverDashboardController extends Controller
                     'division_id' => $divisionId,
                     'year' => $year,
                     'month' => $month,
-                    'iso_week' => $isoWeek,
-                    'iso_week_year' => $isoWeekYear,
                 ], fn ($v) => $v !== null && $v !== '');
 
                 if ($docType) {

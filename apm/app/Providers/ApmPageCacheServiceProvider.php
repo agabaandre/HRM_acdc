@@ -34,8 +34,6 @@ class ApmPageCacheServiceProvider extends ServiceProvider
             'reports',
             'budget_execution',
             'matrices',
-            'matrix_show',
-            'matrix_staff_days',
             'activities',
             'change_requests',
         ];

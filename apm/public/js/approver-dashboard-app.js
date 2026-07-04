@@ -168,12 +168,7 @@
                 const trendPoints = ref([]);
                 const trendLoading = ref(false);
                 const trendChartRef = ref(null);
-                const selectedTrendPeriodKey = ref('');
-                const selectedTrendPeriodLabel = ref('');
-                const trendPeriodFilter = ref({ iso_week: '', iso_week_year: '' });
                 let trendChartInstance = null;
-                let skipTrendSelectionResetOnce = false;
-                let skipFilterWatchReloadOnce = false;
 
                 const snackbar = ref({ show: false, text: '', color: 'success' });
 
@@ -451,53 +446,8 @@
                     if (filters.value.doc_type) params.set('doc_type', filters.value.doc_type);
                     if (filters.value.month) params.set('month', String(filters.value.month));
                     if (filters.value.year) params.set('year', String(filters.value.year));
-                    if (trendPeriodFilter.value.iso_week) {
-                        params.set('iso_week', String(trendPeriodFilter.value.iso_week));
-                    }
-                    if (trendPeriodFilter.value.iso_week_year) {
-                        params.set('iso_week_year', String(trendPeriodFilter.value.iso_week_year));
-                    }
                     params.set('granularity', trendGranularity.value);
                     return params;
-                }
-
-                function applyTrendPeriodFromPoint(pointIndex) {
-                    const point = trendPoints.value[pointIndex];
-                    if (!point || point.year == null) {
-                        return;
-                    }
-
-                    skipTrendSelectionResetOnce = true;
-                    skipFilterWatchReloadOnce = true;
-                    selectedTrendPeriodKey.value = point.period_key || '';
-                    selectedTrendPeriodLabel.value = point.label || '';
-
-                    filters.value.year = String(point.year);
-                    filters.value.month = point.month != null ? String(point.month) : '';
-
-                    if (trendGranularity.value === 'weekly' && point.iso_week && point.iso_week_year) {
-                        trendPeriodFilter.value = {
-                            iso_week: String(point.iso_week),
-                            iso_week_year: String(point.iso_week_year),
-                        };
-                    } else {
-                        trendPeriodFilter.value = { iso_week: '', iso_week_year: '' };
-                    }
-
-                    page.value = 1;
-                    skipCacheNext.value = true;
-                    loadTable();
-                    loadWorkflowStats();
-                    loadTimingTrend();
-
-                    const periodType = trendGranularity.value === 'weekly' ? 'week' : 'month';
-                    notify(`Dashboard filtered to ${point.label} (${periodType}).`, 'info');
-
-                    nextTick(() => {
-                        const tableEl = document.getElementById('approver-dashboard-approver-table');
-                        tableEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        drawTimingTrendChart();
-                    });
                 }
 
                 async function loadTimingTrend() {
@@ -556,24 +506,19 @@
                     el.innerHTML = '';
                     const gran = trendGranularity.value;
                     const currentIdx = points.findIndex((p) => p.is_current === true);
-                    const selectedIdx = selectedTrendPeriodKey.value
-                        ? points.findIndex((p) => p.period_key === selectedTrendPeriodKey.value)
-                        : -1;
-                    const highlightIdx = selectedIdx >= 0 ? selectedIdx : currentIdx;
                     const categories = points.map((p) => {
                         if (p.is_current) {
                             return `${p.label} (now)`;
                         }
                         return p.label;
                     });
-                    const seriesData = points.map((p, idx) => ({
+                    const seriesData = points.map((p) => ({
                         y: p.avg_hours != null && p.avg_hours !== '' ? Number(p.avg_hours) : null,
                         count: Number(p.count) || 0,
                         isCurrent: p.is_current === true,
-                        isSelected: idx === highlightIdx,
-                        marker: idx === highlightIdx ? {
+                        marker: p.is_current ? {
                             radius: 7,
-                            fillColor: selectedIdx >= 0 ? '#119a48' : '#0284c7',
+                            fillColor: '#0284c7',
                             lineWidth: 2,
                             lineColor: '#ffffff',
                             symbol: 'circle',
@@ -585,27 +530,24 @@
                     const yMax = maxVal > 0 ? Math.ceil(maxVal * 1.15 * 10) / 10 : 10;
                     const granLabel = gran === 'weekly' ? 'Weekly' : 'Monthly';
                     const periodHint = gran === 'weekly' ? 'week' : 'month';
-                    const selectionHint = selectedTrendPeriodLabel.value
-                        ? ` Selected: ${selectedTrendPeriodLabel.value}. Click another point to change.`
-                        : ' Click a point to filter the dashboard to that period.';
                     try {
                         trendChartInstance = Highcharts.chart(el, {
                             chart: { type: 'line', height: 320 },
                             title: { text: `${granLabel} average hours trend (all approvers)` },
                             subtitle: {
-                                text: `Average hours per approval action.${selectionHint}`,
+                                text: `Average hours per approval action. Blue highlight marks the current ${periodHint}.`,
                             },
                             xAxis: {
                                 categories,
                                 crosshair: true,
-                                plotBands: currentPeriodPlotBand(highlightIdx, gran),
+                                plotBands: currentPeriodPlotBand(currentIdx, gran),
                                 labels: {
                                     rotation: -35,
                                     style: { fontSize: '11px' },
                                     formatter() {
-                                        const isHighlighted = this.pos === highlightIdx;
-                                        return isHighlighted
-                                            ? `<span style="font-weight:700;color:${selectedIdx >= 0 ? '#119a48' : '#0369a1'}">${this.value}</span>`
+                                        const isCurrent = this.pos === currentIdx;
+                                        return isCurrent
+                                            ? `<span style="font-weight:700;color:#0369a1">${this.value}</span>`
                                             : this.value;
                                     },
                                     useHTML: true,
@@ -614,25 +556,12 @@
                             yAxis: { min: 0, max: yMax, title: { text: 'Average hours' } },
                             tooltip: {
                                 pointFormatter() {
-                                    const selectedNote = this.isSelected
-                                        ? '<br/><span style="color:#119a48">Selected period — click to filter dashboard</span>'
-                                        : '<br/><span style="color:#64748b">Click to filter dashboard to this period</span>';
                                     const currentNote = this.isCurrent ? '<br/><span style="color:#0369a1">Current ' + periodHint + '</span>' : '';
                                     const avg = this.y != null ? `${this.y} hrs` : 'No actions yet';
-                                    return `Avg: <b>${avg}</b><br/>Actions: <b>${this.count}</b>${currentNote}${selectedNote}`;
+                                    return `Avg: <b>${avg}</b><br/>Actions: <b>${this.count}</b>${currentNote}`;
                                 },
                             },
                             plotOptions: {
-                                series: {
-                                    cursor: 'pointer',
-                                    point: {
-                                        events: {
-                                            click: function onTrendPointClick() {
-                                                applyTrendPeriodFromPoint(this.index);
-                                            },
-                                        },
-                                    },
-                                },
                                 line: {
                                     color: '#119a48',
                                     lineWidth: 2,
@@ -737,9 +666,6 @@
 
                 function clearFilters() {
                     search.value = '';
-                    selectedTrendPeriodKey.value = '';
-                    selectedTrendPeriodLabel.value = '';
-                    trendPeriodFilter.value = { iso_week: '', iso_week_year: '' };
                     filters.value = {
                         division_id: (!cfg.hasPermission88 && cfg.userDivisionId) ? String(cfg.userDivisionId) : '',
                         doc_type: '',
@@ -822,17 +748,6 @@
                 watch(
                     () => ({ ...filters.value }),
                     () => {
-                        if (skipFilterWatchReloadOnce) {
-                            skipFilterWatchReloadOnce = false;
-                            skipTrendSelectionResetOnce = false;
-                            return;
-                        }
-                        if (!skipTrendSelectionResetOnce) {
-                            selectedTrendPeriodKey.value = '';
-                            selectedTrendPeriodLabel.value = '';
-                            trendPeriodFilter.value = { iso_week: '', iso_week_year: '' };
-                        }
-                        skipTrendSelectionResetOnce = false;
                         page.value = 1;
                         loadTable();
                         loadWorkflowStats();
@@ -840,13 +755,6 @@
                     },
                     { deep: true }
                 );
-
-                watch(trendGranularity, () => {
-                    selectedTrendPeriodKey.value = '';
-                    selectedTrendPeriodLabel.value = '';
-                    trendPeriodFilter.value = { iso_week: '', iso_week_year: '' };
-                    loadTimingTrend();
-                });
 
                 watch(itemsPerPage, () => {
                     page.value = 1;
@@ -863,6 +771,8 @@
                 watch(chartUnit, () => {
                     nextTick(() => drawWorkflowChart());
                 });
+
+                watch(trendGranularity, () => loadTimingTrend());
 
                 window.approverDashboardRefresh = refreshDashboard;
 
@@ -896,9 +806,6 @@
                     trendPoints,
                     trendLoading,
                     trendChartRef,
-                    trendPeriodFilter,
-                    selectedTrendPeriodKey,
-                    selectedTrendPeriodLabel,
                     tableHeaders,
                     workflowHeaders,
                     workflowOverall,
@@ -1040,12 +947,7 @@
       <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-2">
         <div>
           <div class="text-subtitle-1 font-weight-medium">Average hours trend</div>
-          <div class="text-caption text-medium-emphasis">All approvers — per approval action at current filters. Click a point to filter the table below.</div>
-          <div v-if="selectedTrendPeriodLabel" class="text-caption mt-1">
-            <v-chip size="x-small" variant="flat" color="primary" prepend-icon="mdi-filter">
-              Trend selection: {{ selectedTrendPeriodLabel }}
-            </v-chip>
-          </div>
+          <div class="text-caption text-medium-emphasis">All approvers — per approval action at current filters</div>
           <div v-if="cfg.currentTrendPeriods" class="text-caption mt-1 d-flex flex-wrap align-center gap-2">
             <span class="text-medium-emphasis">Tracking now:</span>
             <v-chip size="x-small" variant="tonal" color="info" prepend-icon="mdi-calendar-week">
@@ -1098,7 +1000,7 @@
       </v-card-text>
     </v-card>
 
-    <v-card id="approver-dashboard-approver-table">
+    <v-card>
       <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-2">
         <span class="text-subtitle-1 font-weight-medium">
           <v-icon icon="mdi-table" color="primary" class="me-2"></v-icon>Approver table

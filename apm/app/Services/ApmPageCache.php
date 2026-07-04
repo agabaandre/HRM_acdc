@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Short-lived Redis (or default) cache for heavy APM list / report pages.
@@ -19,8 +18,6 @@ final class ApmPageCache
         'budget_execution',
         'weekly_briefing',
         'matrices',
-        'matrix_show',
-        'matrix_staff_days',
         'activities',
         'change_requests',
         'lookups',
@@ -113,22 +110,13 @@ final class ApmPageCache
             return $callback();
         }
 
-        try {
-            $ttl ??= (int) config("apm.page_cache_ttl_by_scope.{$scope}", config('apm.page_cache_ttl', 120));
+        $ttl ??= (int) config("apm.page_cache_ttl_by_scope.{$scope}", config('apm.page_cache_ttl', 120));
 
-            return self::cache()->remember(
-                self::key($scope, $parts),
-                max(1, $ttl),
-                $callback
-            );
-        } catch (\Throwable $e) {
-            Log::warning('ApmPageCache remember failed, falling back to direct query', [
-                'scope' => $scope,
-                'message' => $e->getMessage(),
-            ]);
-
-            return $callback();
-        }
+        return self::cache()->remember(
+            self::key($scope, $parts),
+            max(1, $ttl),
+            $callback
+        );
     }
 
     /**
@@ -140,16 +128,7 @@ final class ApmPageCache
             return null;
         }
 
-        try {
-            return self::cache()->get(self::key($scope, $parts));
-        } catch (\Throwable $e) {
-            Log::warning('ApmPageCache get failed, falling back to direct query', [
-                'scope' => $scope,
-                'message' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
+        return self::cache()->get(self::key($scope, $parts));
     }
 
     /**
@@ -161,16 +140,9 @@ final class ApmPageCache
             return;
         }
 
-        try {
-            $ttl ??= (int) config("apm.page_cache_ttl_by_scope.{$scope}", config('apm.page_cache_ttl', 120));
+        $ttl ??= (int) config("apm.page_cache_ttl_by_scope.{$scope}", config('apm.page_cache_ttl', 120));
 
-            self::cache()->put(self::key($scope, $parts), $payload, max(1, $ttl));
-        } catch (\Throwable $e) {
-            Log::warning('ApmPageCache put failed', [
-                'scope' => $scope,
-                'message' => $e->getMessage(),
-            ]);
-        }
+        self::cache()->put(self::key($scope, $parts), $payload, max(1, $ttl));
     }
 
     public static function rememberLookups(string $name, callable $callback): mixed

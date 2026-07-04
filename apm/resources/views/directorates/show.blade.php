@@ -1,54 +1,116 @@
 @extends('layouts.app')
 
 @section('title', 'Directorate Details')
+
 @section('header', 'Directorate Details')
 
-@push('head-meta')
-<style>
-    #directorates-show-app .dr-show-vuetify-app { background: transparent !important; }
-    #directorates-show-app .v-application__wrap { min-height: 0 !important; }
-    #directorates-show-app .dr-show-section-card {
-        border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    }
-    #directorates-show-app .dr-show-section-title {
-        color: rgba(0, 0, 0, 0.87) !important;
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-        padding-bottom: 12px !important;
-    }
-    #directorates-show-app .dr-show-info-label {
-        color: rgba(0, 0, 0, 0.55) !important;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-    #directorates-show-app .dr-show-info-value {
-        color: rgba(0, 0, 0, 0.87) !important;
-        font-size: 1rem;
-        font-weight: 500;
-    }
-    #directorates-show-app .dr-show-table thead th {
-        background: #f8fafc !important;
-        color: rgba(0, 0, 0, 0.7) !important;
-        font-weight: 600 !important;
-        font-size: 0.75rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-    #directorates-show-app .dr-show-table tbody td {
-        color: rgba(0, 0, 0, 0.87) !important;
-    }
-</style>
-@endpush
+@section('header-actions')
+<a wire:navigate href="{{ route('directorates.index') }}" class="btn btn-outline-secondary">
+    <i class="bx bx-arrow-back"></i> Back to List
+</a>
+@endsection
 
 @section('content')
-<div id="directorates-show-app" data-apm-vuetify-page="directorates-show">
-    <script type="application/json" class="apm-page-config">@json($pageConfig)</script>
-    <div class="text-center py-5 text-muted">
-        <div class="spinner-border text-success" role="status"></div>
-        <p class="mt-2 mb-0">Loading directorate…</p>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bx bx-info-circle me-2"></i>Directorate Information</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-1">ID</h6>
+                        <h4 class="mb-0">{{ $directorate->id }}</h4>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <h6 class="text-muted mb-1">Status</h6>
+                        @if($directorate->is_active)
+                            <span class="badge bg-success fs-6 px-3 py-2">Active</span>
+                        @else
+                            <span class="badge bg-danger fs-6 px-3 py-2">Inactive</span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted mb-1">Directorate Name</h6>
+                    <h5>{{ $directorate->name }}</h5>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted mb-1">Director</h6>
+                    @if($directorate->director)
+                        <h5 class="mb-0">{{ $directorate->director->lname }} {{ $directorate->director->fname }}</h5>
+                        <small class="text-muted">Staff ID {{ $directorate->director->staff_id }}</small>
+                    @else
+                        <p class="text-muted mb-0">Not assigned</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        @if(isset($divisions) && $divisions->count() > 0)
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bx bx-building me-2 text-primary"></i>Related Divisions</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Division Name</th>
+                                <th>Code</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($divisions as $division)
+                            <tr>
+                                <td><strong>{{ $division->division_name }}</strong></td>
+                                <td>{{ $division->code }}</td>
+                                <td>
+                                    @if($division->is_active)
+                                        <span class="badge bg-success">Active</span>
+                                    @else
+                                        <span class="badge bg-danger">Inactive</span>
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    <a wire:navigate href="{{ route('divisions.show', $division) }}" class="btn btn-sm btn-info">
+                                        <i class="bx bx-show"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bx bx-time me-2 text-primary"></i>Timestamps</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted">Created At</span>
+                        <span>{{ $directorate->created_at->format('Y-m-d H:i') }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted">Last Updated</span>
+                        <span>{{ $directorate->updated_at->format('Y-m-d H:i') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

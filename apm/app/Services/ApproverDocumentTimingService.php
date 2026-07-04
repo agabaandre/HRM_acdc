@@ -285,7 +285,7 @@ class ApproverDocumentTimingService
      *   month?: int|null,
      *   q?: string|null,
      * }  $filters
-     * @return list<array{label: string, period_key: string, avg_hours: float|null, count: int, is_current?: bool, year?: int, month?: int, iso_week?: int, iso_week_year?: int}>
+     * @return list<array{label: string, period_key: string, avg_hours: float|null, count: int, is_current?: bool}>
      */
     public function averageHoursTrend(string $granularity, array $filters = []): array
     {
@@ -311,34 +311,22 @@ class ApproverDocumentTimingService
         foreach ($rows as $row) {
             if ($granularity === 'weekly') {
                 $key = (string) (int) $row->period_key;
-                $isoWeekYear = (int) floor((int) $row->period_key / 100);
+                $year = (int) floor((int) $row->period_key / 100);
                 $week = (int) ((int) $row->period_key % 100);
-                $weekStart = Carbon::now()->setISODate($isoWeekYear, $week)->startOfWeek(Carbon::MONDAY);
-                $label = 'W'.str_pad((string) $week, 2, '0', STR_PAD_LEFT).' '.$isoWeekYear;
-                $points[] = [
-                    'label' => $label,
-                    'period_key' => $key,
-                    'avg_hours' => round((float) $row->avg_hours, 2),
-                    'count' => (int) $row->action_count,
-                    'year' => (int) $weekStart->year,
-                    'month' => (int) $weekStart->month,
-                    'iso_week' => $week,
-                    'iso_week_year' => $isoWeekYear,
-                ];
+                $label = 'W'.str_pad((string) $week, 2, '0', STR_PAD_LEFT).' '.$year;
             } else {
                 $y = (int) $row->period_year;
                 $m = (int) $row->period_month;
                 $key = sprintf('%04d-%02d', $y, $m);
                 $label = Carbon::create($y, $m, 1)->format('M Y');
-                $points[] = [
-                    'label' => $label,
-                    'period_key' => $key,
-                    'avg_hours' => round((float) $row->avg_hours, 2),
-                    'count' => (int) $row->action_count,
-                    'year' => $y,
-                    'month' => $m,
-                ];
             }
+
+            $points[] = [
+                'label' => $label,
+                'period_key' => $key,
+                'avg_hours' => round((float) $row->avg_hours, 2),
+                'count' => (int) $row->action_count,
+            ];
         }
 
         if (! isset($filters['year']) || $filters['year'] === null) {
@@ -374,28 +362,16 @@ class ApproverDocumentTimingService
                 $now = Carbon::now();
                 if ($granularity === 'weekly') {
                     $label = 'W'.str_pad((string) $now->isoWeek(), 2, '0', STR_PAD_LEFT).' '.$now->isoWeekYear();
-                    $weekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
-                    $points[] = [
-                        'label' => $label,
-                        'period_key' => $currentKey,
-                        'avg_hours' => null,
-                        'count' => 0,
-                        'year' => (int) $weekStart->year,
-                        'month' => (int) $weekStart->month,
-                        'iso_week' => (int) $now->isoWeek(),
-                        'iso_week_year' => (int) $now->isoWeekYear(),
-                    ];
                 } else {
                     $label = $now->format('M Y');
-                    $points[] = [
-                        'label' => $label,
-                        'period_key' => $currentKey,
-                        'avg_hours' => null,
-                        'count' => 0,
-                        'year' => (int) $now->year,
-                        'month' => (int) $now->month,
-                    ];
                 }
+
+                $points[] = [
+                    'label' => $label,
+                    'period_key' => $currentKey,
+                    'avg_hours' => null,
+                    'count' => 0,
+                ];
             }
         }
 
@@ -456,10 +432,6 @@ class ApproverDocumentTimingService
         $modelType = ! empty($filters['model_type']) ? (string) $filters['model_type'] : null;
         $year = isset($filters['year']) && (int) $filters['year'] > 0 ? (int) $filters['year'] : null;
         $month = isset($filters['month']) && (int) $filters['month'] > 0 ? (int) $filters['month'] : null;
-        $isoWeek = isset($filters['iso_week']) && (int) $filters['iso_week'] > 0 ? (int) $filters['iso_week'] : null;
-        $isoWeekYear = isset($filters['iso_week_year']) && (int) $filters['iso_week_year'] > 0
-            ? (int) $filters['iso_week_year']
-            : null;
         $search = ! empty($filters['q']) ? trim((string) $filters['q']) : null;
 
         $query
@@ -468,10 +440,7 @@ class ApproverDocumentTimingService
             ->when($documentType, fn ($q) => $q->where('document_type_label', $documentType))
             ->when($modelType, fn ($q) => $q->where('model_type', $modelType))
             ->when($year, fn ($q) => $q->whereYear('acted_at', $year))
-            ->when($month && ! $isoWeek, fn ($q) => $q->whereMonth('acted_at', $month))
-            ->when($isoWeek && $isoWeekYear, function ($q) use ($isoWeek, $isoWeekYear): void {
-                $q->whereRaw('YEARWEEK(acted_at, 3) = ?', [(int) sprintf('%d%02d', $isoWeekYear, $isoWeek)]);
-            })
+            ->when($month, fn ($q) => $q->whereMonth('acted_at', $month))
             ->when($search, function ($q) use ($search): void {
                 $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
                 $q->where(function ($q2) use ($like): void {

@@ -17,7 +17,6 @@ use App\Models\Location;
 use App\Models\Staff;
 use App\Models\FundCode;
 use App\Services\ApprovalService;
-use App\Services\ApmPageCache;
 use App\Services\FundCodeWorkingBalanceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
@@ -693,92 +692,103 @@ class MatrixController extends Controller
 
     public function show(Matrix $matrix, Request $request): View
     {
-        if ($request->boolean('nocache')) {
-            return view('matrices.show', $this->buildMatrixShowViewData($matrix));
-        }
-
-        $keyParts = $this->apmCacheKeyFromRequest($request, [], [
-            'matrix_id' => $matrix->id,
-            'approval_level' => $matrix->approval_level,
-            'overall_status' => $matrix->overall_status,
-        ]);
-
-        $data = ApmPageCache::remember('matrix_show', $keyParts, fn () => $this->buildMatrixShowViewData($matrix));
-
-        return view('matrices.show', is_array($data) ? $data : []);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildMatrixShowViewData(Matrix $matrix): array
-    {
         $matrix->normalizeFocalReturnStatus();
 
-        $matrix->load([
-            'division',
-            'staff',
-            'participant_schedules',
-            'participant_schedules.staff',
-            'matrixApprovalTrails.staff',
-            'matrixApprovalTrails.oicStaff',
-        ]);
+        // Load primary relationships
+        //(can_take_action($matrix));
 
-        $countRow = $matrix->activities()
-            ->selectRaw('COUNT(*) as total_count')
-            ->selectRaw('SUM(CASE WHEN fund_type_id = 1 THEN 1 ELSE 0 END) as intramural_count')
-            ->selectRaw('SUM(CASE WHEN fund_type_id = 2 THEN 1 ELSE 0 END) as extramural_count')
-            ->selectRaw('SUM(CASE WHEN fund_type_id = 3 THEN 1 ELSE 0 END) as external_count')
-            ->selectRaw('SUM(CASE WHEN is_single_memo = 0 THEN 1 ELSE 0 END) as regular_count')
-            ->selectRaw('SUM(CASE WHEN is_single_memo = 1 THEN 1 ELSE 0 END) as single_memos_count')
-            ->first();
+        $matrix->load(['division', 'staff','participant_schedules','participant_schedules.staff','matrixApprovalTrails.staff','matrixApprovalTrails.oicStaff']);
+    //dd($matrix);
+        // Separate regular activities and single memos
+        $activitiesQuery = $matrix->activities()->where('is_single_memo', 0)->with(['requestType', 'fundType', 'responsiblePerson', 'activity_budget', 'activity_budget.fundcode']);
 
-        $activityCounts = [
-            'total' => (int) ($countRow->total_count ?? 0),
-            'intramural' => (int) ($countRow->intramural_count ?? 0),
-            'extramural' => (int) ($countRow->extramural_count ?? 0),
-            'external' => (int) ($countRow->external_count ?? 0),
-            'regular' => (int) ($countRow->regular_count ?? 0),
-            'single_memos' => (int) ($countRow->single_memos_count ?? 0),
-        ];
-
+        // Approvers at current level only see activities they can approve (get_approvable_activities respects allowed_funders)
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
         $isApprover = $userStaffId && $this->isUserApproverAtCurrentLevel($matrix, $userStaffId, $userDivisionId);
         $approvableIds = [];
-
         if ($isApprover) {
             $approvable = get_approvable_activities($matrix);
             $approvableIds = $approvable->pluck('id')->toArray();
+            if (!empty($approvableIds)) {
+                $activitiesQuery->whereIn('id', $approvableIds);
+            } else {
+                $activitiesQuery->whereRaw('1 = 0');
+            }
         }
 
+        // Apply document number filter if provided
+        if ($request->filled('document_number')) {
+            $activitiesQuery->where('document_number', 'like', '%' . $request->document_number . '%');
+        }
+
+        // Approved single memos: count only on initial page load; list loads via AJAX (lazy). Same approver scope as activities.
         $approvedSingleMemosCountQuery = $matrix->activities()
             ->where('is_single_memo', 1)
             ->where('overall_status', 'approved');
-
         if ($isApprover) {
-            if (! empty($approvableIds)) {
+            if (!empty($approvableIds)) {
                 $approvedSingleMemosCountQuery->whereIn('id', $approvableIds);
             } else {
                 $approvedSingleMemosCountQuery->whereRaw('1 = 0');
             }
         }
-
         $approvedSingleMemosCount = (int) $approvedSingleMemosCountQuery->count();
-        $approvableActivitiesCount = $isApprover ? count($approvableIds) : get_approvable_activities($matrix)->count();
-        $showActivityBulkCheckbox = can_take_action($matrix)
-            && $approvableActivitiesCount > 0
-            && $matrix->overall_status !== 'draft'
-            && (int) $matrix->approval_level !== 5;
 
-        return compact(
-            'matrix',
-            'activityCounts',
-            'approvedSingleMemosCount',
-            'approvableActivitiesCount',
-            'showActivityBulkCheckbox'
-        );
-    }
+        $perPage = $request->get('per_page', 20);
+        $activities = $activitiesQuery->latest()->paginate($perPage);
+
+        // Batch-resolve locations/internal participants for regular activities only
+        $allRows = collect($activities->items());
+        $rowMeta = [];
+        $allLocationIds = [];
+        $allStaffIds = [];
+
+        foreach ($allRows as $row) {
+            $locationIds = is_array($row->location_id)
+                ? $row->location_id
+                : json_decode($row->location_id ?? '[]', true);
+            $locationIds = array_values(array_filter((array) $locationIds, static fn ($id) => (int) $id > 0));
+
+            $internalRaw = is_string($row->internal_participants)
+                ? json_decode($row->internal_participants ?? '[]', true)
+                : ($row->internal_participants ?? []);
+            $internalParticipantIds = collect((array) $internalRaw)
+                ->pluck('staff_id')
+                ->filter(static fn ($id) => (int) $id > 0)
+                ->map(static fn ($id) => (int) $id)
+                ->values()
+                ->all();
+
+            $rowMeta[$row->id] = [
+                'location_ids' => $locationIds,
+                'staff_ids' => $internalParticipantIds,
+            ];
+
+            $allLocationIds = array_merge($allLocationIds, $locationIds);
+            $allStaffIds = array_merge($allStaffIds, $internalParticipantIds);
+        }
+
+        $locationsById = Location::whereIn('id', array_values(array_unique($allLocationIds)))->get()->keyBy('id');
+        $staffByStaffId = Staff::whereIn('staff_id', array_values(array_unique($allStaffIds)))->get()->keyBy('staff_id');
+
+        foreach ($activities as $activity) {
+            $meta = $rowMeta[$activity->id] ?? ['location_ids' => [], 'staff_ids' => []];
+            $activity->locations = collect($meta['location_ids'])
+                ->map(static fn ($id) => $locationsById->get((int) $id))
+                ->filter()
+                ->values();
+            $activity->internalParticipants = collect($meta['staff_ids'])
+                ->map(static fn ($id) => $staffByStaffId->get((int) $id))
+                ->filter()
+                ->values();
+        }
+
+        // Filter division staff by name if provided
+        //dd($matrix);
+    
+        return view('matrices.show', compact('matrix', 'activities', 'approvedSingleMemosCount'));
+     }
 
     /**
      * Attach locations + internal participants to single memo rows (batch queries; same pattern as activities AJAX).
@@ -841,19 +851,6 @@ class MatrixController extends Controller
      * Get activities for approvers via AJAX with filtering by approval order and allowed funders
      */
     public function getActivitiesForApprover(Matrix $matrix, Request $request)
-    {
-        $keyParts = $this->apmCacheKeyFromRequest($request, ['page', 'per_page', 'search', 'document_number'], [
-            'matrix_id' => $matrix->id,
-            'endpoint' => 'activities_for_approver',
-            'approval_level' => $matrix->approval_level,
-        ]);
-
-        return $this->apmCachedJson('matrix_show', $request, $keyParts, function () use ($matrix, $request) {
-            return $this->buildActivitiesForApproverResponse($matrix, $request);
-        });
-    }
-
-    private function buildActivitiesForApproverResponse(Matrix $matrix, Request $request)
     {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
@@ -1460,19 +1457,6 @@ class MatrixController extends Controller
      */
     public function getSingleMemosForApprover(Matrix $matrix, Request $request)
     {
-        $keyParts = $this->apmCacheKeyFromRequest($request, ['page', 'per_page', 'search', 'document_number'], [
-            'matrix_id' => $matrix->id,
-            'endpoint' => 'single_memos_for_approver',
-            'approval_level' => $matrix->approval_level,
-        ]);
-
-        return $this->apmCachedJson('matrix_show', $request, $keyParts, function () use ($matrix, $request) {
-            return $this->buildSingleMemosForApproverResponse($matrix, $request);
-        });
-    }
-
-    private function buildSingleMemosForApproverResponse(Matrix $matrix, Request $request)
-    {
         $userStaffId = user_session('staff_id');
         $userDivisionId = user_session('division_id');
         
@@ -1625,105 +1609,97 @@ class MatrixController extends Controller
      */
     public function getDivisionStaffAjax(Matrix $matrix, Request $request)
     {
-        $keyParts = $this->apmCacheKeyFromRequest($request, ['search', 'page', 'pageSize'], [
-            'matrix_id' => $matrix->id,
-            'endpoint' => 'division_staff',
-        ]);
-
         try {
-            return $this->apmCachedJson('matrix_staff_days', $request, $keyParts, function () use ($matrix, $request) {
-                return $this->buildDivisionStaffAjaxPayload($matrix, $request);
-            });
+            $search = $request->get('search', '');
+            $page = $request->get('page', 1);
+            $pageSize = $request->get('pageSize', 25);
+            $start = ($page - 1) * $pageSize;
+
+            // Travel days from activities' internal_participants (same source as staff-quarterly-travel)
+            $travelMap = $matrix->getTravelDaysFromInternalParticipants();
+
+            // Build query for filtered staff
+            $query = Staff::where('division_id', $matrix->division_id)
+                ->whereNotIn('status', ['Expired', 'Separated']);
+
+            if (!empty($search)) {
+                $query->where(function($q) use ($search) {
+                    $q->where('fname', 'like', '%' . $search . '%')
+                      ->orWhere('lname', 'like', '%' . $search . '%')
+                      ->orWhere('job_name', 'like', '%' . $search . '%')
+                      ->orWhere('duty_station_name', 'like', '%' . $search . '%');
+                });
+            }
+
+            $totalRecords = $query->count();
+            $divisionStaff = $query->skip($start)->take($pageSize)->get();
+
+            $staffData = [];
+            foreach ($divisionStaff as $staff) {
+                $sid = (int) $staff->staff_id;
+                $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
+                $division_days = $d['division_days'];
+                $other_days = $d['other_days'];
+                $total_days = $division_days + $other_days;
+                $isOverLimit = $total_days > 21;
+
+                $staffData[] = [
+                    'staff_id' => $staff->staff_id,
+                    'title' => $staff->title,
+                    'fname' => $staff->fname,
+                    'lname' => $staff->lname,
+                    'job_name' => $staff->job_name,
+                    'duty_station_name' => $staff->duty_station_name,
+                    'division_days' => $division_days,
+                    'other_days' => $other_days,
+                    'total_days' => $total_days,
+                    'is_over_limit' => $isOverLimit
+                ];
+            }
+
+            // Summary from all division staff using same travel map
+            $allDivisionStaff = Staff::where('division_id', $matrix->division_id)
+                ->whereNotIn('status', ['Expired', 'Separated'])
+                ->get();
+            $totalStaff = $allDivisionStaff->count();
+            $totalDivisionDays = 0;
+            $overLimitCount = 0;
+            foreach ($allDivisionStaff as $staff) {
+                $sid = (int) $staff->staff_id;
+                $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
+                $totalDivisionDays += $d['division_days'];
+                if (($d['division_days'] + $d['other_days']) >= 21) {
+                    $overLimitCount++;
+                }
+            }
+
+            return response()->json([
+                'data' => $staffData,
+                'recordsTotal' => $totalRecords,
+                'currentPage' => $page,
+                'pageSize' => $pageSize,
+                'totalPages' => ceil($totalRecords / $pageSize),
+                'summary' => [
+                    'total_staff' => $totalStaff,
+                    'total_division_days' => $totalDivisionDays,
+                    'over_limit_count' => $overLimitCount
+                ]
+            ]);
+
         } catch (\Exception $e) {
-            Log::error('Error in getDivisionStaffAjax: '.$e->getMessage(), [
+            Log::error('Error in getDivisionStaffAjax: ' . $e->getMessage(), [
                 'matrix_id' => $matrix->id,
-                'error' => $e->getTraceAsString(),
+                'error' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'error' => 'An error occurred while loading staff data',
-                'message' => $e->getMessage(),
+                'message' => $e->getMessage()
             ], 500);
         }
     }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function buildDivisionStaffAjaxPayload(Matrix $matrix, Request $request): array
-    {
-        $search = $request->get('search', '');
-        $page = $request->get('page', 1);
-        $pageSize = $request->get('pageSize', 25);
-        $start = ($page - 1) * $pageSize;
-
-        $travelMap = $matrix->cachedTravelDaysFromInternalParticipants();
-
-        $query = Staff::where('division_id', $matrix->division_id)
-            ->whereNotIn('status', ['Expired', 'Separated']);
-
-        if (! empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('fname', 'like', '%'.$search.'%')
-                    ->orWhere('lname', 'like', '%'.$search.'%')
-                    ->orWhere('job_name', 'like', '%'.$search.'%')
-                    ->orWhere('duty_station_name', 'like', '%'.$search.'%');
-            });
-        }
-
-        $totalRecords = $query->count();
-        $divisionStaff = $query->skip($start)->take($pageSize)->get();
-
-        $staffData = [];
-        foreach ($divisionStaff as $staff) {
-            $sid = (int) $staff->staff_id;
-            $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
-            $division_days = $d['division_days'];
-            $other_days = $d['other_days'];
-            $total_days = $division_days + $other_days;
-
-            $staffData[] = [
-                'staff_id' => $staff->staff_id,
-                'title' => $staff->title,
-                'fname' => $staff->fname,
-                'lname' => $staff->lname,
-                'job_name' => $staff->job_name,
-                'duty_station_name' => $staff->duty_station_name,
-                'division_days' => $division_days,
-                'other_days' => $other_days,
-                'total_days' => $total_days,
-                'is_over_limit' => $total_days > 21,
-            ];
-        }
-
-        $allDivisionStaff = Staff::where('division_id', $matrix->division_id)
-            ->whereNotIn('status', ['Expired', 'Separated'])
-            ->get(['staff_id']);
-        $totalStaff = $allDivisionStaff->count();
-        $totalDivisionDays = 0;
-        $overLimitCount = 0;
-        foreach ($allDivisionStaff as $staff) {
-            $sid = (int) $staff->staff_id;
-            $d = $travelMap[$sid] ?? ['division_days' => 0, 'other_days' => 0];
-            $totalDivisionDays += $d['division_days'];
-            if (($d['division_days'] + $d['other_days']) >= 21) {
-                $overLimitCount++;
-            }
-        }
-
-        return [
-            'data' => $staffData,
-            'recordsTotal' => $totalRecords,
-            'currentPage' => $page,
-            'pageSize' => $pageSize,
-            'totalPages' => (int) ceil($totalRecords / max(1, $pageSize)),
-            'summary' => [
-                'total_staff' => $totalStaff,
-                'total_division_days' => $totalDivisionDays,
-                'over_limit_count' => $overLimitCount,
-            ],
-        ];
-    }
+    
+    
 
     /**
      * Show the form for editing the specified matrix.

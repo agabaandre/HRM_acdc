@@ -933,31 +933,28 @@ class PendingApprovalsService
 
         $type = $item->getMorphClass();
         $id = (int) $item->getKey();
-        $before = Carbon::now();
 
         if ($level >= 3) {
-            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, $level, $before);
+            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, $level);
         } elseif ($level === 2) {
-            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, 2, $before);
+            $t = $this->selectMaxPreviousApprovalBeforeForPending($type, $id, $wf, 2);
             if ($t === null) {
-                $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf, $before);
+                $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf);
             }
         } else {
-            $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf, $before);
+            $t = $this->selectLastSubmittedTimeForPendingItem($type, $id, $wf);
         }
 
         return $t ? Carbon::parse($t) : null;
     }
 
     /**
-     * Latest order-0 submitted or resubmitted trail time after the last return for this document/workflow.
+     * Latest order-0 submitted or resubmitted trail time for this document/workflow.
      */
-    protected function selectLastSubmittedTimeForPendingItem(string $modelType, int $modelId, int $forwardWorkflowId, ?Carbon $before = null): ?string
+    protected function selectLastSubmittedTimeForPendingItem(string $modelType, int $modelId, int $forwardWorkflowId): ?string
     {
         $matrixType = 'App\\Models\\Matrix';
         $activityType = 'App\\Models\\Activity';
-        $floor = app(ApprovalReceiptTimeCalculator::class)->lastReturnBeforeForModel($modelType, $modelId, $before);
-        $floorSql = $floor ? ' AND sub_at.updated_at > ?' : '';
 
         $row = DB::selectOne(
             "
@@ -974,30 +971,23 @@ class PendingApprovalsService
               AND sub_at.approval_order = 0
               AND sub_at.action IN ('submitted', 'resubmitted')
               AND sub_at.is_archived = 0
-              {$floorSql}
             ",
-            array_merge(
-                [
-                    $modelType, $modelId, $forwardWorkflowId,
-                    $modelType, $matrixType, $modelId, $forwardWorkflowId,
-                    $modelType, $activityType, $modelId, $forwardWorkflowId,
-                    $modelType, $matrixType, $activityType,
-                ],
-                $floor ? [$floor->toDateTimeString()] : []
-            )
+            [
+                $modelType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $modelId, $forwardWorkflowId,
+                $modelType, $activityType, $modelId, $forwardWorkflowId,
+                $modelType, $matrixType, $activityType,
+            ]
         );
 
         return $row->t ?? null;
     }
 
     /**
-     * Latest approved/rejected trail strictly before the given approval order (same workflow), after last return.
+     * Latest approved/rejected trail strictly before the given approval order (same workflow).
      */
-    protected function selectMaxPreviousApprovalBeforeForPending(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive, ?Carbon $before = null): ?string
+    protected function selectMaxPreviousApprovalBeforeForPending(string $modelType, int $modelId, int $forwardWorkflowId, int $approvalOrderExclusive): ?string
     {
-        $floor = app(ApprovalReceiptTimeCalculator::class)->lastReturnBeforeForModel($modelType, $modelId, $before);
-        $floorSql = $floor ? ' AND prev_at.updated_at > ?' : '';
-
         $row = DB::selectOne(
             '
             SELECT MAX(prev_at.updated_at) as t
@@ -1008,12 +998,8 @@ class PendingApprovalsService
               AND prev_at.approval_order < ?
               AND prev_at.action IN (\'approved\', \'rejected\')
               AND prev_at.is_archived = 0
-              '.$floorSql.'
             ',
-            array_merge(
-                [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive],
-                $floor ? [$floor->toDateTimeString()] : []
-            )
+            [$modelType, $modelId, $forwardWorkflowId, $approvalOrderExclusive]
         );
 
         return $row->t ?? null;
