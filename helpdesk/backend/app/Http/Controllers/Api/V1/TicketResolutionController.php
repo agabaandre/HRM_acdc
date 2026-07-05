@@ -49,18 +49,18 @@ class TicketResolutionController extends Controller
         $ticket->resolution_submitted_by_user_id = $request->user()->id;
 
         $now = now();
-        $ticket->status = 'closed';
+        $ticket->status = 'resolved';
         $ticket->resolved_at = $now;
-        $ticket->closed_at = $now;
+        $ticket->closed_at = null;
         $ticket->resolved_by_user_id = $request->user()->id;
-        $ticket->resolution_confirm_token = null;
+        $ticket->resolution_confirm_token = bin2hex(random_bytes(32));
         $ticket->resolution_confirmed_at = null;
 
         $firstResponse->markIfEmpty($ticket, $now);
 
         $ticket->save();
 
-        $logger->log($ticket, 'ticket.closed', $request->user()->id, [
+        $logger->log($ticket, 'ticket.resolved', $request->user()->id, [
             'resolution_submitted' => true,
         ]);
 
@@ -103,7 +103,7 @@ class TicketResolutionController extends Controller
             ));
         }
 
-        $message = 'Resolution recorded; the ticket is closed and the requester was notified by email.';
+        $message = 'Resolution recorded; the ticket is resolved and the requester was notified by email.';
         if ($kbArticleId !== null) {
             $message .= ' A knowledge base article was published.';
         }

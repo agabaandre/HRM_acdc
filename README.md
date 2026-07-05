@@ -273,7 +273,7 @@ All modules are seamlessly integrated through:
 
 | 🔐 **Session Management** | 🧭 **Navigation** | 🔒 **Permissions** |
 |---------------------------|-------------------|-------------------|
-| Shared authentication via Staff Portal | Cross-module navigation with token-based session transfer | Unified permission system across all modules |
+| Shared Staff portal auth; POST SSO launch; background JWT refresh (`cbp-session-refresh.js`) across APM, Helpdesk, and Finance | CBP Modules menu with secure `home/launch_module` hand-off | Unified permission system across all modules |
 
 </div>
 

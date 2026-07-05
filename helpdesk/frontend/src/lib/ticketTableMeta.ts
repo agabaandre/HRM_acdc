@@ -13,7 +13,7 @@ export function statusMeta(status: string): StatusPriorityMeta {
     case 'in_progress':
       return { label: 'In progress', color: '#6d28d9', bg: '#ede9fe' }
     case 'awaiting_requester_confirmation':
-      return { label: 'Awaiting confirm', color: '#b45309', bg: '#fef3c7' }
+      return { label: 'Pending closure', color: '#b45309', bg: '#fef3c7' }
     case 'resolved':
       return { label: 'Resolved', color: '#15803d', bg: '#dcfce7' }
     case 'closed':

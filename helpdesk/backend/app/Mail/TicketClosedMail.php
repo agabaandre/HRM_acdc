@@ -10,26 +10,27 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class TicketResolutionMail extends Mailable
+class TicketClosedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public HelpdeskTicket $ticket,
         public string $ticketUrl,
+        public bool $autoClosed = false,
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: HelpdeskMailBranding::brandName().' — '.$this->ticket->ticket_number.' resolved',
+            subject: HelpdeskMailBranding::brandName().' — '.$this->ticket->ticket_number.' closed',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.helpdesk.ticket-resolution',
+            view: 'emails.helpdesk.ticket-closed',
         );
     }
 }

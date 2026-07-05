@@ -11,6 +11,7 @@ interface Volumes {
   unassigned: number
   created_today: number
   resolved_today: number
+  resolved_only_today: number
   closed_today: number
   total_active: number
 }
@@ -370,7 +371,11 @@ onUnmounted(() => {
         <article class="kpi kpi-resolved">
           <p class="kpi-label">Resolved today</p>
           <p class="kpi-value">{{ data.volumes.resolved_today }}</p>
-          <p class="kpi-sub">{{ data.volumes.closed_today }} closed</p>
+          <p class="kpi-sub">
+            {{ data.volumes.resolved_only_today }} resolved
+            <span class="dot">·</span>
+            {{ data.volumes.closed_today }} closed
+          </p>
         </article>
 
         <article class="kpi kpi-agent-week">

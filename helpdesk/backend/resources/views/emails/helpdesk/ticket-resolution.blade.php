@@ -1,15 +1,15 @@
 @extends('emails.helpdesk.layout')
 
-@section('title', 'Ticket closed')
-@section('headline', 'Your ticket has been closed')
-@section('subheadline', 'Please review the resolution below.')
+@section('title', 'Ticket resolved')
+@section('headline', 'Your ticket has been resolved')
+@section('subheadline', 'Please review the solution below and confirm when you are satisfied.')
 
 @section('content')
     <p>Hello <strong>{{ $ticket->requester_name ?? 'colleague' }}</strong>,</p>
 
     <p>
         Your ticket <strong>{{ $ticket->ticket_number }}</strong> —
-        <em>{{ $ticket->subject }}</em> — has been closed by the IT Service Desk team.
+        <em>{{ $ticket->subject }}</em> — has been <strong>resolved</strong> by the IT Service Desk team.
     </p>
 
     <div class="details">
@@ -20,8 +20,10 @@
     </div>
 
     <div class="note-box">
-        If the issue is <strong>not</strong> fixed, open the ticket in the Helpdesk (sign in via the Staff portal)
-        to add a comment or reopen the request so we can continue working on it.
+        If the issue is <strong>not</strong> fixed, open the ticket in the Helpdesk and add a comment to
+        <strong>reopen</strong> it so we can continue working on it.
+        When you are satisfied, you may <strong>mark the ticket as closed</strong> from the ticket page.
+        If no action is taken, the ticket will close automatically after the configured review period.
     </div>
 @endsection
 

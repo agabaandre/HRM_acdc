@@ -97,6 +97,26 @@ Module      ──verify JWT, start session──► redirect to module home
 
 Shared implementation: `application/helpers/sso_launch_helper.php` (`staff_sso_build_jwt`, `staff_sso_compact_claims`, `staff_sso_accept_url_for_module`).
 
+### SSO session refresh (while working in a module)
+
+After the initial POST launch, sibling modules stay logged in by refreshing the Staff portal JWT in the background (same-site cookie required):
+
+```
+Module tab  ──GET /auth/refresh_sso_session──►  Staff CI (session cookie)
+           ◄── fresh JWT ──
+           ──cbp:sso-refreshed──►  module handler updates local session
+```
+
+| Module | Refresh handler |
+|--------|-----------------|
+| APM | `POST /staff/apm/sso/refresh` with `{ sso_token }` |
+| Helpdesk | `POST /api/v1/auth/staff-sso` → new Sanctum token (`helpdesk/client/src/lib/sessionRefresh.ts`) |
+| Finance | Can register the same handler pattern via `cbp-session-refresh.js` |
+
+Client: `assets/js/cbp-session-refresh.js` (polls every ~15 minutes, or ~20 minutes before JWT expiry).
+
+Server: `GET /auth/refresh_sso_session`, `GET /share/validate_session`, `POST /share/refresh_token`.
+
 ### URL configuration (local dev)
 
 Use **`http://localhost/staff`** everywhere — not your Mac’s mDNS hostname (`Users-MacBook-Pro.local`). Mismatched hosts break CBP **Home** links and SSO redirects.

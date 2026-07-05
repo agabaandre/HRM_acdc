@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\AgentOpenTicketReminderJob;
+use App\Jobs\AutoCloseResolvedTicketsJob;
 use App\Jobs\EmailMonthlyAgentReportsJob;
 use App\Jobs\GenerateMonthlyAgentReportsJob;
 use App\Jobs\PurgeOldAgentReportsJob;
@@ -28,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(new GenerateMonthlyAgentReportsJob)->monthlyOn(1, '02:00');
         $schedule->job(new EmailMonthlyAgentReportsJob)->monthlyOn(1, '08:00');
         $schedule->job(new PurgeOldAgentReportsJob)->dailyAt('03:15');
+        $schedule->job(new AutoCloseResolvedTicketsJob)->dailyAt('04:00');
+        $schedule->job(new AgentOpenTicketReminderJob)->dailyAt('08:30');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

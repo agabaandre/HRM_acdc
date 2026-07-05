@@ -54,6 +54,7 @@ const groups = ref<SupportGroupOption[]>([])
 const categories = ref<CategoryOption[]>([])
 const candidatesLoading = ref(false)
 const selectedAgentIds = ref<number[]>([])
+const addAgentId = ref<number | null>(null)
 const selectedGroupId = ref<number | null>(null)
 const selectedPriority = ref<TicketPriority>('medium')
 const selectedCategoryId = ref<number | null>(null)
@@ -75,13 +76,6 @@ const modalTitle = computed(() =>
 
 const modalDescription = computed(() => props.ticket?.subject ?? undefined)
 
-const agentSelectItems = computed(() =>
-  agents.value.map((a) => ({
-    label: `${a.name} (${a.open_workload} open)`,
-    value: a.id,
-  })),
-)
-
 const groupSelectItems = computed(() =>
   groups.value.map((g) => ({
     label: `${g.name} (${g.members_count} members · ${g.open_workload} open)`,
@@ -97,7 +91,18 @@ const categorySelectItems = computed(() =>
 )
 
 const selectedAgents = computed(() =>
-  agents.value.filter((a) => selectedAgentIds.value.includes(a.id)),
+  selectedAgentIds.value
+    .map((id) => agents.value.find((a) => a.id === id))
+    .filter((a): a is EligibleAgent => a != null),
+)
+
+const availableAgentItems = computed(() =>
+  agents.value
+    .filter((a) => !selectedAgentIds.value.includes(a.id))
+    .map((a) => ({
+      label: `${a.name} (${a.open_workload} open)`,
+      value: a.id,
+    })),
 )
 
 function resetState(): void {
@@ -105,6 +110,7 @@ function resetState(): void {
   groups.value = []
   categories.value = []
   selectedAgentIds.value = []
+  addAgentId.value = null
   selectedGroupId.value = null
   selectedPriority.value = 'medium'
   selectedCategoryId.value = null
@@ -115,6 +121,21 @@ function resetState(): void {
 function close(): void {
   resetState()
   emit('close')
+}
+
+function removeAgent(agentId: number): void {
+  selectedAgentIds.value = selectedAgentIds.value.filter((id) => id !== agentId)
+}
+
+function onAddAgent(agentId: number | null | undefined): void {
+  if (agentId == null || agentId <= 0) {
+    addAgentId.value = null
+    return
+  }
+  if (!selectedAgentIds.value.includes(agentId)) {
+    selectedAgentIds.value = [...selectedAgentIds.value, agentId]
+  }
+  addAgentId.value = null
 }
 
 async function loadCategories(): Promise<void> {
@@ -248,18 +269,36 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
           <UFormField
             label="Agents"
             name="assignee"
-            description="Select one or more agents. The first selected agent is the primary assignee."
+            description="Add one or more agents. The first listed agent is the primary assignee."
           >
-            <USelectMenu
-              v-model="selectedAgentIds"
-              :items="agentSelectItems"
-              value-key="value"
-              multiple
-              searchable
-              icon="mdi-account-multiple"
-              placeholder="Search and select agents…"
-              :disabled="agents.length === 0"
-            />
+            <div class="agent-picker">
+              <ul v-if="selectedAgents.length" class="agent-chips" aria-label="Selected agents">
+                <li v-for="(agent, index) in selectedAgents" :key="agent.id" class="agent-chip">
+                  <span class="agent-chip-label">
+                    {{ agent.name }}
+                    <span v-if="index === 0" class="agent-chip-primary">Primary</span>
+                  </span>
+                  <button
+                    type="button"
+                    class="agent-chip-remove"
+                    :aria-label="`Remove ${agent.name}`"
+                    @click="removeAgent(agent.id)"
+                  >
+                    ×
+                  </button>
+                </li>
+              </ul>
+              <USelect
+                :model-value="addAgentId"
+                :items="availableAgentItems"
+                value-key="value"
+                searchable
+                icon="mdi-account-plus-outline"
+                placeholder="Add agent…"
+                :disabled="availableAgentItems.length === 0"
+                @update:model-value="onAddAgent($event as number | null | undefined)"
+              />
+            </div>
           </UFormField>
 
           <UFormField
@@ -340,6 +379,58 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+.agent-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.agent-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+.agent-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.agent-chip-primary {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #0d7a3a;
+  background: #dcfce7;
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+}
+.agent-chip-remove {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-family: inherit;
+}
+.agent-chip-remove:hover {
+  color: #b91c1c;
 }
 .reason-field {
   margin-top: 0.25rem;

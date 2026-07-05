@@ -36,6 +36,40 @@ class TicketAssignmentNotifier
         $this->sendToAssignee($ticket, $isReassignment);
     }
 
+    /**
+     * Notify agents newly added to a ticket (including secondary assignees).
+     *
+     * @param  list<int>  $previousIds
+     * @param  list<int>  $newIds
+     */
+    public function notifyAddedAssignees(HelpdeskTicket $ticket, array $previousIds, array $newIds): void
+    {
+        $added = array_values(array_diff($newIds, $previousIds));
+        foreach ($added as $userId) {
+            $assignee = User::query()->with('helpdeskProfile')->find((int) $userId);
+            if (! $assignee || ! $this->shouldNotifyAssignee($assignee)) {
+                continue;
+            }
+            $email = trim((string) $assignee->email);
+            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+            try {
+                Mail::to($email)->send(new TicketAssignedToAgentMail(
+                    $ticket->fresh(['category']),
+                    $assignee,
+                    true,
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('helpdesk.assignment_mail_failed', [
+                    'ticket_id' => $ticket->id,
+                    'assignee_user_id' => $assignee->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
     private function sendToAssignee(HelpdeskTicket $ticket, bool $isReassignment): void
     {
         $assignee = User::query()->with('helpdeskProfile')->find((int) $ticket->assigned_user_id);

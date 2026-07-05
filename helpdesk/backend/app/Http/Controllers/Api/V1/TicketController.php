@@ -26,8 +26,10 @@ use App\Services\TicketReadCache;
 use App\Services\TicketSubjectGenerator;
 use App\Support\StaffPhotoUrl;
 use App\Support\TicketCreateIdempotency;
+use App\Mail\TicketClosedMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -414,6 +416,12 @@ class TicketController extends Controller
 
         $assignees->sync($ticket, $newAssigneeIds, $newPrimaryId);
 
+        app(\App\Services\TicketAssignmentNotifier::class)->notifyAddedAssignees(
+            $ticket->fresh(['category']),
+            $oldAssigneeIds,
+            $newAssigneeIds,
+        );
+
         $oldAssigneeNames = User::query()->whereIn('id', $oldAssigneeIds)->orderBy('name')->pluck('name')->all();
         $newAssigneeNames = User::query()->whereIn('id', $newAssigneeIds)->orderBy('name')->pluck('name')->all();
 
@@ -478,6 +486,33 @@ class TicketController extends Controller
                 'to_category_id' => $newCategoryId,
                 'reason' => $reason,
             ],
+        ]);
+    }
+
+    /**
+     * Requester closes a resolved ticket after confirming the solution (ITIL closure).
+     */
+    public function confirmClose(
+        Request $request,
+        HelpdeskTicket $ticket,
+        TicketHistoryLogger $logger,
+    ): JsonResponse {
+        $this->authorize('confirmClose', $ticket);
+
+        $ticket->forceFill([
+            'status' => 'closed',
+            'closed_at' => now(),
+            'resolution_confirmed_at' => now(),
+            'resolution_confirm_token' => null,
+        ])->save();
+
+        $logger->log($ticket, 'ticket.closed', $request->user()->id, [
+            'requester_confirmed' => true,
+        ]);
+
+        return response()->json([
+            'message' => 'Thank you — this ticket is now closed.',
+            'data' => (new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'assignees', 'attachments'])))->resolve(),
         ]);
     }
 

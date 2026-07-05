@@ -61,6 +61,26 @@ After the POST accept succeeds:
 3. `StaffSsoController` checks **`HELPDESK_SSO_PERMISSION_CODES`**, upserts `User` + `HelpdeskProfile`, returns a **Sanctum** Bearer token.
 4. The SPA stores the token and strips any legacy query params from the address bar.
 
+### Session refresh (stay logged in)
+
+While Helpdesk (or APM) is open, `assets/js/cbp-session-refresh.js` periodically calls:
+
+- **`GET /staff/auth/refresh_sso_session`** — requires an active Staff portal session cookie on the same host; returns a fresh HS256 JWT.
+
+Module-specific handlers then update the local session:
+
+| Module | Action |
+|--------|--------|
+| Helpdesk | `POST /api/v1/auth/staff-sso` with the new JWT → Sanctum token in `localStorage` (`helpdesk/client/src/lib/sessionRefresh.ts`) |
+| APM | `POST /staff/apm/sso/refresh` with `{ sso_token }` → updates Laravel session (`sso_jwt`, `sso_jwt_exp`) |
+
+Server-side validation/refresh (APM `SessionController`, Share API integrations):
+
+- **`GET /share/validate_session`** — Bearer SSO JWT
+- **`POST /share/refresh_token`** — Bearer SSO JWT (grace window for recently expired tokens)
+
+See also [APM Session Expiry Setup](../../apm/documentation/SESSION_EXPIRY_SETUP.md).
+
 ### Legacy URL token (dev only)
 
 `?token=<jwt>` on `/staff/helpdesk/` still works when `SSO_ALLOW_URL_TOKEN` is enabled (default in non-production). Production should rely on POST SSO only.

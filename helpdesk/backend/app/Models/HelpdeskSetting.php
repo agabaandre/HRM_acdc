@@ -83,6 +83,12 @@ class HelpdeskSetting extends Model
 
     public const KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS = 'agent_monthly_report_retention_months';
 
+    /** Days after resolution before unresolved tickets auto-close (ITIL closure). 0 = disabled. */
+    public const KEY_RESOLVED_AUTO_CLOSE_DAYS = 'resolved_auto_close_days';
+
+    /** Daily email to agents who still have open / in-progress tickets assigned. */
+    public const KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED = 'agent_open_ticket_reminder_enabled';
+
     public static function getValue(string $key, ?string $default = null): ?string
     {
         $row = static::query()->where('key', $key)->first();
@@ -147,6 +153,21 @@ class HelpdeskSetting extends Model
         $v = (int) static::getValue(self::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS, '12');
 
         return max(1, min(120, $v));
+    }
+
+    /** @return int Days before auto-closing resolved tickets; 0 disables auto-close. */
+    public static function resolvedAutoCloseDays(): int
+    {
+        $v = (int) static::getValue(self::KEY_RESOLVED_AUTO_CLOSE_DAYS, '7');
+
+        return max(0, min(90, $v));
+    }
+
+    public static function agentOpenTicketReminderEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED, '1');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
     }
 
     public static function setValue(string $key, ?string $value): void

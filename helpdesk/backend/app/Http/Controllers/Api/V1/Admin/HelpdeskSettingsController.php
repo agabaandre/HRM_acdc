@@ -43,6 +43,8 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED,
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED,
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
+            HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS,
+            HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED,
         ];
 
         $data = [];
@@ -59,6 +61,8 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED] ?? '1') === '1');
         $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED] ?? '1') === '1');
         $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] = (int) ($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] ?? 12);
+        $data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] = (int) ($data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] ?? 7);
+        $data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] ?? '1') === '1');
 
         $rawKey = HelpdeskSetting::getValue(HelpdeskSetting::KEY_AI_API_KEY);
         $data[HelpdeskSetting::KEY_AI_API_KEY] = '';
@@ -121,6 +125,8 @@ class HelpdeskSettingsController extends Controller
             'agent_monthly_report_enabled' => ['nullable', 'boolean'],
             'agent_monthly_report_email_enabled' => ['nullable', 'boolean'],
             'agent_monthly_report_retention_months' => ['nullable', 'integer', 'min:1', 'max:120'],
+            'resolved_auto_close_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'agent_open_ticket_reminder_enabled' => ['nullable', 'boolean'],
         ]);
 
         $map = [
@@ -199,6 +205,20 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::setValue(
                 HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
                 (string) $validated['agent_monthly_report_retention_months']
+            );
+        }
+
+        if (array_key_exists('resolved_auto_close_days', $validated) && $validated['resolved_auto_close_days'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS,
+                (string) $validated['resolved_auto_close_days']
+            );
+        }
+
+        if (array_key_exists('agent_open_ticket_reminder_enabled', $validated) && $validated['agent_open_ticket_reminder_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED,
+                $validated['agent_open_ticket_reminder_enabled'] ? '1' : '0'
             );
         }
 

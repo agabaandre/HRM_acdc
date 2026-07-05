@@ -30,6 +30,32 @@ interface TicketRow {
   priority: string
   requester_name?: string | null
   assignee?: AssigneeBrief | null
+  assignees?: AssigneeBrief[]
+}
+
+function assigneeNames(row: TicketRow): string {
+  const names = (row.assignees?.length ? row.assignees : row.assignee ? [row.assignee] : []).map((a) => a.name)
+  return names.join(', ')
+}
+
+function primaryAssignee(row: TicketRow): AssigneeBrief | null {
+  if (row.assignee) {
+    return row.assignee
+  }
+  return row.assignees?.[0] ?? null
+}
+
+function assigneeCell(row: TicketRow): { avatarName: string; avatarUrl: string | null; label: string } | null {
+  const primary = primaryAssignee(row)
+  const label = assigneeNames(row)
+  if (!primary && !label) {
+    return null
+  }
+  return {
+    avatarName: primary?.name ?? label,
+    avatarUrl: primary?.avatar_url ?? null,
+    label: label || primary?.name || '—',
+  }
 }
 
 type SortItem = { key: string; order: 'asc' | 'desc' }
@@ -199,9 +225,9 @@ function resetSearch() {
         </template>
 
         <template #item.assignee_name="{ item }">
-          <div v-if="item.assignee" class="hd-dt-person">
-            <CbpAvatar size="sm" :name="item.assignee.name" :image-url="item.assignee.avatar_url ?? null" />
-            <span class="hd-dt-person-name">{{ item.assignee.name }}</span>
+          <div v-if="assigneeCell(item)" class="hd-dt-person">
+            <CbpAvatar size="sm" :name="assigneeCell(item)?.avatarName ?? 'Agent'" :image-url="assigneeCell(item)?.avatarUrl ?? null" />
+            <span class="hd-dt-person-name">{{ assigneeCell(item)?.label ?? '—' }}</span>
           </div>
           <span v-else class="hd-dt-empty">—</span>
         </template>

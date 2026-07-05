@@ -92,6 +92,7 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{ticket}/inline-images', [TicketInlineImageController::class, 'store']);
         Route::delete('tickets/{ticket}/inline-images/{attachment}', [TicketInlineImageController::class, 'destroy']);
         Route::post('tickets/{ticket}/submit-resolution', [TicketResolutionController::class, 'submit']);
+        Route::post('tickets/{ticket}/confirm-close', [TicketController::class, 'confirmClose']);
         Route::post('tickets/{ticket}/reopen', [TicketController::class, 'reopen']);
 
         Route::get('/reports/agent-dashboard', [ReportController::class, 'agentDashboard']);

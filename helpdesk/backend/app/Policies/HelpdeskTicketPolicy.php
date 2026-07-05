@@ -188,6 +188,24 @@ class HelpdeskTicketPolicy
         return false;
     }
 
+    /**
+     * Requester confirms satisfaction and closes a resolved ticket (ITIL closure).
+     */
+    public function confirmClose(User $user, HelpdeskTicket $ticket): bool
+    {
+        if ($ticket->status !== 'resolved') {
+            return false;
+        }
+
+        $p = $user->helpdeskProfile;
+        if (! $p || $p->role !== HelpdeskProfile::ROLE_USER || ! $p->staff_id) {
+            return false;
+        }
+
+        return (int) $ticket->requester_staff_id === (int) $p->staff_id
+            || (int) $ticket->created_by_user_id === (int) $user->id;
+    }
+
     private function elevated(HelpdeskProfile $p): bool
     {
         return in_array($p->role, [

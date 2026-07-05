@@ -120,12 +120,14 @@ Laravel 11 JSON API + Vue 3.5 SPA delivering an IT Service Desk / ITSM experienc
 
 ### Session Management
 
-All modules share session management through the CodeIgniter Staff Portal:
+All modules share authentication through the CodeIgniter Staff Portal:
 
 - **Staff Portal**: Primary authentication and session storage
-- **APM**: Receives session via token parameter
-- **Finance**: Receives session via token parameter
-- **Helpdesk**: Receives Staff JWT via `?token=…` and exchanges it for a Sanctum bearer at `POST /api/v1/auth/staff-sso`
+- **APM**: POST SSO launch → session; background refresh via `/auth/refresh_sso_session` + `/apm/sso/refresh`
+- **Finance**: POST SSO launch (same pattern as APM)
+- **Helpdesk**: POST SSO launch → Sanctum token; background refresh via `/auth/refresh_sso_session` + `/api/v1/auth/staff-sso`
+
+Cross-module client: `assets/js/cbp-session-refresh.js` (polls Staff portal, dispatches `cbp:sso-refreshed`).
 
 See:
 - [Finance Session Implementation](../finance/documentation/SESSION_IMPLEMENTATION.md)
@@ -134,14 +136,11 @@ See:
 
 ### Navigation Integration
 
-Modules are integrated through navigation links:
+Modules are integrated through the CBP Modules menu and secure POST launch:
 
-- Staff Portal → APM (with token)
-- Staff Portal → Finance (with token)
-- Staff Portal → Helpdesk (with token)
-- APM → Staff Portal (direct link)
-- Finance → Staff Portal (direct link)
-- Finance → APM (with token)
+- Staff Portal → APM / Finance / Helpdesk (`POST home/launch_module`)
+- APM / Finance / Helpdesk → Staff Portal (CBP Home link)
+- Finance ↔ APM (cross-links with SSO token in session storage, not URL)
 
 ### Permission System
 

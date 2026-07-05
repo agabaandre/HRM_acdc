@@ -46,4 +46,8 @@ Legacy dev URL (when `SSO_ALLOW_URL_TOKEN` is enabled):
 
 `/staff/helpdesk2/?token=<jwt-from-portal>`
 
+### Session refresh
+
+While the Helpdesk tab is open, `sessionRefresh.ts` loads `assets/js/cbp-session-refresh.js`, which calls Staff `GET /auth/refresh_sso_session` (same-site cookie) and re-exchanges the JWT via `POST /api/v1/auth/staff-sso` so the Sanctum token stays valid. Requires the user to remain logged into the Staff portal on the same host.
+
 Use **`localhost`** in all `.env` files — not `Users-MacBook-Pro.local`. Rebuild after env changes: `npm run build`.

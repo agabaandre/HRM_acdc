@@ -22,6 +22,8 @@ export interface HelpdeskSettingsPayload {
   agent_monthly_report_enabled: boolean
   agent_monthly_report_email_enabled: boolean
   agent_monthly_report_retention_months: number
+  resolved_auto_close_days?: number
+  agent_open_ticket_reminder_enabled?: boolean
   ai_api_key: string
   ai_api_key_configured: boolean
 }
@@ -43,6 +45,8 @@ export interface HelpdeskAdminSettingsForm {
   agent_monthly_report_enabled: boolean
   agent_monthly_report_email_enabled: boolean
   agent_monthly_report_retention_months: number
+  resolved_auto_close_days: number
+  agent_open_ticket_reminder_enabled: boolean
   ai_api_key: string
 }
 
@@ -77,6 +81,8 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     agent_monthly_report_enabled: true,
     agent_monthly_report_email_enabled: true,
     agent_monthly_report_retention_months: 12,
+    resolved_auto_close_days: 7,
+    agent_open_ticket_reminder_enabled: true,
     ai_api_key: '',
   })
 
@@ -100,6 +106,8 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.agent_monthly_report_enabled = d.agent_monthly_report_enabled !== false
       form.agent_monthly_report_email_enabled = d.agent_monthly_report_email_enabled !== false
       form.agent_monthly_report_retention_months = Number(d.agent_monthly_report_retention_months ?? 12)
+      form.resolved_auto_close_days = Number(d.resolved_auto_close_days ?? 7)
+      form.agent_open_ticket_reminder_enabled = d.agent_open_ticket_reminder_enabled !== false
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)
     } catch (e: unknown) {

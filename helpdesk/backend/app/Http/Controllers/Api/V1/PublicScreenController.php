@@ -87,10 +87,16 @@ class PublicScreenController extends Controller
             ->count();
 
         $resolvedToday = HelpdeskTicket::query()
+            ->whereIn('status', ['resolved', 'closed'])
             ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
                 $startOfToday->format('Y-m-d H:i:s'),
                 $endOfToday->format('Y-m-d H:i:s'),
             ])
+            ->count();
+
+        $resolvedOnlyToday = HelpdeskTicket::query()
+            ->where('status', 'resolved')
+            ->whereBetween('resolved_at', [$startOfToday, $endOfToday])
             ->count();
 
         $closedToday = HelpdeskTicket::query()
@@ -110,6 +116,7 @@ class PublicScreenController extends Controller
             'unassigned' => $unassigned,
             'created_today' => $createdToday,
             'resolved_today' => $resolvedToday,
+            'resolved_only_today' => $resolvedOnlyToday,
             'closed_today' => $closedToday,
             'total_active' => $open + $pending + $inProgress + $awaiting,
         ];

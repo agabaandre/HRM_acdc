@@ -15,7 +15,8 @@ import {
   ticketStatusAllowsCategoryChange,
 } from '../lib/canChangeTicketCategory'
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
-import { notifyError } from '../lib/notify'
+import { notifyError, notifySuccess } from '../lib/notify'
+import { statusMeta } from '../lib/ticketTableMeta'
 import { hasRichTextContent, htmlContainsDataUriImages, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
@@ -53,6 +54,7 @@ interface TicketDetail {
   requester_name?: string | null
   requester_email?: string | null
   assignee?: AssigneeBrief | null
+  assignees?: AssigneeBrief[]
   attachments?: TicketAttachment[]
   category?: TicketCategory | null
   requester_unsatisfied_follow_up_enabled?: boolean
@@ -79,6 +81,7 @@ const commentForm = reactive({
 const posting = ref(false)
 const resolutionNotes = ref('')
 const resolving = ref(false)
+const closingTicket = ref(false)
 const inlineImageBusy = ref(false)
 const resolutionEditorRef = ref<InstanceType<typeof CbpRichTextEditor> | null>(null)
 const showResolveModal = ref(false)
@@ -149,6 +152,24 @@ function onPreviewKeydown(ev: KeyboardEvent) {
   }
 }
 
+function isUserAssignee(t: TicketDetail, userId: number): boolean {
+  if (t.assigned_user_id === userId) {
+    return true
+  }
+  return (t.assignees ?? []).some((a) => a.id === userId)
+}
+
+const assigneeDisplayNames = computed(() => {
+  const t = ticket.value
+  if (!t) {
+    return ''
+  }
+  const names = (t.assignees?.length ? t.assignees : t.assignee ? [t.assignee] : []).map((a) => a.name)
+  return names.join(', ')
+})
+
+const statusLabel = computed(() => statusMeta(ticket.value?.status ?? '').label)
+
 const canSubmitResolution = computed(() => {
   const t = ticket.value
   const me = auth.me
@@ -162,7 +183,7 @@ const canSubmitResolution = computed(() => {
   if (role === 'admin' || role === 'supervisor' || auth.me?.profile?.is_helpdesk_admin) {
     return true
   }
-  if (role === 'agent' && t.assigned_user_id === me.id) {
+  if (role === 'agent' && isUserAssignee(t, me.id)) {
     return true
   }
   return false
@@ -176,6 +197,18 @@ const isRequester = computed(() => {
   }
   return t.requester_staff_id != null && me.staff_id === t.requester_staff_id
 })
+
+const isResolvedForRequester = computed(() => {
+  const t = ticket.value
+  return Boolean(t && isRequester.value && t.status === 'resolved')
+})
+
+const isClosedOnlyForRequester = computed(() => {
+  const t = ticket.value
+  return Boolean(t && isRequester.value && t.status === 'closed')
+})
+
+const canConfirmClose = computed(() => isResolvedForRequester.value)
 
 const isClosedForRequester = computed(() => {
   const t = ticket.value
@@ -218,7 +251,7 @@ function openResolveModal() {
   showResolveModal.value = true
   if (!hasRichTextContent(resolutionNotes.value)) {
     resolveModalErr.value =
-      'Please describe what was fixed in the resolution editor above before closing this ticket.'
+      'Please describe what was fixed in the resolution editor above before resolving this ticket.'
   }
 }
 
@@ -339,11 +372,28 @@ async function onCommentSubmit(event: FormSubmitEvent<typeof commentForm>) {
   }
 }
 
+async function confirmCloseTicket() {
+  const id = ticketId.value
+  if (!id || !canConfirmClose.value) {
+    return
+  }
+  closingTicket.value = true
+  try {
+    await api.post(`/api/v1/tickets/${id}/confirm-close`)
+    notifySuccess('Thank you — this ticket is now closed.')
+    await loadAll()
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not close ticket'))
+  } finally {
+    closingTicket.value = false
+  }
+}
+
 async function confirmSubmitResolution() {
   const id = ticketId.value
   if (!id || !hasRichTextContent(resolutionNotes.value)) {
     resolveModalErr.value =
-      'Please describe what was fixed in the resolution editor above before closing this ticket.'
+      'Please describe what was fixed in the resolution editor above before resolving this ticket.'
     return
   }
   if (inlineImageBusy.value) {
@@ -407,7 +457,7 @@ watch(canReopenWithComment, (can) => {
     <template v-if="ticket">
       <CbpPageHeading :title="ticket.ticket_number" back-to="/tickets" back-label="← Tickets">
         <template #lede>
-          <span class="pill">{{ ticket.status }}</span>
+          <span class="pill">{{ statusLabel }}</span>
           <span class="pill low">{{ ticket.priority }}</span>
           <span class="subj-inline">{{ ticket.subject }}</span>
         </template>
@@ -426,28 +476,28 @@ watch(canReopenWithComment, (can) => {
               <span v-if="ticket.requester_email" class="pemail">{{ ticket.requester_email }}</span>
             </div>
           </div>
-          <div v-if="ticket.assignee" class="person-card">
+          <div v-if="ticket.assignee || (ticket.assignees?.length ?? 0) > 0" class="person-card">
             <CbpAvatar
               size="md"
-              :name="ticket.assignee.name"
-              :image-url="ticket.assignee.avatar_url ?? null"
+              :name="ticket.assignee?.name || ticket.assignees?.[0]?.name || 'Agent'"
+              :image-url="ticket.assignee?.avatar_url ?? ticket.assignees?.[0]?.avatar_url ?? null"
             />
             <div class="person-meta">
               <span class="plabel">Assigned to</span>
               <strong class="pname">
-                {{ ticket.assignee.name }}
+                {{ assigneeDisplayNames || '—' }}
                 <span
-                  v-if="ticket.assignee.work_mode === 'remote'"
+                  v-if="ticket.assignee?.work_mode === 'remote'"
                   class="wm-pill wm-remote"
                   title="This agent is currently working remotely"
                 >Remote</span>
                 <span
-                  v-else-if="ticket.assignee.work_mode === 'onsite'"
+                  v-else-if="ticket.assignee?.work_mode === 'onsite'"
                   class="wm-pill wm-onsite"
                   title="This agent is currently working from the office"
                 >Onsite</span>
               </strong>
-              <span v-if="ticket.assignee.email" class="pemail">{{ ticket.assignee.email }}</span>
+              <span v-if="ticket.assignee?.email" class="pemail">{{ ticket.assignee.email }}</span>
             </div>
           </div>
           <div v-if="ticket.category || canEditCategory" class="person-card person-card--category">
@@ -574,7 +624,7 @@ watch(canReopenWithComment, (can) => {
       <section v-if="canSubmitResolution" class="resolve">
         <h3 class="h3">Submit resolution</h3>
         <p class="muted small">
-          Describe what was fixed. Use the toolbar to format text, add lists, paste screenshots, embed video, or attach links. The requester is emailed; if confirmation is enabled in settings they must click the link to close the ticket.
+          Describe what was fixed. Use the toolbar to format text, add lists, paste screenshots, embed video, or attach links. The requester is emailed that the ticket is <strong>resolved</strong>; they may close it when satisfied or reopen if the issue persists.
         </p>
         <CbpRichTextEditor
           ref="resolutionEditorRef"
@@ -586,13 +636,13 @@ watch(canReopenWithComment, (can) => {
           @uploading="inlineImageBusy = $event"
         />
         <UButton type="button" color="primary" :disabled="resolving || inlineImageBusy" @click="openResolveModal">
-          Close ticket &amp; notify requester
+          Resolve ticket &amp; notify requester
         </UButton>
       </section>
 
       <UModal
         v-model:open="showResolveModal"
-        title="Close this ticket?"
+        title="Resolve this ticket?"
         :ui="{ content: 'max-w-lg' }"
       >
         <template #body>
@@ -605,8 +655,9 @@ watch(canReopenWithComment, (can) => {
               Please describe what was fixed in the <strong>Submit resolution</strong> editor above before you continue.
             </p>
             <p v-else class="resolve-modal-ok muted small">
-              The ticket will be <strong>closed</strong> and the requester will receive an email with your
-              resolution notes and a link to review the ticket, add comments, or reopen if the issue persists.
+              The ticket will move to <strong>Resolved</strong> and the requester will receive an email with your
+              resolution notes. They can mark the ticket closed when satisfied, or reopen it if the issue persists.
+              Unclosed resolved tickets are automatically closed after the review period in settings.
               <span v-if="ticket.category?.name">
                 If you publish to the knowledge base, the article will appear under
                 <strong>{{ ticket.category.name }}</strong>.
@@ -647,7 +698,7 @@ watch(canReopenWithComment, (can) => {
           <UButton color="neutral" variant="outline" label="Cancel" :disabled="resolving" @click="closeResolveModal" />
           <UButton
             color="primary"
-            :label="resolving ? 'Closing…' : 'Confirm & close ticket'"
+            :label="resolving ? 'Resolving…' : 'Confirm & resolve'"
             :loading="resolving"
             :disabled="!canConfirmResolve"
             @click="confirmSubmitResolution"
@@ -655,7 +706,29 @@ watch(canReopenWithComment, (can) => {
         </template>
       </UModal>
 
-      <section v-if="canReopenWithComment" class="closed-banner closed-banner--follow-up" role="status">
+      <section v-if="isResolvedForRequester" class="closed-banner closed-banner--resolved" role="status">
+        <div class="closed-banner-icon" aria-hidden="true">✅</div>
+        <div class="closed-banner-copy">
+          <p class="closed-banner-title">This ticket is resolved</p>
+          <p class="closed-banner-text">
+            Review the resolution above. When you are satisfied, mark the ticket closed. If the issue is not fixed,
+            add a comment below with <strong>Reopen this ticket</strong> checked — your agent will be notified.
+          </p>
+          <UButton
+            type="button"
+            color="primary"
+            size="sm"
+            class="resolved-close-btn"
+            :loading="closingTicket"
+            :disabled="closingTicket"
+            @click="confirmCloseTicket"
+          >
+            Mark as closed
+          </UButton>
+        </div>
+      </section>
+
+      <section v-else-if="canReopenWithComment" class="closed-banner closed-banner--follow-up" role="status">
         <div class="closed-banner-icon" aria-hidden="true">💬</div>
         <div class="closed-banner-copy">
           <p class="closed-banner-title">This ticket is closed</p>
@@ -667,7 +740,7 @@ watch(canReopenWithComment, (can) => {
         </div>
       </section>
 
-      <section v-else-if="isClosedForRequester" class="closed-banner" role="status">
+      <section v-else-if="isClosedOnlyForRequester" class="closed-banner" role="status">
         <p class="closed-banner-text">
           This ticket is closed. Review the resolution above and add a comment below if you need further help.
         </p>
@@ -792,6 +865,22 @@ watch(canReopenWithComment, (can) => {
   border-radius: 4px;
   border: 1px solid #fcd34d;
   background: #fffbeb;
+}
+.closed-banner--resolved {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  border-color: #86efac;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+.closed-banner--resolved .closed-banner-title {
+  color: #14532d;
+}
+.closed-banner--resolved .closed-banner-text {
+  color: #166534;
+}
+.resolved-close-btn {
+  margin-top: 0.65rem;
 }
 .closed-banner--follow-up {
   display: flex;

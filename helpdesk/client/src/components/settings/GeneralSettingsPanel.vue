@@ -169,6 +169,8 @@ async function saveGeneral() {
       agent_monthly_report_enabled: ctx.form.agent_monthly_report_enabled,
       agent_monthly_report_email_enabled: ctx.form.agent_monthly_report_email_enabled,
       agent_monthly_report_retention_months: ctx.form.agent_monthly_report_retention_months,
+      resolved_auto_close_days: ctx.form.resolved_auto_close_days,
+      agent_open_ticket_reminder_enabled: ctx.form.agent_open_ticket_reminder_enabled,
     },
     "General settings saved.",
   )
@@ -326,10 +328,46 @@ function roleLabel(c: CandidateRow): string {
           <span class="toggle-copy">
             <strong>Allow reopen via comment &amp; email agent</strong>
             <span class="toggle-hint">
-              Enabled by default. Requesters see a “reopen this ticket” option when posting a comment on closed tickets;
+              Enabled by default. Requesters see a “reopen this ticket” option when posting a comment on closed or resolved tickets;
               agents receive the comment in their inbox.
             </span>
           </span>
+        </div>
+      </article>
+
+      <article class="settings-card settings-card--lifecycle">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">✅</span>
+          <div>
+            <h3>Ticket lifecycle (ITIL)</h3>
+            <p class="card-lede">
+              Agents <strong>resolve</strong> tickets when work is complete. Requesters may close when satisfied, or tickets auto-close after the review period.
+            </p>
+          </div>
+        </header>
+        <div class="lifecycle-grid">
+          <UFormField
+            label="Auto-close after (days)"
+            name="resolved_auto_close_days"
+            description="Days in Resolved status before automatic closure. Set 0 to disable. Requester is emailed when auto-closed."
+          >
+            <UInput
+              v-model.number="ctx.form.resolved_auto_close_days"
+              type="number"
+              min="0"
+              max="90"
+              class="w-full"
+            />
+          </UFormField>
+          <div class="toggle-row">
+            <USwitch v-model="ctx.form.agent_open_ticket_reminder_enabled" />
+            <span class="toggle-copy">
+              <strong>Daily open-ticket reminders to agents</strong>
+              <span class="toggle-hint">
+                Each morning, agents with open / in-progress assignments receive an email summary.
+              </span>
+            </span>
+          </div>
         </div>
       </article>
 
@@ -684,6 +722,11 @@ function roleLabel(c: CandidateRow): string {
   border-radius: 4px;
   border: 1px solid var(--hd-line);
   background: #f8fafc;
+}
+.lifecycle-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 .toggle-copy {
   display: flex;
