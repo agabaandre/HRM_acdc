@@ -2139,11 +2139,12 @@ public function check_work_email()
 				unset($filters[$csrf_token_name]);
 			}
 
-			$count = $this->staff_mdl->count_signature_manager_rows($filters);
-			$rows = $this->staff_mdl->get_signature_manager_rows($filters, $per_page, $start);
-			$stats = $this->staff_mdl->get_signature_manager_stats($filters);
+			$pageData = $this->staff_mdl->get_signature_manager_page($filters, $per_page, $start);
+			$rows = $pageData['rows'];
+			$count = $pageData['total'];
+			$stats = $pageData['stats'];
 
-			$scope = trim((string) ($filters['scope'] ?? 'current'));
+			$scope = trim((string) ($filters['scope'] ?? 'approvers'));
 			$approverCount = null;
 			if ($scope === 'approvers') {
 				$approverCount = count(staff_fetch_apm_approver_staff_ids());
@@ -2177,7 +2178,7 @@ public function check_work_email()
 					'stats' => $stats,
 					'approver_count' => $approverCount,
 					'csrf_hash' => $csrf_hash,
-				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
 		} catch (Throwable $e) {
 			log_message('error', 'get_signature_manager_ajax: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
 			while (ob_get_level()) {

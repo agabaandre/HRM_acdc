@@ -87,14 +87,14 @@
 					<div class="col-md-3">
 						<label for="signature_scope" class="form-label fw-bold">Staff scope</label>
 						<select id="signature_scope" name="scope" class="form-control">
-							<option value="current">Current staff (active, due, renewal)</option>
 							<option value="approvers" selected>APM approvers only</option>
+							<option value="current">All active staff</option>
 						</select>
 					</div>
 					<div class="col-md-3">
 						<label for="signature_status" class="form-label fw-bold">Signature Status</label>
 						<select id="signature_status" name="signature_status" class="form-control">
-							<option value="all">All</option>
+							<option value="all" selected>All</option>
 							<option value="valid">Valid only</option>
 							<option value="missing">Missing only</option>
 							<option value="broken">Broken file only</option>
@@ -102,7 +102,8 @@
 					</div>
 					<div class="col-md-3">
 						<div class="small text-muted">
-							<strong>APM approvers</strong> uses the same staff list as the <a href="<?= htmlspecialchars(rtrim($this->config->item('apm_base_url') ?: base_url('apm'), '/') . '/approver-dashboard') ?>" target="_blank" rel="noopener">Approver Dashboard</a>. Valid signatures are never overwritten.
+							<strong>All active staff</strong> includes everyone on active, due, or renewal contracts (with or without signatures).
+							<strong>APM approvers</strong> matches the <a href="<?= htmlspecialchars(rtrim($this->config->item('apm_base_url') ?: base_url('apm'), '/') . '/approver-dashboard') ?>" target="_blank" rel="noopener">Approver Dashboard</a>. Valid signatures are never overwritten.
 						</div>
 					</div>
 				</div>
@@ -203,4 +204,4 @@
 		signatureColor: '#3B82F6'
 	};
 </script>
-<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=3"></script>
+<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=5"></script>

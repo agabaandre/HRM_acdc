@@ -996,7 +996,13 @@ if (!function_exists('staff_signature_resolve_for_staff')) {
      */
     function staff_signature_resolve_for_staff($staff_id, $signature_value = null)
     {
+        static $requestCache = [];
         $staff_id = (int) $staff_id;
+        $cacheKey = $staff_id . '|' . staff_signature_basename($signature_value);
+        if (isset($requestCache[$cacheKey])) {
+            return $requestCache[$cacheKey];
+        }
+
         $ci = &get_instance();
         $basename = staff_signature_basename($signature_value);
 
@@ -1008,7 +1014,8 @@ if (!function_exists('staff_signature_resolve_for_staff')) {
         if ($basename !== '') {
             foreach (staff_signature_file_candidates($basename) as $path) {
                 if (is_valid_image($path)) {
-                    return ['valid' => true, 'filename' => $basename, 'path' => $path];
+                    $requestCache[$cacheKey] = ['valid' => true, 'filename' => $basename, 'path' => $path];
+                    return $requestCache[$cacheKey];
                 }
             }
         }
@@ -1017,7 +1024,7 @@ if (!function_exists('staff_signature_resolve_for_staff')) {
             $user = $ci->db->select('signature')
                 ->where('auth_staff_id', $staff_id)
                 ->where('signature IS NOT NULL', null, false)
-                ->where('TRIM(signature) <>', '', false)
+                ->where("TRIM(signature) != ''", null, false)
                 ->limit(1)
                 ->get('user')
                 ->row();
@@ -1025,13 +1032,15 @@ if (!function_exists('staff_signature_resolve_for_staff')) {
                 $userBase = staff_signature_basename($user->signature);
                 foreach (staff_signature_file_candidates($userBase) as $path) {
                     if (is_valid_image($path)) {
-                        return ['valid' => true, 'filename' => $userBase, 'path' => $path];
+                        $requestCache[$cacheKey] = ['valid' => true, 'filename' => $userBase, 'path' => $path];
+                        return $requestCache[$cacheKey];
                     }
                 }
             }
         }
 
-        return ['valid' => false, 'filename' => $basename, 'path' => ''];
+        $requestCache[$cacheKey] = ['valid' => false, 'filename' => $basename, 'path' => ''];
+        return $requestCache[$cacheKey];
     }
 }
 
@@ -1083,6 +1092,9 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids_from_db')) {
     {
         $ci = &get_instance();
         $apm = $ci->load->database('apm', true);
+        if (!$apm) {
+            return [];
+        }
 
         $wf = $apm->select('id')->where('is_active', 1)->limit(1)->get('workflows')->row();
         if (!$wf) {
@@ -1155,19 +1167,14 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids_from_db')) {
     }
 }
 
-if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
+if (!function_exists('staff_fetch_apm_approver_staff_ids_from_api')) {
     /**
-     * Staff IDs of approvers on the APM approver dashboard (active workflow).
+     * Optional HTTP fallback when APM session is available (same JSON as Approver Dashboard API).
      *
      * @return list<int>
      */
-    function staff_fetch_apm_approver_staff_ids()
+    function staff_fetch_apm_approver_staff_ids_from_api()
     {
-        static $cached = null;
-        if ($cached !== null) {
-            return $cached;
-        }
-
         $ci = &get_instance();
         $base = rtrim((string) $ci->config->item('apm_base_url'), '/');
         if ($base === '') {
@@ -1182,10 +1189,15 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
             $cookie = session_name() . '=' . session_id();
         }
 
+        if (!function_exists('curl_init')) {
+            return [];
+        }
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 20,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_HTTPHEADER => ['Accept: application/json'],
             CURLOPT_COOKIE => $cookie,
@@ -1207,8 +1219,38 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
             }
         }
 
-        if ($ids === []) {
+        return array_values(array_unique($ids));
+    }
+}
+
+if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
+    /**
+     * Staff IDs of approvers on the APM approver dashboard (active workflow).
+     *
+     * @return list<int>
+     */
+    function staff_fetch_apm_approver_staff_ids()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $ids = [];
+        try {
             $ids = staff_fetch_apm_approver_staff_ids_from_db();
+        } catch (Throwable $e) {
+            log_message('error', 'staff_fetch_apm_approver_staff_ids_from_db: ' . $e->getMessage());
+            $ids = [];
+        }
+
+        if ($ids === []) {
+            try {
+                $ids = staff_fetch_apm_approver_staff_ids_from_api();
+            } catch (Throwable $e) {
+                log_message('error', 'staff_fetch_apm_approver_staff_ids_from_api: ' . $e->getMessage());
+                $ids = [];
+            }
         }
 
         $cached = array_values(array_unique($ids));

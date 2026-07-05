@@ -131,7 +131,7 @@
   function collectFilters() {
     var staffName = ($('#staff_name').val() || '').trim();
     var status = $('#signature_status').val() || 'all';
-    var scope = $('#signature_scope').val() || 'current';
+    var scope = $('#signature_scope').val() || 'approvers';
     var filters = {
       signature_status: status,
       scope: scope,
@@ -187,23 +187,38 @@
       data: postData,
       dataType: 'json',
       success: function (response) {
-        if (response.html !== undefined) {
+        if (response && response.error) {
+          setBulkStatus(response.message || 'Could not load data.');
+        }
+        if (response && response.html !== undefined) {
           $('#signatureManagerBody').html(response.html);
         }
-        if (response.csrf_hash) {
+        if (response && response.csrf_hash) {
           cfg.csrfHash = response.csrf_hash;
         }
-        updateStats(response.stats);
+        if (response && response.stats) {
+          updateStats(response.stats);
+        }
         generatePagination(response.total || 0, response.page || 0, response.per_page || currentPerPage, response.records || 0);
         generated = Object.create(null);
         updateUploadButtonState();
         $('#sigManagerSelectAll').prop('checked', false);
-        if (response.approver_count != null && $('#signature_scope').val() === 'approvers') {
+        if (response && response.approver_count != null && $('#signature_scope').val() === 'approvers') {
           setBulkStatus(response.approver_count + ' APM approver(s) in scope');
+        } else if ($('#signature_scope').val() === 'current' && response && response.stats) {
+          setBulkStatus(response.stats.total + ' active staff in scope');
         }
       },
-      error: function () {
-        $('#signatureManagerBody').html('<tr><td colspan="7" class="text-center text-danger">Error loading data. Please try again.</td></tr>');
+      error: function (xhr) {
+        var msg = 'Error loading data. Please try again.';
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+          msg = xhr.responseJSON.message;
+        } else if (xhr.responseText && xhr.responseText.indexOf('not allowed') !== -1) {
+          msg = 'Session expired or CSRF rejected — refresh the page and try again.';
+        } else if (xhr.status === 403) {
+          msg = 'You do not have permission to view Signature Manager.';
+        }
+        $('#signatureManagerBody').html('<tr><td colspan="7" class="text-center text-danger">' + msg + '</td></tr>');
       }
     });
   }

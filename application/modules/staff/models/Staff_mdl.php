@@ -1456,9 +1456,17 @@ public function getBirthdays($days)
 	 * @param  array  $filters  staff_name, signature_status (all|valid|missing|broken)
 	 * @return array
 	 */
+	private function _signature_manager_latest_contract_subquery_sql()
+	{
+		return $this->db->select('MAX(staff_contract_id)', false)
+			->from('staff_contracts')
+			->group_by('staff_id')
+			->get_compiled_select();
+	}
+
 	private function _build_signature_manager_rows($filters = [])
 	{
-		$scope = trim((string) ($filters['scope'] ?? 'current'));
+		$scope = trim((string) ($filters['scope'] ?? 'approvers'));
 		$approverIds = null;
 		if ($scope === 'approvers') {
 			if (!empty($filters['approver_staff_ids']) && is_array($filters['approver_staff_ids'])) {
@@ -1470,6 +1478,11 @@ public function getBirthdays($days)
 				return [];
 			}
 		}
+
+		// Must compile before outer SELECT — get_compiled_select() resets the query builder.
+		$latestContractSubSql = ($scope !== 'approvers')
+			? $this->_signature_manager_latest_contract_subquery_sql()
+			: null;
 
 		$this->db->select('
 			s.staff_id,
@@ -1486,14 +1499,8 @@ public function getBirthdays($days)
 		if ($scope === 'approvers') {
 			$this->db->where_in('s.staff_id', $approverIds);
 		} else {
-			$subquery = $this->db
-				->select('MAX(staff_contract_id)')
-				->from('staff_contracts')
-				->group_by('staff_id')
-				->get_compiled_select();
-
 			$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
-			$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+			$this->db->where("sc.staff_contract_id IN ($latestContractSubSql)", null, false);
 			$this->db->where_in('sc.status_id', [1, 2, 7]);
 		}
 
@@ -1571,6 +1578,35 @@ public function getBirthdays($days)
 			}
 		}
 		return $stats;
+	}
+
+	/**
+	 * Build signature manager rows, stats, and pagination slice in one pass.
+	 *
+	 * @return array{rows: array, stats: array, total: int}
+	 */
+	public function get_signature_manager_page($filters = [], $limit = false, $start = false)
+	{
+		$allRows = $this->_build_signature_manager_rows($filters);
+		$stats = ['total' => 0, 'valid' => 0, 'missing' => 0, 'broken' => 0];
+		foreach ($allRows as $r) {
+			$stats['total']++;
+			$key = $r->signature_status ?? 'missing';
+			if (isset($stats[$key])) {
+				$stats[$key]++;
+			}
+		}
+
+		$rows = $allRows;
+		if ($limit !== false && $start !== false) {
+			$rows = array_slice($allRows, (int) $start, (int) $limit);
+		}
+
+		return [
+			'rows' => $rows,
+			'stats' => $stats,
+			'total' => count($allRows),
+		];
 	}
 
 
