@@ -1223,20 +1223,151 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids_from_api')) {
     }
 }
 
-if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
-    /**
-     * Staff IDs of approvers on the APM approver dashboard (active workflow).
-     *
-     * @return list<int>
-     */
-    function staff_fetch_apm_approver_staff_ids()
+if (!function_exists('staff_apm_approver_cache_path')) {
+    function staff_apm_approver_cache_path()
     {
-        static $cached = null;
-        if ($cached !== null) {
-            return $cached;
+        return APPPATH . 'cache/apm_approver_staff_ids.json';
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_ttl')) {
+    /** Cache TTL in seconds (1 hour). */
+    function staff_apm_approver_cache_ttl()
+    {
+        return 3600;
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_read')) {
+    /**
+     * @return array{staff_ids: list<int>, updated_at: int, source: string, count: int}|null
+     */
+    function staff_apm_approver_cache_read()
+    {
+        $path = staff_apm_approver_cache_path();
+        if (!is_readable($path)) {
+            return null;
+        }
+        $raw = @file_get_contents($path);
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data) || empty($data['staff_ids']) || !is_array($data['staff_ids'])) {
+            return null;
+        }
+        $ids = [];
+        foreach ($data['staff_ids'] as $id) {
+            $id = (int) $id;
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        if ($ids === []) {
+            return null;
         }
 
+        return [
+            'staff_ids' => array_values(array_unique($ids)),
+            'updated_at' => (int) ($data['updated_at'] ?? 0),
+            'source' => (string) ($data['source'] ?? 'unknown'),
+            'count' => count($ids),
+        ];
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_is_stale')) {
+    function staff_apm_approver_cache_is_stale($updatedAt = null)
+    {
+        if ($updatedAt === null) {
+            $cached = staff_apm_approver_cache_read();
+            if ($cached === null) {
+                return true;
+            }
+            $updatedAt = (int) ($cached['updated_at'] ?? 0);
+        }
+        if ($updatedAt <= 0) {
+            return true;
+        }
+
+        return (time() - $updatedAt) >= staff_apm_approver_cache_ttl();
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_meta')) {
+    /**
+     * @return array{count: int, updated_at: int|null, updated_at_label: string, source: string, stale: bool}
+     */
+    function staff_apm_approver_cache_meta()
+    {
+        $cached = staff_apm_approver_cache_read();
+        if ($cached === null) {
+            return [
+                'count' => 0,
+                'updated_at' => null,
+                'updated_at_label' => 'Never',
+                'source' => '',
+                'stale' => true,
+            ];
+        }
+        $updatedAt = (int) ($cached['updated_at'] ?? 0);
+        $label = $updatedAt > 0 ? date('d M Y H:i', $updatedAt) : 'Unknown';
+
+        return [
+            'count' => (int) ($cached['count'] ?? count($cached['staff_ids'])),
+            'updated_at' => $updatedAt > 0 ? $updatedAt : null,
+            'updated_at_label' => $label,
+            'source' => (string) ($cached['source'] ?? ''),
+            'stale' => staff_apm_approver_cache_is_stale($updatedAt),
+        ];
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_write')) {
+    /**
+     * @param  list<int>  $staffIds
+     * @return bool
+     */
+    function staff_apm_approver_cache_write(array $staffIds, $source = 'db')
+    {
+        $staffIds = array_values(array_unique(array_filter(array_map('intval', $staffIds), static function ($id) {
+            return $id > 0;
+        })));
+        sort($staffIds);
+        if ($staffIds === []) {
+            return false;
+        }
+
+        $path = staff_apm_approver_cache_path();
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if (!is_dir($dir) || !is_really_writable($dir)) {
+            return false;
+        }
+
+        $payload = [
+            'staff_ids' => $staffIds,
+            'updated_at' => time(),
+            'source' => (string) $source,
+            'count' => count($staffIds),
+        ];
+
+        return @file_put_contents($path, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) !== false;
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_fetch_fresh')) {
+    /**
+     * Load approver staff IDs from APM DB, then API if needed.
+     *
+     * @return array{staff_ids: list<int>, source: string}
+     */
+    function staff_apm_approver_cache_fetch_fresh()
+    {
         $ids = [];
+        $source = 'db';
         try {
             $ids = staff_fetch_apm_approver_staff_ids_from_db();
         } catch (Throwable $e) {
@@ -1247,15 +1378,117 @@ if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
         if ($ids === []) {
             try {
                 $ids = staff_fetch_apm_approver_staff_ids_from_api();
+                $source = 'api';
             } catch (Throwable $e) {
                 log_message('error', 'staff_fetch_apm_approver_staff_ids_from_api: ' . $e->getMessage());
                 $ids = [];
             }
         }
 
-        $cached = array_values(array_unique($ids));
+        return [
+            'staff_ids' => array_values(array_unique($ids)),
+            'source' => $source,
+        ];
+    }
+}
 
-        return $cached;
+if (!function_exists('staff_apm_approver_cache_refresh')) {
+    /**
+     * Refresh approver cache from APM DB/API.
+     *
+     * @return array{ok: bool, staff_ids: list<int>, source: string, count: int, updated_at: int, message: string}
+     */
+    function staff_apm_approver_cache_refresh($force = false)
+    {
+        if (!$force && !staff_apm_approver_cache_is_stale()) {
+            $cached = staff_apm_approver_cache_read();
+
+            return [
+                'ok' => true,
+                'staff_ids' => $cached['staff_ids'] ?? [],
+                'source' => $cached['source'] ?? '',
+                'count' => (int) ($cached['count'] ?? 0),
+                'updated_at' => (int) ($cached['updated_at'] ?? 0),
+                'message' => 'Cache is still fresh.',
+            ];
+        }
+
+        $fresh = staff_apm_approver_cache_fetch_fresh();
+        $ids = $fresh['staff_ids'];
+        if ($ids === []) {
+            $cached = staff_apm_approver_cache_read();
+
+            return [
+                'ok' => false,
+                'staff_ids' => $cached['staff_ids'] ?? [],
+                'source' => $cached['source'] ?? '',
+                'count' => (int) ($cached['count'] ?? 0),
+                'updated_at' => (int) ($cached['updated_at'] ?? 0),
+                'message' => 'Could not load approvers from APM.',
+            ];
+        }
+
+        staff_apm_approver_cache_write($ids, $fresh['source']);
+        $cached = staff_apm_approver_cache_read();
+
+        return [
+            'ok' => true,
+            'staff_ids' => $ids,
+            'source' => $fresh['source'],
+            'count' => count($ids),
+            'updated_at' => (int) ($cached['updated_at'] ?? time()),
+            'message' => 'Approver list updated (' . count($ids) . ' staff).',
+        ];
+    }
+}
+
+if (!function_exists('staff_apm_approver_cache_schedule_background_refresh')) {
+    /** Queue a cache refresh after the HTTP response (stale-while-revalidate). */
+    function staff_apm_approver_cache_schedule_background_refresh()
+    {
+        static $scheduled = false;
+        if ($scheduled || !staff_apm_approver_cache_is_stale()) {
+            return;
+        }
+        $scheduled = true;
+        register_shutdown_function(static function () {
+            try {
+                staff_apm_approver_cache_refresh(true);
+            } catch (Throwable $e) {
+                log_message('error', 'staff_apm_approver_cache background refresh: ' . $e->getMessage());
+            }
+        });
+    }
+}
+
+if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
+    /**
+     * Staff IDs of approvers on the APM approver dashboard (active workflow).
+     * Reads from file cache; refreshes in background when stale.
+     *
+     * @return list<int>
+     */
+    function staff_fetch_apm_approver_staff_ids()
+    {
+        static $requestCached = null;
+        if ($requestCached !== null) {
+            return $requestCached;
+        }
+
+        $cached = staff_apm_approver_cache_read();
+        if ($cached !== null && !empty($cached['staff_ids'])) {
+            if (staff_apm_approver_cache_is_stale((int) ($cached['updated_at'] ?? 0))) {
+                staff_apm_approver_cache_schedule_background_refresh();
+            }
+            $requestCached = $cached['staff_ids'];
+
+            return $requestCached;
+        }
+
+        $result = staff_apm_approver_cache_refresh(true);
+        $requestCached = $result['staff_ids'] ?? [];
+
+        return $requestCached;
     }
 }
 
@@ -1367,6 +1600,38 @@ if (!function_exists('staff_save_signature_from_data_url')) {
         }
 
         return $filename;
+    }
+}
+
+if (!function_exists('staff_delete_signature_file')) {
+    /**
+     * Remove a signature image from disk (both legacy and standard paths).
+     */
+    function staff_delete_signature_file($filename)
+    {
+        $basename = staff_signature_basename($filename);
+        if ($basename === '') {
+            return;
+        }
+        foreach (staff_signature_file_candidates($basename) as $path) {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+}
+
+if (!function_exists('staff_signature_may_replace')) {
+    /**
+     * True when a new signature may be saved (missing/broken, or explicit override).
+     */
+    function staff_signature_may_replace($staff_id, $allow_override = false)
+    {
+        if ($allow_override) {
+            return true;
+        }
+
+        return !staff_signature_resolve_for_staff((int) $staff_id)['valid'];
     }
 }
 

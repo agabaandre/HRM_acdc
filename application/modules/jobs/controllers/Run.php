@@ -29,6 +29,7 @@ class Run extends MX_Controller
      * - mark_due_contracts / staff_birthday: daily at hour:minute, or false.
      * - staff_profile_completion_reminder: once daily (cron) — queue profile reminder at most every 2 days per staff.
      * - manage_accounts_hourly_minute: every hour at this minute, or null to disable.
+     * - apm_approver_staff_ids_cache_interval_minutes: refresh Signature Manager approver cache every N minutes (default 60).
      * - user_logs_prune_get_access: weekly (default Tuesday 00:00 server local time) — deletes user_logs GET access rows; requires extended audit columns. Spec may include weekday (0=Sun … 6=Sat, PHP date('w')).
      */
     private function tick_schedule()
@@ -115,6 +116,15 @@ class Run extends MX_Controller
         if ($this->tick_match_clock($s['user_logs_prune_get_access'] ?? false, $hour, $minute, $dow)) {
             echo "  → user_logs_prune_get_access\n";
             Modules::run('jobs/jobs/prune_user_logs_get_access');
+        }
+
+        $apmCacheInterval = isset($s['apm_approver_staff_ids_cache_interval_minutes'])
+            ? (int) $s['apm_approver_staff_ids_cache_interval_minutes']
+            : 0;
+        if ($apmCacheInterval > 0 && ($minute % $apmCacheInterval === 0)) {
+            echo "  → apm_approver_staff_ids_cache (interval {$apmCacheInterval}m)\n";
+            $result = staff_apm_approver_cache_refresh(true);
+            echo '    ' . ($result['message'] ?? 'done') . "\n";
         }
 
         echo "  done.\n";

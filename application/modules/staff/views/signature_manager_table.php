@@ -13,7 +13,6 @@ $row_number = ($page * $per_page) + 1;
 	$staff_id = (int) ($row->staff_id ?? 0);
 	$status = (string) ($row->signature_status ?? 'missing');
 	$is_valid = ($status === 'valid');
-	$can_generate = !$is_valid;
 	$sig_url = $is_valid ? staff_secure_upload_url('signature', $row->signature ?? '') : '';
 	$sig_text = htmlspecialchars((string) ($row->signature_text ?? ''), ENT_QUOTES, 'UTF-8');
 	?>
@@ -24,10 +23,10 @@ $row_number = ($page * $per_page) + 1;
 		data-signature-text="<?= $sig_text ?>"
 	>
 		<td>
-			<?php if ($can_generate) : ?>
+			<?php if (!$is_valid) : ?>
 				<input type="checkbox" class="form-check-input sig-manager-select" value="<?= $staff_id ?>" aria-label="Select for bulk generate">
 			<?php else : ?>
-				<span class="text-muted" title="Valid signature on file">—</span>
+				<input type="checkbox" class="form-check-input sig-manager-select sig-manager-select-override d-none" value="<?= $staff_id ?>" aria-label="Select for bulk replace" disabled>
 			<?php endif; ?>
 		</td>
 		<td><?= $row_number++ ?></td>
@@ -60,8 +59,11 @@ $row_number = ($page * $per_page) + 1;
 		</td>
 		<td class="sig-manager-preview-cell">
 			<?php if ($is_valid && $sig_url !== '') : ?>
-				<div class="sig-manager-preview-box sig-manager-preview-saved">
+				<div class="sig-manager-preview-box sig-manager-preview-saved" data-saved-preview-for="<?= $staff_id ?>">
 					<img src="<?= htmlspecialchars($sig_url) ?>" alt="Signature" loading="lazy">
+				</div>
+				<div class="sig-manager-preview-box sig-manager-preview-generated d-none" data-preview-for="<?= $staff_id ?>">
+					<img src="" alt="Generated signature preview" class="sig-manager-generated-img">
 				</div>
 			<?php else : ?>
 				<div class="sig-manager-preview-box sig-manager-preview-generated d-none" data-preview-for="<?= $staff_id ?>">
@@ -71,19 +73,21 @@ $row_number = ($page * $per_page) + 1;
 			<?php endif; ?>
 		</td>
 		<td>
-			<?php if ($can_generate) : ?>
-				<div class="d-flex flex-column gap-1">
-					<button type="button" class="btn btn-sm btn-outline-primary sig-manager-generate-one" data-staff-id="<?= $staff_id ?>">
-						<i class="fa fa-pen-nib me-1"></i> Generate
-					</button>
-					<label class="btn btn-sm btn-outline-secondary mb-0 sig-manager-upload-label">
-						<i class="fa fa-file-image me-1"></i> Upload file
-						<input type="file" class="d-none sig-manager-upload-input" accept="image/*" data-staff-id="<?= $staff_id ?>">
-					</label>
-				</div>
-			<?php else : ?>
-				<span class="text-muted small">Protected</span>
-			<?php endif; ?>
+			<div class="d-flex flex-column gap-1">
+				<?php if ($is_valid) : ?>
+					<div class="form-check mb-0">
+						<input type="checkbox" class="form-check-input sig-manager-override" id="sigOverride<?= $staff_id ?>" data-staff-id="<?= $staff_id ?>" aria-label="Replace existing signature">
+						<label class="form-check-label small" for="sigOverride<?= $staff_id ?>">Replace existing</label>
+					</div>
+				<?php endif; ?>
+				<button type="button" class="btn btn-sm btn-outline-primary sig-manager-generate-one" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
+					<i class="fa fa-pen-nib me-1"></i> Generate
+				</button>
+				<label class="btn btn-sm btn-outline-secondary mb-0 sig-manager-upload-label<?= $is_valid ? ' disabled' : '' ?>">
+					<i class="fa fa-file-image me-1"></i> Upload file
+					<input type="file" class="d-none sig-manager-upload-input" accept="image/*" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
+				</label>
+			</div>
 		</td>
 	</tr>
 	<?php endforeach; ?>

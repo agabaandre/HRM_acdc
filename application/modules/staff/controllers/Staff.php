@@ -2146,8 +2146,10 @@ public function check_work_email()
 
 			$scope = trim((string) ($filters['scope'] ?? 'approvers'));
 			$approverCount = null;
+			$approverCache = null;
 			if ($scope === 'approvers') {
 				$approverCount = count(staff_fetch_apm_approver_staff_ids());
+				$approverCache = staff_apm_approver_cache_meta();
 			}
 
 			$data = [
@@ -2177,6 +2179,7 @@ public function check_work_email()
 					'records' => $count,
 					'stats' => $stats,
 					'approver_count' => $approverCount,
+					'approver_cache' => $approverCache,
 					'csrf_hash' => $csrf_hash,
 				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
 		} catch (Throwable $e) {
@@ -2195,6 +2198,43 @@ public function check_work_email()
 					'per_page' => 20,
 					'records' => 0,
 					'stats' => ['total' => 0, 'valid' => 0, 'missing' => 0, 'broken' => 0],
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		}
+	}
+
+	/**
+	 * Refresh cached APM approver staff IDs (Signature Manager).
+	 */
+	public function refresh_apm_approver_cache_ajax()
+	{
+		if (!can_access('71')) {
+			$this->output
+				->set_status_header(403)
+				->set_content_type('application/json')
+				->set_output(json_encode(['error' => true, 'message' => 'Forbidden']));
+			return;
+		}
+
+		try {
+			$result = staff_apm_approver_cache_refresh(true);
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => !$result['ok'],
+					'message' => $result['message'],
+					'approver_cache' => staff_apm_approver_cache_meta(),
+					'approver_count' => (int) ($result['count'] ?? 0),
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE));
+		} catch (Throwable $e) {
+			log_message('error', 'refresh_apm_approver_cache_ajax: ' . $e->getMessage());
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Could not refresh approver cache.',
+					'approver_cache' => staff_apm_approver_cache_meta(),
 					'csrf_hash' => $this->security->get_csrf_hash(),
 				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 		}
@@ -2239,6 +2279,7 @@ public function check_work_email()
 			}
 			$staff_id = (int) ($item['staff_id'] ?? 0);
 			$dataUrl = trim((string) ($item['signature_data_url'] ?? ''));
+			$allow_override = !empty($item['allow_override']);
 			if ($staff_id <= 0 || $dataUrl === '') {
 				$failed++;
 				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Invalid payload'];
@@ -2252,11 +2293,14 @@ public function check_work_email()
 				continue;
 			}
 
-			if (staff_signature_resolve_for_staff($staff_id)['valid']) {
+			$existing = staff_signature_resolve_for_staff($staff_id);
+			if (!$allow_override && $existing['valid']) {
 				$skipped++;
 				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'skipped' => true, 'message' => 'Valid signature already on file — not changed'];
 				continue;
 			}
+
+			$oldFilename = $existing['valid'] ? ($existing['filename'] ?? '') : staff_signature_basename($staff->signature ?? '');
 
 			$safe_name = str_replace(' ', '_', preg_replace(
 				'/[^a-zA-Z0-9_\-.]/',
@@ -2283,6 +2327,10 @@ public function check_work_email()
 				$failed++;
 				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Database update failed'];
 				continue;
+			}
+
+			if ($allow_override && $oldFilename !== '' && $oldFilename !== $filename) {
+				staff_delete_signature_file($oldFilename);
 			}
 
 			$saved++;
@@ -2320,6 +2368,7 @@ public function check_work_email()
 		}
 
 		$staff_id = (int) $this->input->post('staff_id');
+		$allow_override = (bool) $this->input->post('allow_override');
 		if ($staff_id <= 0) {
 			$this->output
 				->set_content_type('application/json')
@@ -2331,12 +2380,13 @@ public function check_work_email()
 			return;
 		}
 
-		if (staff_signature_resolve_for_staff($staff_id)['valid']) {
+		$existing = staff_signature_resolve_for_staff($staff_id);
+		if (!$allow_override && $existing['valid']) {
 			$this->output
 				->set_content_type('application/json')
 				->set_output(json_encode([
 					'error' => true,
-					'message' => 'Valid signature already on file — not changed',
+					'message' => 'Valid signature already on file — check Replace existing to override',
 					'csrf_hash' => $this->security->get_csrf_hash(),
 				]));
 			return;
@@ -2440,6 +2490,10 @@ public function check_work_email()
 					'csrf_hash' => $this->security->get_csrf_hash(),
 				]));
 			return;
+		}
+
+		if ($allow_override && $existing['valid'] && !empty($existing['filename']) && $existing['filename'] !== $filename) {
+			staff_delete_signature_file($existing['filename']);
 		}
 
 		$this->output

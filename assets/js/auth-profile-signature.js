@@ -6,19 +6,29 @@
   'use strict';
 
   var SIGNATURE_FONT_URL = 'https://cdn.jsdelivr.net/npm/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff';
-  var SIGNATURE_FONT_SPEC = 'italic 58px SignatureFont';
+  var SIGNATURE_FONT_FAMILY = 'SignatureFont';
+  var SIGNATURE_EXPORT_WIDTH = 380;
+  var SIGNATURE_EXPORT_WIDTH_LARGE = Math.round(SIGNATURE_EXPORT_WIDTH * 1.2);
+  var SIGNATURE_EXPORT_HEIGHT = 169;
+  var SIGNATURE_CANVAS_HEIGHT = 169;
+  var SIGNATURE_PADDING = 2;
   var DEFAULT_SIGNATURE_COLOR = '#3B82F6';
 
+  function signatureFontSpec(sizePx) {
+    return 'italic ' + sizePx + 'px ' + SIGNATURE_FONT_FAMILY;
+  }
+
   /** Ensure Dancing Script is loaded before typed signature is drawn. */
-  function waitForSignatureFont() {
+  function waitForSignatureFont(sizePx) {
+    var spec = signatureFontSpec(sizePx || Math.floor((SIGNATURE_EXPORT_HEIGHT - SIGNATURE_PADDING * 2) * 0.92));
     if (typeof document === 'undefined' || !document.fonts) {
       return Promise.resolve();
     }
-    return document.fonts.load(SIGNATURE_FONT_SPEC).catch(function () {
+    return document.fonts.load(spec).catch(function () {
       if (typeof FontFace === 'undefined') {
         return document.fonts.ready;
       }
-      return new FontFace('SignatureFont', 'url(' + SIGNATURE_FONT_URL + ')')
+      return new FontFace(SIGNATURE_FONT_FAMILY, 'url(' + SIGNATURE_FONT_URL + ')', { style: 'italic', weight: '400' })
         .load()
         .then(function (face) {
           document.fonts.add(face);
@@ -29,17 +39,183 @@
     });
   }
 
+  /** Use +20% width when name does not fit at full height on the standard canvas. */
+  function resolveTypedExportWidth(name, startSize) {
+    var probe = document.createElement('canvas').getContext('2d');
+    probe.font = signatureFontSpec(startSize);
+    var innerBase = SIGNATURE_EXPORT_WIDTH - (SIGNATURE_PADDING * 2);
+    if (probe.measureText(name).width > innerBase) {
+      return SIGNATURE_EXPORT_WIDTH_LARGE;
+    }
+    return SIGNATURE_EXPORT_WIDTH;
+  }
+
+  /** Typed signature at standard export size (~2px padding). */
+  function generateTypedSignatureExport(text, color) {
+    var name = (text || '').trim();
+    if (!name) {
+      return Promise.reject(new Error('Empty signature text'));
+    }
+    var innerH = SIGNATURE_EXPORT_HEIGHT - (SIGNATURE_PADDING * 2);
+    var startSize = Math.floor(innerH * 0.92);
+    return waitForSignatureFont(startSize).then(function () {
+      var exportWidth = resolveTypedExportWidth(name, startSize);
+      var innerW = exportWidth - (SIGNATURE_PADDING * 2);
+      var canvas = document.createElement('canvas');
+      var scale = 2;
+      canvas.width = exportWidth * scale;
+      canvas.height = SIGNATURE_EXPORT_HEIGHT * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.clearRect(0, 0, exportWidth, SIGNATURE_EXPORT_HEIGHT);
+      ctx.fillStyle = color || DEFAULT_SIGNATURE_COLOR;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var fontSize = startSize;
+      while (fontSize >= 16) {
+        ctx.font = signatureFontSpec(fontSize);
+        if (ctx.measureText(name).width <= innerW) {
+          break;
+        }
+        fontSize -= 2;
+      }
+      ctx.font = signatureFontSpec(fontSize);
+      ctx.fillText(name, exportWidth / 2, SIGNATURE_EXPORT_HEIGHT / 2);
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            reject(new Error('PNG conversion failed'));
+            return;
+          }
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve({
+              blob: blob,
+              dataUrl: typeof reader.result === 'string' ? reader.result : '',
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }, 'image/png');
+      });
+    });
+  }
+
+  /** Scale drawn/uploaded signature to standard export dimensions. */
+  function normalizeImageToExportSize(dataUrl, blob) {
+    return new Promise(function (resolve, reject) {
+      var source = blob || dataUrlToBlob(dataUrl);
+      if (!source) {
+        reject(new Error('No signature source'));
+        return;
+      }
+      var url = URL.createObjectURL(source);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var canvas = document.createElement('canvas');
+        var scale = 2;
+        canvas.width = SIGNATURE_EXPORT_WIDTH * scale;
+        canvas.height = SIGNATURE_EXPORT_HEIGHT * scale;
+        var ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.clearRect(0, 0, SIGNATURE_EXPORT_WIDTH, SIGNATURE_EXPORT_HEIGHT);
+        var pad = SIGNATURE_PADDING;
+        var innerW = SIGNATURE_EXPORT_WIDTH - pad * 2;
+        var innerH = SIGNATURE_EXPORT_HEIGHT - pad * 2;
+        var imgW = img.naturalWidth || img.width;
+        var imgH = img.naturalHeight || img.height;
+        if (!imgW || !imgH) {
+          reject(new Error('Invalid signature dimensions'));
+          return;
+        }
+        var fit = Math.min(innerW / imgW, innerH / imgH);
+        var drawW = imgW * fit;
+        var drawH = imgH * fit;
+        ctx.drawImage(img, (SIGNATURE_EXPORT_WIDTH - drawW) / 2, (SIGNATURE_EXPORT_HEIGHT - drawH) / 2, drawW, drawH);
+        canvas.toBlob(function (pngBlob) {
+          if (!pngBlob) {
+            reject(new Error('PNG conversion failed'));
+            return;
+          }
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve({
+              blob: pngBlob,
+              dataUrl: typeof reader.result === 'string' ? reader.result : '',
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(pngBlob);
+        }, 'image/png');
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load signature image'));
+      };
+      img.src = url;
+    });
+  }
+
+  /** True when the Type tab panel is visible in signature-maker. */
+  function isTypeSignatureModeActive(maker) {
+    if (!maker) {
+      return false;
+    }
+    var textInput = maker.querySelector('[data-target="textInput"]');
+    return !!(textInput && textInput.offsetParent !== null);
+  }
+
+  /** Repaint typed preview on modal canvas (~169px tall, ~2px padding). */
+  function paintTypedPreviewOnMaker(maker, text, color) {
+    var name = (text || '').trim();
+    if (!maker || !name) {
+      return Promise.resolve();
+    }
+    var canvas = maker.querySelector('canvas');
+    if (!canvas) {
+      return Promise.resolve();
+    }
+    var displayW = canvas.clientWidth || canvas.offsetWidth || SIGNATURE_EXPORT_WIDTH;
+    var displayH = canvas.clientHeight || canvas.offsetHeight || SIGNATURE_CANVAS_HEIGHT;
+    var pad = SIGNATURE_PADDING;
+    var innerH = displayH - pad * 2;
+    var innerW = displayW - pad * 2;
+    var startSize = Math.floor(innerH * 0.92);
+    return waitForSignatureFont(startSize).then(function () {
+      var ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.round(displayW * ratio);
+      canvas.height = Math.round(displayH * ratio);
+      var ctx = canvas.getContext('2d');
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, displayW, displayH);
+      ctx.fillStyle = color || DEFAULT_SIGNATURE_COLOR;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var fontSize = startSize;
+      while (fontSize >= 12) {
+        ctx.font = signatureFontSpec(fontSize);
+        if (ctx.measureText(name).width <= innerW) {
+          break;
+        }
+        fontSize -= 2;
+      }
+      ctx.font = signatureFontSpec(fontSize);
+      ctx.fillText(name, displayW / 2, displayH / 2);
+    });
+  }
+
   function applyTypeSignature(maker, text, color) {
     if (!maker) {
       return Promise.resolve();
     }
-    return waitForSignatureFont().then(function () {
+    var pickColor = color || DEFAULT_SIGNATURE_COLOR;
+    return waitForSignatureFont(Math.floor((SIGNATURE_CANVAS_HEIGHT - SIGNATURE_PADDING * 2) * 0.92)).then(function () {
       var textInput = maker.querySelector('[data-target="textInput"]');
       if (textInput && text) {
         textInput.value = text;
         textInput.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      var pickColor = color || DEFAULT_SIGNATURE_COLOR;
       var colorRadio = maker.querySelector(
         'input[data-target="colorInput"][value="' + pickColor + '"]'
       );
@@ -47,6 +223,7 @@
         colorRadio.checked = true;
         colorRadio.dispatchEvent(new Event('change', { bubbles: true }));
       }
+      return paintTypedPreviewOnMaker(maker, text || (textInput && textInput.value), pickColor);
     });
   }
 
@@ -158,7 +335,7 @@
   }
 
   function initProfileSignatureApp() {
-    waitForSignatureFont();
+    waitForSignatureFont(Math.floor((SIGNATURE_EXPORT_HEIGHT - SIGNATURE_PADDING * 2) * 0.92));
 
     var mountEl = document.getElementById('profile-signature-app');
     if (!mountEl || !window.Vue || !window.Vuetify) {
@@ -271,6 +448,7 @@
             textInput.addEventListener('input', function () {
               if (textInput.value) {
                 makerSessionState.text = textInput.value;
+                paintTypedPreviewOnMaker(maker, textInput.value, makerSessionState.color);
               }
             });
           }
@@ -279,6 +457,10 @@
             radio.addEventListener('change', function () {
               if (radio.checked) {
                 makerSessionState.color = radio.value;
+                var textInput = maker.querySelector('[data-target="textInput"]');
+                if (textInput && textInput.value.trim()) {
+                  paintTypedPreviewOnMaker(maker, textInput.value.trim(), radio.value);
+                }
               }
             });
           });
@@ -456,7 +638,28 @@
           }
 
           try {
-            var png = await ensurePngSignature(dataUrl, blob);
+            var maker = getMakerEl();
+            var typedText = '';
+            var typedColor = makerSessionState.color || DEFAULT_SIGNATURE_COLOR;
+            if (maker && isTypeSignatureModeActive(maker)) {
+              var textInput = maker.querySelector('[data-target="textInput"]');
+              if (textInput && textInput.value.trim()) {
+                typedText = textInput.value.trim();
+              }
+            }
+
+            var png;
+            if (typedText) {
+              png = await generateTypedSignatureExport(typedText, typedColor);
+            } else {
+              var interim = await ensurePngSignature(dataUrl, blob);
+              if (!interim || !interim.dataUrl) {
+                applyError.value = 'Could not convert signature to PNG. Please try again.';
+                return;
+              }
+              png = await normalizeImageToExportSize(interim.dataUrl, interim.blob);
+            }
+
             if (!png || !png.dataUrl || !png.blob) {
               applyError.value = 'Could not convert signature to PNG. Please try again.';
               return;
@@ -613,7 +816,7 @@
                   ' data-text-type-button-style="font-size:0.8125rem;padding:0.45rem 0.85rem;white-space:nowrap;"' +
                   ' data-upload-type-button-style="font-size:0.8125rem;padding:0.45rem 0.85rem;white-space:nowrap;"' +
                   ' data-canvas-class="profile-signature-canvas bg-white border rounded-lg w-100"' +
-                  ' data-canvas-style="display:block;width:100%;height:110px;max-height:110px;border-radius:8px;background-color:#ffffff;border:1px solid #D3D3D3;"' +
+                  ' data-canvas-style="display:block;width:100%;height:169px;max-height:169px;border-radius:8px;background-color:#ffffff;border:1px solid #D3D3D3;"' +
                 '></signature-maker>' +
                 '<v-alert v-if="applyError" type="warning" variant="tonal" density="compact" class="mt-3 mb-0">' +
                   ' {{ applyError }}' +

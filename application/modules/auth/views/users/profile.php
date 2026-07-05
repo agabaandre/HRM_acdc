@@ -141,13 +141,13 @@ $has_saved_signature = ($signature_url !== '');
     background-color: #fff;
   }
   #profile-signature-app .profile-signature-canvas {
-    height: 110px !important;
-    max-height: 110px !important;
-    min-height: 110px !important;
+    height: 169px !important;
+    max-height: 169px !important;
+    min-height: 169px !important;
   }
   #profile-signature-app signature-maker canvas {
-    height: 110px !important;
-    max-height: 110px !important;
+    height: 169px !important;
+    max-height: 169px !important;
   }
   #profile-signature-app signature-maker [data-target="canvas"] {
     min-height: 0 !important;
@@ -722,4 +722,4 @@ $has_saved_signature = ($signature_url !== '');
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@docuseal/signature-maker-js/dist/index.cjs.min.js"></script>
-<script src="<?= base_url('assets/js/auth-profile-signature.js') ?>?v=6"></script>
+<script src="<?= base_url('assets/js/auth-profile-signature.js') ?>?v=9"></script>

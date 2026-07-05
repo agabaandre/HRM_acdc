@@ -20,7 +20,7 @@
 		max-width: 220px;
 	}
 	.sig-manager-preview-box img {
-		max-height: 52px;
+		max-height: 72px;
 		max-width: 200px;
 		display: block;
 	}
@@ -37,7 +37,7 @@
 			<div>
 				<h5 class="mb-1">Signature Manager</h5>
 				<p class="text-muted small mb-0">
-					Current staff with valid signatures are protected. Generate typed signatures from staff names (blue script font, same as profile) and upload in bulk for missing signatures only.
+					Generate typed signatures from staff names (blue script font, same as profile). Missing or broken signatures can be replaced freely; for valid signatures, check <strong>Replace existing</strong> on that row before generating or uploading.
 				</p>
 			</div>
 		</div>
@@ -86,10 +86,16 @@
 					</div>
 					<div class="col-md-3">
 						<label for="signature_scope" class="form-label fw-bold">Staff scope</label>
-						<select id="signature_scope" name="scope" class="form-control">
-							<option value="approvers" selected>APM approvers only</option>
-							<option value="current">All active staff</option>
-						</select>
+						<div class="d-flex gap-2 align-items-stretch">
+							<select id="signature_scope" name="scope" class="form-control">
+								<option value="approvers" selected>APM approvers only</option>
+								<option value="current">All active staff</option>
+							</select>
+							<button type="button" class="btn btn-outline-secondary btn-sm flex-shrink-0" id="sigManagerRefreshApprovers" title="Refresh approver list from APM">
+								<i class="fa fa-sync-alt"></i>
+							</button>
+						</div>
+						<div class="small text-muted mt-1" id="sigManagerApproverCacheMeta">Approver cache: loading…</div>
 					</div>
 					<div class="col-md-3">
 						<label for="signature_status" class="form-label fw-bold">Signature Status</label>
@@ -102,8 +108,8 @@
 					</div>
 					<div class="col-md-3">
 						<div class="small text-muted">
-							<strong>All active staff</strong> includes everyone on active, due, or renewal contracts (with or without signatures).
-							<strong>APM approvers</strong> matches the <a href="<?= htmlspecialchars(rtrim($this->config->item('apm_base_url') ?: base_url('apm'), '/') . '/approver-dashboard') ?>" target="_blank" rel="noopener">Approver Dashboard</a>. Valid signatures are never overwritten.
+							<strong>All active staff</strong> includes everyone on active, due, or renewal contracts.
+							<strong>APM approvers</strong> matches the <a href="<?= htmlspecialchars(rtrim($this->config->item('apm_base_url') ?: base_url('apm'), '/') . '/approver-dashboard') ?>" target="_blank" rel="noopener">Approver Dashboard</a> (cached from APM, auto-refreshed hourly). Use the sync button to update now. Valid signatures are protected unless <strong>Replace existing</strong> is checked.
 						</div>
 					</div>
 				</div>
@@ -197,11 +203,17 @@
 		csrfTokenName: '<?= $this->security->get_csrf_token_name() ?>',
 		csrfHash: '<?= $this->security->get_csrf_hash() ?>',
 		ajaxUrl: '<?= base_url('staff/get_signature_manager_ajax') ?>',
+		refreshApproversUrl: '<?= base_url('staff/refresh_apm_approver_cache_ajax') ?>',
 		uploadUrl: '<?= base_url('staff/bulk_save_signatures') ?>',
 		manualUploadUrl: '<?= base_url('staff/upload_signature_manual') ?>',
 		exportExcelUrl: '<?= base_url('staff/signature_manager/1') ?>',
 		exportPdfUrl: '<?= base_url('staff/signature_manager/0/1') ?>',
-		signatureColor: '#3B82F6'
+		signatureColor: '#3B82F6',
+		signatureWidth: 380,
+		signatureWidthLarge: 456,
+		signatureHeight: 169,
+		signaturePadding: 2,
+		approverCache: <?= json_encode(staff_apm_approver_cache_meta(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 	};
 </script>
-<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=5"></script>
+<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=9"></script>
