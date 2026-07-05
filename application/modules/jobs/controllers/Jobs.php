@@ -15,87 +15,46 @@ class Jobs extends MX_Controller
    //render user accounts automatically
    public function manage_accounts()
    {
-       $accts = 0;
-   
-       // Step 1: Subquery to get latest contract per staff
-       $subquery = "
-           SELECT MAX(staff_contract_id) AS latest_contract_id
-           FROM staff_contracts
-           GROUP BY staff_id
-       ";
-   
-       // Step 2: Main query to get staff who don't yet have accounts
-       $sql = "
-           SELECT s.*, sc.division_id, sc.staff_contract_id
-           FROM staff s
-           JOIN staff_contracts sc ON s.staff_id = sc.staff_id
-           WHERE sc.staff_contract_id IN ($subquery)
-             AND s.work_email != ''
-             AND sc.status_id IN (1, 2, 7)
-             AND s.staff_id NOT IN (
-                 SELECT DISTINCT auth_staff_id FROM user
-             )
-       ";
-   
-       $staffs = $this->db->query($sql)->result();
-   
-       // Step 3: Create accounts
-       foreach ($staffs as $staff) {
-           $users = [
-               'name' => $staff->lname . ' ' . $staff->fname,
-               'status' => 1,
-               'auth_staff_id' => $staff->staff_id,
-               'password' => $this->argonhash->make(setting()->default_password),
-               'role' => 17
-           ];
-   
-           $this->db->replace('user', $users);
-           $accts += $this->db->affected_rows();
-       }
-   
-       // Step 4: Optionally disable old accounts
-       $this->disable_accounts();
-       //renewed accounts
-       $this->enable_accounts();
-   
-       // Step 5: Return result
+       $this->load->helper('staff_account');
+       $stats = sync_all_staff_portal_accounts();
+
        echo json_encode([
-           'msg' => "{$accts} Staff Accounts Created.",
-           'type' => 'info'
+           'msg' => sprintf(
+               '%d account(s) created, %d enabled, %d disabled.',
+               $stats['created'],
+               $stats['enabled'],
+               $stats['disabled']
+           ),
+           'type' => 'info',
+           'stats' => $stats,
        ]);
    }
    
    public function disable_accounts()
    {
+       $this->load->helper('staff_account');
        $disabled_count = 0;
-   
-       // Subquery to get latest contract per staff
        $subquery = "
            SELECT MAX(staff_contract_id) AS latest_contract_id
            FROM staff_contracts
            GROUP BY staff_id
        ";
-   
-       // Get staff whose latest contracts are not active (not in 1,2,7)
-       $sql = "
-           SELECT s.*, sc.division_id, sc.staff_contract_id
+       $staffs = $this->db->query("
+           SELECT DISTINCT s.staff_id
            FROM staff s
            JOIN staff_contracts sc ON s.staff_id = sc.staff_id
            WHERE sc.staff_contract_id IN ($subquery)
              AND s.work_email != ''
              AND sc.status_id NOT IN (1, 2, 7)
-       ";
-   
-       $staffs = $this->db->query($sql)->result();
-   
-       // Disable matching user accounts
+       ")->result();
+
        foreach ($staffs as $staff) {
-           $this->db->where('auth_staff_id', $staff->staff_id);
-           $this->db->update('user', ['status' => 0]); // 0 = disabled
-           $disabled_count += $this->db->affected_rows();
+           $result = sync_staff_portal_account((int) $staff->staff_id);
+           if ($result['action'] === 'disabled' && $result['changed']) {
+               $disabled_count++;
+           }
        }
-   
-       // Output JSON message
+
        echo json_encode([
            'msg' => "{$disabled_count} Staff Accounts Disabled.",
            'type' => 'info'
@@ -104,37 +63,31 @@ class Jobs extends MX_Controller
    
    public function enable_accounts()
    {
-       $disabled_count = 0;
-   
-       // Subquery to get latest contract per staff
+       $this->load->helper('staff_account');
+       $enabled_count = 0;
        $subquery = "
            SELECT MAX(staff_contract_id) AS latest_contract_id
            FROM staff_contracts
            GROUP BY staff_id
        ";
-   
-       // Get staff whose latest contracts are not active (not in 1,2,7)
-       $sql = "
-           SELECT s.*, sc.division_id, sc.staff_contract_id
+       $staffs = $this->db->query("
+           SELECT DISTINCT s.staff_id
            FROM staff s
            JOIN staff_contracts sc ON s.staff_id = sc.staff_id
            WHERE sc.staff_contract_id IN ($subquery)
              AND s.work_email != ''
              AND sc.status_id IN (1, 2, 7)
-       ";
-   
-       $staffs = $this->db->query($sql)->result();
-   
-       // Disable matching user accounts
+       ")->result();
+
        foreach ($staffs as $staff) {
-           $this->db->where('auth_staff_id', $staff->staff_id);
-           $this->db->update('user', ['status' => 1]); // 0 = enabled accounts
-           $disabled_count += $this->db->affected_rows();
+           $result = sync_staff_portal_account((int) $staff->staff_id);
+           if (in_array($result['action'], ['enabled', 'created'], true) && $result['changed']) {
+               $enabled_count++;
+           }
        }
-   
-       // Output JSON message
+
        echo json_encode([
-           'msg' => "{$disabled_count} Staff Accounts Disabled.",
+           'msg' => "{$enabled_count} Staff Accounts Enabled.",
            'type' => 'info'
        ]);
    }
@@ -149,6 +102,7 @@ function dateDiff($date1, $date2) {
 
 // Contract status job.
 public function mark_due_contracts() {
+    $this->load->helper('staff_account');
     // Calculate current date once
     $today = new DateTime();
     
@@ -183,6 +137,7 @@ public function mark_due_contracts() {
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 2 WHERE staff_contract_id = $staff_contract_id");
             $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
+            sync_staff_portal_account((int) $staff_id);
         } elseif ($dateDiff <= 0) {
             //expired
             $data['subject'] = "Expired Contract Notice";
@@ -196,9 +151,11 @@ public function mark_due_contracts() {
             golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date2'], $dispatch,md5($entry_id));
             $this->db->query("UPDATE staff_contracts SET status_id = 3 WHERE staff_contract_id = $staff_contract_id");
             $this->db->query("UPDATE staff SET flag = 1 WHERE staff_id = $staff_id");
+            sync_staff_portal_account((int) $staff_id);
         } elseif ($dateDiff >90) {
             $this->db->query("UPDATE staff_contracts SET status_id = 1 WHERE staff_contract_id = $staff_contract_id");
             $this->db->query("UPDATE staff SET flag = 0 WHERE staff_id = $staff_id");
+            sync_staff_portal_account((int) $staff_id);
         }
     }
 }
@@ -250,14 +207,26 @@ public function staff_birthday() {
             continue;
         }
 
+        // Clear stale pending rows that block INSERT IGNORE on (staff_id, subject, end_date).
+        $this->db->where('staff_id', $staff_id);
+        $this->db->where('subject', 'AFRICA CDC Birthday Greetings');
+        $this->db->where('end_date', $todayStr);
+        $this->db->where('status !=', 1);
+        $this->db->delete('email_notifications');
+
         $data['subject'] = "AFRICA CDC Birthday Greetings";
         $data['email_to'] = $workEmail.';'.settings()->email;
         $data['name'] = staff_name($staff_id);
         $data['date_2'] = $todayStr;
         $data['body'] = $this->load->view('staff_bd', $data, true);
         $dispatch = date('Y-m-d H:i:s');
-        golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'], $dispatch, $entry_id);
-        $queued++;
+        if (golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'], $dispatch, $entry_id)) {
+            $queued++;
+        }
+    }
+
+    if ($queued > 0) {
+        $this->send_instant_mails();
     }
 
     echo json_encode([
@@ -352,6 +321,13 @@ public function cron_register(){
     {
         $this->db->query("DELETE FROM `email_notifications` WHERE `email_to` LIKE '%xxx%'");
         $today = date('Y-m-d');
+        // Reclaim rows stuck in "sending" (status 2) so they can be retried.
+        $this->db->query(
+            'UPDATE email_notifications SET status = 0
+             WHERE status = 2
+               AND next_dispatch LIKE ' . $this->db->escape($today . '%') . '
+               AND created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)'
+        );
         // Pending today: include NULL/empty status (new rows) — not only literal '0'.
         // Subjects: previous filter "PPA%" missed "Reminder: Pending PPA..." and all Endterm/Consent mail.
         // Birthday greetings are queued daily by jobs/jobs/staff_birthday and must also dispatch via the per-minute tick.
@@ -372,8 +348,12 @@ public function cron_register(){
         $counter = 0;
         if (count($messages) > 0) {
             foreach ($messages as $message) {
-                // Try to lock this notification for sending
-                $this->db->query("UPDATE email_notifications SET status = '2' WHERE id = $message->id AND status = '0'");
+                // Try to lock this notification for sending (match SELECT eligibility).
+                $this->db->query(
+                    'UPDATE email_notifications SET status = 2
+                     WHERE id = ' . (int) $message->id . "
+                       AND (status IS NULL OR status = '' OR status = '0')"
+                );
                 if ($this->db->affected_rows() == 0) {
                     // Another process already locked or sent this notification
                     continue;

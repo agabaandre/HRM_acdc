@@ -1563,6 +1563,10 @@ public function getBirthdays($days)
 			$snap = $row ? $this->_staff_contract_row_for_audit($row) : array();
 			log_staff_profile_contract_audit('contract_create', 'staff_contracts', (string) $newId, (string) $staff_id, array(), $snap);
 		}
+		if ($newId > 0) {
+			$this->load->helper('contract_status');
+			sync_staff_contract_status_after_save($newId, (int) $staff_id);
+		}
 		return $newId;
 	}
 

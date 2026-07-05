@@ -375,6 +375,8 @@ class StaffContractService
             DB::table('staff')->where('staff_id', $staffId)->update([
                 'flag' => in_array($currentStatus, [2, 3], true) ? 1 : 0,
             ]);
+
+            app(StaffPortalAccountService::class)->syncForStaff($staffId);
         }
 
         if ($computedStatus === 1) {

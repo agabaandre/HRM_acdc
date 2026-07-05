@@ -92,11 +92,10 @@ class Run extends MX_Controller
             Modules::run('jobs/jobs/audit_extended_contracts');
         }
 
-        if ($this->tick_match_clock($s['staff_birthday'] ?? false, $hour, $minute, $dow)) {
+        if ($this->tick_should_run_staff_birthday($s, $hour, $minute, $dow)) {
             echo "  → staff_birthday (queue)\n";
             Modules::run('jobs/jobs/staff_birthday');
-            // Dispatch the freshly queued birthday rows immediately so they go out on the same tick
-            // (subject filter in send_instant_mails / send_mails picks up "Birthday").
+            // staff_birthday() dispatches via send_instant_mails when new rows are queued.
             echo "  → send_instant_mails (post-birthday)\n";
             Modules::run('jobs/jobs/send_instant_mails');
         }
@@ -140,6 +139,24 @@ class Run extends MX_Controller
         }
 
         return true;
+    }
+
+    /**
+     * Birthday job: scheduled slot plus hourly catch-up 03:00–09:00 (idempotent queue).
+     *
+     * @param array|false $spec
+     */
+    private function tick_should_run_staff_birthday($s, $hour, $minute, $dow)
+    {
+        $spec = $s['staff_birthday'] ?? false;
+        if ($spec === false || empty($spec) || !is_array($spec)) {
+            return false;
+        }
+        if ($this->tick_match_clock($spec, $hour, $minute, $dow)) {
+            return true;
+        }
+
+        return $minute === 0 && $hour >= 3 && $hour <= 9;
     }
 
     /**

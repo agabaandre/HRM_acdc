@@ -919,6 +919,9 @@ public function force_generate_short_names() {
 				$this->_staff_jobs_run_performance_notifications_bundle();
 			} else {
 				Modules::run($defs[$key]['route']);
+				if ($key === 'staff_birthday') {
+					Modules::run('jobs/jobs/send_instant_mails');
+				}
 			}
 			$out = ob_get_clean();
 		} catch (Exception $e) {

@@ -93,6 +93,9 @@ if (!function_exists('sync_staff_contract_status_after_save')) {
         if ($latestId === $contractId) {
             $flag = in_array($currentStatus, [2, 3], true) ? 1 : 0;
             $ci->db->where('staff_id', $staffId)->update('staff', ['flag' => $flag]);
+
+            $ci->load->helper('staff_account');
+            sync_staff_portal_account($staffId);
         }
 
         if ($computedStatus === 1) {
