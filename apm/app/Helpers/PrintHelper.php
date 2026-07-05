@@ -737,6 +737,40 @@ class PrintHelper
     }
 
     /**
+     * Signed By on the left, Verify Hash on the same row; signature image and date below.
+     */
+    private static function echoSignaturePresentation(
+        string $sigSrc,
+        string $fallbackEmail,
+        ?string $dateLineHtml,
+        ?string $verifyHash
+    ): void {
+        echo '<div class="signature-block" style="line-height:1.2;">';
+        echo '<table style="width:100%;border:none;border-collapse:collapse;margin:0 0 2px 0;"><tr>';
+        echo '<td style="border:none;padding:0;vertical-align:bottom;width:50%;">';
+        echo '<small style="color:#666;font-style:normal;font-size:9px;">Signed By:</small>';
+        echo '</td>';
+        echo '<td style="border:none;padding:0;vertical-align:bottom;text-align:right;width:50%;">';
+        if ($verifyHash !== null && $verifyHash !== '') {
+            echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars($verifyHash) . '</div>';
+        }
+        echo '</td></tr></table>';
+
+        if ($sigSrc !== '') {
+            echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
+        } else {
+            echo '<small style="color:#666;font-style:normal;">'
+                . htmlspecialchars($fallbackEmail !== '' ? $fallbackEmail : 'Email not available')
+                . '</small>';
+        }
+
+        if ($dateLineHtml !== null) {
+            echo '<div class="signature-date">' . $dateLineHtml . '</div>';
+        }
+        echo '</div>';
+    }
+
+    /**
      * Render signature with OIC support
      */
     public static function renderSignature($approver, $order, $approvalTrails, $item)
@@ -794,21 +828,6 @@ class PrintHelper
             }
         }
 
-        echo '<div style="line-height: 1.2;">';
-        
-        // Always show signature image if available (even if not yet signed)
-        $sigFilename = $staff['signature'] ?? null;
-        $sigSrc = self::signatureDataUriForPdf(
-            is_string($sigFilename) ? $sigFilename : null,
-            is_numeric($staffId) ? (int) $staffId : null
-        );
-        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
-        if ($sigSrc !== '') {
-            echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
-        } else {
-            echo '<small style="color: #666; font-style:normal;">' . htmlspecialchars($staff['work_email'] ?? 'Email not available') . '</small>';
-        }
-
         // For Service Requests, always use direct DB lookup with staff_id to ensure correct dates
         if ($item && isset($item->id) && $order && $staffId) {
             $dbFallback = \App\Models\ApprovalTrail::where('model_type', 'App\\Models\\ServiceRequest')
@@ -826,17 +845,28 @@ class PrintHelper
             }
         }
 
-        if (!$approvalTrail || !isset($approvalTrail->created_at)) {
-            echo '<div class="signature-date" style="color:#999;"><em>Not Signed</em></div>';
-        } else {
+        $sigFilename = $staff['signature'] ?? null;
+        $sigSrc = self::signatureDataUriForPdf(
+            is_string($sigFilename) ? $sigFilename : null,
+            is_numeric($staffId) ? (int) $staffId : null
+        );
+
+        $verifyHash = null;
+        $dateLineHtml = '<em style="color:#999;">Not Signed</em>';
+        if ($approvalTrail && isset($approvalTrail->created_at) && $item) {
             $approvalDate = is_object($approvalTrail->created_at)
                 ? $approvalTrail->created_at->format('j F Y H:i')
                 : date('j F Y H:i', strtotime($approvalTrail->created_at));
-            echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-            echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars(self::generateVerificationHash($item->id, $staffId, $approvalTrail->created_at)) . '</div>';
+            $dateLineHtml = htmlspecialchars($approvalDate);
+            $verifyHash = self::generateVerificationHash($item->id, $staffId, $approvalTrail->created_at);
         }
-        
-        echo '</div>';
+
+        self::echoSignaturePresentation(
+            $sigSrc,
+            (string) ($staff['work_email'] ?? ''),
+            $dateLineHtml,
+            $verifyHash
+        );
     }
 
     /**
@@ -902,36 +932,34 @@ class PrintHelper
             $name .= ' (OIC)';
         }
 
-        echo '<div style="line-height: 1.5;">';
-        
-        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
-        
+        $ownerId = (int) ($isOic ? ($approval->oic_staff_id ?? 0) : ($approval->staff_id ?? 0));
+        $sigSrc = '';
         if (!empty($staff->signature)) {
-            $ownerId = (int) ($isOic ? ($approval->oic_staff_id ?? 0) : ($approval->staff_id ?? 0));
             $sigSrc = self::signatureDataUriForPdf($staff->signature, $ownerId > 0 ? $ownerId : null);
-            if ($sigSrc !== '') {
-                echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
-            } else {
-                echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
-            }
-        } else {
-            echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($staff->work_email ?? 'Email not available') . '</small>';
         }
-        
-        $approvalDate = is_object($approval->created_at) ? $approval->created_at->format('j F Y H:i') : date('j F Y H:i', strtotime($approval->created_at));
-        echo '<div class="signature-date">' . htmlspecialchars($approvalDate) . '</div>';
-        
-        $hash = self::generateVerificationHash($item->id, $isOic ? $approval->oic_staff_id : $approval->staff_id, $approval->created_at);
-        echo '<div class="signature-hash">Verify Hash: ' . htmlspecialchars($hash) . '</div>';
-         
+
+        $approvalDate = is_object($approval->created_at)
+            ? $approval->created_at->format('j F Y H:i')
+            : date('j F Y H:i', strtotime($approval->created_at));
+        $hash = self::generateVerificationHash(
+            $item->id,
+            $isOic ? $approval->oic_staff_id : $approval->staff_id,
+            $approval->created_at
+        );
+
+        self::echoSignaturePresentation(
+            $sigSrc,
+            (string) ($staff->work_email ?? ''),
+            htmlspecialchars($approvalDate),
+            $hash
+        );
+
         // Add OIC watermark if applicable
         if ($isOic) {
             echo '<div style="position: relative; display: inline-block; margin-top: 5px;">';
             echo '<span style="position: absolute; top: -5px; right: -10px; background: #6b7280; color: white; padding: 2px 6px; border-radius: 3px; font-size: 8px; font-weight: bold; transform: rotate(15deg);">OIC</span>';
             echo '</div>';
         }
-        
-        echo '</div>';
     }
 
     /**

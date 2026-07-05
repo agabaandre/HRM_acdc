@@ -107,9 +107,9 @@
     
     /* Signature styling */
     .signature-image {
-        height: 30px; 
-        max-width: 80px; 
-        object-fit: contain; 
+        width: 130px;
+        height: 45px;
+        object-fit: contain;
         filter: contrast(1.2);
         display: block;
         margin: 0;
