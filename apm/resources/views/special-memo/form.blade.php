@@ -215,11 +215,18 @@
                 <i class="fas fa-users-cog me-2"></i>Participant dates &amp; days
             </h6>
             <p class="text-muted small mb-3">Start, end, and day count for each internal participant selected above. Use <strong>Remove</strong> in the last column to drop a row.</p>
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm align-middle" id="participantsTable">
+                <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle participants-table--memo" id="participantsTable">
+                    <colgroup>
+                        <col class="participants-col-name" style="width: 28%;">
+                        <col style="width: 22%;">
+                        <col style="width: 22%;">
+                        <col style="width: 12%;">
+                        <col style="width: 16%;">
+                    </colgroup>
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Participant name</th>
+                            <th scope="col" class="participants-col-name">Participant name</th>
                             <th scope="col">Activity start date</th>
                             <th scope="col">Activity end date</th>
                             <th scope="col">No. of days</th>

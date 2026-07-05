@@ -205,10 +205,18 @@
                 </h6>
                 <p class="text-muted small mb-2">If a participant’s total <strong>travel</strong> days in this quarter (all matrices, any division) plus this activity (only when <strong>Leaving Country</strong> is checked) exceed 21, a warning row will appear above that participant. Contact the participant to harmonise; otherwise the activity may not be approved.</p>
                 <div class="table-responsive">
-    <table class="table table-bordered table-sm align-middle" id="participantsTable">
+    <table class="table table-bordered table-sm align-middle participants-table--matrix" id="participantsTable">
+        <colgroup>
+            <col class="participants-col-name" style="width: 24%;">
+            <col style="width: 16%;">
+            <col style="width: 16%;">
+            <col style="width: 10%;">
+            <col style="width: 20%;">
+            <col style="width: 14%;">
+        </colgroup>
         <thead class="table-light">
             <tr>
-                <th>Participant Name</th>
+                <th class="participants-col-name">Participant Name</th>
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>No. of Days</th>
