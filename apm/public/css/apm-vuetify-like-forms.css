@@ -223,6 +223,25 @@
     word-wrap: break-word;
     overflow-wrap: anywhere;
     line-height: 1.4;
+    background-color: #fff8e6 !important;
+}
+
+/* Striped participant rows — special memo (one row per participant) */
+.apm-v-form #participantsTable.participants-table--memo tbody tr[data-participant-id]:nth-child(odd) > td {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.apm-v-form #participantsTable.participants-table--memo tbody tr[data-participant-id]:nth-child(even) > td {
+    background-color: #fff;
+}
+
+/* Striped participant rows — matrix activities (hidden warning row + participant row pairs) */
+.apm-v-form #participantsTable.participants-table--matrix tbody tr[data-participant-id]:not(.participant-days-warning-row):nth-child(4n+2) > td {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.apm-v-form #participantsTable.participants-table--matrix tbody tr[data-participant-id]:not(.participant-days-warning-row):nth-child(4n) > td {
+    background-color: #fff;
 }
 
 .apm-v-form #participantsTable thead th {
