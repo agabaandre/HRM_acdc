@@ -537,6 +537,14 @@ class ActivityController extends Controller
         $canSaveParticipantGroup = ! $activity->is_single_memo
             && $participantGroups->canCreateGroupFromActivity($activity);
 
+        $participantGroupStoreUrl = null;
+        if ($canSaveParticipantGroup && $activity->matrix_id) {
+            $participantGroupStoreUrl = route('matrices.activities.participant-group.store', [
+                'matrix' => $activity->matrix_id,
+                'activity' => $activity->id,
+            ]);
+        }
+
         return view(( $activity->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), [
             'matrix' => $activity->matrix,
             'activity' => $activity,
@@ -554,10 +562,7 @@ class ActivityController extends Controller
             'participantGroupDefaultName' => trim((string) $activity->activity_title) !== ''
                 ? trim((string) $activity->activity_title) . ' participants'
                 : 'Activity participants',
-            'participantGroupStoreUrl' => route('matrices.activities.participant-group.store', [
-                'matrix' => $matrix->id,
-                'activity' => $activity->id,
-            ]),
+            'participantGroupStoreUrl' => $participantGroupStoreUrl,
             'participantGroupsIndexUrl' => route('participant-groups.index'),
         ]);
     }
