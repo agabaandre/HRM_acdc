@@ -107,8 +107,8 @@
     
     /* Signature styling */
     .signature-image {
-        width: 130px;
-        height: 45px;
+        width: 120px;
+        height: 40px;
         object-fit: contain;
         filter: contrast(1.2);
         display: block;
