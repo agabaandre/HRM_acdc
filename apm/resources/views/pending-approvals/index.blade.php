@@ -8,24 +8,6 @@
 <style>
     #pending-approvals-app .pa-vuetify-app { background: transparent !important; }
     #pending-approvals-app .v-application__wrap { min-height: 0 !important; }
-    #pending-approvals-app .pa-kpi-card {
-        background: #fff !important;
-        border: 1px solid rgba(0, 0, 0, 0.08) !important;
-        border-left: 3px solid var(--pa-accent, #119a48) !important;
-        height: 100%;
-    }
-    #pending-approvals-app .pa-kpi-icon-wrap {
-        width: 40px; height: 40px; border-radius: 10px;
-        display: inline-flex; align-items: center; justify-content: center;
-    }
-    #pending-approvals-app .pa-kpi-value {
-        color: rgba(0, 0, 0, 0.87) !important;
-        font-size: 1.375rem; font-weight: 700; line-height: 1.2;
-    }
-    #pending-approvals-app .pa-kpi-label {
-        color: rgba(0, 0, 0, 0.55) !important;
-        font-size: 0.75rem; font-weight: 500; margin-top: 2px;
-    }
     #pending-approvals-app .pa-stale-alert {
         border-radius: 8px !important;
         border: 1px solid rgba(245, 158, 11, 0.35) !important;

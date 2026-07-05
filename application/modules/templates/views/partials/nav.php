@@ -42,6 +42,7 @@
                                 <li><a class="dropdown-item" href="<?= base_url('staff/contract_status/7') ?>"><i class="bx bx-right-arrow-alt"></i>Under Renewal</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/staff_next_of_kin') ?>"><i class="bx bx-right-arrow-alt"></i>Staff Next of Kin</a></li>
                                 <li><a class="dropdown-item" href="<?= base_url('staff/staff_data_quality_report') ?>"><i class="bx bx-right-arrow-alt"></i>Data Quality Report</a></li>
+                                <li><a class="dropdown-item" href="<?= base_url('staff/signature_manager') ?>"><i class="bx bx-right-arrow-alt"></i>Signature Manager</a></li>
                             <?php endif; ?>
                         <?php endif; ?>
                         <?php if (in_array('41', $permissions)) : ?>

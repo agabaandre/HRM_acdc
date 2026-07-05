@@ -939,6 +939,395 @@ if (!function_exists('staff_secure_upload_url')) {
     }
 }
 
+if (!function_exists('staff_signature_file_path')) {
+    /**
+     * Absolute path to a staff signature file (basename only).
+     *
+     * @param  string|null  $filename
+     * @return string
+     */
+    function staff_signature_file_path($filename)
+    {
+        if ($filename === null || $filename === '') {
+            return '';
+        }
+        $safe = basename(str_replace('\\', '/', (string) $filename));
+        if ($safe === '' || $safe === '.' || $safe === '..') {
+            return '';
+        }
+        return FCPATH . 'uploads/staff/signature/' . $safe;
+    }
+}
+
+if (!function_exists('staff_signature_basename')) {
+    function staff_signature_basename($raw)
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return '';
+        }
+        $raw = str_replace('\\', '/', $raw);
+        return basename($raw);
+    }
+}
+
+if (!function_exists('staff_signature_file_candidates')) {
+    /**
+     * @return list<string> Absolute paths to check for a signature basename
+     */
+    function staff_signature_file_candidates($filename)
+    {
+        $base = staff_signature_basename($filename);
+        if ($base === '') {
+            return [];
+        }
+        return [
+            FCPATH . 'uploads/staff/signature/' . $base,
+            FCPATH . 'uploads/staff/' . $base,
+        ];
+    }
+}
+
+if (!function_exists('staff_signature_resolve_for_staff')) {
+    /**
+     * Resolve a staff member's signature file on disk (staff.signature or linked user.signature).
+     *
+     * @return array{valid: bool, filename: string, path: string}
+     */
+    function staff_signature_resolve_for_staff($staff_id, $signature_value = null)
+    {
+        $staff_id = (int) $staff_id;
+        $ci = &get_instance();
+        $basename = staff_signature_basename($signature_value);
+
+        if ($basename === '' && $staff_id > 0) {
+            $row = $ci->db->select('signature')->get_where('staff', ['staff_id' => $staff_id])->row();
+            $basename = staff_signature_basename($row->signature ?? '');
+        }
+
+        if ($basename !== '') {
+            foreach (staff_signature_file_candidates($basename) as $path) {
+                if (is_valid_image($path)) {
+                    return ['valid' => true, 'filename' => $basename, 'path' => $path];
+                }
+            }
+        }
+
+        if ($staff_id > 0) {
+            $user = $ci->db->select('signature')
+                ->where('auth_staff_id', $staff_id)
+                ->where('signature IS NOT NULL', null, false)
+                ->where('TRIM(signature) <>', '', false)
+                ->limit(1)
+                ->get('user')
+                ->row();
+            if ($user && trim((string) ($user->signature ?? '')) !== '') {
+                $userBase = staff_signature_basename($user->signature);
+                foreach (staff_signature_file_candidates($userBase) as $path) {
+                    if (is_valid_image($path)) {
+                        return ['valid' => true, 'filename' => $userBase, 'path' => $path];
+                    }
+                }
+            }
+        }
+
+        return ['valid' => false, 'filename' => $basename, 'path' => ''];
+    }
+}
+
+if (!function_exists('staff_active_contract_staff_ids')) {
+    /**
+     * Staff IDs whose latest contract is Active (1), Due (2), or Under renewal (7).
+     *
+     * @return list<int>
+     */
+    function staff_active_contract_staff_ids()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $ci = &get_instance();
+        $sql = '
+            SELECT sc.staff_id
+            FROM staff_contracts sc
+            INNER JOIN (
+                SELECT staff_id, MAX(staff_contract_id) AS latest_contract_id
+                FROM staff_contracts
+                GROUP BY staff_id
+            ) latest ON sc.staff_id = latest.staff_id
+                AND sc.staff_contract_id = latest.latest_contract_id
+            WHERE sc.status_id IN (1, 2, 7)
+        ';
+        $rows = $ci->db->query($sql)->result();
+        $cached = [];
+        foreach ($rows as $row) {
+            $id = (int) ($row->staff_id ?? 0);
+            if ($id > 0) {
+                $cached[] = $id;
+            }
+        }
+
+        return $cached;
+    }
+}
+
+if (!function_exists('staff_fetch_apm_approver_staff_ids_from_db')) {
+    /**
+     * Approver staff IDs from APM DB (same sources as Approver Dashboard buildApproverQuery).
+     *
+     * @return list<int>
+     */
+    function staff_fetch_apm_approver_staff_ids_from_db()
+    {
+        $ci = &get_instance();
+        $apm = $ci->load->database('apm', true);
+
+        $wf = $apm->select('id')->where('is_active', 1)->limit(1)->get('workflows')->row();
+        if (!$wf) {
+            return [];
+        }
+
+        $workflowId = (int) $wf->id;
+        $activeSet = array_flip(staff_active_contract_staff_ids());
+        if ($activeSet === []) {
+            return [];
+        }
+
+        $staffIds = [];
+
+        $approverRows = $apm
+            ->select('DISTINCT a.staff_id', false)
+            ->from('approvers a')
+            ->join('workflow_definition wd', 'wd.id = a.workflow_dfn_id')
+            ->where('wd.workflow_id', $workflowId)
+            ->where('wd.is_enabled', 1)
+            ->where('wd.is_division_specific', 0)
+            ->get()
+            ->result();
+        foreach ($approverRows as $row) {
+            $id = (int) ($row->staff_id ?? 0);
+            if ($id > 0 && isset($activeSet[$id])) {
+                $staffIds[$id] = $id;
+            }
+        }
+
+        $allowedDivisionColumns = [
+            'division_head',
+            'focal_person',
+            'admin_assistant',
+            'finance_officer',
+            'director_id',
+            'head_oic_id',
+            'director_oic_id',
+        ];
+        $roles = $apm
+            ->where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->where('is_division_specific', 1)
+            ->get('workflow_definition')
+            ->result();
+        foreach ($roles as $role) {
+            $col = trim((string) ($role->division_reference_column ?? ''));
+            if ($col === '' || !in_array($col, $allowedDivisionColumns, true)) {
+                continue;
+            }
+            $divRows = $apm
+                ->select('DISTINCT d.' . $col . ' AS staff_id', false)
+                ->from('divisions d')
+                ->where('d.' . $col . ' IS NOT NULL', null, false)
+                ->where('d.' . $col . ' >', 0)
+                ->get()
+                ->result();
+            foreach ($divRows as $row) {
+                $id = (int) ($row->staff_id ?? 0);
+                if ($id > 0 && isset($activeSet[$id])) {
+                    $staffIds[$id] = $id;
+                }
+            }
+        }
+
+        $result = array_values($staffIds);
+        sort($result);
+
+        return $result;
+    }
+}
+
+if (!function_exists('staff_fetch_apm_approver_staff_ids')) {
+    /**
+     * Staff IDs of approvers on the APM approver dashboard (active workflow).
+     *
+     * @return list<int>
+     */
+    function staff_fetch_apm_approver_staff_ids()
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $ci = &get_instance();
+        $base = rtrim((string) $ci->config->item('apm_base_url'), '/');
+        if ($base === '') {
+            $base = rtrim(base_url(), '/') . '/apm';
+        }
+        $url = $base . '/api/approver-dashboard/approver-staff-ids';
+
+        $cookie = '';
+        if (!empty($_SERVER['HTTP_COOKIE'])) {
+            $cookie = (string) $_SERVER['HTTP_COOKIE'];
+        } elseif (session_id() !== '') {
+            $cookie = session_name() . '=' . session_id();
+        }
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_COOKIE => $cookie,
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $ids = [];
+        if ($code >= 200 && $code < 300 && is_string($body) && $body !== '') {
+            $json = json_decode($body, true);
+            if (is_array($json) && !empty($json['staff_ids']) && is_array($json['staff_ids'])) {
+                foreach ($json['staff_ids'] as $id) {
+                    $id = (int) $id;
+                    if ($id > 0) {
+                        $ids[] = $id;
+                    }
+                }
+            }
+        }
+
+        if ($ids === []) {
+            $ids = staff_fetch_apm_approver_staff_ids_from_db();
+        }
+
+        $cached = array_values(array_unique($ids));
+
+        return $cached;
+    }
+}
+
+if (!function_exists('staff_has_valid_signature')) {
+    /**
+     * True when a valid signature image exists for the filename or staff member.
+     *
+     * @param  string|null  $filename
+     * @param  int|null     $staff_id
+     */
+    function staff_has_valid_signature($filename, $staff_id = null)
+    {
+        if ($staff_id !== null && (int) $staff_id > 0) {
+            return staff_signature_resolve_for_staff((int) $staff_id, $filename)['valid'];
+        }
+        $basename = staff_signature_basename($filename);
+        if ($basename === '') {
+            return false;
+        }
+        foreach (staff_signature_file_candidates($basename) as $path) {
+            if (is_valid_image($path)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+if (!function_exists('staff_signature_default_text')) {
+    /**
+     * Typed signature label from staff name parts (matches profile signature default).
+     *
+     * @param  object|array  $row
+     */
+    function staff_signature_default_text($row)
+    {
+        $parts = [];
+        foreach (['title', 'fname', 'lname', 'oname'] as $key) {
+            $val = is_array($row) ? ($row[$key] ?? '') : ($row->$key ?? '');
+            $val = trim((string) $val);
+            if ($val !== '') {
+                $parts[] = $val;
+            }
+        }
+        return trim(preg_replace('/\s+/', ' ', implode(' ', $parts)));
+    }
+}
+
+if (!function_exists('staff_save_signature_from_data_url')) {
+    /**
+     * Save a PNG signature from a data URL or raw base64 (DocuSeal / canvas).
+     *
+     * @return string|null Saved filename under uploads/staff/signature/
+     */
+    function staff_save_signature_from_data_url($dataUrl, $safe_name)
+    {
+        $dataUrl = trim((string) $dataUrl);
+        if ($dataUrl === '') {
+            return null;
+        }
+
+        $bin = null;
+        if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,#i', $dataUrl)) {
+            $comma = strpos($dataUrl, ',');
+            if ($comma === false) {
+                return null;
+            }
+            $bin = base64_decode(substr($dataUrl, $comma + 1), true);
+        } elseif (preg_match('#^[A-Za-z0-9+/=\r\n]+$#', $dataUrl)) {
+            $bin = base64_decode(preg_replace('/\s+/', '', $dataUrl), true);
+        }
+
+        if ($bin === false || $bin === null || strlen($bin) < 16) {
+            return null;
+        }
+        if (strlen($bin) > 1024 * 1024) {
+            return null;
+        }
+
+        if (function_exists('imagecreatefromstring')) {
+            $img = @imagecreatefromstring($bin);
+            if ($img !== false) {
+                imagesavealpha($img, true);
+                imagealphablending($img, false);
+                ob_start();
+                imagepng($img, null, 9);
+                $png = ob_get_clean();
+                imagedestroy($img);
+                if ($png !== false && $png !== '') {
+                    $bin = $png;
+                }
+            }
+        }
+
+        $safe_name = trim((string) $safe_name);
+        if ($safe_name === '') {
+            $safe_name = 'staff_sig';
+        }
+
+        $signature_upload_path = FCPATH . 'uploads/staff/signature';
+        if (!is_dir($signature_upload_path)) {
+            @mkdir($signature_upload_path, 0755, true);
+        }
+
+        $filename = $safe_name . '_sig_' . time() . '.png';
+        $path = rtrim($signature_upload_path, '/\\') . DIRECTORY_SEPARATOR . $filename;
+        if (@file_put_contents($path, $bin) === false) {
+            return null;
+        }
+
+        return $filename;
+    }
+}
+
 if (!function_exists('staff_signature_print_src')) {
     /**
      * Data URI for signature image for print/PDF (embeds file bytes — no session required).

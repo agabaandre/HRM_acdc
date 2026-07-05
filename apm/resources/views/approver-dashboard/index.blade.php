@@ -28,41 +28,6 @@
     #approver-dashboard-app .workflow-pipeline-arrow {
         opacity: 0.55;
     }
-    /* KPI cards — white surface, accent top bar (readable on all themes) */
-    #approver-dashboard-app .ad-kpi-card {
-        background: #fff !important;
-        border: 1px solid rgba(0, 0, 0, 0.08) !important;
-        border-top: 4px solid var(--ad-kpi-accent, #119a48) !important;
-        height: 100%;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    #approver-dashboard-app .ad-kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
-    }
-    #approver-dashboard-app .ad-kpi-icon-wrap {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-    }
-    #approver-dashboard-app .ad-kpi-value {
-        color: rgba(0, 0, 0, 0.87) !important;
-        font-size: 1.5rem;
-        font-weight: 700;
-        line-height: 1.2;
-    }
-    #approver-dashboard-app .ad-kpi-label {
-        color: rgba(0, 0, 0, 0.55) !important;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        margin-top: 0.25rem;
-    }
     /* Approver table — high-contrast headers and body text */
     #approver-dashboard-app .ad-approver-table {
         --v-table-header-height: 44px;

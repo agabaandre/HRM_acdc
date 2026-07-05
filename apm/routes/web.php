@@ -285,6 +285,7 @@ Route::get('/api/approver-dashboard/filter-options', [App\Http\Controllers\Appro
 Route::get('/api/approver-dashboard/summary-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getSummaryStats'])->name('approver-dashboard.summary-stats');
 Route::get('/api/approver-dashboard/workflow-stats', [App\Http\Controllers\ApproverDashboardController::class, 'getWorkflowStats'])->name('approver-dashboard.workflow-stats');
 Route::get('/api/approver-dashboard/timing-trend', [App\Http\Controllers\ApproverDashboardController::class, 'getTimingTrend'])->name('approver-dashboard.timing-trend');
+Route::get('/api/approver-dashboard/approver-staff-ids', [App\Http\Controllers\ApproverDashboardController::class, 'getApproverStaffIds'])->name('approver-dashboard.approver-staff-ids');
 
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');

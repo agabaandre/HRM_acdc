@@ -711,4 +711,37 @@ class ApproverDashboardController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    /**
+     * Distinct staff IDs for approvers shown on the approver dashboard (active workflow).
+     * Used by Staff portal Signature Manager.
+     */
+    public function getApproverStaffIds(Request $request): JsonResponse
+    {
+        $activeWorkflow = Workflow::where('is_active', 1)->first();
+        if (! $activeWorkflow) {
+            return response()->json([
+                'success' => true,
+                'staff_ids' => [],
+                'message' => 'No active workflow',
+            ]);
+        }
+
+        $approvers = $this->buildApproverQuery((int) $activeWorkflow->id);
+        $staffIds = collect($approvers)
+            ->pluck('staff_id')
+            ->filter(fn ($id) => $id !== null && (int) $id > 0)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'staff_ids' => $staffIds,
+            'count' => count($staffIds),
+            'workflow_id' => (int) $activeWorkflow->id,
+        ]);
+    }
 }

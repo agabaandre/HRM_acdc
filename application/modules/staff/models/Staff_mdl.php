@@ -1450,6 +1450,129 @@ public function getBirthdays($days)
 		return count($this->_build_staff_data_quality_rows($filters));
 	}
 
+	/**
+	 * Current staff (active + due) with signature validity status.
+	 *
+	 * @param  array  $filters  staff_name, signature_status (all|valid|missing|broken)
+	 * @return array
+	 */
+	private function _build_signature_manager_rows($filters = [])
+	{
+		$scope = trim((string) ($filters['scope'] ?? 'current'));
+		$approverIds = null;
+		if ($scope === 'approvers') {
+			if (!empty($filters['approver_staff_ids']) && is_array($filters['approver_staff_ids'])) {
+				$approverIds = array_values(array_filter(array_map('intval', $filters['approver_staff_ids'])));
+			} else {
+				$approverIds = staff_fetch_apm_approver_staff_ids();
+			}
+			if ($approverIds === []) {
+				return [];
+			}
+		}
+
+		$this->db->select('
+			s.staff_id,
+			s.SAPNO,
+			s.title,
+			s.fname,
+			s.lname,
+			s.oname,
+			s.photo,
+			s.signature
+		');
+		$this->db->from('staff s');
+
+		if ($scope === 'approvers') {
+			$this->db->where_in('s.staff_id', $approverIds);
+		} else {
+			$subquery = $this->db
+				->select('MAX(staff_contract_id)')
+				->from('staff_contracts')
+				->group_by('staff_id')
+				->get_compiled_select();
+
+			$this->db->join('staff_contracts sc', 'sc.staff_id = s.staff_id', 'inner');
+			$this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+			$this->db->where_in('sc.status_id', [1, 2, 7]);
+		}
+
+		$name = trim((string) ($filters['staff_name'] ?? ''));
+		if ($name !== '') {
+			$this->db->group_start();
+			$this->db->like('s.fname', $name, 'both');
+			$this->db->or_like('s.lname', $name, 'both');
+			$this->db->or_like('s.oname', $name, 'both');
+			$this->db->group_end();
+		}
+
+		$this->db->order_by('s.fname', 'ASC');
+		$staffRows = $this->db->get()->result();
+		if (empty($staffRows)) {
+			return [];
+		}
+
+		$statusFilter = trim((string) ($filters['signature_status'] ?? 'all'));
+		$output = [];
+		foreach ($staffRows as $r) {
+			$resolved = staff_signature_resolve_for_staff((int) ($r->staff_id ?? 0), $r->signature ?? '');
+			$dbVal = trim((string) ($r->signature ?? ''));
+			if ($resolved['valid']) {
+				$r->signature = $resolved['filename'];
+				$r->signature_status = 'valid';
+				$r->signature_status_label = 'Valid';
+			} elseif ($dbVal !== '') {
+				$r->signature_status = 'broken';
+				$r->signature_status_label = 'File missing';
+			} else {
+				$r->signature_status = 'missing';
+				$r->signature_status_label = 'Missing';
+			}
+			$r->full_name = trim(preg_replace('/\s+/', ' ', implode(' ', array_filter([
+				trim((string) ($r->title ?? '')),
+				trim((string) ($r->fname ?? '')),
+				trim((string) ($r->lname ?? '')),
+				trim((string) ($r->oname ?? '')),
+			]))));
+			$r->signature_text = staff_signature_default_text($r);
+
+			if ($statusFilter !== '' && $statusFilter !== 'all' && $r->signature_status !== $statusFilter) {
+				continue;
+			}
+			$output[] = $r;
+		}
+
+		return $output;
+	}
+
+	public function get_signature_manager_rows($filters = [], $limit = false, $start = false)
+	{
+		$rows = $this->_build_signature_manager_rows($filters);
+		if ($limit !== false && $start !== false) {
+			return array_slice($rows, (int) $start, (int) $limit);
+		}
+		return $rows;
+	}
+
+	public function count_signature_manager_rows($filters = [])
+	{
+		return count($this->_build_signature_manager_rows($filters));
+	}
+
+	public function get_signature_manager_stats($filters = [])
+	{
+		$rows = $this->_build_signature_manager_rows(array_merge($filters, ['signature_status' => 'all']));
+		$stats = ['total' => 0, 'valid' => 0, 'missing' => 0, 'broken' => 0];
+		foreach ($rows as $r) {
+			$stats['total']++;
+			$key = $r->signature_status ?? 'missing';
+			if (isset($stats[$key])) {
+				$stats[$key]++;
+			}
+		}
+		return $stats;
+	}
+
 
 	public function add_staff($sapno, $title, $fname, $lname, $oname, $dob, $gender, $nationality_id, $initiation_date, $tel_1, $tel_2, $whatsapp, $work_email, $private_email, $physical_location)
 	{

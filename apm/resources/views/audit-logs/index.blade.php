@@ -36,14 +36,14 @@
         height: 100%;
     }
     #audit-logs-app .al-stat-value {
-        word-break: break-word;
+    word-break: break-word;
         line-height: 1.2;
     }
     #audit-logs-app .al-table thead th {
         background: #f8fafc !important;
         color: rgba(0, 0, 0, 0.7) !important;
         font-weight: 700 !important;
-        font-size: 0.75rem !important;
+    font-size: 0.75rem !important;
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
@@ -56,12 +56,12 @@
         padding: 0.75rem;
         background: #f8fafc;
         border-radius: 4px;
-        font-size: 0.75rem;
+    font-size: 0.75rem;
         overflow: auto;
         max-height: 240px;
         white-space: pre-wrap;
         word-break: break-word;
-    }
+}
 </style>
 @endpush
 

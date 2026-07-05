@@ -124,10 +124,39 @@
                 );
 
                 const kpis = computed(() => [
-                    { key: 'total', icon: 'mdi-undo-variant', accent: '#119a48', value: summary.value.total_returned || 0, label: 'Total returned' },
-                    { key: 'matrix', icon: 'mdi-grid', accent: '#d97706', value: byCat.value['Matrix'] || 0, label: 'Matrices' },
-                    { key: 'memos', icon: 'mdi-file-document-multiple', accent: '#475569', value: memoCardCount.value, label: 'Memos' },
-                    { key: 'requests', icon: 'mdi-clipboard-list-outline', accent: '#9f2240', value: requestsCardCount.value, label: 'Requests' },
+                    {
+                        key: 'total',
+                        icon: 'mdi-undo-variant',
+                        iconColor: 'success',
+                        value: summary.value.total_returned || 0,
+                        label: 'Total returned',
+                        subtext: `${Object.keys(cfg.returnedMemos || {}).length} categories`,
+                        valueClass: 'text-success',
+                    },
+                    {
+                        key: 'matrix',
+                        icon: 'mdi-grid',
+                        iconColor: 'warning',
+                        value: byCat.value['Matrix'] || 0,
+                        label: 'Matrices',
+                        subtext: 'Returned activity matrices',
+                    },
+                    {
+                        key: 'memos',
+                        icon: 'mdi-file-document-multiple',
+                        iconColor: 'info',
+                        value: memoCardCount.value,
+                        label: 'Memos',
+                        subtext: 'Special, non-travel, single & other',
+                    },
+                    {
+                        key: 'requests',
+                        icon: 'mdi-clipboard-list-outline',
+                        iconColor: 'error',
+                        value: requestsCardCount.value,
+                        label: 'Requests',
+                        subtext: 'Service requests & ARF',
+                    },
                 ]);
 
                 const allRows = computed(() => {
@@ -263,16 +292,13 @@
     </v-card>
 
     <v-row dense class="mb-4">
-      <v-col v-for="kpi in kpis" :key="kpi.key" cols="6" md="3">
-        <v-card class="rm-kpi-card" elevation="1" :style="{ '--rm-accent': kpi.accent }">
-          <v-card-text class="text-center pa-4">
-            <div class="rm-kpi-icon-wrap mx-auto mb-2" :style="{ background: kpi.accent + '1a', color: kpi.accent }">
-              <v-icon :icon="kpi.icon" size="24"></v-icon>
-            </div>
-            <div class="rm-kpi-value">{{ kpi.value }}</div>
-            <div class="rm-kpi-label">{{ kpi.label }}</div>
-          </v-card-text>
-        </v-card>
+      <v-col v-for="kpi in kpis" :key="kpi.key" cols="6" lg="3">
+        <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
+          <v-icon :icon="kpi.icon" :color="kpi.iconColor || 'primary'" class="mb-2"></v-icon>
+          <div class="text-caption text-medium-emphasis">{{ kpi.label }}</div>
+          <div class="font-weight-bold" :class="[kpi.valueClass || '', typeof kpi.value === 'number' ? 'text-h5' : 'text-h6']">{{ kpi.value }}</div>
+          <div v-if="kpi.subtext" class="text-caption text-medium-emphasis">{{ kpi.subtext }}</div>
+        </v-sheet>
       </v-col>
     </v-row>
 

@@ -82,6 +82,11 @@ $staff_id = $this->session->userdata('user')->staff_id;
                         <i class="fa fa-address-card"></i> Next of Kin
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= ($current_uri == 'signature_manager') ? 'active' : '' ?>" href="<?= base_url('staff/signature_manager') ?>">
+                        <i class="fa fa-file-signature"></i> Signature Manager
+                    </a>
+                </li>
             <?php endif; ?>
         <?php endif; ?>
 

@@ -2060,8 +2060,398 @@ public function check_work_email()
         ]);
     } else {
         echo json_encode(['exists' => false]);
-    }
-}
+		}
+	}
+
+	public function signature_manager($csv = false, $pdf = false)
+	{
+		if (!can_access('71')) {
+			show_error('You do not have permission to access Signature Manager.', 403);
+			return;
+		}
+
+		$data['module'] = $this->module;
+		$data['title'] = 'Signature Manager';
+		$data['staff_filters_auto_apply'] = true;
+
+		$filters = $this->input->get();
+		$filters['csv'] = $csv;
+		$filters['pdf'] = $pdf;
+
+		if ((int) $csv === 1) {
+			$rows = $this->staff_mdl->get_signature_manager_rows($filters);
+			$flat = [];
+			$count = 1;
+			foreach ($rows as $r) {
+				$flat[] = [
+					'#' => $count++,
+					'staff_id' => (int) ($r->staff_id ?? 0),
+					'sapno' => (string) ($r->SAPNO ?? ''),
+					'name_of_staff' => (string) ($r->full_name ?? ''),
+					'signature_status' => (string) ($r->signature_status_label ?? ''),
+					'signature_text' => (string) ($r->signature_text ?? ''),
+				];
+			}
+			$file_name = 'Staff-Signature-Manager_' . date('d-m-Y-H-i') . '.csv';
+			render_csv_data($flat, $file_name, true);
+			return;
+		}
+
+		if ((int) $pdf === 1) {
+			$data['rows'] = $this->staff_mdl->get_signature_manager_rows($filters);
+			$pdf_name = 'Staff-Signature-Manager_' . date('d-m-Y-H-i') . '.pdf';
+			pdf_print_data($data, $pdf_name, 'L', 'pdfs/signature_manager');
+			return;
+		}
+
+		render('signature_manager', $data);
+	}
+
+	public function get_signature_manager_ajax()
+	{
+		if (!can_access('71')) {
+			$this->output
+				->set_status_header(403)
+				->set_content_type('application/json')
+				->set_output(json_encode(['error' => true, 'message' => 'Forbidden']));
+			return;
+		}
+
+		if (ob_get_level()) {
+			ob_end_clean();
+		}
+		ob_start();
+		try {
+			$page = (int) ($this->input->post('page') ?: 0);
+			$per_page = (int) ($this->input->post('per_page') ?: 20);
+			if ($per_page < 20) {
+				$per_page = 20;
+			}
+			if ($per_page > 100) {
+				$per_page = 100;
+			}
+			$start = $page * $per_page;
+
+			$filters = $this->input->post();
+			unset($filters['page'], $filters['per_page']);
+			$csrf_token_name = $this->security->get_csrf_token_name();
+			if (isset($filters[$csrf_token_name])) {
+				unset($filters[$csrf_token_name]);
+			}
+
+			$count = $this->staff_mdl->count_signature_manager_rows($filters);
+			$rows = $this->staff_mdl->get_signature_manager_rows($filters, $per_page, $start);
+			$stats = $this->staff_mdl->get_signature_manager_stats($filters);
+
+			$scope = trim((string) ($filters['scope'] ?? 'current'));
+			$approverCount = null;
+			if ($scope === 'approvers') {
+				$approverCount = count(staff_fetch_apm_approver_staff_ids());
+			}
+
+			$data = [
+				'rows' => $rows,
+				'page' => $page,
+				'per_page' => $per_page,
+			];
+			ob_start();
+			$html_content = $this->load->view('signature_manager_table', $data, true);
+			$view_output = ob_get_clean();
+			if ($view_output) {
+				$html_content = $view_output . $html_content;
+			}
+
+			$csrf_hash = $this->security->get_csrf_hash();
+			if (ob_get_level()) {
+				ob_end_clean();
+			}
+
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'html' => $html_content,
+					'total' => $count,
+					'page' => $page,
+					'per_page' => $per_page,
+					'records' => $count,
+					'stats' => $stats,
+					'approver_count' => $approverCount,
+					'csrf_hash' => $csrf_hash,
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		} catch (Throwable $e) {
+			log_message('error', 'get_signature_manager_ajax: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+			while (ob_get_level()) {
+				ob_end_clean();
+			}
+			$this->output
+				->set_content_type('application/json; charset=utf-8')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Error loading data: ' . $e->getMessage(),
+					'html' => '<tr><td colspan="7" class="text-center text-danger">Error loading data. Please try again.</td></tr>',
+					'total' => 0,
+					'page' => 0,
+					'per_page' => 20,
+					'records' => 0,
+					'stats' => ['total' => 0, 'valid' => 0, 'missing' => 0, 'broken' => 0],
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+		}
+	}
+
+	/**
+	 * Bulk upload generated signatures — skips staff who already have a valid file on disk.
+	 */
+	public function bulk_save_signatures()
+	{
+		if (!can_access('71')) {
+			$this->output
+				->set_status_header(403)
+				->set_content_type('application/json')
+				->set_output(json_encode(['error' => true, 'message' => 'Forbidden']));
+			return;
+		}
+
+		$payload = $this->input->post('signatures_json');
+		$items = [];
+		if (is_string($payload) && $payload !== '') {
+			$decoded = json_decode($payload, true);
+			if (is_array($decoded)) {
+				$items = $decoded;
+			}
+		}
+		if ($items === []) {
+			$raw = json_decode((string) $this->input->raw_input_stream, true);
+			if (is_array($raw) && isset($raw['signatures']) && is_array($raw['signatures'])) {
+				$items = $raw['signatures'];
+			}
+		}
+
+		$results = [];
+		$saved = 0;
+		$skipped = 0;
+		$failed = 0;
+
+		foreach ($items as $item) {
+			if (!is_array($item)) {
+				continue;
+			}
+			$staff_id = (int) ($item['staff_id'] ?? 0);
+			$dataUrl = trim((string) ($item['signature_data_url'] ?? ''));
+			if ($staff_id <= 0 || $dataUrl === '') {
+				$failed++;
+				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Invalid payload'];
+				continue;
+			}
+
+			$staff = $this->db->get_where('staff', ['staff_id' => $staff_id])->row();
+			if (!$staff) {
+				$failed++;
+				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Staff not found'];
+				continue;
+			}
+
+			if (staff_signature_resolve_for_staff($staff_id)['valid']) {
+				$skipped++;
+				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'skipped' => true, 'message' => 'Valid signature already on file — not changed'];
+				continue;
+			}
+
+			$safe_name = str_replace(' ', '_', preg_replace(
+				'/[^a-zA-Z0-9_\-.]/',
+				'',
+				trim((string) ($staff->fname ?? '') . '_' . (string) ($staff->lname ?? ''))
+			));
+			if ($safe_name === '' || $safe_name === '_') {
+				$safe_name = 'staff_' . $staff_id;
+			}
+
+			$filename = staff_save_signature_from_data_url($dataUrl, $safe_name);
+			if ($filename === null) {
+				$failed++;
+				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Could not save signature image'];
+				continue;
+			}
+
+			$updated = $this->staff_mdl->update_staff([
+				'staff_id' => $staff_id,
+				'signature' => $filename,
+			]);
+			if (!$updated) {
+				@unlink(staff_signature_file_path($filename));
+				$failed++;
+				$results[] = ['staff_id' => $staff_id, 'ok' => false, 'message' => 'Database update failed'];
+				continue;
+			}
+
+			$saved++;
+			$results[] = [
+				'staff_id' => $staff_id,
+				'ok' => true,
+				'filename' => $filename,
+				'preview_url' => staff_secure_upload_url('signature', $filename),
+			];
+		}
+
+		$this->output
+			->set_content_type('application/json; charset=utf-8')
+			->set_output(json_encode([
+				'error' => false,
+				'saved' => $saved,
+				'skipped' => $skipped,
+				'failed' => $failed,
+				'results' => $results,
+				'csrf_hash' => $this->security->get_csrf_hash(),
+			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
+
+	/**
+	 * Manual signature file upload for one staff member (missing/broken only).
+	 */
+	public function upload_signature_manual()
+	{
+		if (!can_access('71')) {
+			$this->output
+				->set_status_header(403)
+				->set_content_type('application/json')
+				->set_output(json_encode(['error' => true, 'message' => 'Forbidden']));
+			return;
+		}
+
+		$staff_id = (int) $this->input->post('staff_id');
+		if ($staff_id <= 0) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Invalid staff ID',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		if (staff_signature_resolve_for_staff($staff_id)['valid']) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Valid signature already on file — not changed',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		$staff = $this->db->get_where('staff', ['staff_id' => $staff_id])->row();
+		if (!$staff) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Staff not found',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		if (empty($_FILES['signature']['name'])) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'No file uploaded',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		$safe_name = str_replace(' ', '_', preg_replace(
+			'/[^a-zA-Z0-9_\-.]/',
+			'',
+			trim((string) ($staff->fname ?? '') . '_' . (string) ($staff->lname ?? ''))
+		));
+		if ($safe_name === '' || $safe_name === '_') {
+			$safe_name = 'staff_' . $staff_id;
+		}
+
+		$signature_upload_path = FCPATH . 'uploads/staff/signature';
+		if (!is_dir($signature_upload_path)) {
+			@mkdir($signature_upload_path, 0755, true);
+		}
+
+		$this->load->library('upload');
+		$config = [
+			'upload_path' => rtrim($signature_upload_path, '/\\') . '/',
+			'allowed_types' => 'gif|jpg|png|jpeg|webp',
+			'file_name' => $safe_name . '_sig_' . time() . '.png',
+			'max_size' => 1024,
+			'overwrite' => false,
+		];
+		$this->upload->initialize($config);
+		if (!$this->upload->do_upload('signature')) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => strip_tags($this->upload->display_errors('', '')),
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		$uploaded = $this->upload->data('file_name');
+		$uploadedPath = rtrim($signature_upload_path, '/\\') . DIRECTORY_SEPARATOR . $uploaded;
+		$bin = @file_get_contents($uploadedPath);
+		$filename = null;
+		if ($bin !== false && $bin !== '') {
+			$mime = 'image/png';
+			if (function_exists('mime_content_type')) {
+				$detected = @mime_content_type($uploadedPath);
+				if (is_string($detected) && strpos($detected, 'image/') === 0) {
+					$mime = $detected;
+				}
+			}
+			$dataUrl = 'data:' . $mime . ';base64,' . base64_encode($bin);
+			@unlink($uploadedPath);
+			$filename = staff_save_signature_from_data_url($dataUrl, $safe_name);
+		}
+		if ($filename === null) {
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Could not save signature as PNG',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		$updated = $this->staff_mdl->update_staff([
+			'staff_id' => $staff_id,
+			'signature' => $filename,
+		]);
+		if (!$updated) {
+			@unlink(staff_signature_file_path($filename));
+			$this->output
+				->set_content_type('application/json')
+				->set_output(json_encode([
+					'error' => true,
+					'message' => 'Database update failed',
+					'csrf_hash' => $this->security->get_csrf_hash(),
+				]));
+			return;
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode([
+				'error' => false,
+				'ok' => true,
+				'staff_id' => $staff_id,
+				'filename' => $filename,
+				'preview_url' => staff_secure_upload_url('signature', $filename),
+				'csrf_hash' => $this->security->get_csrf_hash(),
+			], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+	}
 
 
 	

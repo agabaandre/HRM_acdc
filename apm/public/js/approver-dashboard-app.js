@@ -220,30 +220,37 @@
                     {
                         key: 'avg',
                         icon: 'mdi-timer-sand',
-                        accent: '#119a48',
+                        iconColor: 'success',
                         value: summary.value.overall_avg_display || '—',
                         label: 'Average time',
+                        subtext: 'Weighted across workflows',
+                        valueClass: 'text-success',
                     },
                     {
                         key: 'submitted',
                         icon: 'mdi-send',
-                        accent: '#0284c7',
+                        iconColor: 'info',
                         value: summary.value.total_submitted ?? 0,
                         label: 'Submitted',
+                        subtext: 'Pending + approved in scope',
                     },
                     {
                         key: 'approved',
                         icon: 'mdi-check-circle',
-                        accent: '#15803d',
+                        iconColor: 'success',
                         value: summary.value.total_approved ?? 0,
                         label: 'Approved',
+                        subtext: 'Completed in selected period',
+                        valueClass: 'text-success',
                     },
                     {
                         key: 'pending',
                         icon: 'mdi-clock-outline',
-                        accent: '#d97706',
+                        iconColor: 'warning',
                         value: summary.value.total_pending ?? 0,
                         label: 'Pending',
+                        subtext: 'Currently at approval level',
+                        valueClass: (summary.value.total_pending ?? 0) > 0 ? 'text-warning' : '',
                     },
                 ]);
 
@@ -878,20 +885,14 @@
         <v-btn color="primary" variant="tonal" prepend-icon="mdi-refresh" @click="refreshDashboard">Refresh</v-btn>
       </v-card-title>
       <v-card-text>
-        <v-row dense class="ad-kpi-row">
-          <v-col v-for="kpi in summaryKpis" :key="kpi.key" cols="6" md="3">
-            <v-card class="ad-kpi-card" elevation="1" :style="{ '--ad-kpi-accent': kpi.accent }">
-              <v-card-text class="text-center pa-4">
-                <div
-                  class="ad-kpi-icon-wrap mb-3"
-                  :style="{ background: kpi.accent + '1a', color: kpi.accent }"
-                >
-                  <v-icon :icon="kpi.icon" size="26"></v-icon>
-                </div>
-                <div class="ad-kpi-value">{{ kpi.value }}</div>
-                <div class="ad-kpi-label">{{ kpi.label }}</div>
-              </v-card-text>
-            </v-card>
+        <v-row dense class="mb-2">
+          <v-col v-for="kpi in summaryKpis" :key="kpi.key" cols="6" lg="3">
+            <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
+              <v-icon :icon="kpi.icon" :color="kpi.iconColor || 'primary'" class="mb-2"></v-icon>
+              <div class="text-caption text-medium-emphasis">{{ kpi.label }}</div>
+              <div class="font-weight-bold" :class="[kpi.valueClass || '', typeof kpi.value === 'number' ? 'text-h5' : 'text-h6']">{{ kpi.value }}</div>
+              <div v-if="kpi.subtext" class="text-caption text-medium-emphasis">{{ kpi.subtext }}</div>
+            </v-sheet>
           </v-col>
         </v-row>
 

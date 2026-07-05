@@ -122,10 +122,42 @@
                 const totalPending = computed(() => Number(summary.value.total_pending || 0));
 
                 const kpis = computed(() => [
-                    { key: 'total', icon: 'mdi-clock-outline', accent: '#0ea5e9', value: totalPending.value, label: 'Total pending' },
-                    { key: 'matrix', icon: 'mdi-calendar-range', accent: '#d97706', value: byCat.value.Matrix || 0, label: 'Matrices' },
-                    { key: 'memos', icon: 'mdi-file-document-multiple', accent: '#475569', value: memoCardCount.value, label: 'Memos' },
-                    { key: 'requests', icon: 'mdi-cog-outline', accent: '#2563eb', value: requestsCardCount.value, label: 'Requests' },
+                    {
+                        key: 'total',
+                        icon: 'mdi-clock-outline',
+                        iconColor: 'info',
+                        value: totalPending.value,
+                        label: 'Total pending',
+                        subtext: cfg.staleCount > 0
+                            ? `${cfg.staleCount} overdue at your level`
+                            : 'Waiting for your action',
+                        valueClass: 'text-info',
+                    },
+                    {
+                        key: 'matrix',
+                        icon: 'mdi-calendar-range',
+                        iconColor: 'warning',
+                        value: byCat.value.Matrix || 0,
+                        label: 'Matrices',
+                        subtext: 'Activity matrices',
+                    },
+                    {
+                        key: 'memos',
+                        icon: 'mdi-file-document-multiple',
+                        iconColor: 'success',
+                        value: memoCardCount.value,
+                        label: 'Memos',
+                        subtext: 'Special, non-travel, single & other',
+                        valueClass: memoCardCount.value > 0 ? 'text-success' : '',
+                    },
+                    {
+                        key: 'requests',
+                        icon: 'mdi-cog-outline',
+                        iconColor: 'primary',
+                        value: requestsCardCount.value,
+                        label: 'Requests',
+                        subtext: 'Service, ARF & change requests',
+                    },
                 ]);
 
                 const categoryGroups = computed(() => {
@@ -325,22 +357,14 @@
       </v-card-text>
     </v-card>
 
-    <v-row dense class="mb-4 pa-kpi-row">
-      <v-col v-for="kpi in kpis" :key="kpi.key" cols="6" sm="3">
-        <v-card class="pa-kpi-card" elevation="0" :style="{ '--pa-accent': kpi.accent }">
-          <v-card-text class="d-flex align-center pa-4">
-            <div
-              class="pa-kpi-icon-wrap me-3 flex-shrink-0"
-              :style="{ background: kpi.accent + '14', color: kpi.accent }"
-            >
-              <v-icon :icon="kpi.icon" size="22"></v-icon>
-            </div>
-            <div class="min-w-0">
-              <div class="pa-kpi-value">{{ kpi.value }}</div>
-              <div class="pa-kpi-label">{{ kpi.label }}</div>
-            </div>
-          </v-card-text>
-        </v-card>
+    <v-row dense class="mb-4">
+      <v-col v-for="kpi in kpis" :key="kpi.key" cols="6" lg="3">
+        <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
+          <v-icon :icon="kpi.icon" :color="kpi.iconColor || 'primary'" class="mb-2"></v-icon>
+          <div class="text-caption text-medium-emphasis">{{ kpi.label }}</div>
+          <div class="font-weight-bold" :class="[kpi.valueClass || '', typeof kpi.value === 'number' ? 'text-h5' : 'text-h6']">{{ kpi.value }}</div>
+          <div v-if="kpi.subtext" class="text-caption text-medium-emphasis">{{ kpi.subtext }}</div>
+        </v-sheet>
       </v-col>
     </v-row>
 
