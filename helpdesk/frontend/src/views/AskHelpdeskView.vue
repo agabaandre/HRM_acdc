@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
@@ -32,6 +33,7 @@ const form = reactive({ question: '' })
 const sending = ref(false)
 const messages = ref<ChatMessage[]>([])
 const messagesEl = ref<HTMLElement | null>(null)
+const route = useRoute()
 let seq = 0
 
 const starterPrompts = [
@@ -127,6 +129,14 @@ function onComposeKeydown(event: KeyboardEvent): void {
     }
   }
 }
+
+onMounted(() => {
+  const q = typeof route.query.q === 'string' ? route.query.q.trim() : ''
+  if (q.length >= 8) {
+    form.question = q
+    void sendQuestion(q)
+  }
+})
 </script>
 
 <template>
