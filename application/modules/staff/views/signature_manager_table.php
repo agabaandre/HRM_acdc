@@ -83,10 +83,10 @@ $row_number = ($page * $per_page) + 1;
 				<button type="button" class="btn btn-sm btn-outline-primary sig-manager-generate-one" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
 					<i class="fa fa-pen-nib me-1"></i> Generate
 				</button>
-				<label class="btn btn-sm btn-outline-secondary mb-0 sig-manager-upload-label<?= $is_valid ? ' disabled' : '' ?>">
+				<button type="button" class="btn btn-sm btn-outline-secondary sig-manager-upload-btn" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
 					<i class="fa fa-file-image me-1"></i> Upload file
-					<input type="file" class="d-none sig-manager-upload-input" accept="image/*" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
-				</label>
+				</button>
+				<input type="file" class="d-none sig-manager-upload-input" accept="image/*" data-staff-id="<?= $staff_id ?>"<?= $is_valid ? ' disabled' : '' ?>>
 			</div>
 		</td>
 	</tr>

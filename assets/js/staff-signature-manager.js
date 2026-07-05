@@ -148,15 +148,15 @@
     var selectCb = row.querySelector('.sig-manager-select');
     var genBtn = row.querySelector('.sig-manager-generate-one');
     var uploadInput = row.querySelector('.sig-manager-upload-input');
-    var uploadLabel = row.querySelector('.sig-manager-upload-label');
+    var uploadBtn = row.querySelector('.sig-manager-upload-btn');
     if (genBtn) {
       genBtn.disabled = !allowed;
     }
     if (uploadInput) {
       uploadInput.disabled = !allowed;
     }
-    if (uploadLabel) {
-      uploadLabel.classList.toggle('disabled', !allowed);
+    if (uploadBtn) {
+      uploadBtn.disabled = !allowed;
     }
     if (selectCb && selectCb.classList.contains('sig-manager-select-override')) {
       if (allowed) {
@@ -238,7 +238,7 @@
         }
         setBulkStatus(response && response.message ? response.message : 'Approver cache updated.');
         if (reloadTable && $('#signature_scope').val() === 'approvers') {
-          loadData();
+          loadData(true);
         }
       },
       error: function (xhr) {
@@ -325,7 +325,11 @@
     $('#paginationLinksSig').html(html);
   }
 
-  function loadData() {
+  function loadData(clearGenerated) {
+    if (clearGenerated !== false) {
+      generated = Object.create(null);
+    }
+
     $('#signatureManagerBody').html(
       '<tr><td colspan="7" class="text-center">' +
       '<div class="spinner-border text-primary" role="status"></div>' +
@@ -356,10 +360,15 @@
           updateStats(response.stats);
         }
         generatePagination(response.total || 0, response.page || 0, response.per_page || currentPerPage, response.records || 0);
-        generated = Object.create(null);
         updateUploadButtonState();
         $('#sigManagerSelectAll').prop('checked', false);
-        document.querySelectorAll('.sig-manager-row').forEach(syncRowOverrideUi);
+        document.querySelectorAll('.sig-manager-row').forEach(function (row) {
+          syncRowOverrideUi(row);
+          var staffId = row.getAttribute('data-staff-id');
+          if (staffId && generated[staffId]) {
+            setPreview(staffId, generated[staffId].dataUrl);
+          }
+        });
         if (response && response.approver_cache) {
           cfg.approverCache = response.approver_cache;
           updateApproverCacheMeta(response.approver_cache);
@@ -417,7 +426,7 @@
           ', skipped: ' + (response.skipped || 0) +
           ', failed: ' + (response.failed || 0);
         setBulkStatus(msg);
-        loadData();
+        loadData(true);
       },
       error: function (xhr) {
         var msg = 'Upload failed.';
@@ -459,7 +468,7 @@
           return;
         }
         setBulkStatus('Signature uploaded for staff #' + staffId);
-        loadData();
+        loadData(true);
       },
       error: function (xhr) {
         var msg = 'Upload failed.';
@@ -486,7 +495,7 @@
     waitForSignatureFont(Math.floor((CANVAS_HEIGHT - CANVAS_PADDING * 2) * 0.92));
     bindExportLinks();
     updateApproverCacheMeta(cfg.approverCache || null);
-    loadData();
+    loadData(true);
 
     $('#sigManagerRefreshApprovers').on('click', function () {
       refreshApproverCache(true);
@@ -495,35 +504,35 @@
     $('#recordsPerPageSig').on('change', function () {
       currentPerPage = parseInt($(this).val(), 10) || 20;
       currentPage = 0;
-      loadData();
+      loadData(true);
     });
 
     $('#signature_status, #signature_scope').on('change', function () {
       currentPage = 0;
       updateApproverCacheMeta(cfg.approverCache || null);
-      loadData();
+      loadData(true);
     });
 
     $('#staff_name').on('input', function () {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
         currentPage = 0;
-        loadData();
+        loadData(true);
       }, 350);
     });
 
     $(document).on('click', '[data-page-sig]', function (e) {
       e.preventDefault();
-      var p = $(this).data('page-sig');
-      if (p !== undefined && !$(this).parent().hasClass('disabled')) {
-        currentPage = parseInt(p, 10);
-        loadData();
+      var p = parseInt($(this).attr('data-page-sig'), 10);
+      if (!isNaN(p) && !$(this).parent().hasClass('disabled')) {
+        currentPage = p;
+        loadData(false);
       }
     });
 
     $('#sigManagerSelectAll').on('change', function () {
       var checked = $(this).is(':checked');
-      $('.sig-manager-select').prop('checked', checked);
+      $('#signatureManagerBody .sig-manager-select:not(:disabled)').prop('checked', checked);
     });
 
     $('#sigManagerGenerateSelected').on('click', function () {
@@ -568,6 +577,22 @@
       }).catch(function () {
         setBulkStatus('Could not generate preview.');
       });
+    });
+
+    $(document).on('click', '.sig-manager-upload-btn', function () {
+      var btn = this;
+      if (btn.disabled) {
+        return;
+      }
+      var row = btn.closest('.sig-manager-row');
+      if (!row || !rowAllowsReplace(row)) {
+        return;
+      }
+      var input = row.querySelector('.sig-manager-upload-input');
+      if (input && !input.disabled) {
+        input.value = '';
+        input.click();
+      }
     });
 
     $(document).on('change', '.sig-manager-upload-input', function () {

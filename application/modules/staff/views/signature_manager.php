@@ -216,4 +216,4 @@
 		approverCache: <?= json_encode(staff_apm_approver_cache_meta(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
 	};
 </script>
-<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=9"></script>
+<script src="<?= base_url('assets/js/staff-signature-manager.js') ?>?v=10"></script>
