@@ -547,8 +547,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
               $__staff_sig_src = !empty($staff->signature) ? staff_signature_print_src($staff->signature) : '';
             ?>
             <?php if ($__staff_sig_src !== ''): ?>
-              <img src="<?= htmlspecialchars($__staff_sig_src) ?>"
-                   style="max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;">
+              <img src="<?= htmlspecialchars($__staff_sig_src) ?>" class="performance-signature-img" alt="Staff signature">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 200px; height: 60px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($staff->work_email ?? '')) ?></span>
