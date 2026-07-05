@@ -29,6 +29,14 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       width: 150px;
     }
 
+    .performance-signature-img {
+      width: 110px;
+      height: 80px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
     .section-title {
       font-size: 16px;
       font-weight: bold;

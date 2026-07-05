@@ -28,6 +28,14 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       width: 150px;
     }
 
+    .performance-signature-img {
+      width: 110px;
+      height: 80px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
     .section-title {
       font-size: 16px;
       font-weight: bold;
@@ -496,8 +504,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
               $__sup_sig_src = !empty($supervisor->signature) ? staff_signature_print_src($supervisor->signature) : '';
             ?>
             <?php if ($__sup_sig_src !== ''): ?>
-              <img src="<?= htmlspecialchars($__sup_sig_src) ?>"
-                   style="max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin: 0 auto;  padding:45px;">
+              <img src="<?= htmlspecialchars($__sup_sig_src) ?>" class="performance-signature-img" alt="Supervisor signature">
             <?php else: ?>
               <div style="border-bottom: 2px solid #ccc; width: 200px; height: 60px; margin: 0 auto; display: flex; align-items: center;  padding:45px; justify-content: center;">
                 <span style="color: #999; font-style: italic; font-size: 11px;"><?= htmlspecialchars((string) ($supervisor->work_email ?? '')) ?></span>

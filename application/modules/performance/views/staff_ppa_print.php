@@ -27,6 +27,12 @@ $is_draft_print = !empty($performance_draft_watermark_text);
       width: 150px;
     }
 
+    .performance-signature-img {
+      width: 110px;
+      height: 80px;
+      text-decoration: underline;
+    }
+
     .section-title {
       font-size: 16px;
       font-weight: bold;
@@ -416,7 +422,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php elseif (!empty($_ppa_print_staff_sd->signature)):
           $_ppa_staff_sig_src = staff_signature_print_src($_ppa_print_staff_sd->signature ?? '');
           if ($_ppa_staff_sig_src !== ''): ?>
-          <img src="<?= htmlspecialchars($_ppa_staff_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <img src="<?= htmlspecialchars($_ppa_staff_sig_src) ?>" class="performance-signature-img" alt="Staff signature"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_staff_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
@@ -447,7 +453,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
         <?php elseif (!empty($_ppa_print_sup_sd->signature)):
           $_ppa_sup_sig_src = staff_signature_print_src($_ppa_print_sup_sd->signature ?? '');
           if ($_ppa_sup_sig_src !== ''): ?>
-          <img src="<?= htmlspecialchars($_ppa_sup_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+          <img src="<?= htmlspecialchars($_ppa_sup_sig_src) ?>" class="performance-signature-img" alt="Supervisor signature"><br>
         <?php else: ?>
           <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup_sd->work_email ?? '')) ?></p><br>
         <?php endif; ?>
@@ -507,7 +513,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
           <?php elseif (!empty($_ppa_print_sup2_sd->signature)):
             $_ppa_sup2_sig_src = staff_signature_print_src($_ppa_print_sup2_sd->signature ?? '');
             if ($_ppa_sup2_sig_src !== ''): ?>
-            <img src="<?= htmlspecialchars($_ppa_sup2_sig_src) ?>" style="width: 100px; height: 80px; text-decoration:underline;"><br>
+            <img src="<?= htmlspecialchars($_ppa_sup2_sig_src) ?>" class="performance-signature-img" alt="Second supervisor signature"><br>
           <?php else: ?>
             <p style="text-decoration:underline;"><?= htmlspecialchars((string) ($_ppa_print_sup2_sd->work_email ?? '')) ?></p><br>
           <?php endif; ?>
