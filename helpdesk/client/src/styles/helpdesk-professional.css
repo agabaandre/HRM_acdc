@@ -383,6 +383,16 @@ html.helpdesk-theme-dark .hd-btn--outline {
   box-shadow: inset 0 0 0 2px rgba(17, 154, 72, 0.2);
 }
 
+.hd-kanban-col--resolved {
+  background: rgba(240, 253, 244, 0.9);
+}
+
+.hd-kanban-col--resolved.is-drag-over {
+  border-color: #86efac;
+  background: rgba(240, 253, 244, 0.95);
+  box-shadow: none;
+}
+
 .hd-kanban-col-head {
   display: flex;
   align-items: center;

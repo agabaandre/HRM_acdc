@@ -50,7 +50,7 @@ interface RecentRow {
   created_at?: string | null
 }
 
-type FilterKey = 'all' | 'pending' | 'awaiting' | 'overdue' | 'due_today' | 'high' | 'resolved'
+type FilterKey = 'all' | 'pending' | 'resolved_pending' | 'overdue' | 'due_today' | 'high' | 'resolved'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -141,17 +141,21 @@ const totalForPriorityBar = computed(() => {
 
 const statusSegments = computed(() => {
   if (!breakdown.value) return []
-  const order: Array<{ key: string; label: string; color: string }> = [
-    { key: 'open', label: 'Open', color: '#2563eb' },
-    { key: 'pending', label: 'Pending', color: '#6366f1' },
-    { key: 'in_progress', label: 'In progress', color: '#7c3aed' },
-    { key: 'awaiting_requester_confirmation', label: 'Awaiting confirm', color: '#d97706' },
-    { key: 'resolved', label: 'Resolved', color: '#16a34a' },
-    { key: 'closed', label: 'Closed', color: '#64748b' },
+  const b = breakdown.value.by_status
+  const order: Array<{ key: string; label: string; color: string; count: number }> = [
+    { key: 'open', label: statusMeta('open').label, color: '#2563eb', count: b.open ?? 0 },
+    { key: 'pending', label: statusMeta('pending').label, color: '#6366f1', count: b.pending ?? 0 },
+    { key: 'in_progress', label: statusMeta('in_progress').label, color: '#7c3aed', count: b.in_progress ?? 0 },
+    {
+      key: 'resolved',
+      label: statusMeta('resolved').label,
+      color: '#16a34a',
+      count: (b.resolved ?? 0) + (b.awaiting_requester_confirmation ?? 0),
+    },
+    { key: 'closed', label: statusMeta('closed').label, color: '#64748b', count: b.closed ?? 0 },
   ]
   const total = totalForStatusBar.value || 1
   return order
-    .map((o) => ({ ...o, count: breakdown.value!.by_status[o.key] ?? 0 }))
     .filter((s) => s.count > 0)
     .map((s) => ({ ...s, pct: (s.count / total) * 100 }))
 })
@@ -173,10 +177,11 @@ const prioritySegments = computed(() => {
 
 const filterChips = computed(() => {
   if (!counts.value) return []
+  const resolvedPending = counts.value.resolved + counts.value.awaiting_requester_confirmation
   return [
     { key: 'all' as FilterKey, label: 'All', count: recent.value.length },
-    { key: 'pending' as FilterKey, label: 'Open queue', count: counts.value.pending },
-    { key: 'awaiting' as FilterKey, label: 'Awaiting confirm', count: counts.value.awaiting_requester_confirmation },
+    { key: 'pending' as FilterKey, label: 'Active work', count: counts.value.pending },
+    { key: 'resolved_pending' as FilterKey, label: 'Resolved', count: resolvedPending },
     { key: 'overdue' as FilterKey, label: 'Overdue', count: counts.value.overdue },
     { key: 'due_today' as FilterKey, label: 'Due today', count: counts.value.due_today },
     { key: 'high' as FilterKey, label: 'High priority', count: counts.value.high_priority_pending },
@@ -198,24 +203,25 @@ interface KpiCardDef {
 const kpiCards = computed((): KpiCardDef[] => {
   const c = counts.value
   if (!c) return []
+  const resolvedPending = c.resolved + c.awaiting_requester_confirmation
   return [
     {
       key: 'pending',
-      label: 'Open queue',
+      label: 'Active work',
       icon: '🗂',
       value: c.pending,
-      sub: "Tickets you're working on",
+      sub: 'Open, pending, or in progress',
       accent: '#2563eb',
       accentSoft: '#dbeafe',
     },
     {
-      key: 'awaiting',
-      label: 'Awaiting confirm',
-      icon: '⏳',
-      value: c.awaiting_requester_confirmation,
-      sub: 'Resolution sent — waiting on requester',
-      accent: '#d97706',
-      accentSoft: '#fef3c7',
+      key: 'resolved_pending',
+      label: 'Resolved',
+      icon: '✅',
+      value: resolvedPending,
+      sub: 'Pending requester closure',
+      accent: '#16a34a',
+      accentSoft: '#dcfce7',
     },
     {
       key: 'overdue',
@@ -248,11 +254,11 @@ const kpiCards = computed((): KpiCardDef[] => {
     {
       key: 'resolved',
       label: 'Resolved (7 days)',
-      icon: '✅',
+      icon: '📈',
       value: c.resolved_this_week,
       sub: `${c.new_today} new today · ${c.total_received} all-time`,
-      accent: '#16a34a',
-      accentSoft: '#dcfce7',
+      accent: '#15803d',
+      accentSoft: '#bbf7d0',
     },
   ]
 })
@@ -325,8 +331,8 @@ const filteredRecent = computed<RecentRow[]>(() => {
   switch (activeFilter.value) {
     case 'pending':
       return rows.filter((r) => ['open', 'pending', 'in_progress'].includes(r.status))
-    case 'awaiting':
-      return rows.filter((r) => r.status === 'awaiting_requester_confirmation')
+    case 'resolved_pending':
+      return rows.filter((r) => ['resolved', 'awaiting_requester_confirmation'].includes(r.status))
     case 'overdue':
       return rows.filter(isOverdue)
     case 'due_today':
@@ -435,9 +441,9 @@ onUnmounted(() => {
 
 <template>
   <div class="agent-dash">
-    <CbpPageHeading title="Agent dashboard" back-to="/" back-label="← Overview">
+    <CbpPageHeading title="Agent desk" back-to="/" back-label="← Overview">
       <template #lede>
-        Your workload at a glance — what's open, what's overdue, and what needs your attention next.
+        ITIL ticket lifecycle — triage active work on the board, resolve from ticket detail, and track SLA risk below.
       </template>
     </CbpPageHeading>
 

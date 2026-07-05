@@ -5,6 +5,9 @@ import CbpAvatar from '../common/CbpAvatar.vue'
 import TicketReassignModal, {
   type ReassignTicketRef,
 } from '../tickets/TicketReassignModal.vue'
+import TicketResolveModal, {
+  type ResolveTicketRef,
+} from '../tickets/TicketResolveModal.vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../../lib/canReassignTickets'
@@ -43,15 +46,30 @@ interface KanbanColumn {
   accent: string
 }
 
-const KANBAN_STATUSES = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'] as const
-type KanbanStatus = (typeof KANBAN_STATUSES)[number]
+const ACTIVE_STATUSES = ['open', 'pending', 'in_progress'] as const
+const RESOLVED_STATUSES = ['resolved', 'awaiting_requester_confirmation'] as const
+type ActiveStatus = (typeof ACTIVE_STATUSES)[number]
 
 const columns: KanbanColumn[] = [
-  { id: 'open', label: 'Open', hint: 'New & unstarted', accent: '#2563eb' },
-  { id: 'pending', label: 'Pending', hint: 'Waiting on input', accent: '#4f46e5' },
-  { id: 'in_progress', label: 'In progress', hint: 'Being worked', accent: '#7c3aed' },
-  { id: 'awaiting_requester_confirmation', label: 'Awaiting confirm', hint: 'With requester', accent: '#b45309' },
+  { id: 'open', label: 'Open', hint: 'Logged · not yet started', accent: '#2563eb' },
+  { id: 'pending', label: 'Pending', hint: 'Waiting on requester or third party', accent: '#4f46e5' },
+  { id: 'in_progress', label: 'In progress', hint: 'Actively being worked', accent: '#7c3aed' },
+  { id: 'resolved', label: 'Resolved', hint: 'Solution delivered · pending closure', accent: '#16a34a' },
 ]
+
+function isResolvedStatus(status: string): boolean {
+  return (RESOLVED_STATUSES as readonly string[]).includes(status)
+}
+
+function boardColumnId(status: string): string | null {
+  if ((ACTIVE_STATUSES as readonly string[]).includes(status)) {
+    return status
+  }
+  if (isResolvedStatus(status)) {
+    return 'resolved'
+  }
+  return null
+}
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -60,6 +78,7 @@ const tickets = ref<KanbanTicket[]>([])
 const dragTicketId = ref<number | null>(null)
 const dragOverColumn = ref<string | null>(null)
 const configureTicket = ref<ReassignTicketRef | null>(null)
+const resolveTicket = ref<ResolveTicketRef | null>(null)
 
 const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
@@ -75,7 +94,7 @@ const boardTickets = computed(() => {
   const meId = auth.me?.id
   const role = auth.me?.profile?.role ?? ''
   return tickets.value.filter((t) => {
-    if (!KANBAN_STATUSES.includes(t.status as KanbanStatus)) {
+    if (!boardColumnId(t.status)) {
       return false
     }
     if (role === 'agent' && meId) {
@@ -105,6 +124,23 @@ function openConfigure(t: KanbanTicket): void {
   }
 }
 
+function openResolve(ticket: KanbanTicket): void {
+  resolveTicket.value = {
+    id: ticket.id,
+    ticket_number: ticket.ticket_number,
+    subject: ticket.subject,
+    category: ticket.category ?? null,
+  }
+}
+
+function closeResolve(): void {
+  resolveTicket.value = null
+}
+
+async function onResolved(): Promise<void> {
+  await loadTickets()
+}
+
 function closeConfigure(): void {
   configureTicket.value = null
 }
@@ -119,7 +155,11 @@ const columnTickets = computed(() => {
     map.set(col.id, [])
   }
   for (const t of boardTickets.value) {
-    const list = map.get(t.status)
+    const colId = boardColumnId(t.status)
+    if (!colId) {
+      continue
+    }
+    const list = map.get(colId)
     if (list) {
       list.push(t)
     }
@@ -148,6 +188,11 @@ async function loadTickets(): Promise<void> {
 }
 
 function onDragStart(ticket: KanbanTicket, ev: DragEvent): void {
+  if (isResolvedStatus(ticket.status)) {
+    ev.preventDefault()
+    notifyError('Resolved tickets stay in Resolved until the requester closes them or they auto-close.')
+    return
+  }
   dragTicketId.value = ticket.id
   if (ev.dataTransfer) {
     ev.dataTransfer.effectAllowed = 'move'
@@ -183,13 +228,21 @@ async function onDropColumn(columnId: string, ev: DragEvent): Promise<void> {
     return
   }
   const ticket = tickets.value.find((t) => t.id === ticketId)
-  if (!ticket || ticket.status === columnId) {
+  if (!ticket || boardColumnId(ticket.status) === columnId) {
     return
   }
-  await moveTicket(ticket, columnId as KanbanStatus)
+  if (columnId === 'resolved') {
+    dragTicketId.value = null
+    openResolve(ticket)
+    return
+  }
+  if (isResolvedStatus(ticket.status)) {
+    return
+  }
+  await moveTicket(ticket, columnId as ActiveStatus)
 }
 
-async function moveTicket(ticket: KanbanTicket, newStatus: KanbanStatus): Promise<void> {
+async function moveTicket(ticket: KanbanTicket, newStatus: ActiveStatus): Promise<void> {
   const prev = ticket.status
   ticket.status = newStatus
   savingId.value = ticket.id
@@ -245,11 +298,11 @@ onMounted(() => {
         <p v-if="!hideGreeting" class="hd-kanban-eyebrow">{{ greeting }}</p>
         <h2 class="hd-kanban-title">Your ticket board</h2>
         <p class="hd-kanban-sub">
-          Drag cards between columns to update status. Click a card to open the ticket.
+          ITIL workflow: drag between Open, Pending, and In progress. Drop on Resolved to enter resolution notes and notify the requester.
         </p>
       </div>
       <div class="hd-kanban-head-actions">
-        <span class="hd-kanban-count" role="status">{{ totalActive }} active</span>
+        <span class="hd-kanban-count" role="status">{{ totalActive }} on board</span>
         <UButton
           type="button"
           color="neutral"
@@ -276,7 +329,10 @@ onMounted(() => {
         v-for="col in columns"
         :key="col.id"
         class="hd-kanban-col"
-        :class="{ 'is-drag-over': dragOverColumn === col.id }"
+        :class="{
+          'is-drag-over': dragOverColumn === col.id,
+          'hd-kanban-col--resolved': col.id === 'resolved',
+        }"
         @dragover="onDragOverColumn(col.id, $event)"
         @dragleave="onDragLeaveColumn(col.id)"
         @drop="onDropColumn(col.id, $event)"
@@ -299,7 +355,7 @@ onMounted(() => {
                 'is-dragging': dragTicketId === t.id,
                 'is-saving': savingId === t.id,
               }"
-              draggable="true"
+              :draggable="!isResolvedStatus(t.status)"
               @dragstart="onDragStart(t, $event)"
               @dragend="onDragEnd"
             >
@@ -340,7 +396,7 @@ onMounted(() => {
         </ul>
 
         <p v-if="(columnTickets.get(col.id)?.length ?? 0) === 0" class="hd-kanban-empty-col">
-          Drop tickets here
+          {{ col.id === 'resolved' ? 'Drop here to resolve' : 'Drop tickets here' }}
         </p>
       </div>
     </div>
@@ -354,6 +410,12 @@ onMounted(() => {
       :ticket="configureTicket"
       @close="closeConfigure"
       @reassigned="onConfigured"
+    />
+
+    <TicketResolveModal
+      :ticket="resolveTicket"
+      @close="closeResolve"
+      @resolved="onResolved"
     />
   </section>
 </template>

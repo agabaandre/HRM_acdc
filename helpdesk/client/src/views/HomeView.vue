@@ -70,15 +70,14 @@ const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
 
 const homeLede = computed(() => {
   if (isAgentHome.value) {
-    return 'Log and track incidents and requests for Africa CDC. Triage assigned tickets on your board below, browse FAQs, or use the shortcuts for Ask Helpdesk and the full agent desk.'
+    return 'Log and track incidents and requests for Africa CDC. Triage assigned tickets on your board below, browse FAQs, or open the agent desk for your full workload.'
   }
   return 'Log and track incidents and requests for Africa CDC. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
 })
 
 const agentShortcuts = [
-  { to: '/ask', icon: HELP_DESK_NAV_ICONS.ask, label: 'Ask Helpdesk' },
-  { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'All tickets' },
   { to: '/desk/agent', icon: HELP_DESK_NAV_ICONS.agentDesk, label: 'Agent desk' },
+  { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'All tickets' },
   { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
 ]
 

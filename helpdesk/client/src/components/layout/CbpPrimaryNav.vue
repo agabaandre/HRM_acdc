@@ -95,9 +95,9 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
             <i :class="HELP_DESK_NAV_ICONS.overview" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>Overview</span>
           </RouterLink>
-          <RouterLink to="/ask" class="cbp-nav-link" @click="closeAll">
-            <i :class="HELP_DESK_NAV_ICONS.ask" class="cbp-nav-link-icon" aria-hidden="true" />
-            <span>Ask Helpdesk</span>
+          <RouterLink v-if="showDesk" to="/desk/agent" class="cbp-nav-link" @click="closeAll">
+            <i :class="HELP_DESK_NAV_ICONS.agentDesk" class="cbp-nav-link-icon" aria-hidden="true" />
+            <span>Agent desk</span>
           </RouterLink>
           <RouterLink to="/tickets" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.tickets" class="cbp-nav-link-icon" aria-hidden="true" />
@@ -106,10 +106,6 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
           <RouterLink to="/tickets/new" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.newRequest" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>New request</span>
-          </RouterLink>
-          <RouterLink v-if="showDesk" to="/desk/agent" class="cbp-nav-link" @click="closeAll">
-            <i :class="HELP_DESK_NAV_ICONS.agentDesk" class="cbp-nav-link-icon" aria-hidden="true" />
-            <span>Agent desk</span>
           </RouterLink>
           <RouterLink v-if="canManageKb" to="/knowledge-base/manage" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.knowledgeBase" class="cbp-nav-link-icon" aria-hidden="true" />
