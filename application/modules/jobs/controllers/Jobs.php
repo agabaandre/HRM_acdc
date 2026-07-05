@@ -177,26 +177,47 @@ public function audit_extended_contracts() {
 
          
 public function staff_birthday() {
-    $todays = $this->staff_mdl->getBirthdays(0);
     $today = new DateTime('today');
     $todayStr = $today->format('Y-m-d');
     $queued = 0;
     $skipped = 0;
+    $errors = 0;
+
+    try {
+        $todays = $this->staff_mdl->getBirthdays(0);
+    } catch (Exception $e) {
+        log_message('error', 'staff_birthday: getBirthdays failed — ' . $e->getMessage());
+        echo json_encode([
+            'msg' => 'Birthday job failed: could not load staff birthdays.',
+            'type' => 'error',
+            'queued' => 0,
+            'skipped' => 0,
+        ]);
+        return;
+    }
 
     foreach ($todays as $row) {
+        if (!staff_is_valid_dob_string($row->date_of_birth ?? '')) {
+            $skipped++;
+            continue;
+        }
+
         try {
-            $dob = new DateTime($row->date_of_birth);
+            $dob = new DateTime(substr(trim((string) $row->date_of_birth), 0, 10));
         } catch (Exception $e) {
+            $skipped++;
             continue;
         }
 
         $age = $today->diff($dob)->y;
-        if ($age < 18) {
+        if ($age < 18 || $age > 100) {
+            $skipped++;
             continue;
         }
 
         $workEmail = trim((string) ($row->work_email ?? ''));
         if ($workEmail === '' || strpos($workEmail, '@') === false) {
+            $skipped++;
             continue;
         }
 
@@ -220,20 +241,35 @@ public function staff_birthday() {
         $data['date_2'] = $todayStr;
         $data['body'] = $this->load->view('staff_bd', $data, true);
         $dispatch = date('Y-m-d H:i:s');
-        if (golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'], $dispatch, $entry_id)) {
-            $queued++;
+        try {
+            if (golobal_log_email('system', $data['email_to'], $data['body'], $data['subject'], $staff_id, $data['date_2'], $dispatch, $entry_id)) {
+                $queued++;
+            }
+        } catch (Exception $e) {
+            $errors++;
+            log_message('error', 'staff_birthday: queue failed for staff_id ' . $staff_id . ' — ' . $e->getMessage());
         }
     }
 
     if ($queued > 0) {
-        $this->send_instant_mails();
+        try {
+            $this->send_instant_mails();
+        } catch (Exception $e) {
+            log_message('error', 'staff_birthday: send_instant_mails failed — ' . $e->getMessage());
+        }
+    }
+
+    $msg = "Birthday greetings queued: {$queued}, skipped (already queued/sent/invalid): {$skipped}.";
+    if ($errors > 0) {
+        $msg .= " Queue errors: {$errors}.";
     }
 
     echo json_encode([
-        'msg' => "Birthday greetings queued: {$queued}, skipped (already queued/sent): {$skipped}.",
-        'type' => 'info',
+        'msg' => $msg,
+        'type' => $errors > 0 ? 'warning' : 'info',
         'queued' => $queued,
         'skipped' => $skipped,
+        'errors' => $errors,
     ]);
 }
 

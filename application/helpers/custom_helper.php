@@ -38,13 +38,34 @@ if (!function_exists('render_dashboard')) {
     }
 }
 
+if (!function_exists('staff_is_valid_dob_string')) {
+    /**
+     * True when $dob is a usable Y-m-d (excludes empty and legacy 0000-00-00).
+     */
+    function staff_is_valid_dob_string($dob)
+    {
+        $dob = trim((string) $dob);
+        if ($dob === '' || stripos($dob, '0000-00-00') === 0) {
+            return false;
+        }
+
+        return (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/', substr($dob, 0, 10));
+    }
+}
+
 if (!function_exists('calculate_age')) {
     function calculate_age($birthdate)
     {
-        $birthdate = new DateTime($birthdate);
-        $today = new DateTime();
-        $age = $birthdate->diff($today)->y;
-        return $age;
+        if (!staff_is_valid_dob_string($birthdate)) {
+            return 0;
+        }
+        try {
+            $birthdate = new DateTime(substr(trim((string) $birthdate), 0, 10));
+            $today = new DateTime();
+            return $birthdate->diff($today)->y;
+        } catch (Exception $e) {
+            return 0;
+        }
     }
 }
 

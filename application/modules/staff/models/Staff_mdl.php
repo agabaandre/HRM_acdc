@@ -1213,12 +1213,33 @@ class Staff_mdl extends CI_Model
 	return ((@$filters['csv'])==1) ? $query->result_array() : $query->result();
 	//dd($this->db->last_query());
 	}
+
+	/**
+	 * SQL expression for month-day (mm-dd) from date_of_birth without DATE_FORMAT (MySQL strict / zero dates).
+	 */
+	private function _staff_dob_mmdd_expr($column = 's.date_of_birth')
+	{
+		return 'SUBSTRING(CAST(' . $column . ' AS CHAR(10)), 6, 5)';
+	}
+
+	/**
+	 * Exclude NULL / legacy zero dates without comparing to '0000-00-00' (NO_ZERO_DATE).
+	 */
+	private function _staff_valid_dob_where($column = 's.date_of_birth')
+	{
+		$this->db->where($column . ' IS NOT NULL', null, false);
+		$this->db->where('CAST(' . $column . ' AS CHAR(10)) NOT LIKE ' . $this->db->escape('0000-00-00%'), null, false);
+		$this->db->where('CAST(' . $column . ' AS CHAR(10)) >= ' . $this->db->escape('1900-01-01'), null, false);
+	}
 	
 public function getBirthdays($days)
 {
     $days = (int) $days;
     $currentDate = date('Y-m-d');
     $nextDays = date('Y-m-d', strtotime($currentDate . " +{$days} days"));
+    $fromMmdd = date('m-d', strtotime($currentDate));
+    $toMmdd = date('m-d', strtotime($nextDays));
+    $dobMmdd = $this->_staff_dob_mmdd_expr('s.date_of_birth');
 
     $latestContractSubquery = $this->db
         ->select('MAX(staff_contract_id)')
@@ -1253,9 +1274,17 @@ public function getBirthdays($days)
 
     $this->db->where("sc.staff_contract_id IN ($latestContractSubquery)", null, false);
     $this->db->where_in('sc.status_id', [1, 2, 7]);
-    $this->db->where('s.date_of_birth IS NOT NULL', null, false);
-    $this->db->where('s.date_of_birth !=', '0000-00-00');
-    $this->db->where("DATE_FORMAT(s.date_of_birth, '%m-%d') BETWEEN DATE_FORMAT(".$this->db->escape($currentDate).", '%m-%d') AND DATE_FORMAT(".$this->db->escape($nextDays).", '%m-%d')", null, false);
+    $this->_staff_valid_dob_where('s.date_of_birth');
+
+    if ($days === 0) {
+        $this->db->where($dobMmdd . ' = ' . $this->db->escape($fromMmdd), null, false);
+    } else {
+        $this->db->where(
+            $dobMmdd . ' BETWEEN ' . $this->db->escape($fromMmdd) . ' AND ' . $this->db->escape($toMmdd),
+            null,
+            false
+        );
+    }
 
     return $this->db->get()->result();
 }
