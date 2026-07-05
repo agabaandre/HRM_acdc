@@ -1336,6 +1336,119 @@ public function revert()
     $this->session->set_flashdata('profile_old_input', $keep);
   }
 
+  /**
+   * Re-encode an uploaded signature file as PNG (returns absolute path).
+   *
+   * @param  string  $path
+   * @return string|null
+   */
+  private function _profile_convert_signature_file_to_png($path)
+  {
+    if (!is_file($path)) {
+      return null;
+    }
+    if (!function_exists('imagecreatefromstring')) {
+      return $path;
+    }
+
+    $bin = @file_get_contents($path);
+    if ($bin === false) {
+      return null;
+    }
+
+    $img = @imagecreatefromstring($bin);
+    if ($img === false) {
+      return $path;
+    }
+
+    imagesavealpha($img, true);
+    imagealphablending($img, false);
+
+    $dir = dirname($path);
+    $base = pathinfo($path, PATHINFO_FILENAME);
+    $pngPath = $dir . DIRECTORY_SEPARATOR . $base . '.png';
+
+    if (!@imagepng($img, $pngPath, 9)) {
+      imagedestroy($img);
+      return $path;
+    }
+    imagedestroy($img);
+
+    if ($pngPath !== $path && is_file($path)) {
+      @unlink($path);
+    }
+
+    return $pngPath;
+  }
+
+  /**
+   * Save a PNG signature from a data URL (drawn / typed signature tool).
+   *
+   * @return string|null Saved filename under uploads/staff/signature/
+   */
+  private function _profile_save_signature_data_url($dataUrl, $safe_name)
+  {
+    $dataUrl = trim((string) $dataUrl);
+    if ($dataUrl === '') {
+      return null;
+    }
+
+    $bin = null;
+
+    if (preg_match('#^data:image/(png|jpe?g|gif|webp);base64,#i', $dataUrl, $m)) {
+      $comma = strpos($dataUrl, ',');
+      if ($comma === false) {
+        return null;
+      }
+      $bin = base64_decode(substr($dataUrl, $comma + 1), true);
+    } elseif (preg_match('#^[A-Za-z0-9+/=\r\n]+$#', $dataUrl)) {
+      // DocuSeal signature-maker returns raw base64 (no data: prefix).
+      $bin = base64_decode(preg_replace('/\s+/', '', $dataUrl), true);
+    }
+
+    if ($bin === false || $bin === null || strlen($bin) < 16) {
+      return null;
+    }
+    if (strlen($bin) > 1024 * 1024) {
+      return null;
+    }
+
+    // Always store drawn signatures as PNG.
+    if (function_exists('imagecreatefromstring')) {
+      $img = @imagecreatefromstring($bin);
+      if ($img !== false) {
+        imagesavealpha($img, true);
+        imagealphablending($img, false);
+        ob_start();
+        imagepng($img, null, 9);
+        $png = ob_get_clean();
+        imagedestroy($img);
+        if ($png !== false && $png !== '') {
+          $bin = $png;
+        }
+      }
+    }
+    $ext = 'png';
+
+    $safe_name = trim((string) $safe_name);
+    if ($safe_name === '') {
+      $safe_name = 'staff_sig';
+    }
+
+    $signature_upload_path = FCPATH . 'uploads/staff/signature';
+    if (!is_dir($signature_upload_path)) {
+      @mkdir($signature_upload_path, 0755, true);
+    }
+
+    $filename = $safe_name . '_sig_' . time() . '.png';
+    $path = rtrim($signature_upload_path, '/\\') . DIRECTORY_SEPARATOR . $filename;
+    if (@file_put_contents($path, $bin) === false) {
+      return null;
+    }
+
+    return $filename;
+  }
+
   public function update_profile()
   {
     $sessionUser = $this->_require_auth_user();
@@ -1415,9 +1528,8 @@ public function revert()
     }
 
     if (!empty($signature['name'])) {
-      $ext = pathinfo($signature['name'], PATHINFO_EXTENSION);
       $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
-      $signature_file_name = $safe_name . '_sig_' . time() . '.' . ($ext ? $ext : 'png');
+      $signature_file_name = $safe_name . '_sig_' . time() . '.png';
       $config = array(
         'upload_path'   => rtrim($signature_upload_path, '/\\') . '/',
         'allowed_types' => 'gif|jpg|png|jpeg',
@@ -1429,9 +1541,21 @@ public function revert()
       if (!$this->upload->do_upload('signature')) {
         $upload_errors[] = 'Signature: ' . $this->upload->display_errors('', '');
       } else {
-        $data['signature'] = $this->upload->data('file_name');
+        $uploaded = $this->upload->data('file_name');
+        $uploadedPath = rtrim($signature_upload_path, '/\\') . DIRECTORY_SEPARATOR . $uploaded;
+        $converted = $this->_profile_convert_signature_file_to_png($uploadedPath);
+        $data['signature'] = $converted !== null ? basename($converted) : $uploaded;
+      }
+    } elseif (!empty($data['signature_data_url'])) {
+      $safe_name = str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9_\-.]/', '', $data['name']));
+      $savedSig = $this->_profile_save_signature_data_url($data['signature_data_url'], $safe_name);
+      if ($savedSig === null) {
+        $upload_errors[] = 'Signature: could not save drawn signature. Please try again or upload an image file.';
+      } else {
+        $data['signature'] = $savedSig;
       }
     }
+    unset($data['signature_data_url']);
 
     if (!empty($passport_biodata['name'])) {
       $ext = pathinfo($passport_biodata['name'], PATHINFO_EXTENSION);

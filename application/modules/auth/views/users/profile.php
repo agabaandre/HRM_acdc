@@ -81,6 +81,8 @@ $nok_list[1] = profile_normalize_nok_row($nok_list[1] ?? []);
 $dob = !empty($staff->date_of_birth) ? date('M d, Y', strtotime($staff->date_of_birth)) : 'N/A';
 $contract_start = !empty($contract->start_date) ? date('M d, Y', strtotime($contract->start_date)) : 'N/A';
 $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract->end_date)) : 'N/A';
+$signature_default_text = trim(preg_replace('/\s+/', ' ', $staff->title . ' ' . $staff->fname . ' ' . $staff->lname . ' ' . ($staff->oname ?? '')));
+$has_saved_signature = ($signature_url !== '');
 ?>
 <style>
   /* Sidebar: 5/12 width from md up (col-md-5); full width stacked on extra-small screens */
@@ -120,6 +122,64 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
   }
   .profile-doc-preview-box a.img-link { display: block; line-height: 0; }
   .profile-doc-preview-sig img { max-height: 52px; }
+  /* Vuetify signature island — scoped so it does not affect the rest of the profile layout */
+  #profile-signature-app .profile-signature-v-app {
+    min-height: 0 !important;
+    background: transparent !important;
+  }
+  #profile-signature-app .v-application__wrap {
+    min-height: 0 !important;
+  }
+  #profile-signature-app .profile-signature-preview {
+    background:
+      linear-gradient(45deg, #f1f3f5 25%, transparent 25%),
+      linear-gradient(-45deg, #f1f3f5 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #f1f3f5 75%),
+      linear-gradient(-45deg, transparent 75%, #f1f3f5 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    background-color: #fff;
+  }
+  #profile-signature-app .profile-signature-canvas {
+    height: 110px !important;
+    max-height: 110px !important;
+    min-height: 110px !important;
+  }
+  #profile-signature-app signature-maker canvas {
+    height: 110px !important;
+    max-height: 110px !important;
+  }
+  #profile-signature-app signature-maker [data-target="canvas"] {
+    min-height: 0 !important;
+  }
+  #profile-signature-app signature-maker [data-target="textInput"] {
+    font-size: 1.125rem !important;
+  }
+  /* Prevent theme uppercase / fixed height from overflowing narrow column */
+  #profile-signature-app .profile-signature-action-btn {
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 2.25rem !important;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    line-height: 1.25 !important;
+  }
+  #profile-signature-app .profile-signature-action-btn .v-btn__content {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    white-space: normal !important;
+    text-align: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+  #profile-signature-app .profile-signature-action-btn .v-btn__prepend {
+    margin-inline-end: 6px !important;
+  }
 </style>
 
 <div class="container-fluid">
@@ -548,17 +608,26 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
                 <?php endif; ?>
             </div>
               <div class="col-md-4">
-              <label class="form-label">Upload Signature</label>
-              <input type="file" name="signature" class="form-control" accept="image/*">
-                <small class="text-muted">Max 1MB. PNG with transparent background recommended.</small>
-                <?php if ($signature_url !== ''): ?>
-                <div class="profile-doc-preview-box profile-doc-preview-sig">
-                  <div class="profile-doc-preview-label">Current signature</div>
-                  <a href="<?= htmlspecialchars($signature_url) ?>" target="_blank" rel="noopener" class="img-link">
-                    <img src="<?= htmlspecialchars($signature_url) ?>" alt="Current signature" loading="lazy" style="background: linear-gradient(45deg, #f1f3f5 25%, transparent 25%), linear-gradient(-45deg, #f1f3f5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f3f5 75%), linear-gradient(-45deg, transparent 75%, #f1f3f5 75%); background-size: 8px 8px; background-position: 0 0, 0 4px, 4px -4px, -4px 0;">
-                  </a>
+                <div id="profile-signature-app"
+                     class="profile-signature-vuetify h-100"
+                     data-current-url="<?= htmlspecialchars($signature_url !== '' ? $signature_url : '', ENT_QUOTES, 'UTF-8') ?>"
+                     data-has-signature="<?= $has_saved_signature ? '1' : '0' ?>"
+                     data-default-signature-text="<?= htmlspecialchars($signature_default_text, ENT_QUOTES, 'UTF-8') ?>"
+                     data-placeholder="<?= htmlspecialchars(base_url('assets/images/pp.png'), ENT_QUOTES, 'UTF-8') ?>">
+                  <noscript>
+                    <label class="form-label">Upload Signature</label>
+                    <input type="file" name="signature" class="form-control" accept="image/*">
+                    <small class="text-muted">Max 1MB. PNG with transparent background recommended.</small>
+                    <?php if ($signature_url !== ''): ?>
+                    <div class="profile-doc-preview-box profile-doc-preview-sig">
+                      <div class="profile-doc-preview-label">Current signature</div>
+                      <a href="<?= htmlspecialchars($signature_url) ?>" target="_blank" rel="noopener" class="img-link">
+                        <img src="<?= htmlspecialchars($signature_url) ?>" alt="Current signature" loading="lazy">
+                      </a>
+                    </div>
+                    <?php endif; ?>
+                  </noscript>
                 </div>
-                <?php endif; ?>
               </div>
             </div>
           </div>
@@ -646,3 +715,11 @@ $contract_end = !empty($contract->end_date) ? date('M d, Y', strtotime($contract
     </div>
   </div>
 </div>
+
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/@fontsource/dancing-script/files/dancing-script-latin-400-normal.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.css">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@3.7.6/dist/vuetify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@docuseal/signature-maker-js/dist/index.cjs.min.js"></script>
+<script src="<?= base_url('assets/js/auth-profile-signature.js') ?>?v=6"></script>
