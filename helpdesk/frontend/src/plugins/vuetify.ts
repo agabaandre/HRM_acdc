@@ -1,8 +1,6 @@
 import 'vuetify/styles'
-import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 import { VColorInput } from 'vuetify/labs/VColorInput'
 
 const africaCdcLight = {
@@ -43,12 +41,18 @@ const africaCdcDark = {
   },
 }
 
+/** Tree-shaken via vite-plugin-vuetify autoImport — do not import all components here. */
 export default createVuetify({
   components: {
-    ...components,
     VColorInput,
   },
-  directives,
+  icons: {
+    defaultSet: 'mdi',
+    aliases,
+    sets: {
+      mdi,
+    },
+  },
   defaults: {
     VBtn: {
       rounded: 'md',

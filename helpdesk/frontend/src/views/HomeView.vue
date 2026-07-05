@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
-import { api } from '../lib/api'
+import { cachedGet } from '../lib/apiCache'
+import { scheduleIdle } from '../lib/scheduleIdle'
 import { useAuthStore } from '../stores/auth'
 import { staffPortalHomeUrl } from '../lib/sso'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
 import { isAgentDeskUser } from '../lib/isAgentDeskUser'
 import { HELP_DESK_NAV_ICONS } from '../lib/helpdeskNav'
+
+const HomeAgentKanban = defineAsyncComponent(
+  () => import('../components/home/HomeAgentKanban.vue'),
+)
 
 const HOME_FAQ_LIMIT = 5
 
@@ -106,7 +110,12 @@ async function loadArticles(query = ''): Promise<void> {
     if (query.trim() !== '') {
       params.q = query.trim()
     }
-    const { data } = await api.get<{ data: KbArticle[]; meta?: { count?: number } }>('/api/v1/kb/articles', { params })
+    const data = await cachedGet<{ data: KbArticle[]; meta?: { count?: number } }>(
+      'kb:articles',
+      '/api/v1/kb/articles',
+      60_000,
+      params,
+    )
     articles.value = Array.isArray(data.data) ? data.data : []
     totalArticleCount.value = typeof data.meta?.count === 'number' ? data.meta.count : articles.value.length
   } catch (e: unknown) {
@@ -151,7 +160,9 @@ onMounted(() => {
   if (auth.isAuthenticated && !auth.me) {
     void auth.fetchMe().catch(() => {})
   }
-  void loadArticles()
+  scheduleIdle(() => {
+    void loadArticles()
+  })
 })
 </script>
 

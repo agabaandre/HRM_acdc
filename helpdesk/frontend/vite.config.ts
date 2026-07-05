@@ -18,11 +18,50 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist-build',
       emptyOutDir: true,
+      target: 'es2020',
+      cssCodeSplit: true,
+      sourcemap: false,
+      modulePreload: {
+        polyfill: true,
+      },
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined
+            }
+            if (id.includes('@vueup/vue-quill') || id.includes('quill')) {
+              return 'editor'
+            }
+            if (id.includes('vuetify')) {
+              return 'vuetify'
+            }
+            if (
+              id.includes('/vue/') ||
+              id.includes('vue-router') ||
+              id.includes('pinia') ||
+              id.includes('@vue/')
+            ) {
+              return 'vue-vendor'
+            }
+            if (id.includes('axios')) {
+              return 'http'
+            }
+            return undefined
+          },
+        },
+      },
+      chunkSizeWarningLimit: 700,
     },
     plugins: [
       vue(),
-      vuetify({ autoImport: true }),
+      vuetify({
+        autoImport: true,
+      }),
     ],
+    optimizeDeps: {
+      include: ['vue', 'vue-router', 'pinia', 'vuetify', 'axios'],
+    },
     server: {
       port: 5174,
       proxy: {

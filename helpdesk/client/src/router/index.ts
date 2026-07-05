@@ -1,31 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { getActivePinia } from 'pinia'
-import AskHelpdeskView from '../views/AskHelpdeskView.vue'
-import HomeView from '../views/HomeView.vue'
-import SettingsLayoutView from '../views/settings/SettingsLayoutView.vue'
-import AiSettingsLayoutView from '../views/settings/AiSettingsLayoutView.vue'
-import GeneralSettingsPanel from '../components/settings/GeneralSettingsPanel.vue'
-import AiModelsSettingsPanel from '../components/settings/AiModelsSettingsPanel.vue'
-import FaqSourcesSettingsPanel from '../components/settings/FaqSourcesSettingsPanel.vue'
-import AgentsManagementPanel from '../components/settings/AgentsManagementPanel.vue'
-import CategoriesManagementPanel from '../components/settings/CategoriesManagementPanel.vue'
-import RiskMatrixManagementPanel from '../components/settings/RiskMatrixManagementPanel.vue'
-import JobsSlaManagementPanel from '../components/settings/JobsSlaManagementPanel.vue'
-import IntegrationsSettingsPanel from '../components/settings/IntegrationsSettingsPanel.vue'
-import LoggingAuditPanel from '../components/settings/LoggingAuditPanel.vue'
-import TicketsView from '../views/TicketsView.vue'
-import TicketCreateView from '../views/TicketCreateView.vue'
-import TicketDetailView from '../views/TicketDetailView.vue'
-import AgentDashboardView from '../views/AgentDashboardView.vue'
-import ReportsView from '../views/ReportsView.vue'
-import ConfirmResolutionView from '../views/ConfirmResolutionView.vue'
-import KbManageView from '../views/KbManageView.vue'
-import ScreenDashboardView from '../views/ScreenDashboardView.vue'
-import UserGuideView from '../views/UserGuideView.vue'
-import ToolsLayoutView from '../views/tools/ToolsLayoutView.vue'
-import ItAssetsView from '../views/tools/ItAssetsView.vue'
-import LicensesView from '../views/tools/LicensesView.vue'
-import SoftwareRequestsView from '../views/tools/SoftwareRequestsView.vue'
 import { profileHasToolsPermission } from '../lib/toolsPermissions'
 import type { ToolsPermissionKey } from '../lib/toolsNav'
 import { getStoredToken } from '../lib/api'
@@ -36,138 +10,186 @@ import { finishRoutePreloader, startRoutePreloader } from '../lib/appPreloader'
 
 const STAFF_ROLES = new Set(['agent', 'supervisor', 'admin', 'auditor'])
 
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('../views/HomeView.vue'),
+  },
+  {
+    path: '/guide',
+    name: 'user-guide',
+    component: () => import('../views/UserGuideView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/ask',
+    name: 'ask-helpdesk',
+    component: () => import('../views/AskHelpdeskView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/tickets/confirm-resolution',
+    name: 'confirm-resolution',
+    component: () => import('../views/ConfirmResolutionView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/settings',
+    component: () => import('../views/settings/SettingsLayoutView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+    redirect: '/settings/general',
+    children: [
+      {
+        path: 'general',
+        name: 'settings-general',
+        component: () => import('../components/settings/GeneralSettingsPanel.vue'),
+        meta: { settingsTitle: 'General' },
+      },
+      {
+        path: 'ai',
+        component: () => import('../views/settings/AiSettingsLayoutView.vue'),
+        meta: { settingsTitle: 'AI models & provider' },
+        children: [
+          {
+            path: '',
+            name: 'settings-ai',
+            component: () => import('../components/settings/AiModelsSettingsPanel.vue'),
+          },
+          {
+            path: 'faq-sources',
+            name: 'settings-ai-faq-sources',
+            component: () => import('../components/settings/FaqSourcesSettingsPanel.vue'),
+            meta: { settingsTitle: 'FAQ sources' },
+          },
+        ],
+      },
+      {
+        path: 'agents',
+        name: 'settings-agents',
+        component: () => import('../components/settings/AgentsManagementPanel.vue'),
+        meta: { settingsTitle: 'Agents & category routing' },
+      },
+      {
+        path: 'categories',
+        name: 'settings-categories',
+        component: () => import('../components/settings/CategoriesManagementPanel.vue'),
+        meta: { settingsTitle: 'Issue categories' },
+      },
+      {
+        path: 'risk-matrix',
+        name: 'settings-risk-matrix',
+        component: () => import('../components/settings/RiskMatrixManagementPanel.vue'),
+        meta: { settingsTitle: 'Risk matrix' },
+      },
+      {
+        path: 'jobs',
+        name: 'settings-jobs',
+        component: () => import('../components/settings/JobsSlaManagementPanel.vue'),
+        meta: { settingsTitle: 'Jobs' },
+      },
+      {
+        path: 'integrations',
+        name: 'settings-integrations',
+        component: () => import('../components/settings/IntegrationsSettingsPanel.vue'),
+        meta: { settingsTitle: 'WhatsApp & Teams' },
+      },
+      {
+        path: 'logging',
+        name: 'settings-logging',
+        component: () => import('../components/settings/LoggingAuditPanel.vue'),
+        meta: { settingsTitle: 'Audit & ISO logging' },
+      },
+    ],
+  },
+  {
+    path: '/admin/agents',
+    name: 'admin-agents',
+    meta: { requiresAuth: true, requiresAdmin: true },
+    redirect: () => ({ path: '/settings/agents' }),
+  },
+  {
+    path: '/tickets',
+    name: 'tickets',
+    component: () => import('../views/TicketsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/tickets/new',
+    name: 'tickets-new',
+    component: () => import('../views/TicketCreateView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/tickets/:id',
+    name: 'ticket-detail',
+    component: () => import('../views/TicketDetailView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/desk/agent',
+    name: 'agent-dashboard',
+    component: () => import('../views/AgentDashboardView.vue'),
+    meta: { requiresAuth: true, requiresStaff: true },
+  },
+  {
+    path: '/reports',
+    name: 'reports',
+    component: () => import('../views/ReportsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/knowledge-base/manage',
+    name: 'kb-manage',
+    component: () => import('../views/KbManageView.vue'),
+    meta: { requiresAuth: true, requiresKbManager: true },
+  },
+  {
+    path: '/screen',
+    name: 'screen',
+    component: () => import('../views/ScreenDashboardView.vue'),
+    meta: { public: true, chrome: false },
+  },
+  {
+    path: '/tools',
+    component: () => import('../views/tools/ToolsLayoutView.vue'),
+    meta: { requiresAuth: true },
+    redirect: '/tools/software-requests',
+    children: [
+      {
+        path: 'it-assets',
+        name: 'tools-it-assets',
+        component: () => import('../views/tools/ItAssetsView.vue'),
+        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_it_assets' as ToolsPermissionKey },
+      },
+      {
+        path: 'licenses',
+        name: 'tools-licenses',
+        component: () => import('../views/tools/LicensesView.vue'),
+        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_licenses' as ToolsPermissionKey },
+      },
+      {
+        path: 'software-requests',
+        name: 'tools-software-requests',
+        component: () => import('../views/tools/SoftwareRequestsView.vue'),
+        meta: { requiresAuth: true, requiresSoftwareRequests: true },
+      },
+    ],
+  },
+]
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    { path: '/', name: 'home', component: HomeView },
-    { path: '/guide', name: 'user-guide', component: UserGuideView, meta: { public: true } },
-    { path: '/ask', name: 'ask-helpdesk', component: AskHelpdeskView, meta: { requiresAuth: true } },
-    {
-      path: '/tickets/confirm-resolution',
-      name: 'confirm-resolution',
-      component: ConfirmResolutionView,
-      meta: { public: true },
-    },
-    {
-      path: '/settings',
-      component: SettingsLayoutView,
-      meta: { requiresAuth: true, requiresAdmin: true },
-      redirect: '/settings/general',
-      children: [
-        {
-          path: 'general',
-          name: 'settings-general',
-          component: GeneralSettingsPanel,
-          meta: { settingsTitle: 'General' },
-        },
-        {
-          path: 'ai',
-          component: AiSettingsLayoutView,
-          meta: { settingsTitle: 'AI models & provider' },
-          children: [
-            {
-              path: '',
-              name: 'settings-ai',
-              component: AiModelsSettingsPanel,
-            },
-            {
-              path: 'faq-sources',
-              name: 'settings-ai-faq-sources',
-              component: FaqSourcesSettingsPanel,
-              meta: { settingsTitle: 'FAQ sources' },
-            },
-          ],
-        },
-        {
-          path: 'agents',
-          name: 'settings-agents',
-          component: AgentsManagementPanel,
-          meta: { settingsTitle: 'Agents & category routing' },
-        },
-        {
-          path: 'categories',
-          name: 'settings-categories',
-          component: CategoriesManagementPanel,
-          meta: { settingsTitle: 'Issue categories' },
-        },
-        {
-          path: 'risk-matrix',
-          name: 'settings-risk-matrix',
-          component: RiskMatrixManagementPanel,
-          meta: { settingsTitle: 'Risk matrix' },
-        },
-        {
-          path: 'jobs',
-          name: 'settings-jobs',
-          component: JobsSlaManagementPanel,
-          meta: { settingsTitle: 'Jobs' },
-        },
-        {
-          path: 'integrations',
-          name: 'settings-integrations',
-          component: IntegrationsSettingsPanel,
-          meta: { settingsTitle: 'WhatsApp & Teams' },
-        },
-        {
-          path: 'logging',
-          name: 'settings-logging',
-          component: LoggingAuditPanel,
-          meta: { settingsTitle: 'Audit & ISO logging' },
-        },
-      ],
-    },
-    {
-      path: '/admin/agents',
-      name: 'admin-agents',
-      meta: { requiresAuth: true, requiresAdmin: true },
-      redirect: () => ({ path: '/settings/agents' }),
-    },
-    { path: '/tickets', name: 'tickets', component: TicketsView, meta: { requiresAuth: true } },
-    { path: '/tickets/new', name: 'tickets-new', component: TicketCreateView, meta: { requiresAuth: true } },
-    { path: '/tickets/:id', name: 'ticket-detail', component: TicketDetailView, meta: { requiresAuth: true } },
-    { path: '/desk/agent', name: 'agent-dashboard', component: AgentDashboardView, meta: { requiresAuth: true, requiresStaff: true } },
-    { path: '/reports', name: 'reports', component: ReportsView, meta: { requiresAuth: true } },
-    {
-      path: '/knowledge-base/manage',
-      name: 'kb-manage',
-      component: KbManageView,
-      meta: { requiresAuth: true, requiresKbManager: true },
-    },
-    {
-      // Public TV / lobby dashboard. Aggregate-only data, no auth.
-      // `chrome: false` tells App.vue to skip the header/nav/footer.
-      path: '/screen',
-      name: 'screen',
-      component: ScreenDashboardView,
-      meta: { public: true, chrome: false },
-    },
-    {
-      path: '/tools',
-      component: ToolsLayoutView,
-      meta: { requiresAuth: true },
-      redirect: '/tools/software-requests',
-      children: [
-        {
-          path: 'it-assets',
-          name: 'tools-it-assets',
-          component: ItAssetsView,
-          meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_it_assets' as ToolsPermissionKey },
-        },
-        {
-          path: 'licenses',
-          name: 'tools-licenses',
-          component: LicensesView,
-          meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_licenses' as ToolsPermissionKey },
-        },
-        {
-          path: 'software-requests',
-          name: 'tools-software-requests',
-          component: SoftwareRequestsView,
-          meta: { requiresAuth: true, requiresSoftwareRequests: true },
-        },
-      ],
-    },
-  ],
+  routes,
+  scrollBehavior(to, _from, saved) {
+    if (saved) {
+      return saved
+    }
+    if (to.hash) {
+      return { el: to.hash, behavior: 'smooth' }
+    }
+    return { top: 0 }
+  },
 })
 
 router.beforeEach(async (to, from) => {
@@ -188,7 +210,6 @@ router.beforeEach(async (to, from) => {
     return false
   }
 
-  // Persisted token does not include profile — reload /me before paint so nav (Settings, Agent desk) stays correct.
   if (to.meta.requiresAuth && getStoredToken()) {
     const pinia = getActivePinia()
     if (!pinia) {

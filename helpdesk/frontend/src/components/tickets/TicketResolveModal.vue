@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import CbpRichTextEditor from '../common/CbpRichTextEditor.vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { hasRichTextContent, htmlContainsDataUriImages } from '../../lib/richText'
-import { notifyError, notifySuccess } from '../../lib/notify'
+import { notifySuccess } from '../../lib/notify'
 import { useAuthStore } from '../../stores/auth'
+
+const CbpRichTextEditor = defineAsyncComponent(
+  () => import('../common/CbpRichTextEditor.vue'),
+)
 
 export interface ResolveTicketRef {
   id: number

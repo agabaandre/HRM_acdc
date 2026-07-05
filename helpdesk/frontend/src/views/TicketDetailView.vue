@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
@@ -19,6 +18,10 @@ import { notifyError, notifySuccess } from '../lib/notify'
 import { statusMeta } from '../lib/ticketTableMeta'
 import { hasRichTextContent, htmlContainsDataUriImages, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
+
+const CbpRichTextEditor = defineAsyncComponent(
+  () => import('../components/common/CbpRichTextEditor.vue'),
+)
 
 interface AssigneeBrief {
   id: number

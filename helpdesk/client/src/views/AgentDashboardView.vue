@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import HomeAgentKanban from '../components/home/HomeAgentKanban.vue'
 import TicketReassignModal, {
   type ReassignTicketRef,
 } from '../components/tickets/TicketReassignModal.vue'
@@ -19,6 +18,10 @@ import {
   rowIndex,
   statusMeta,
 } from '../lib/ticketTableMeta'
+
+const HomeAgentKanban = defineAsyncComponent(
+  () => import('../components/home/HomeAgentKanban.vue'),
+)
 
 interface Counts {
   total_received: number

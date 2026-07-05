@@ -148,12 +148,6 @@ function redirectToStaffPortalWithError(failure: SsoFailure): void {
 async function bootstrap() {
   syncFaviconWithApm()
 
-  try {
-    await loadLobiboxAssets()
-  } catch (e) {
-    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
-  }
-
   const app = createApp(App)
   const pinia = createPinia()
   app.use(pinia)
@@ -193,6 +187,10 @@ async function bootstrap() {
   app.mount('#app')
   dismissBootPreloader()
   showInitialContentPreloader()
+
+  void loadLobiboxAssets().catch((e) => {
+    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
+  })
 }
 
 void bootstrap()

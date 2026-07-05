@@ -12,7 +12,6 @@ import './styles/cbp-finance-layout.css'
 import './styles/rich-text-display.css'
 import './styles/ticket-table.css'
 import './styles/helpdesk-professional.css'
-import './styles/materialpro-layout.css'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
@@ -21,7 +20,6 @@ import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
 import { dismissBootPreloader, showInitialContentPreloader } from './lib/appPreloader'
 import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
-import { startHelpdeskSsoSessionRefresh } from './lib/sessionRefresh'
 
 type SsoFailure = {
   code: 'network' | 'forbidden' | 'unauthorized' | 'invalid' | 'config' | 'unknown'
@@ -150,12 +148,6 @@ function redirectToStaffPortalWithError(failure: SsoFailure): void {
 async function bootstrap() {
   syncFaviconWithApm()
 
-  try {
-    await loadLobiboxAssets()
-  } catch (e) {
-    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
-  }
-
   const app = createApp(App)
   const pinia = createPinia()
   app.use(pinia)
@@ -169,7 +161,6 @@ async function bootstrap() {
     try {
       await auth.exchangeStaffSso(urlToken)
       stripStaffSsoTokenFromUrl()
-      void startHelpdeskSsoSessionRefresh()
     } catch (err) {
       stripStaffSsoTokenFromUrl()
       const failure = classifyExchangeError(err)
@@ -191,15 +182,15 @@ async function bootstrap() {
     }
   }
 
-  if (auth.isAuthenticated) {
-    void startHelpdeskSsoSessionRefresh()
-  }
-
   app.use(router)
   await router.isReady()
   app.mount('#app')
   dismissBootPreloader()
   showInitialContentPreloader()
+
+  void loadLobiboxAssets().catch((e) => {
+    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
+  })
 }
 
 void bootstrap()

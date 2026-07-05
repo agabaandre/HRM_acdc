@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
 import TicketReassignModal, {
@@ -13,6 +13,7 @@ import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../../lib/canReassignTickets'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { priorityMeta } from '../../lib/ticketTableMeta'
+import { scheduleIdle } from '../../lib/scheduleIdle'
 import { useAuthStore } from '../../stores/auth'
 
 withDefaults(
@@ -79,6 +80,8 @@ const dragTicketId = ref<number | null>(null)
 const dragOverColumn = ref<string | null>(null)
 const configureTicket = ref<ReassignTicketRef | null>(null)
 const resolveTicket = ref<ResolveTicketRef | null>(null)
+let loadAbort: AbortController | null = null
+const KANBAN_PAGE_SIZE = 50
 
 const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
@@ -173,17 +176,29 @@ const columnTickets = computed(() => {
 const totalActive = computed(() => boardTickets.value.length)
 
 async function loadTickets(): Promise<void> {
+  loadAbort?.abort()
+  loadAbort = new AbortController()
+  const signal = loadAbort.signal
   loading.value = true
   try {
     const { data } = await api.get<{ data: KanbanTicket[] }>('/api/v1/tickets', {
-      params: { per_page: 100 },
+      params: { per_page: KANBAN_PAGE_SIZE },
+      signal,
     })
+    if (signal.aborted) {
+      return
+    }
     tickets.value = Array.isArray(data.data) ? data.data : []
   } catch (e: unknown) {
+    if (signal.aborted) {
+      return
+    }
     notifyError(apiErrorMessage(e, 'Could not load your ticket board.'))
     tickets.value = []
   } finally {
-    loading.value = false
+    if (!signal.aborted) {
+      loading.value = false
+    }
   }
 }
 
@@ -287,7 +302,13 @@ function relativeTime(iso?: string | null): string {
 }
 
 onMounted(() => {
-  void loadTickets()
+  scheduleIdle(() => {
+    void loadTickets()
+  })
+})
+
+onUnmounted(() => {
+  loadAbort?.abort()
 })
 </script>
 
