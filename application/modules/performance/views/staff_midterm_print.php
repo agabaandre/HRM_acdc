@@ -29,7 +29,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     }
 
     .performance-signature-img {
-      width: 110px;
+      width: 130px;
       height: 80px;
       object-fit: contain;
       display: block;
