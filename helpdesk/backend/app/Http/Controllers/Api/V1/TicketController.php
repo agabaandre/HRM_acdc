@@ -374,9 +374,7 @@ class TicketController extends Controller
         $oldPriority = $ticket->priority;
         $oldCategoryId = (int) $ticket->category_id;
 
-        $sortedOld = collect($oldAssigneeIds)->sort()->values()->all();
-        $sortedNew = collect($newAssigneeIds)->sort()->values()->all();
-        $assigneesChanged = $sortedOld !== $sortedNew;
+        $assigneesChanged = $oldAssigneeIds !== $newAssigneeIds;
         $groupChanged = $newGroupId !== ($oldGroupId > 0 ? $oldGroupId : null);
         $priorityChanged = $newPriority !== null && $newPriority !== $oldPriority;
         $categoryChanged = $newCategoryId !== null && $newCategoryId !== $oldCategoryId;

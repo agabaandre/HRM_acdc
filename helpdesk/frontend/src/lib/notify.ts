@@ -33,6 +33,21 @@ function iconFor(type: NotifyType): string {
   }
 }
 
+function showFallbackToast(message: string, type: NotifyType): void {
+  const el = document.createElement('div')
+  el.className = `hd-fallback-toast hd-fallback-toast--${type}`
+  el.setAttribute('role', 'alert')
+  el.textContent = message
+  document.body.appendChild(el)
+  requestAnimationFrame(() => {
+    el.classList.add('hd-fallback-toast--visible')
+  })
+  window.setTimeout(() => {
+    el.classList.remove('hd-fallback-toast--visible')
+    window.setTimeout(() => el.remove(), 300)
+  }, 6000)
+}
+
 export function notify(message: string, type: NotifyType = 'info'): void {
   const text = message.trim()
   if (!text) {
@@ -41,6 +56,7 @@ export function notify(message: string, type: NotifyType = 'info'): void {
   const lobibox = window.Lobibox
   if (!lobibox?.notify) {
     console.warn('[helpdesk] Lobibox not loaded:', text)
+    showFallbackToast(text, type)
     return
   }
   lobibox.notify(type === 'default' ? 'default' : type, {

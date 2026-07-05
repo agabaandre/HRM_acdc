@@ -18,10 +18,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   submit: [event: FormSubmitEvent<T>]
+  'validation-failed': [errors: FormError[]]
 }>()
 
 const attrs = useAttrs()
 const fieldsetClass = computed(() => attrs.class)
+const formId = computed(() => (typeof attrs.id === 'string' ? attrs.id : undefined))
 
 const errors = ref<FormError[]>([])
 provide(formErrorsKey, errors)
@@ -31,12 +33,16 @@ function onSubmit() {
   errors.value = props.validate ? props.validate(props.state) : []
   if (errors.value.length === 0) {
     emit('submit', { data: props.state })
+    return
   }
+  emit('validation-failed', errors.value)
 }
+
+defineExpose({ submit: onSubmit })
 </script>
 
 <template>
-  <v-form class="hd-v-form" @submit.prevent="onSubmit">
+  <v-form :id="formId" class="hd-v-form" @submit.prevent="onSubmit">
     <fieldset class="hd-v-form__fieldset" :class="fieldsetClass" :disabled="disabled">
       <slot />
     </fieldset>

@@ -59,6 +59,8 @@ const selectedPriority = ref<TicketPriority>('medium')
 const selectedCategoryId = ref<number | null>(null)
 const reassignForm = reactive({ reason: '' })
 const submitting = ref(false)
+const submitError = ref('')
+const reassignFormEl = ref<{ submit: () => void } | null>(null)
 let loadSeq = 0
 
 const modalOpen = computed({
@@ -157,6 +159,7 @@ function resetState(): void {
   selectedCategoryId.value = null
   reassignForm.reason = ''
   submitting.value = false
+  submitError.value = ''
 }
 
 function close(): void {
@@ -255,12 +258,17 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   if (!props.ticket) {
     return
   }
+  submitError.value = ''
   if (selectedAgentIds.value.length === 0 && !selectedGroupId.value) {
-    notifyError('Select at least one agent or a support group.')
+    const message = 'Select at least one agent or a support group.'
+    submitError.value = message
+    notifyError(message)
     return
   }
   if (!selectedCategoryId.value) {
-    notifyError('Select a category.')
+    const message = 'Select a category.'
+    submitError.value = message
+    notifyError(message)
     return
   }
 
@@ -284,10 +292,22 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
     emit('reassigned', { ticketId: props.ticket.id, agentName: names[0] })
     close()
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Configuration update failed.'))
+    const message = apiErrorMessage(e, 'Configuration update failed.')
+    submitError.value = message
+    notifyError(message)
   } finally {
     submitting.value = false
   }
+}
+
+function onValidationFailed(errors: FormError[]): void {
+  const message = errors[0]?.message ?? 'Please fix the highlighted fields.'
+  submitError.value = message
+  notifyError(message)
+}
+
+function submitReassign(): void {
+  reassignFormEl.value?.submit()
 }
 </script>
 
@@ -301,12 +321,15 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   >
     <template #body>
       <UForm
+        ref="reassignFormEl"
         id="reassign-form"
         :state="reassignForm"
         :validate="validateReassign"
         class="hd-form reassign-body"
         @submit="onReassignSubmit"
+        @validation-failed="onValidationFailed"
       >
+        <p v-if="submitError" class="reassign-error" role="alert">{{ submitError }}</p>
         <p v-if="candidatesLoading" class="muted">Loading configuration options…</p>
         <template v-else>
           <UFormField
@@ -404,8 +427,6 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
     <template #footer>
       <UButton color="neutral" variant="outline" label="Cancel" :disabled="submitting" @click="close" />
       <UButton
-        type="submit"
-        form="reassign-form"
         color="primary"
         label="Save changes"
         :loading="submitting"
@@ -415,6 +436,7 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
           !selectedCategoryId ||
           reassignForm.reason.trim().length < 5
         "
+        @click="submitReassign"
       />
     </template>
   </UModal>
@@ -425,6 +447,16 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+.reassign-error {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 .agent-primary-list {
   list-style: none;
