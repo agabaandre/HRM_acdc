@@ -26,6 +26,9 @@ Route::get('/sso', [AuthController::class, 'ssoEntry'])->name('sso.callback');
 Route::post('/sso/accept', [AuthController::class, 'ssoAccept'])
     ->middleware('throttle:30,1')
     ->name('sso.accept');
+Route::post('/sso/refresh', [AuthController::class, 'ssoRefresh'])
+    ->middleware('throttle:60,1')
+    ->name('sso.refresh');
 Route::get('/sso/accept', function () {
     return redirect(\App\Support\RuntimeUrl::staffPortalLoginUrl().'?sso=post_required');
 })->name('sso.accept.get');

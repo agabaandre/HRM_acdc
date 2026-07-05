@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\RuntimeUrl;
+use App\Support\StaffSsoSession;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -104,20 +105,18 @@ class CheckSessionExpiry
     private function isCiSessionExpired(array $userSession): bool
     {
         try {
-            $ciBaseUrl = RuntimeUrl::staffPortalBaseUrl();
-            $ciToken = $userSession['ci_token'] ?? null;
+            $ciToken = StaffSsoSession::bearerToken($userSession);
             
             if (!$ciToken) {
-                return true; // No token means expired
+                return false;
             }
 
-            // Make a request to CI app to validate session
             $response = Http::timeout(5)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $ciToken,
                     'Accept' => 'application/json',
                 ])
-                ->get($ciBaseUrl . '/api/validate-session');
+                ->get(StaffSsoSession::validateUrl());
 
             // If request fails or returns 401, session is expired
             return !$response->successful() || $response->status() === 401;

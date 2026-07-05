@@ -6,6 +6,7 @@ use App\Support\RuntimeUrl;
 use App\Support\StaffSsoLaunchCode;
 use App\Support\StaffSsoPolicy;
 use App\Support\StaffSsoToken;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Session;
@@ -44,6 +45,41 @@ class AuthController extends Controller
     }
 
     /**
+     * Refresh APM web session from a fresh Staff portal SSO JWT (posted by cbp-session-refresh.js).
+     */
+    public function ssoRefresh(Request $request): JsonResponse
+    {
+        $jwt = trim((string) $request->input('sso_token', $request->input('staff_sso_jwt', '')));
+        if ($jwt === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing SSO token',
+            ], 422);
+        }
+
+        try {
+            $this->openSessionFromStaffToken($jwt);
+
+            $user = session('user', []);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Session refreshed',
+                'expires_at' => isset($user['sso_jwt_exp'])
+                    ? date('c', (int) $user['sso_jwt_exp'])
+                    : now()->addHours(2)->toIso8601String(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('APM SSO refresh failed: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired SSO token',
+            ], 401);
+        }
+    }
+
+    /**
      * SSO entry point: decode ?token= from Staff portal and open an APM session.
      * @deprecated Prefer POST /sso/accept with one-time code from home/launch_module.
      */
@@ -79,6 +115,11 @@ class AuthController extends Controller
         $json = StaffSsoToken::decode($rawToken);
         if (! $json) {
             throw new \RuntimeException('Invalid token format');
+        }
+
+        $json['sso_jwt'] = $rawToken;
+        if (isset($json['exp'])) {
+            $json['sso_jwt_exp'] = (int) $json['exp'];
         }
 
         session([

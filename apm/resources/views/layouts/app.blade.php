@@ -340,6 +340,30 @@
     <!-- Session Expiry Modals (Livewire) -->
     {!! app('livewire')->mount('session-expiry-modal', []) !!}
     
+    @if(!empty(session('user')))
+    @php
+        $cbpStaffBase = rtrim((string) ($staffWebBaseUrl ?? \App\Services\CbpModulesNavService::staffWebBaseUrl()), '/');
+    @endphp
+    <script>
+    window.CBP_STAFF_BASE_URL = @json($cbpStaffBase);
+    window.CBP_SSO_REFRESH_HANDLERS = window.CBP_SSO_REFRESH_HANDLERS || [];
+    window.CBP_SSO_REFRESH_HANDLERS.push(function (detail) {
+        if (!detail || !detail.sso_token) return;
+        fetch(@json(url('/sso/refresh')), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({ sso_token: detail.sso_token })
+        }).catch(function () {});
+    });
+    </script>
+    <script src="{{ $cbpStaffBase }}/assets/js/cbp-session-refresh.js?v=1" defer></script>
+    @endif
+
     <!-- Session Monitor Script -->
     <script src="{{ asset('js/session-monitor.js') }}?v={{ time() }}"></script>
     

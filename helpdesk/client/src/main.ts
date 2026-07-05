@@ -21,6 +21,7 @@ import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
 import { dismissBootPreloader, showInitialContentPreloader } from './lib/appPreloader'
 import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
+import { startHelpdeskSsoSessionRefresh } from './lib/sessionRefresh'
 
 type SsoFailure = {
   code: 'network' | 'forbidden' | 'unauthorized' | 'invalid' | 'config' | 'unknown'
@@ -168,6 +169,7 @@ async function bootstrap() {
     try {
       await auth.exchangeStaffSso(urlToken)
       stripStaffSsoTokenFromUrl()
+      void startHelpdeskSsoSessionRefresh()
     } catch (err) {
       stripStaffSsoTokenFromUrl()
       const failure = classifyExchangeError(err)
@@ -187,6 +189,10 @@ async function bootstrap() {
       redirectToStaffPortalHome()
       return
     }
+  }
+
+  if (auth.isAuthenticated) {
+    void startHelpdeskSsoSessionRefresh()
   }
 
   app.use(router)

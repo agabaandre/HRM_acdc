@@ -988,6 +988,50 @@ public function revert()
       header('Content-Type: application/json');
       echo json_encode($response);
   }
+
+  /**
+   * Issue a fresh Staff portal SSO JWT for sibling CBP apps (APM, Helpdesk, Finance).
+   * Requires an active Staff portal session cookie (same site).
+   * GET /auth/refresh_sso_session
+   */
+  public function refresh_sso_session()
+  {
+      $user = $this->session->userdata('user');
+      if (empty($user) || empty($user->staff_id)) {
+          return $this->output
+            ->set_status_header(401)
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'ok' => false,
+                'message' => 'Staff portal session expired',
+            ]));
+      }
+
+      $session = (array) $user;
+      $session['base_url'] = base_url();
+      if (empty($session['permissions'])) {
+          $this->load->model('auth/auth_mdl', 'auth_mdl');
+          $session['permissions'] = $this->auth_mdl->user_permissions($user->role, $user->user_id);
+      }
+
+      $claims = staff_sso_compact_claims($session);
+      $jwt = staff_sso_build_jwt($claims);
+      $expiresAt = time() + 7200;
+
+      $this->session->set_userdata('last_activity', time());
+
+      return $this->output
+        ->set_status_header(200)
+        ->set_content_type('application/json')
+        ->set_output(json_encode([
+            'ok' => true,
+            'sso_token' => $jwt,
+            'token' => $jwt,
+            'expires_at' => date('c', $expiresAt),
+            'expires_in' => 7200,
+            'staff_id' => (int) $user->staff_id,
+        ]));
+  }
   
 
 

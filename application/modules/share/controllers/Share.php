@@ -20,69 +20,48 @@ class Share extends MX_Controller
 	}
 
 	/**
-	 * Validate session endpoint for Laravel app integration
+	 * Validate session endpoint for Laravel app integration (JWT or legacy base64 token).
 	 */
 	public function validate_session()
 	{
+		header('Content-Type: application/json');
 		try {
-			// Get the authorization header
-			$headers = $this->input->request_headers();
-			$authHeader = $headers['Authorization'] ?? '';
-			
-			if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
+			$token = $this->share_bearer_token();
+			if ($token === null) {
 				http_response_code(401);
 				echo json_encode([
 					'success' => false,
 					'message' => 'No valid authorization token provided',
-					'session_expired' => true
+					'session_expired' => true,
 				]);
+
 				return;
 			}
-			
-			$token = substr($authHeader, 7); // Remove 'Bearer ' prefix
-			
-			// Decode and validate the token
-			$decodedToken = base64_decode($token);
-			$userData = json_decode($decodedToken, true);
-			
-			if (!$userData || !isset($userData['staff_id'])) {
+
+			$userData = staff_sso_parse_bearer_token($token, false);
+			if (!$userData || empty($userData['staff_id'])) {
 				http_response_code(401);
 				echo json_encode([
 					'success' => false,
 					'message' => 'Invalid token format',
-					'session_expired' => true
+					'session_expired' => true,
 				]);
+
 				return;
 			}
-			
-			// Check if user exists and is active
-			$staffId = $userData['staff_id'];
-			$query = $this->db->get_where('staff', ['staff_id' => $staffId]);
-			
-			if ($query->num_rows() === 0) {
+
+			$staff = $this->share_active_staff_row((int) $userData['staff_id']);
+			if ($staff === null) {
 				http_response_code(401);
 				echo json_encode([
 					'success' => false,
-					'message' => 'User not found',
-					'session_expired' => true
+					'message' => 'User not found or inactive',
+					'session_expired' => true,
 				]);
+
 				return;
 			}
-			
-			$staff = $query->row_array();
-			
-			// Check if staff is active
-			if ($staff['status'] !== 'active') {
-				http_response_code(401);
-				echo json_encode([
-					'success' => false,
-					'message' => 'User account is not active',
-					'session_expired' => true
-				]);
-				return;
-			}
-			
-			// Session is valid
+
 			http_response_code(200);
 			echo json_encode([
 				'success' => true,
@@ -90,79 +69,120 @@ class Share extends MX_Controller
 				'session_expired' => false,
 				'user' => [
 					'staff_id' => $staff['staff_id'],
-					'name' => $staff['fname'] . ' ' . $staff['lname'],
-					'email' => $staff['work_email']
-				]
+					'name' => trim($staff['fname'] . ' ' . $staff['lname']),
+					'email' => $staff['work_email'],
+				],
 			]);
-			
 		} catch (Exception $e) {
 			log_message('error', 'Session validation failed: ' . $e->getMessage());
 			http_response_code(500);
 			echo json_encode([
 				'success' => false,
 				'message' => 'Session validation failed',
-				'session_expired' => true
+				'session_expired' => true,
 			]);
 		}
 	}
 
 	/**
-	 * Refresh token endpoint for Laravel app integration
+	 * Refresh SSO token for Laravel modules (JWT HS256 or legacy base64).
 	 */
 	public function refresh_token()
 	{
+		header('Content-Type: application/json');
 		try {
-			// Get the authorization header
-			$headers = $this->input->request_headers();
-			$authHeader = $headers['Authorization'] ?? '';
-			
-			if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
+			$token = $this->share_bearer_token();
+			if ($token === null) {
 				http_response_code(401);
 				echo json_encode([
 					'success' => false,
-					'message' => 'No valid authorization token provided'
+					'message' => 'No valid authorization token provided',
 				]);
+
 				return;
 			}
-			
-			$token = substr($authHeader, 7); // Remove 'Bearer ' prefix
-			
-			// Decode and validate the token
-			$decodedToken = base64_decode($token);
-			$userData = json_decode($decodedToken, true);
-			
-			if (!$userData || !isset($userData['staff_id'])) {
+
+			$allowExpired = staff_sso_jwt_may_refresh($token);
+			$userData = staff_sso_parse_bearer_token($token, $allowExpired);
+			if (!$userData || empty($userData['staff_id'])) {
 				http_response_code(401);
 				echo json_encode([
 					'success' => false,
-					'message' => 'Invalid token format'
+					'message' => 'Invalid token format',
 				]);
+
 				return;
 			}
-			
-			// Generate new token with extended expiry
-			$newUserData = $userData;
-			$newUserData['token_issued_at'] = time();
-			$newUserData['token_expires_at'] = time() + (2 * 60 * 60); // 2 hours from now
-			
-			$newToken = base64_encode(json_encode($newUserData));
-			
+
+			$staff = $this->share_active_staff_row((int) $userData['staff_id']);
+			if ($staff === null) {
+				http_response_code(401);
+				echo json_encode([
+					'success' => false,
+					'message' => 'User not found or inactive',
+				]);
+
+				return;
+			}
+
+			$claims = staff_sso_compact_claims($userData);
+			$claims['base_url'] = base_url();
+			$newToken = staff_sso_build_jwt($claims);
+			$expiresAt = time() + 7200;
+
 			http_response_code(200);
 			echo json_encode([
 				'success' => true,
 				'message' => 'Token refreshed successfully',
 				'token' => $newToken,
-				'expires_at' => date('c', $newUserData['token_expires_at'])
+				'sso_token' => $newToken,
+				'expires_at' => date('c', $expiresAt),
+				'expires_in' => 7200,
 			]);
-			
 		} catch (Exception $e) {
 			log_message('error', 'Token refresh failed: ' . $e->getMessage());
 			http_response_code(500);
 			echo json_encode([
 				'success' => false,
-				'message' => 'Token refresh failed'
+				'message' => 'Token refresh failed',
 			]);
 		}
+	}
+
+	/**
+	 * @return string|null Raw bearer token without prefix.
+	 */
+	private function share_bearer_token(): ?string
+	{
+		$headers = $this->input->request_headers();
+		$authHeader = $headers['Authorization'] ?? ($headers['authorization'] ?? '');
+		if ($authHeader === '' || stripos($authHeader, 'Bearer ') !== 0) {
+			return null;
+		}
+
+		$token = trim(substr($authHeader, 7));
+
+		return $token !== '' ? $token : null;
+	}
+
+	/**
+	 * @return array<string, mixed>|null
+	 */
+	private function share_active_staff_row(int $staffId): ?array
+	{
+		if ($staffId < 1) {
+			return null;
+		}
+		$query = $this->db->get_where('staff', ['staff_id' => $staffId]);
+		if ($query->num_rows() === 0) {
+			return null;
+		}
+		$staff = $query->row_array();
+		if (!is_array($staff) || ($staff['status'] ?? '') !== 'active') {
+			return null;
+		}
+
+		return $staff;
 	}
 	
 

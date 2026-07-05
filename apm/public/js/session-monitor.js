@@ -189,6 +189,10 @@ class SessionMonitor {
 
     async extendSession() {
         try {
+            if (typeof window.cbpRefreshSsoSession === 'function') {
+                window.cbpRefreshSsoSession();
+            }
+
             if (this.useFallbackMode) {
                 // In fallback mode, just reset the activity timer
                 this.lastActivity = Date.now();

@@ -355,3 +355,87 @@ if (!function_exists('staff_sso_url_token_allowed')) {
         return in_array(strtolower(trim((string) $flag)), ['1', 'true', 'yes', 'on'], true);
     }
 }
+
+if (!function_exists('staff_sso_decode_jwt')) {
+    /**
+     * Decode Staff portal SSO JWT (HS256). Returns null when invalid or expired (unless allowed).
+     *
+     * @return array<string, mixed>|null
+     */
+    function staff_sso_decode_jwt(string $token, bool $allowExpired = false): ?array
+    {
+        $token = trim($token);
+        $parts = explode('.', $token);
+        $secret = staff_sso_jwt_secret();
+        if (count($parts) !== 3 || $secret === '') {
+            return null;
+        }
+
+        [$h, $p, $s] = $parts;
+        $sig = staff_sso_base64url_encode(hash_hmac('sha256', $h . '.' . $p, $secret, true));
+        if (!hash_equals($sig, $s)) {
+            return null;
+        }
+
+        $payloadJson = base64_decode(strtr($p, '-_', '+/') . str_repeat('=', (4 - strlen($p) % 4) % 4));
+        $payload = is_string($payloadJson) ? json_decode($payloadJson, true) : null;
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        $exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
+        if (!$allowExpired && $exp > 0 && $exp < time()) {
+            return null;
+        }
+
+        return $payload;
+    }
+}
+
+if (!function_exists('staff_sso_parse_bearer_token')) {
+    /**
+     * Parse Bearer token: JWT HS256 or legacy base64 JSON session blob.
+     *
+     * @return array<string, mixed>|null
+     */
+    function staff_sso_parse_bearer_token(string $token, bool $allowExpired = false): ?array
+    {
+        $token = trim($token);
+        if ($token === '') {
+            return null;
+        }
+
+        $jwt = staff_sso_decode_jwt($token, $allowExpired);
+        if ($jwt !== null) {
+            return $jwt;
+        }
+
+        $decoded = base64_decode($token, true);
+        $json = is_string($decoded) ? json_decode($decoded, true) : null;
+
+        return is_array($json) ? $json : null;
+    }
+}
+
+if (!function_exists('staff_sso_refresh_grace_seconds')) {
+    function staff_sso_refresh_grace_seconds(): int
+    {
+        return 86400;
+    }
+}
+
+if (!function_exists('staff_sso_jwt_may_refresh')) {
+    function staff_sso_jwt_may_refresh(string $token): bool
+    {
+        $payload = staff_sso_decode_jwt($token, true);
+        if ($payload === null) {
+            return false;
+        }
+        $exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
+        if ($exp <= 0) {
+            return true;
+        }
+
+        return $exp >= (time() - staff_sso_refresh_grace_seconds());
+    }
+}

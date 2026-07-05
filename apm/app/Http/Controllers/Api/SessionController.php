@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\StaffSsoSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -28,26 +29,22 @@ class SessionController extends Controller
                 ], 401);
             }
             
-            $ciToken = $userSession['ci_token'] ?? null;
+            $ciToken = StaffSsoSession::bearerToken($userSession);
             
             if (!$ciToken) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'No CI token found',
-                    'session_expired' => true
-                ], 401);
+                    'success' => true,
+                    'message' => 'Session valid (SSO token will refresh from Staff portal)',
+                    'session_expired' => false,
+                ]);
             }
 
-            // Get CI app base URL from config
-            $ciBaseUrl = config('app.ci_base_url', 'http://localhost/staff');
-            
-            // Make a request to CI app to validate session
             $response = Http::timeout(5)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $ciToken,
                     'Accept' => 'application/json',
                 ])
-                ->get($ciBaseUrl . '/api/validate-session');
+                ->get(StaffSsoSession::validateUrl());
 
             if (!$response->successful() || $response->status() === 401) {
                 // CI session expired, log out user
@@ -223,38 +220,50 @@ class SessionController extends Controller
     {
         try {
             $userSession = session('user', []);
-            $ciToken = $userSession['ci_token'] ?? null;
-            $tokenExpiry = $userSession['ci_token_expires_at'] ?? null;
+            $ciToken = StaffSsoSession::bearerToken($userSession);
+            $tokenExpiry = $userSession['sso_jwt_exp'] ?? ($userSession['ci_token_expires_at'] ?? null);
             
-            if (!$ciToken || !$tokenExpiry) {
+            if (!$ciToken) {
                 return;
             }
 
-            // Check if token expires within next 30 minutes
-            if (Carbon::parse($tokenExpiry)->diffInMinutes(now()) < 30) {
-                $ciBaseUrl = config('app.ci_base_url', 'http://localhost/staff');
-                
-                $response = Http::timeout(10)
-                    ->withHeaders([
-                        'Authorization' => 'Bearer ' . $ciToken,
-                        'Accept' => 'application/json',
-                    ])
-                    ->post($ciBaseUrl . '/api/refresh-token');
+            $shouldRefresh = true;
+            if ($tokenExpiry) {
+                $expTs = is_numeric($tokenExpiry) ? (int) $tokenExpiry : strtotime((string) $tokenExpiry);
+                if ($expTs > 0) {
+                    $shouldRefresh = ($expTs - time()) < (30 * 60);
+                }
+            }
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    if ($data['success'] && isset($data['token'])) {
-                        // Update session with new token
-                        $userSession['ci_token'] = $data['token'];
-                        $userSession['ci_token_expires_at'] = $data['expires_at'] ?? now()->addHours(2)->toISOString();
-                        session(['user' => $userSession]);
-                        
-                        Log::info('CI token refreshed successfully');
-                    }
+            if (!$shouldRefresh) {
+                return;
+            }
+
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $ciToken,
+                    'Accept' => 'application/json',
+                ])
+                ->post(StaffSsoSession::refreshUrl());
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $newToken = $data['sso_token'] ?? ($data['token'] ?? null);
+                if ($data['success'] && is_string($newToken) && $newToken !== '') {
+                    $userSession['sso_jwt'] = $newToken;
+                    $userSession['ci_token'] = $newToken;
+                    $expiresAt = $data['expires_at'] ?? now()->addHours(2)->toISOString();
+                    $userSession['sso_jwt_exp'] = is_numeric($expiresAt)
+                        ? (int) $expiresAt
+                        : strtotime((string) $expiresAt);
+                    $userSession['ci_token_expires_at'] = $expiresAt;
+                    session(['user' => $userSession]);
+                    
+                    Log::info('Staff SSO token refreshed successfully');
                 }
             }
         } catch (\Exception $e) {
-            Log::warning('Failed to refresh CI token', ['error' => $e->getMessage()]);
+            Log::warning('Failed to refresh Staff SSO token', ['error' => $e->getMessage()]);
         }
     }
 }
