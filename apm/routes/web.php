@@ -337,6 +337,9 @@ Route::post('/api/documents/verify', [App\Http\Controllers\SignatureVerification
     
     Route::resource('matrices.activities', ActivityController::class);
 
+    Route::post('/matrices/{matrix}/activities/{activity}/participant-group', [ActivityController::class, 'storeParticipantGroup'])
+        ->name('matrices.activities.participant-group.store');
+
     Route::post('/matrices/{matrix}/activities/{activity}/status', [ActivityController::class, 'update_status'])
         ->name('matrices.activities.status');
     Route::post('/matrices/activities/batch/status', [ActivityController::class, 'batch_update_status'])

@@ -1002,11 +1002,19 @@
         <div class="row">
             <!-- Participants & Location -->
             <div class="card content-section memo-show-content-card border-0 mb-4 w-100">
-                <div class="card-header bg-transparent border-0 py-3">
+                <div class="card-header bg-transparent border-0 py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-group"></i>
                         Participants
                     </h6>
+                    @if (!empty($canSaveParticipantGroup))
+                        <button type="button"
+                            class="btn btn-sm btn-outline-success"
+                            data-bs-toggle="modal"
+                            data-bs-target="#saveParticipantGroupModal">
+                            <i class="bx bx-bookmark-plus me-1"></i> Save as participant group
+                        </button>
+                    @endif
                     </div>
                 <div class="card-body">
                     <div class="row">
@@ -1269,6 +1277,47 @@
     'isAdmin' => $canUpdateOwners ?? false,
     'isStrictAdmin' => $isAdmin ?? false
 ])
+
+@if (!empty($canSaveParticipantGroup))
+<div class="modal fade" id="saveParticipantGroupModal" tabindex="-1" aria-labelledby="saveParticipantGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="saveParticipantGroupModalLabel">
+                    <i class="bx bx-bookmark-plus text-success me-1"></i> Save as participant group
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Creates a reusable group from this activity’s internal participants.
+                    It will appear on the
+                    <a href="{{ $participantGroupsIndexUrl ?? route('participant-groups.index') }}" wire:navigate>Participant Groups</a>
+                    page for your division.
+                </p>
+                <div class="mb-3">
+                    <label for="participantGroupName" class="form-label fw-semibold">Group name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="participantGroupName" maxlength="150"
+                        value="{{ $participantGroupDefaultName ?? '' }}" required>
+                </div>
+                <div class="mb-0">
+                    <label for="participantGroupDescription" class="form-label fw-semibold">Description</label>
+                    <textarea class="form-control" id="participantGroupDescription" rows="3" maxlength="500"
+                        placeholder="Optional note about when to use this group"></textarea>
+                </div>
+                <div id="participantGroupSaveError" class="alert alert-danger mt-3 d-none mb-0" role="alert"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="participantGroupSaveBtn">
+                    <span class="btn-label"><i class="bx bx-save me-1"></i> Create group</span>
+                    <span class="btn-spinner d-none spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 @endsection
 
@@ -1587,5 +1636,76 @@ $(document).on('click', '.preview-attachment', function() {
             @endif
             
         @endif
+
+@if (!empty($canSaveParticipantGroup))
+<script>
+(function () {
+    const saveBtn = document.getElementById('participantGroupSaveBtn');
+    const nameInput = document.getElementById('participantGroupName');
+    const descInput = document.getElementById('participantGroupDescription');
+    const errorBox = document.getElementById('participantGroupSaveError');
+    const storeUrl = @json($participantGroupStoreUrl ?? '');
+    const groupsUrl = @json($participantGroupsIndexUrl ?? route('participant-groups.index'));
+    const csrf = @json(csrf_token());
+
+    if (!saveBtn || !storeUrl) {
+        return;
+    }
+
+    function setLoading(loading) {
+        saveBtn.disabled = loading;
+        saveBtn.querySelector('.btn-label')?.classList.toggle('d-none', loading);
+        saveBtn.querySelector('.btn-spinner')?.classList.toggle('d-none', !loading);
+    }
+
+    saveBtn.addEventListener('click', async function () {
+        const name = (nameInput?.value || '').trim();
+        errorBox?.classList.add('d-none');
+        if (!name) {
+            if (errorBox) {
+                errorBox.textContent = 'Group name is required.';
+                errorBox.classList.remove('d-none');
+            }
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch(storeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({
+                    name,
+                    description: (descInput?.value || '').trim() || null,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Could not create participant group.');
+            }
+            const modalEl = document.getElementById('saveParticipantGroupModal');
+            if (modalEl && window.bootstrap?.Modal) {
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+            }
+            const target = data.participant_groups_url || groupsUrl;
+            if (window.confirm((data.message || 'Participant group created.') + '\n\nOpen Participant Groups now?')) {
+                window.location.href = target;
+            }
+        } catch (err) {
+            if (errorBox) {
+                errorBox.textContent = err.message || 'Could not create participant group.';
+                errorBox.classList.remove('d-none');
+            }
+        } finally {
+            setLoading(false);
+        }
+    });
+})();
+</script>
+@endif
         
 @endpush

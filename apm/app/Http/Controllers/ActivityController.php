@@ -28,6 +28,7 @@ use App\Models\Approver;
 use App\Models\WorkflowDefinition;
 use App\Services\ApprovalService;
 use App\Services\FundCodeWorkingBalanceService;
+use App\Services\ParticipantGroupService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use function PHPUnit\Framework\isEmpty;
@@ -532,6 +533,10 @@ class ActivityController extends Controller
     
         $emailPdfRecipientChoices = staff_pdf_mail_recipient_choice_list();
 
+        $participantGroups = app(ParticipantGroupService::class);
+        $canSaveParticipantGroup = ! $activity->is_single_memo
+            && $participantGroups->canCreateGroupFromActivity($activity);
+
         return view(( $activity->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), [
             'matrix' => $activity->matrix,
             'activity' => $activity,
@@ -545,7 +550,51 @@ class ActivityController extends Controller
             'title' => ($activity->is_single_memo ? 'View Single Memo: ' : 'View Activity: ') . $activity->activity_title,
             'emailPdfRecipientChoices' => $emailPdfRecipientChoices,
             'canEmailPdf' => can_print_memo($activity) && count($emailPdfRecipientChoices) > 0,
+            'canSaveParticipantGroup' => $canSaveParticipantGroup,
+            'participantGroupDefaultName' => trim((string) $activity->activity_title) !== ''
+                ? trim((string) $activity->activity_title) . ' participants'
+                : 'Activity participants',
+            'participantGroupStoreUrl' => route('matrices.activities.participant-group.store', [
+                'matrix' => $matrix->id,
+                'activity' => $activity->id,
+            ]),
+            'participantGroupsIndexUrl' => route('participant-groups.index'),
         ]);
+    }
+
+    public function storeParticipantGroup(Matrix $matrix, Activity $activity, Request $request): JsonResponse
+    {
+        if ((int) $activity->matrix_id !== (int) $matrix->id || $activity->is_single_memo) {
+            abort(404);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:150',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        $groups = app(ParticipantGroupService::class);
+
+        try {
+            $group = $groups->createGroupFromActivityByCreator(
+                $activity,
+                (string) $request->input('name'),
+                $request->input('description')
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Participant group created. It is now available under Participant Groups.',
+                'group' => [
+                    'id' => (int) $group->id,
+                    'name' => $group->name,
+                    'member_count' => (int) $group->members_count,
+                ],
+                'participant_groups_url' => route('participant-groups.index'),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
     }
     
 

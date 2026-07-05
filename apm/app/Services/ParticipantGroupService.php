@@ -47,6 +47,32 @@ class ParticipantGroupService
     }
 
     /**
+     * Activity creator may save internal participants as a reusable division group.
+     */
+    public function canCreateGroupFromActivity(Activity $activity): bool
+    {
+        if (! $this->canUseDivisionGroups()) {
+            return false;
+        }
+
+        $staffId = $this->sessionStaffId();
+        $divisionId = $this->sessionDivisionId();
+        if ($staffId === null || $divisionId === null) {
+            return false;
+        }
+
+        if ((int) $activity->staff_id !== $staffId) {
+            return false;
+        }
+
+        if ((int) $activity->division_id !== $divisionId) {
+            return false;
+        }
+
+        return $this->participantIdsFromJson($activity->internal_participants) !== [];
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     public function listForPicker(?int $divisionId = null): array
@@ -162,31 +188,27 @@ class ParticipantGroupService
             throw new \RuntimeException('Only focal persons can create participant groups.');
         }
 
-        $name = trim($name);
-        if ($name === '') {
-            throw new \InvalidArgumentException('Group name is required.');
+        return $this->insertGroup($name, $staffIds, $description, $divisionId, $createdBy);
+    }
+
+    public function createGroupFromActivityByCreator(Activity $activity, string $name, ?string $description = null): ParticipantGroup
+    {
+        if (! $this->canCreateGroupFromActivity($activity)) {
+            throw new \RuntimeException('You do not have permission to create a participant group from this activity.');
         }
 
-        if (strcasecmp($name, 'Division Members') === 0) {
-            throw new \InvalidArgumentException('That name is reserved for the automatic division group.');
-        }
-
-        $staffIds = $this->normalizeStaffIds($staffIds);
+        $staffIds = $this->participantIdsFromJson($activity->internal_participants);
         if ($staffIds === []) {
-            throw new \InvalidArgumentException('Select at least one participant.');
+            throw new \InvalidArgumentException('This activity has no internal participants.');
         }
 
-        $group = ParticipantGroup::query()->create([
-            'division_id' => $divisionId,
-            'name' => $name,
-            'description' => $description ? trim($description) : null,
-            'created_by' => $createdBy,
-            'is_active' => true,
-        ]);
+        $divisionId = $this->sessionDivisionId();
+        $createdBy = $this->sessionStaffId();
+        if ($divisionId === null || $createdBy === null) {
+            throw new \InvalidArgumentException('Unable to determine your division.');
+        }
 
-        $this->syncMembers($group, $staffIds);
-
-        return $group->loadCount('members');
+        return $this->insertGroup($name, $staffIds, $description, $divisionId, $createdBy);
     }
 
     /**
@@ -315,7 +337,57 @@ class ParticipantGroupService
             throw new \InvalidArgumentException('Memo must have at least ' . self::MIN_MEMO_PARTICIPANTS_FOR_IMPORT . ' internal participants.');
         }
 
-        return $this->createGroup($name, $staffIds, $description, $divisionId);
+        if (! $this->canManageGroups($divisionId)) {
+            throw new \RuntimeException('Only focal persons can create participant groups from memos.');
+        }
+
+        $createdBy = $this->sessionStaffId();
+        if ($createdBy === null) {
+            throw new \InvalidArgumentException('Unable to determine your staff profile.');
+        }
+
+        return $this->insertGroup($name, $staffIds, $description, $divisionId, $createdBy);
+    }
+
+    /**
+     * @param  list<int>  $staffIds
+     */
+    private function insertGroup(string $name, array $staffIds, ?string $description, int $divisionId, int $createdBy): ParticipantGroup
+    {
+        $name = trim($name);
+        if ($name === '') {
+            throw new \InvalidArgumentException('Group name is required.');
+        }
+
+        if (strcasecmp($name, 'Division Members') === 0) {
+            throw new \InvalidArgumentException('That name is reserved for the automatic division group.');
+        }
+
+        $staffIds = $this->normalizeStaffIds($staffIds);
+        if ($staffIds === []) {
+            throw new \InvalidArgumentException('Select at least one participant.');
+        }
+
+        $existing = ParticipantGroup::query()
+            ->where('division_id', $divisionId)
+            ->where('name', $name)
+            ->where('is_active', true)
+            ->exists();
+        if ($existing) {
+            throw new \InvalidArgumentException('A participant group with this name already exists in your division.');
+        }
+
+        $group = ParticipantGroup::query()->create([
+            'division_id' => $divisionId,
+            'name' => $name,
+            'description' => $description ? trim($description) : null,
+            'created_by' => $createdBy,
+            'is_active' => true,
+        ]);
+
+        $this->syncMembers($group, $staffIds);
+
+        return $group->loadCount('members');
     }
 
     /**
