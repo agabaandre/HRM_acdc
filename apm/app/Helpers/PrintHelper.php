@@ -802,7 +802,7 @@ class PrintHelper
             is_string($sigFilename) ? $sigFilename : null,
             is_numeric($staffId) ? (int) $staffId : null
         );
-        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small> ';
+        echo '<small style="color: #666; font-style: normal; font-size: 9px;">Signed By:</small><br>';
         if ($sigSrc !== '') {
             echo '<img class="signature-image" src="' . htmlspecialchars($sigSrc) . '" alt="Signature">';
         } else {
