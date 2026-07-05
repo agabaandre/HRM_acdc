@@ -16,6 +16,7 @@ const props = withDefaults(
     placeholder?: string
     disabled?: boolean
     size?: string
+    valueKey?: string
     clearable?: boolean
   }>(),
   {
@@ -23,6 +24,7 @@ const props = withDefaults(
     multiple: false,
     disabled: false,
     clearable: true,
+    valueKey: 'value',
   },
 )
 
@@ -42,7 +44,7 @@ const density = computed(() => (props.size === 'lg' ? 'default' : 'compact'))
     v-model="model"
     :items="vItems"
     item-title="label"
-    item-value="value"
+    :item-value="props.valueKey"
     :label="fieldLabel"
     :multiple="multiple"
     :placeholder="placeholder"

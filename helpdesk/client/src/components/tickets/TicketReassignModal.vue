@@ -54,12 +54,12 @@ const groups = ref<SupportGroupOption[]>([])
 const categories = ref<CategoryOption[]>([])
 const candidatesLoading = ref(false)
 const selectedAgentIds = ref<number[]>([])
-const addAgentId = ref<number | null>(null)
 const selectedGroupId = ref<number | null>(null)
 const selectedPriority = ref<TicketPriority>('medium')
 const selectedCategoryId = ref<number | null>(null)
 const reassignForm = reactive({ reason: '' })
 const submitting = ref(false)
+let loadSeq = 0
 
 const modalOpen = computed({
   get: () => props.ticket !== null,
@@ -75,6 +75,13 @@ const modalTitle = computed(() =>
 )
 
 const modalDescription = computed(() => props.ticket?.subject ?? undefined)
+
+const agentSelectItems = computed(() =>
+  agents.value.map((a) => ({
+    label: `${a.name} (${a.open_workload} open)`,
+    value: a.id,
+  })),
+)
 
 const groupSelectItems = computed(() =>
   groups.value.map((g) => ({
@@ -96,21 +103,55 @@ const selectedAgents = computed(() =>
     .filter((a): a is EligibleAgent => a != null),
 )
 
-const availableAgentItems = computed(() =>
-  agents.value
-    .filter((a) => !selectedAgentIds.value.includes(a.id))
-    .map((a) => ({
-      label: `${a.name} (${a.open_workload} open)`,
-      value: a.id,
-    })),
-)
+/** Normalise Vuetify autocomplete values (number | string | object | array). */
+function normalizeAgentIds(value: unknown): number[] {
+  if (value == null || value === '') {
+    return []
+  }
+  const raw = Array.isArray(value) ? value : [value]
+  const ids: number[] = []
+  for (const item of raw) {
+    if (typeof item === 'number' && item > 0) {
+      ids.push(item)
+      continue
+    }
+    if (typeof item === 'string' && item.trim() !== '') {
+      const parsed = parseInt(item, 10)
+      if (parsed > 0) {
+        ids.push(parsed)
+      }
+      continue
+    }
+    if (item && typeof item === 'object') {
+      const obj = item as Record<string, unknown>
+      if ('value' in obj) {
+        const parsed = Number(obj.value)
+        if (parsed > 0) {
+          ids.push(parsed)
+        }
+      } else if ('id' in obj) {
+        const parsed = Number(obj.id)
+        if (parsed > 0) {
+          ids.push(parsed)
+        }
+      }
+    }
+  }
+  return [...new Set(ids)]
+}
+
+const agentIdsModel = computed({
+  get: () => selectedAgentIds.value,
+  set: (value: unknown) => {
+    selectedAgentIds.value = normalizeAgentIds(value)
+  },
+})
 
 function resetState(): void {
   agents.value = []
   groups.value = []
   categories.value = []
   selectedAgentIds.value = []
-  addAgentId.value = null
   selectedGroupId.value = null
   selectedPriority.value = 'medium'
   selectedCategoryId.value = null
@@ -123,19 +164,9 @@ function close(): void {
   emit('close')
 }
 
-function removeAgent(agentId: number): void {
-  selectedAgentIds.value = selectedAgentIds.value.filter((id) => id !== agentId)
-}
-
-function onAddAgent(agentId: number | null | undefined): void {
-  if (agentId == null || agentId <= 0) {
-    addAgentId.value = null
-    return
-  }
-  if (!selectedAgentIds.value.includes(agentId)) {
-    selectedAgentIds.value = [...selectedAgentIds.value, agentId]
-  }
-  addAgentId.value = null
+function makePrimary(agentId: number): void {
+  const rest = selectedAgentIds.value.filter((id) => id !== agentId)
+  selectedAgentIds.value = [agentId, ...rest]
 }
 
 async function loadCategories(): Promise<void> {
@@ -148,6 +179,7 @@ async function loadCategories(): Promise<void> {
 }
 
 async function loadCandidates(ticketId: number): Promise<void> {
+  const seq = ++loadSeq
   candidatesLoading.value = true
   try {
     const [{ data }, _] = await Promise.all([
@@ -161,30 +193,39 @@ async function loadCandidates(ticketId: number): Promise<void> {
       loadCategories(),
     ])
 
+    if (seq !== loadSeq) {
+      return
+    }
+
     agents.value = Array.isArray(data.data?.agents) ? data.data.agents : []
     groups.value = Array.isArray(data.data?.groups) ? data.data.groups : []
 
     const current = data.data?.current
-    selectedAgentIds.value = Array.isArray(current?.assignee_user_ids)
-      ? [...current.assignee_user_ids]
-      : []
+    selectedAgentIds.value = normalizeAgentIds(current?.assignee_user_ids ?? [])
     selectedGroupId.value = current?.assigned_group_id ?? null
     selectedPriority.value = current?.priority ?? 'medium'
     selectedCategoryId.value = current?.category_id ?? null
   } catch (e: unknown) {
+    if (seq !== loadSeq) {
+      return
+    }
     notifyError(apiErrorMessage(e, 'Could not load assignment options.'))
     close()
   } finally {
-    candidatesLoading.value = false
+    if (seq === loadSeq) {
+      candidatesLoading.value = false
+    }
   }
 }
 
 watch(
   () => props.ticket,
   (ticket) => {
-    resetState()
     if (ticket) {
+      resetState()
       void loadCandidates(ticket.id)
+    } else {
+      resetState()
     }
   },
   { immediate: true },
@@ -215,9 +256,11 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
     return
   }
   if (selectedAgentIds.value.length === 0 && !selectedGroupId.value) {
+    notifyError('Select at least one agent or a support group.')
     return
   }
   if (!selectedCategoryId.value) {
+    notifyError('Select a category.')
     return
   }
 
@@ -269,36 +312,38 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
           <UFormField
             label="Agents"
             name="assignee"
-            description="Add one or more agents. The first listed agent is the primary assignee."
+            description="Select one or more agents. The first agent is the primary assignee — use “Make primary” to change who leads."
           >
-            <div class="agent-picker">
-              <ul v-if="selectedAgents.length" class="agent-chips" aria-label="Selected agents">
-                <li v-for="(agent, index) in selectedAgents" :key="agent.id" class="agent-chip">
-                  <span class="agent-chip-label">
-                    {{ agent.name }}
-                    <span v-if="index === 0" class="agent-chip-primary">Primary</span>
-                  </span>
-                  <button
-                    type="button"
-                    class="agent-chip-remove"
-                    :aria-label="`Remove ${agent.name}`"
-                    @click="removeAgent(agent.id)"
-                  >
-                    ×
-                  </button>
-                </li>
-              </ul>
-              <USelect
-                :model-value="addAgentId"
-                :items="availableAgentItems"
-                value-key="value"
-                searchable
-                icon="mdi-account-plus-outline"
-                placeholder="Add agent…"
-                :disabled="availableAgentItems.length === 0"
-                @update:model-value="onAddAgent($event as number | null | undefined)"
-              />
-            </div>
+            <USelectMenu
+              v-model="agentIdsModel"
+              :items="agentSelectItems"
+              value-key="value"
+              multiple
+              searchable
+              icon="mdi-account-multiple"
+              placeholder="Search and select agents…"
+              :disabled="agents.length === 0"
+            />
+            <ul
+              v-if="selectedAgents.length > 1"
+              class="agent-primary-list"
+              aria-label="Agent primary order"
+            >
+              <li v-for="(agent, index) in selectedAgents" :key="agent.id" class="agent-primary-row">
+                <span class="agent-primary-name">
+                  {{ agent.name }}
+                  <span v-if="index === 0" class="agent-chip-primary">Primary</span>
+                </span>
+                <button
+                  v-if="index > 0"
+                  type="button"
+                  class="agent-primary-btn"
+                  @click="makePrimary(agent.id)"
+                >
+                  Make primary
+                </button>
+              </li>
+            </ul>
           </UFormField>
 
           <UFormField
@@ -348,7 +393,7 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
           <UTextarea
             v-model="reassignForm.reason"
             :rows="4"
-            placeholder="e.g. Adding a second agent for coverage; raising priority for SLA."
+            placeholder="e.g. Reassigning to Dennis for APM expertise."
             :maxlength="2000"
             class="w-full"
           />
@@ -365,6 +410,7 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
         label="Save changes"
         :loading="submitting"
         :disabled="
+          candidatesLoading ||
           (selectedAgentIds.length === 0 && !selectedGroupId) ||
           !selectedCategoryId ||
           reassignForm.reason.trim().length < 5
@@ -380,31 +426,23 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   flex-direction: column;
   gap: 1rem;
 }
-.agent-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.agent-chips {
+.agent-primary-list {
   list-style: none;
-  margin: 0;
+  margin: 0.5rem 0 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.35rem;
 }
-.agent-chip {
-  display: inline-flex;
+.agent-primary-row {
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.35rem 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  justify-content: space-between;
+  gap: 0.5rem;
   font-size: 0.82rem;
-  color: #0f172a;
+  color: #334155;
 }
-.agent-chip-label {
+.agent-primary-name {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -419,18 +457,19 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
   border-radius: 999px;
   padding: 0.05rem 0.35rem;
 }
-.agent-chip-remove {
-  border: none;
-  background: transparent;
-  color: #64748b;
-  font-size: 1.1rem;
-  line-height: 1;
+.agent-primary-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0d7a3a;
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0 0.15rem;
   font-family: inherit;
 }
-.agent-chip-remove:hover {
-  color: #b91c1c;
+.agent-primary-btn:hover {
+  background: #f0fdf4;
 }
 .reason-field {
   margin-top: 0.25rem;

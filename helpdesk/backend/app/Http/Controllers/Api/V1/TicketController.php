@@ -269,6 +269,11 @@ class TicketController extends Controller
 
         $ticket->loadMissing(['assignees', 'category']);
 
+        $assigneeUserIds = $assignees->assigneeUserIds($ticket);
+        if ($assigneeUserIds === [] && $ticket->assigned_user_id) {
+            $assigneeUserIds = [(int) $ticket->assigned_user_id];
+        }
+
         $agents = User::query()
             ->whereHas('helpdeskProfile', fn ($q) => $q->assignableAsTicketAssignee())
             ->with(['helpdeskProfile:id,user_id,duty_station,role', 'helpdeskSupportGroups:id,name'])
@@ -285,7 +290,7 @@ class TicketController extends Controller
         return response()->json([
             'data' => [
                 'current' => [
-                    'assignee_user_ids' => $assignees->assigneeUserIds($ticket),
+                    'assignee_user_ids' => $assigneeUserIds,
                     'assigned_group_id' => $ticket->assigned_group_id,
                     'priority' => $ticket->priority,
                     'category_id' => $ticket->category_id,
@@ -362,6 +367,9 @@ class TicketController extends Controller
         $newCategoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : null;
 
         $oldAssigneeIds = $assignees->assigneeUserIds($ticket);
+        if ($oldAssigneeIds === [] && $ticket->assigned_user_id) {
+            $oldAssigneeIds = [(int) $ticket->assigned_user_id];
+        }
         $oldGroupId = (int) ($ticket->assigned_group_id ?? 0);
         $oldPriority = $ticket->priority;
         $oldCategoryId = (int) $ticket->category_id;
