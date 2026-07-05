@@ -198,9 +198,19 @@
     width: 100%;
 }
 
+.apm-v-form #participantsTable .participants-col-index,
+.apm-v-form #participantsTable thead th.participants-col-index,
+.apm-v-form #participantsTable tbody tr[data-participant-id] > td.participants-col-index {
+    width: 2.5rem;
+    max-width: 3rem;
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+}
+
 .apm-v-form #participantsTable .participants-col-name,
-.apm-v-form #participantsTable thead th:first-child,
-.apm-v-form #participantsTable tbody tr[data-participant-id] > td:first-child {
+.apm-v-form #participantsTable thead th.participants-col-name,
+.apm-v-form #participantsTable tbody tr[data-participant-id] > td.participants-col-name {
     width: 24%;
     max-width: 12rem;
     white-space: normal;
@@ -212,9 +222,9 @@
 }
 
 .apm-v-form #participantsTable.participants-table--memo .participants-col-name,
-.apm-v-form #participantsTable.participants-table--memo thead th:first-child,
-.apm-v-form #participantsTable.participants-table--memo tbody tr[data-participant-id] > td:first-child {
-    width: 28%;
+.apm-v-form #participantsTable.participants-table--memo thead th.participants-col-name,
+.apm-v-form #participantsTable.participants-table--memo tbody tr[data-participant-id] > td.participants-col-name {
+    width: 26%;
     max-width: 13.5rem;
 }
 

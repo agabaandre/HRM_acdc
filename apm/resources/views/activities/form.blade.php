@@ -207,15 +207,17 @@
                 <div class="table-responsive">
     <table class="table table-bordered table-sm align-middle participants-table--matrix" id="participantsTable">
         <colgroup>
-            <col class="participants-col-name" style="width: 24%;">
+            <col class="participants-col-index" style="width: 3%;">
+            <col class="participants-col-name" style="width: 22%;">
             <col style="width: 16%;">
             <col style="width: 16%;">
             <col style="width: 10%;">
             <col style="width: 20%;">
-            <col style="width: 14%;">
+            <col style="width: 13%;">
         </colgroup>
         <thead class="table-light">
             <tr>
+                <th scope="col" class="participants-col-index text-center">#</th>
                 <th class="participants-col-name">Participant Name</th>
                 <th>Start Date</th>
                 <th>End Date</th>
@@ -231,7 +233,7 @@
             </tr>
         </thead>
         <tbody id="participantsTableBody">
-            <tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>
+            <tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>
         </tbody>
     </table>
 

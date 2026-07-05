@@ -514,7 +514,7 @@ $(document).ready(function () {
 
         // Show "No participants selected yet" message if no participants
         if (internalCount === 0) {
-            $('#participantsTableBody').html('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+            $('#participantsTableBody').html('<tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>');
         }
 
         const externalCount = parseInt($('#total_external_participants').val()) || 0;
@@ -583,7 +583,8 @@ $(document).ready(function () {
                 const checked = travelVal === 1;
                 const row = $(`
                     <tr data-participant-id="${sid}">
-                        <td>${name}</td>
+                        <td class="participants-col-index text-center text-muted fw-semibold"></td>
+                        <td class="participants-col-name">${name}</td>
                         <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                         <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                         <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
@@ -651,6 +652,9 @@ $(document).ready(function () {
         }
 
         updateTotalParticipants();
+        if (typeof window.renumberParticipantsTable === 'function') {
+            window.renumberParticipantsTable();
+        }
     }
     window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 

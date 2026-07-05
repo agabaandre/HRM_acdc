@@ -510,10 +510,11 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
 
     staffList.forEach(({ id, name }) => {
         if (!tableBody.find(`input[name="participant_days[${id}]"]`).length) {
-            const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="6" class="small py-2"></td></tr>`);
+            const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="7" class="small py-2"></td></tr>`);
             const row = $(`
                 <tr data-participant-id="${id}">
-                    <td>${name}</td>
+                    <td class="participants-col-index text-center text-muted fw-semibold"></td>
+                    <td class="participants-col-name">${name}</td>
                     <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                     <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                     <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
@@ -564,6 +565,9 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     });
 
     updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
+    if (typeof window.renumberParticipantsTable === 'function') {
+        window.renumberParticipantsTable();
+    }
     setTimeout(checkParticipantDaysWarnings, 50);
 }
     window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
@@ -724,16 +728,17 @@ $(document).ready(function () {
     participantsTableBody.empty();
 
     if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+        participantsTableBody.append('<tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>');
         return;
     }
 
-    selectedIds.forEach(id => {
+    selectedIds.forEach((id, index) => {
         const name = $(`#internal_participants option[value="${id}"]`).text();
-        const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="6" class="small py-2"></td></tr>`);
+        const warningRow = $(`<tr class="participant-days-warning-row" data-participant-id="${id}" style="display:none"><td colspan="7" class="small py-2"></td></tr>`);
         const participantRow = $(`
             <tr data-participant-id="${id}">
-                <td>${name}</td>
+                <td class="participants-col-index text-center text-muted fw-semibold">${index + 1}</td>
+                <td class="participants-col-name">${name}</td>
                 <td><input type="text" name="participant_start[${id}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                 <td><input type="text" name="participant_end[${id}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                 <td><input type="number" name="participant_days[${id}]" class="form-control participant-days" value="${days}" readonly></td>
@@ -801,7 +806,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         } else {
             $('#internal_participants').val(null).trigger('change.select2');
             $('#internal_participants').prop('disabled', true);
-            $('#participantsTableBody').empty().append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+            $('#participantsTableBody').empty().append('<tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>');
         }
     }
 

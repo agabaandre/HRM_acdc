@@ -218,14 +218,16 @@
                 <div class="table-responsive">
                 <table class="table table-bordered table-sm align-middle participants-table--memo" id="participantsTable">
                     <colgroup>
-                        <col class="participants-col-name" style="width: 28%;">
+                        <col class="participants-col-index" style="width: 3%;">
+                        <col class="participants-col-name" style="width: 26%;">
                         <col style="width: 22%;">
                         <col style="width: 22%;">
                         <col style="width: 12%;">
-                        <col style="width: 16%;">
+                        <col style="width: 15%;">
                     </colgroup>
                     <thead class="table-light">
                         <tr>
+                            <th scope="col" class="participants-col-index text-center">#</th>
                             <th scope="col" class="participants-col-name">Participant name</th>
                             <th scope="col">Activity start date</th>
                             <th scope="col">Activity end date</th>
@@ -234,7 +236,7 @@
                         </tr>
                     </thead>
                     <tbody id="participantsTableBody">
-                        <tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>
+                        <tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>
                     </tbody>
                 </table>
             </div>

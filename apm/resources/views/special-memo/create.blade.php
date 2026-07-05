@@ -323,6 +323,9 @@ $(document).on('click', '#participantsTable .remove-participant', function () {
         return ($(this).val() || []).filter(id => String(id) !== sid);
     }).trigger('change');
     row.remove();
+    if (typeof window.renumberParticipantsTable === 'function') {
+        window.renumberParticipantsTable();
+    }
     updateTotalParticipants();
 });
 
@@ -354,7 +357,8 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
         if (!tableBody.find(`input[name="participant_days[${sid}]"]`).length) {
             const row = $(`
                 <tr data-participant-id="${sid}">
-                    <td>${name}</td>
+                    <td class="participants-col-index text-center text-muted fw-semibold"></td>
+                    <td class="participants-col-name">${name}</td>
                     <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                     <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                     <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
@@ -401,6 +405,9 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     });
 
     updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
+    if (typeof window.renumberParticipantsTable === 'function') {
+        window.renumberParticipantsTable();
+    }
 }
     window.appendToInternalParticipantsTable = appendToInternalParticipantsTable;
 
@@ -537,16 +544,17 @@ $(document).ready(function () {
     participantsTableBody.empty();
 
     if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="5" class="text-muted text-center">No participants selected yet</td></tr>');
+        participantsTableBody.append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
         return;
     }
 
-    selectedIds.forEach(id => {
+    selectedIds.forEach((id, index) => {
         const sid = String(id);
         const name = $(`#internal_participants option[value="${sid}"]`).text();
         participantsTableBody.append(`
             <tr data-participant-id="${sid}">
-                <td>${name}</td>
+                <td class="participants-col-index text-center text-muted fw-semibold">${index + 1}</td>
+                <td class="participants-col-name">${name}</td>
                 <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                 <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                 <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
