@@ -36,8 +36,14 @@ npm run build
 
 ## Staff portal SSO
 
-The Staff portal currently hands off to `/staff/helpdesk?token=…`. To test helpdesk2 with SSO, open:
+Helpdesk uses the same **POST SSO launch** as APM and Finance:
+
+1. Staff portal `POST home/launch_module` with `module_key=helpdesk_itsm`
+2. Auto-POST `staff_sso_jwt` to `/staff/helpdesk/backend/sso/accept`
+3. Helpdesk verifies JWT and returns a Sanctum session
+
+Legacy dev URL (when `SSO_ALLOW_URL_TOKEN` is enabled):
 
 `/staff/helpdesk2/?token=<jwt-from-portal>`
 
-Or update `Home.php` when ready to switch the default module link.
+Use **`localhost`** in all `.env` files — not `Users-MacBook-Pro.local`. Rebuild after env changes: `npm run build`.

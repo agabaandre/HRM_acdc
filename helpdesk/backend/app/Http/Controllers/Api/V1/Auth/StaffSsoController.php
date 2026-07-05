@@ -94,6 +94,11 @@ class StaffSsoController extends Controller
             $profileAttrs = array_merge($profileAttrs, $sapAttrs);
         }
 
+        HelpdeskProfile::query()
+            ->where('staff_id', $staffId)
+            ->where('user_id', '!=', $user->id)
+            ->delete();
+
         $user->helpdeskProfile()->updateOrCreate(
             ['user_id' => $user->id],
             $profileAttrs
@@ -176,6 +181,9 @@ class StaffSsoController extends Controller
     {
         if ($raw === null) {
             return [];
+        }
+        if (is_string($raw)) {
+            return array_values(array_filter(array_map('trim', explode(',', $raw))));
         }
         if (is_object($raw)) {
             $raw = (array) $raw;

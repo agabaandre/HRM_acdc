@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Support\RuntimeUrl;
+use App\Support\StaffSsoLaunchCode;
+use App\Support\StaffSsoPolicy;
 use App\Support\StaffSsoToken;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -13,27 +15,45 @@ use Illuminate\Support\Facades\Log;
 class AuthController extends Controller
 {
     /**
+     * Secure SSO: POST one-time code from Staff portal (JWT never in URL).
+     */
+    public function ssoAccept(Request $request): RedirectResponse
+    {
+        $jwt = trim((string) ($_POST['staff_sso_jwt'] ?? $request->input('staff_sso_jwt', '')));
+        if ($jwt === '') {
+            $code = trim((string) ($_POST['sso_code'] ?? $request->input('sso_code', '')));
+            if ($code !== '') {
+                $record = \App\Support\StaffSsoCodeStore::consume($code, 'approvals_management');
+                $jwt = (string) ($record['jwt'] ?? '');
+            }
+        }
+        if ($jwt !== '') {
+            try {
+                $this->openSessionFromStaffToken($jwt);
+
+                return redirect()->route('home');
+            } catch (\Throwable $e) {
+                try {
+                    Log::warning('APM SSO exchange failed: '.$e->getMessage());
+                } catch (\Throwable) {
+                }
+            }
+        }
+
+        return redirect(RuntimeUrl::staffPortalLoginUrl());
+    }
+
+    /**
      * SSO entry point: decode ?token= from Staff portal and open an APM session.
+     * @deprecated Prefer POST /sso/accept with one-time code from home/launch_module.
      */
     public function ssoEntry(Request $request): RedirectResponse
     {
         $rawToken = $request->query('token');
 
-        if ($rawToken) {
+        if ($rawToken && StaffSsoPolicy::urlTokenAllowed()) {
             try {
-                $json = StaffSsoToken::decode(is_string($rawToken) ? $rawToken : null);
-
-                if (! $json) {
-                    throw new \Exception('Invalid token format');
-                }
-
-                session([
-                    'user' => $json,
-                    'base_url' => $json['base_url'] ?? '',
-                    'permissions' => $json['permissions'] ?? [],
-                    'last_activity' => now(),
-                ]);
-                session()->save();
+                $this->openSessionFromStaffToken(is_string($rawToken) ? $rawToken : '');
 
                 return redirect()->route('home');
             } catch (\Exception $e) {
@@ -49,6 +69,25 @@ class AuthController extends Controller
         }
 
         return redirect(RuntimeUrl::staffPortalLoginUrl());
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
+    private function openSessionFromStaffToken(string $rawToken): void
+    {
+        $json = StaffSsoToken::decode($rawToken);
+        if (! $json) {
+            throw new \RuntimeException('Invalid token format');
+        }
+
+        session([
+            'user' => $json,
+            'base_url' => $json['base_url'] ?? '',
+            'permissions' => $json['permissions'] ?? [],
+            'last_activity' => now(),
+        ]);
+        session()->save();
     }
 
     /**

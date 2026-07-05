@@ -555,6 +555,8 @@ class Cbp_modules_mdl extends CI_Model
 				'absolute' => $absolute,
 				'desc' => (string) ($row->description ?? ''),
 				'module_key' => $mkey,
+				'sso_launch' => !empty($row->uses_staff_portal_token),
+				'launch_url' => site_url('home/launch_module'),
 			];
 		}
 
@@ -643,6 +645,9 @@ class Cbp_modules_mdl extends CI_Model
 				'icon' => $icon,
 				'opens_in_new_tab' => !empty($mod['absolute']),
 				'is_active' => !empty($mod['is_active']),
+				'sso_launch' => !empty($mod['sso_launch']),
+				'launch_url' => (string) ($mod['launch_url'] ?? site_url('home/launch_module')),
+				'module_key' => (string) ($mod['module_key'] ?? ''),
 			];
 		}
 
@@ -705,9 +710,6 @@ class Cbp_modules_mdl extends CI_Model
 			if ($seg === 'apm' && !empty($row->uses_staff_portal_token)) {
 				$url .= '/sso';
 			}
-			if (!empty($row->uses_staff_portal_token)) {
-				$url = $this->append_staff_portal_token_to_url($url, $sessionArray);
-			}
 
 			return $url;
 		}
@@ -742,7 +744,7 @@ class Cbp_modules_mdl extends CI_Model
 				}
 			}
 			if (!empty($row->uses_staff_portal_token)) {
-				$url = $this->append_staff_portal_token_to_url($url, $sessionArray);
+				// Token is exchanged via POST + one-time code (home/launch_module), not in URL.
 			}
 
 			return $url;
@@ -837,7 +839,7 @@ class Cbp_modules_mdl extends CI_Model
 			return null;
 		}
 		if (!empty($row->uses_staff_portal_token)) {
-			$url = $this->append_staff_portal_token_to_url($url, $sessionArray);
+			// Token is exchanged via POST + one-time code (home/launch_module), not in URL.
 		}
 
 		return $url;

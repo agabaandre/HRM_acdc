@@ -23,6 +23,12 @@ Route::get('/manifest.json', function () {
 // SSO entry: decode ?token= from Staff portal and open an APM session.
 Route::get('/', [AuthController::class, 'ssoEntry'])->name('sso.entry');
 Route::get('/sso', [AuthController::class, 'ssoEntry'])->name('sso.callback');
+Route::post('/sso/accept', [AuthController::class, 'ssoAccept'])
+    ->middleware('throttle:30,1')
+    ->name('sso.accept');
+Route::get('/sso/accept', function () {
+    return redirect(\App\Support\RuntimeUrl::staffPortalLoginUrl().'?sso=post_required');
+})->name('sso.accept.get');
 
 // Logout route (should be accessible without middleware)
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');

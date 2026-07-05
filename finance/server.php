@@ -27,6 +27,12 @@ if (is_string($basePath) && $basePath !== '' && $basePath !== '/') {
     }
 }
 
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($method === 'POST' && preg_match('#/sso/accept/?$#', $uri)) {
+    require __DIR__.'/sso_accept_dispatch.php';
+    exit;
+}
+
 if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
     return false;
 }

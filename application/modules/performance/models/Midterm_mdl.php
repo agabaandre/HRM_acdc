@@ -726,20 +726,38 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
 }
 
 
-public function get_midterm_dashboard_data()
+public function get_midterm_dashboard_data($division_id = null, $period = null, $staff_id = null)
 {
-    $division_id = $this->input->get('division_id');
-    $period = $this->input->get('period');
+    if ($division_id === null) {
+        $division_id = $this->input->get('division_id');
+    }
+    if ($period === null) {
+        $period = $this->input->get('period');
+    }
+
+    $division_id = ($division_id !== null && $division_id !== '') ? (int) $division_id : null;
+
     $current_period = str_replace(' ', '-', current_period());
     $period = !empty($period) ? $period : $current_period;
-    
-    // Handle multiple periods (comma-separated)
-    $periods = !empty($period) ? array_map('trim', explode(',', $period)) : [$current_period];
-    $is_multiple_periods = count($periods) > 1;
 
-    $user = $this->session->userdata('user');
-    $is_restricted = ($user && isset($user->role) && $user->role == 17);
-    $staff_id = $is_restricted ? $user->staff_id : null;
+    // Handle multiple periods (comma-separated) from dashboard filters
+    $filter_periods = !empty($period) ? array_map('trim', explode(',', $period)) : [$current_period];
+    $filter_periods = array_values(array_filter($filter_periods, static function ($p) {
+        return $p !== '';
+    }));
+    if (empty($filter_periods)) {
+        $filter_periods = [$current_period];
+        $period = $current_period;
+    }
+    $is_multiple_periods = count($filter_periods) > 1;
+
+    if ($staff_id === null) {
+        $user = $this->session->userdata('user');
+        $is_restricted = ($user && isset($user->role) && $user->role == 17);
+        $staff_id = $is_restricted ? $user->staff_id : null;
+    } else {
+        $is_restricted = ($staff_id !== null && $staff_id !== '');
+    }
 
     // Get latest contract for each staff
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
@@ -764,12 +782,15 @@ public function get_midterm_dashboard_data()
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where('pe.draft_status !=', 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
     $this->db->where('pe.midterm_draft_status !=', 1);
     $summary = $this->db->get()->row();
+    if (!$summary) {
+        $summary = (object) ['total' => 0, 'approved' => 0, 'submitted' => 0];
+    }
 
     // Get active staff for "without_ppa" calculation (with contract status filter including Under Renewal)
     $this->db->select('s.staff_id');
@@ -792,7 +813,7 @@ public function get_midterm_dashboard_data()
     $this->db->where('pe.draft_status !=', 1);
     $this->db->where('pe.midterm_draft_status !=', 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -815,7 +836,7 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -843,7 +864,7 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -861,7 +882,7 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -875,7 +896,7 @@ public function get_midterm_dashboard_data()
     if ($division_id) $this->db->where('sc.division_id', $division_id);
     if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -894,7 +915,7 @@ public function get_midterm_dashboard_data()
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -910,17 +931,20 @@ public function get_midterm_dashboard_data()
     $pdp_staff = array_unique($pdp_staff);
 
     // Calculate staff without midterms (active staff with PPAs but without midterms)
-    $this->db->select("pe.staff_id");
-    $this->db->from("ppa_entries pe");
-    $this->db->where_in("pe.staff_id", $staff_ids);
-    if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
-    } else {
-        $this->db->where('pe.performance_period', $period);
+    $ppa_with_midterm = [];
+    if (!empty($staff_ids)) {
+        $this->db->select("pe.staff_id");
+        $this->db->from("ppa_entries pe");
+        $this->db->where_in("pe.staff_id", $staff_ids);
+        if ($is_multiple_periods) {
+            $this->db->where_in('pe.performance_period', $filter_periods);
+        } else {
+            $this->db->where('pe.performance_period', $period);
+        }
+        $this->db->where("pe.draft_status !=", 1);
+        $this->db->where("pe.midterm_draft_status !=", 1);
+        $ppa_with_midterm = array_column($this->db->get()->result(), 'staff_id');
     }
-    $this->db->where("pe.draft_status !=", 1);
-    $this->db->where("pe.midterm_draft_status !=", 1);
-    $ppa_with_midterm = array_column($this->db->get()->result(), 'staff_id');
     
     // Periods list (midterm) - only get distinct periods from actual midterm entries
     $this->db->distinct();
@@ -932,9 +956,8 @@ public function get_midterm_dashboard_data()
     if ($is_restricted) $this->db->where("pe.staff_id", $staff_id);
     $this->db->order_by("pe.performance_period", "DESC");
     $periods_result = $this->db->get()->result();
-    $periods = array_column($periods_result, 'performance_period');
-    $periods = array_unique($periods); // Ensure distinct values
-    $current_period = !empty($periods) ? $periods[0] : $period;
+    $available_periods = array_values(array_unique(array_column($periods_result, 'performance_period')));
+    $current_period = !empty($available_periods) ? $available_periods[0] : $period;
 
     // Age groups for midterm (regardless of contract status)
     $age_groups = [
@@ -953,7 +976,7 @@ public function get_midterm_dashboard_data()
         if ($division_id) $this->db->where('sc.division_id', $division_id);
         if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
         if ($is_multiple_periods) {
-            $this->db->where_in('pe.performance_period', $periods);
+            $this->db->where_in('pe.performance_period', $filter_periods);
         } else {
             $this->db->where('pe.performance_period', $period);
         }
@@ -965,16 +988,19 @@ public function get_midterm_dashboard_data()
         $age_data[] = ['group' => $label, 'count' => $count];
     }
 
-    // Training categories for midterm
+    // Training categories for midterm (contract join avoids invalid IN() when division has no active staff)
     $this->db->select("tc.category_name AS name, COUNT(*) AS y", false);
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
     $this->db->join("training_categories tc", "tc.id = ts.category_id", "left");
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -985,11 +1011,14 @@ public function get_midterm_dashboard_data()
     $this->db->select("ts.skill AS name, COUNT(*) AS y", false);
     $this->db->from("ppa_entries pe");
     $this->db->join("training_skills ts", "JSON_CONTAINS(pe.required_skills, JSON_QUOTE(CAST(ts.id AS CHAR)), '$')", "inner", false);
-    $this->db->where_in("pe.staff_id", $staff_ids);
+    $this->db->join('staff_contracts sc', 'sc.staff_id = pe.staff_id', 'left');
+    $this->db->where("sc.staff_contract_id IN ($subquery)", null, false);
+    if ($division_id) $this->db->where('sc.division_id', $division_id);
+    if ($is_restricted) $this->db->where('pe.staff_id', $staff_id);
     $this->db->where("pe.draft_status !=", 1);
     $this->db->where("pe.midterm_draft_status !=", 1);
     if ($is_multiple_periods) {
-        $this->db->where_in('pe.performance_period', $periods);
+        $this->db->where_in('pe.performance_period', $filter_periods);
     } else {
         $this->db->where('pe.performance_period', $period);
     }
@@ -997,6 +1026,8 @@ public function get_midterm_dashboard_data()
     $this->db->order_by("y DESC");
     $this->db->limit(10);
     $training_skills = $this->db->get()->result();
+
+    $staff_without_period = $is_multiple_periods ? $filter_periods[0] : $period;
 
     return [
         'total' => (int)$summary->total,
@@ -1010,9 +1041,9 @@ public function get_midterm_dashboard_data()
         'training_categories' => $training_categories,
         'training_skills' => $training_skills,
         'staff_count' => count($staff_ids),
-        'staff_without_midterms' => count($this->get_staff_without_midterm($period, $division_id)),
+        'staff_without_midterms' => count($this->get_staff_without_midterm($staff_without_period, $division_id)),
         'staff_with_pdps' => count($pdp_staff),
-        'periods' => $periods,
+        'periods' => $available_periods,
         'current_period' => $current_period,
     ];
 }

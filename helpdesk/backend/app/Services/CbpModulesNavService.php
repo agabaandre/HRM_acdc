@@ -111,9 +111,53 @@ class CbpModulesNavService
      */
     private function wrap(array $data, array $meta): array
     {
+        $data = $this->normalizePortalUrls($data);
+
         return [
             'data' => $data,
             'meta' => $meta,
         ];
+    }
+
+    /**
+     * @param  array{home: array<string, mixed>, modules: list<array<string, mixed>>}  $data
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+     */
+    private function normalizePortalUrls(array $data): array
+    {
+        if (! app()->runningInConsole() && request()->hasHeader('Host')) {
+            $host = strtolower((string) request()->getHost());
+            if ($host === 'localhost' || $host === '127.0.0.1') {
+                $scheme = request()->getScheme();
+                $port = request()->getPort();
+                $origin = $scheme.'://'.$host.($port && ! in_array($port, [80, 443], true) ? ':'.$port : '');
+
+                if (isset($data['home']['href']) && is_string($data['home']['href'])) {
+                    $data['home']['href'] = $this->rewriteStaffOrigin((string) $data['home']['href'], $origin);
+                }
+                foreach ($data['modules'] as $i => $module) {
+                    if (isset($module['href']) && is_string($module['href'])) {
+                        $data['modules'][$i]['href'] = $this->rewriteStaffOrigin((string) $module['href'], $origin);
+                    }
+                    if (isset($module['launch_url']) && is_string($module['launch_url'])) {
+                        $data['modules'][$i]['launch_url'] = $this->rewriteStaffOrigin((string) $module['launch_url'], $origin);
+                    }
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    private function rewriteStaffOrigin(string $url, string $origin): string
+    {
+        $parts = parse_url($url);
+        if (! is_array($parts) || empty($parts['path'])) {
+            return $url;
+        }
+        $path = str_starts_with((string) $parts['path'], '/') ? (string) $parts['path'] : '/'.$parts['path'];
+        $query = isset($parts['query']) && $parts['query'] !== '' ? '?'.$parts['query'] : '';
+
+        return rtrim($origin, '/').$path.$query;
     }
 }

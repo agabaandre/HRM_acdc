@@ -34,6 +34,71 @@ class Home extends MX_Controller
 	}
 
 	/**
+	 * Secure POST launch: issue a one-time SSO code and auto-POST to the target module.
+	 * JWT is never placed in the browser URL (Referer / history safe).
+	 */
+	public function launch_module()
+	{
+		if (strtoupper($this->input->method(true)) !== 'POST') {
+			show_error('Method Not Allowed', 405);
+		}
+
+		$user = $this->current_home_user();
+		if ($user === null) {
+			redirect('auth');
+			return;
+		}
+
+        $moduleKey = trim((string) $this->input->post('module_key'));
+        if ($moduleKey === '' || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $moduleKey)) {
+            show_error('Invalid module.', 400);
+        }
+
+		if (!$this->db->table_exists('cbp_modules')) {
+			show_error('Module registry unavailable.', 503);
+		}
+
+		$row = $this->db->get_where('cbp_modules', [
+			'module_key' => $moduleKey,
+			'is_enabled' => 1,
+		])->row();
+
+		if (!$row || !staff_sso_user_can_access_module($user, $row)) {
+			show_error('You do not have permission to open this module.', 403);
+		}
+
+		if (empty($row->uses_staff_portal_token)) {
+			$session = (array) $user;
+			$session['base_url'] = base_url();
+			$this->load->model('cbp_modules_mdl');
+			$path = $this->cbp_modules_mdl->resolve_href($row, $session, (int) ($user->role ?? 0));
+			if ($path === null || $path === '') {
+				show_error('Module link is not configured.', 500);
+			}
+			redirect($path);
+			return;
+		}
+
+		$session = (array) $user;
+		$session['base_url'] = base_url();
+		$jwt = staff_sso_build_jwt(staff_sso_compact_claims($session));
+        $acceptUrl = staff_sso_accept_url_for_module($row);
+        if ($acceptUrl === null || $acceptUrl === '') {
+            show_error('SSO accept URL is not configured for this module.', 500);
+        }
+        if (!staff_sso_is_allowed_accept_url($acceptUrl)) {
+            log_message('error', 'SSO launch blocked: accept URL not allowlisted: ' . $acceptUrl);
+            show_error('SSO target is not allowed.', 500);
+        }
+
+        $this->load->view('sso_launch_redirect', [
+			'accept_url' => $acceptUrl,
+			'sso_jwt' => $jwt,
+			'label' => $row->system_name,
+		]);
+	}
+
+	/**
 	 * AJAX: module keys visible to the user that match search query (name, description, module key).
 	 * GET home/module_search?q=
 	 */
@@ -156,25 +221,24 @@ class Home extends MX_Controller
 		}
 
 		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)) {
-			$token = rawurlencode($this->build_sso_jwt($session));
 			$settings[] = [
-				'href' => rtrim(base_url(), '/') . '/apm/sso?token=' . $token,
+				'href' => rtrim(base_url(), '/') . '/apm/sso',
 				'label' => 'Approvals Management (APM)',
 				'icon' => 'fa-sitemap',
 				'absolute' => true,
 				'desc' => 'Tracks submissions, reviews, and approvals for travel matrices, single and special memos, change, DSA and ARF requests.',
 				'module_key' => 'approvals_management',
+				'sso_launch' => true,
 			];
 		}
 
 		if (in_array('92', $permissions, true) || in_array(92, $permissions, true)) {
-			$token = rawurlencode($this->build_sso_jwt($session));
 			$host = $_SERVER['HTTP_HOST'] ?? '';
 			if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-				$financeUrl = rtrim(base_url(), '/') . '/finance?token=' . $token;
+				$financeUrl = rtrim(base_url(), '/') . '/finance';
 			} else {
 				$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-				$financeUrl = $scheme . '://' . $host . '/finance?token=' . $token;
+				$financeUrl = $scheme . '://' . $host . '/finance';
 			}
 			$settings[] = [
 				'href' => $financeUrl,
@@ -183,20 +247,20 @@ class Home extends MX_Controller
 				'absolute' => true,
 				'desc' => 'Manage financial reports, invoices, budgets, transactions, and vendor information.',
 				'module_key' => 'finance_management',
+				'sso_launch' => true,
 			];
 		}
 
 		if (in_array('85', $permissions, true) || in_array(85, $permissions, true)
 			|| in_array('92', $permissions, true) || in_array(92, $permissions, true)
 			|| in_array('93', $permissions, true) || in_array(93, $permissions, true)) {
-			$token = rawurlencode($this->build_sso_jwt($session));
 			$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 			$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 			$spaPath = trim((string) getenv('HELPDESK_SPA_PATH'), '/');
 			if ($spaPath === '') {
 				$spaPath = 'staff/helpdesk';
 			}
-			$helpdeskUrl = $scheme . '://' . $host . '/' . $spaPath . '?token=' . $token;
+			$helpdeskUrl = $scheme . '://' . $host . '/' . $spaPath;
 			$settings[] = [
 				'href' => $helpdeskUrl,
 				'label' => 'IT Service Desk (Helpdesk)',
@@ -204,6 +268,7 @@ class Home extends MX_Controller
 				'absolute' => true,
 				'desc' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as Finance).',
 				'module_key' => 'helpdesk_itsm',
+				'sso_launch' => true,
 			];
 		}
 

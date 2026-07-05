@@ -479,7 +479,11 @@ $config['sess_regenerate_destroy'] = TRUE;     // Destroy old session on regener
 $config['cookie_prefix']  = '';
 $config['cookie_domain']  = '';
 $config['cookie_path']    = '/';
-$config['cookie_secure']  = FALSE;
+$config['cookie_secure']  = (
+	(!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+	|| (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+	|| (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+);
 $config['cookie_httponly']   = TRUE;
 
 /*

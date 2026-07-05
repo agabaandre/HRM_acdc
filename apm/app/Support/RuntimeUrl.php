@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
 /**
- * Keep generated URLs aligned with the active HTTP request when cached config
- * still points at localhost (common after config:cache on production).
+ * Keep generated URLs aligned with the active HTTP request when the app is
+ * mounted under a subdirectory (e.g. /staff/apm).
  */
 final class RuntimeUrl
 {
@@ -22,17 +22,43 @@ final class RuntimeUrl
             return;
         }
 
-        $configured = rtrim((string) config('app.url'), '/');
-        $configuredHost = parse_url($configured, PHP_URL_HOST);
-        $requestHost = $request->getHost();
-
-        if (! self::isLocalHost($configuredHost) || self::isLocalHost($requestHost)) {
+        $mountPath = self::mountPath();
+        if ($mountPath === '') {
             return;
         }
 
-        $root = rtrim($request->getSchemeAndHttpHost().$request->getBaseUrl(), '/');
+        $root = rtrim($request->getSchemeAndHttpHost().$mountPath, '/');
         URL::forceRootUrl($root);
         URL::forceScheme($request->getScheme());
+    }
+
+    /**
+     * Application mount path only, e.g. "/staff/apm".
+     */
+    public static function mountPath(): string
+    {
+        $configured = rtrim((string) config('app.url', ''), '/');
+        $fromConfig = parse_url($configured, PHP_URL_PATH);
+        if (is_string($fromConfig) && $fromConfig !== '' && $fromConfig !== '/') {
+            return rtrim($fromConfig, '/');
+        }
+
+        $scriptName = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+        if (str_ends_with($scriptName, '/public/index.php')) {
+            return rtrim(substr($scriptName, 0, -strlen('/public/index.php')), '/');
+        }
+        if (str_ends_with($scriptName, '/server.php')) {
+            return rtrim(substr($scriptName, 0, -strlen('/server.php')), '/');
+        }
+
+        foreach (['/staff/apm', '/apm'] as $mount) {
+            $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+            if (str_starts_with(parse_url($uri, PHP_URL_PATH) ?? '', $mount)) {
+                return $mount;
+            }
+        }
+
+        return '';
     }
 
     /**

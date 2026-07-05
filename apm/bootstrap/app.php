@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->validateCsrfTokens(except: [
+            'sso/accept',
+        ]);
         // Add session expiry check to web middleware group
         $middleware->web(append: [
             \App\Http\Middleware\CheckSessionExpiry::class,

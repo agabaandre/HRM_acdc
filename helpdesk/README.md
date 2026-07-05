@@ -19,8 +19,8 @@ Both the **Laravel API** and the built **Vue SPA** are served by **Apache** — 
 
 | What | URL | Served from |
 |------|-----|-------------|
-| SPA (full-page) | `http://<host>/staff/helpdesk/` | `helpdesk/frontend/dist/` via `helpdesk/.htaccess` |
-| Static assets | `http://<host>/staff/helpdesk/assets/*` | `helpdesk/frontend/dist/assets/*` |
+| SPA (full-page) | `http://<host>/staff/helpdesk/` | `helpdesk/frontend/dist-build/` via `helpdesk/.htaccess` |
+| Static assets | `http://<host>/staff/helpdesk/assets/*` | `helpdesk/frontend/dist-build/assets/*` |
 | Laravel API | `http://<host>/staff/helpdesk/backend/api/v1/*` | `helpdesk/backend/public/index.php` via `helpdesk/backend/.htaccess` |
 
 ```bash
@@ -48,7 +48,7 @@ curl -i http://localhost/staff/helpdesk/                    # SPA index.html
 curl -i http://localhost/staff/helpdesk/backend/api/v1/health  # Laravel API
 ```
 
-The Staff portal helpdesk tile (`home/index`) now links straight to `<host>/staff/helpdesk?token=…`.
+The Staff portal **CBP Modules** menu and home tiles launch Helpdesk via **secure POST SSO** (see [Cross-module SSO](#cross-module-sso-staff--apm--finance--helpdesk) below). Legacy `?token=` in the URL still works in non-production when `SSO_ALLOW_URL_TOKEN` is enabled.
 
 ### Dev with hot-reload (optional)
 
@@ -70,14 +70,47 @@ For end-user traffic, however, the Apache-served `/staff/helpdesk/` is the canon
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| SPA rewrite | `helpdesk/.htaccess` | Serves `frontend/dist/<file>` for assets, `frontend/dist/index.html` for SPA routes, and leaves `/staff/helpdesk/backend/*` to the API rewrite. |
+| SPA rewrite | `helpdesk/.htaccess` | Serves `frontend/dist-build/<file>` for assets, `frontend/dist-build/index.html` for SPA routes, and leaves `/staff/helpdesk/backend/*` to the API rewrite. |
 | API rewrite | `helpdesk/backend/.htaccess` | Routes every URL under `/staff/helpdesk/backend/` through `server.php`; preserves the `Authorization` header so Sanctum Bearer tokens reach PHP — must be the first rule in the rewrite block. |
 | API front controller | `helpdesk/backend/server.php` | Forwards to `backend/public/index.php` — copied from `apm/server.php`. |
 | `/public/`-less entry | `helpdesk/backend/index.php` | Fallback used when mod_rewrite is unavailable (e.g. the PHP built-in server). |
 | SPA base path | `helpdesk/frontend/vite.config.ts` `base` | `/staff/helpdesk/` in production builds so Vue Router + asset URLs work under the subpath. |
 | API base URL | `helpdesk/frontend/.env.production` `VITE_HELPDESK_API_BASE_URL` | `/staff/helpdesk/backend` so axios calls resolve to the Apache-served API on the same host. |
 | Laravel APP_URL | `helpdesk/backend/.env` `APP_URL` | `http://localhost/staff/helpdesk/backend` locally; `https://<host>/staff/helpdesk/backend` in prod. |
-| Portal hand-off | `application/modules/home/controllers/Home.php` | Builds `<host>/staff/helpdesk?token=…` (override the subpath via `HELPDESK_SPA_PATH` env). |
+| Portal hand-off | `application/modules/home/controllers/Home.php` | `POST home/launch_module` → auto-POST JWT to `<module>/sso/accept` (see [INTEGRATION.md](./documentation/INTEGRATION.md)). |
+
+## Cross-module SSO (Staff ↔ APM ↔ Finance ↔ Helpdesk)
+
+CBP modules share a **POST-based SSO hand-off** so JWTs never appear in browser URLs (Referer/history safe):
+
+```
+Staff home  ──POST home/launch_module──►  sso_launch_redirect view
+           ──auto-POST staff_sso_jwt──►   /staff/{module}/sso/accept
+Module      ──verify JWT, start session──► redirect to module home
+```
+
+| Module | Accept endpoint | Session notes |
+|--------|-----------------|---------------|
+| Helpdesk | `/staff/helpdesk/backend/sso/accept` | `sso_accept_dispatch.php` → `SsoAcceptController` |
+| APM | `/staff/apm/sso/accept` | Dispatch runs Laravel session middleware so the cookie persists |
+| Finance | `/staff/finance/sso/accept` | Same session middleware pattern as APM |
+
+Shared implementation: `application/helpers/sso_launch_helper.php` (`staff_sso_build_jwt`, `staff_sso_compact_claims`, `staff_sso_accept_url_for_module`).
+
+### URL configuration (local dev)
+
+Use **`http://localhost/staff`** everywhere — not your Mac’s mDNS hostname (`Users-MacBook-Pro.local`). Mismatched hosts break CBP **Home** links and SSO redirects.
+
+| Setting | File | Local value |
+|---------|------|-------------|
+| `HELPDESK_STAFF_PORTAL_URL` | `backend/.env` | `http://localhost/staff` |
+| `APP_URL` / `BASE_URL` | `backend/.env` | `http://localhost/staff/helpdesk/backend` / `http://localhost/staff/` |
+| `VITE_STAFF_PORTAL_HOME_URL` | `frontend/.env.production.local` | `/staff/home/index` (relative — browser host is used) |
+| `VITE_STAFF_BASE_URL` | `frontend/.env.production.local` | `/staff` |
+
+After changing env values, rebuild the SPA (`cd frontend && npm run build`) and clear Laravel caches (`php artisan cache:clear`; delete `bootstrap/cache/config.php` if present).
+
+The CBP Modules API (`GET /api/v1/cbp-modules`) rewrites staff-portal URLs to the current request host when accessed on `localhost`, so cached Staff Share responses cannot send you to the wrong hostname.
 
 ## Production: systemd (boot + auto-restart)
 

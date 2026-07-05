@@ -15,6 +15,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    build: {
+      outDir: 'dist-build',
+      emptyOutDir: true,
+    },
     plugins: [
       vue(),
       vuetify({ autoImport: true }),

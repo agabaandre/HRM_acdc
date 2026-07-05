@@ -65,7 +65,23 @@ unset($_m);
 				$absolute = !empty($mod['opens_in_new_tab']) || !empty($mod['absolute']);
 				$active = !empty($mod['is_active']);
 				$target = $absolute ? ' target="_blank" rel="noopener noreferrer"' : '';
+				$ssoLaunch = !empty($mod['sso_launch']);
+				$moduleKey = isset($mod['module_key']) ? (string) $mod['module_key'] : (isset($mod['id']) ? (string) $mod['id'] : '');
+				$csrfName = $this->security->get_csrf_token_name();
+				$csrfHash = $this->security->get_csrf_hash();
 				?>
+			<?php if ($ssoLaunch && $moduleKey !== '') : ?>
+			<form method="post" action="<?= site_url('home/launch_module') ?>" class="cbp-modules-dd-item-form m-0"<?= $absolute ? ' target="_blank"' : '' ?>>
+				<input type="hidden" name="module_key" value="<?= htmlspecialchars($moduleKey, ENT_QUOTES, 'UTF-8') ?>">
+				<input type="hidden" name="<?= htmlspecialchars($csrfName, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars($csrfHash, ENT_QUOTES, 'UTF-8') ?>">
+				<button type="submit" class="cbp-modules-dd-item<?= $active ? ' is-active' : '' ?> w-100 border-0 bg-transparent text-start" role="menuitem">
+					<i class="<?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?> cbp-modules-dd-icon" aria-hidden="true"></i>
+					<span class="cbp-modules-dd-item-text">
+						<span class="cbp-modules-dd-item-label"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
+					</span>
+				</button>
+			</form>
+			<?php else : ?>
 			<a
 				href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"
 				class="cbp-modules-dd-item<?= $active ? ' is-active' : '' ?>"
@@ -77,6 +93,7 @@ unset($_m);
 					<span class="cbp-modules-dd-item-label"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
 				</span>
 			</a>
+			<?php endif; ?>
 			<?php endforeach; ?>
 		<?php else : ?>
 			<p class="cbp-modules-dd-empty" role="status">No other CBP systems are assigned to your account.</p>

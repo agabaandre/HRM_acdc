@@ -89,7 +89,7 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array('url', 'absent', 'rosta', 'text', 'custom', 'csrf', 'form', 'useraccess','utils','auth','async_mail','cache','midterm');
+$autoload['helper'] = array('url', 'absent', 'rosta', 'text', 'custom', 'csrf', 'form', 'useraccess','utils','auth','auth_security','sso_launch','async_mail','cache','midterm');
 
 /*
 | -------------------------------------------------------------------

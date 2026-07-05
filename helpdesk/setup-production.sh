@@ -192,14 +192,14 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
         dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_HOME_URL \
             "$VITE_STAFF_PORTAL_HOME_URL" "$VITE_ENV_PREEXISTED"
     fi
-    if [[ -d "$FRONTEND/dist" ]] && ! [[ -w "$FRONTEND/dist" ]]; then
-        warn "frontend/dist is not writable — fixing ownership for $(id -un)"
-        if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist" 2>/dev/null; then
+    if [[ -d "$FRONTEND/dist-build" ]] && ! [[ -w "$FRONTEND/dist-build" ]]; then
+        warn "frontend/dist-build is not writable — fixing ownership for $(id -un)"
+        if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist-build" 2>/dev/null; then
             :
-        elif command -v sudo >/dev/null 2>&1 && sudo chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist"; then
+        elif command -v sudo >/dev/null 2>&1 && sudo chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist-build"; then
             :
         else
-            die "Cannot write to $FRONTEND/dist — run: sudo chown -R \$(whoami) $FRONTEND/dist"
+            die "Cannot write to $FRONTEND/dist-build — run: sudo chown -R \$(whoami) $FRONTEND/dist-build"
         fi
     fi
     (
@@ -215,7 +215,7 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
         fi
         npm run build
     )
-    [[ -f "$FRONTEND/dist/index.html" ]] || die "Frontend build failed — missing frontend/dist/index.html"
+    [[ -f "$FRONTEND/dist-build/index.html" ]] || die "Frontend build failed — missing frontend/dist-build/index.html"
 else
     log "Skipping frontend build (--skip-build)"
 fi

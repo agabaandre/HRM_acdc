@@ -566,10 +566,9 @@
                     // Convert string to boolean
                     $allowAlternativeLogin = in_array(strtolower(trim($allowAlternativeLogin)), ['true', '1', 'yes', 'on']);
                 } else {
-                    // Default to true if not set
-                    $allowAlternativeLogin = true;
+                    // Default to false if not set (Microsoft SSO is primary)
+                    $allowAlternativeLogin = false;
                 }
-                $allowAlternativeLogin = true;
                 ?>
                 <?php if ($allowAlternativeLogin): ?>
                 <!-- Alternative Login Toggle -->

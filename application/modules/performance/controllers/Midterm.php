@@ -440,19 +440,33 @@ public function approved_by_me()
             $is_restricted = ($user && isset($user->role) && $user->role == 17);
             $staff_id = $is_restricted ? $user->staff_id : null;
 
-            $cache_key = 'midterm_dashboard_' . ($division_id ?: 'all') . '_' . ($period ?: 'current') . ($staff_id ? "_staff_$staff_id" : '');
+            $this->output->set_content_type('application/json');
 
-            // You can enable caching here if desired:
-            // $data = cache_list($cache_key, function () use ($division_id, $period, $staff_id) {
-            //     return $this->midterm_mdl->get_dashboard_data($division_id, $period, $staff_id);
-            // }, 300);
-
-            // For now, always fetch fresh data
-            $data = $this->midterm_mdl->get_midterm_dashboard_data($division_id, $period, $staff_id);
-
-            // Output as JSON for the dashboard JS
-            header('Content-Type: application/json');
-            echo json_encode($data);
+            try {
+                $data = $this->midterm_mdl->get_midterm_dashboard_data($division_id, $period, $staff_id);
+                echo json_encode($data);
+            } catch (Throwable $e) {
+                log_message('error', 'Midterm dashboard fetch failed: ' . $e->getMessage());
+                $this->output->set_status_header(500);
+                echo json_encode([
+                    'error' => 'Failed to load dashboard data.',
+                    'total' => 0,
+                    'approved' => 0,
+                    'submitted' => 0,
+                    'trend' => [],
+                    'avg_approval_days' => 0,
+                    'by_division' => [],
+                    'by_contract' => [],
+                    'by_age' => [],
+                    'training_categories' => [],
+                    'training_skills' => [],
+                    'staff_count' => 0,
+                    'staff_without_midterms' => 0,
+                    'staff_with_pdps' => 0,
+                    'periods' => [],
+                    'current_period' => str_replace(' ', '-', current_period()),
+                ]);
+            }
         }
         
     

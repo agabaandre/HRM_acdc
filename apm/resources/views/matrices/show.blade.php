@@ -532,8 +532,8 @@
     <div class="text-center py-5 text-muted">
         <div class="spinner-border text-success" role="status"></div>
         <p class="mt-2 mb-0">Loading matrix tables…</p>
-    </div>
-</div>
+                            </div>
+                        </div>
 
 <!-- Division Schedule and Approval Trail Section -->
 <div class="row mt-4">

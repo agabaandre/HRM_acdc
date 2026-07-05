@@ -83,7 +83,7 @@ php artisan migrate --seed
 # 2. Frontend (build for Apache or run Vite for HMR)
 cd ../frontend
 npm install --cache ./.npm-cache --legacy-peer-deps
-npm run build            # writes frontend/dist/ served by Apache
+npm run build            # writes frontend/dist-build/ served by Apache
 # OR
 npm run dev              # starts Vite on http://localhost:5174 with /api proxy
 ```
@@ -117,8 +117,8 @@ curl -i http://localhost:5174/                                  # SPA via Vite (
 
 | URL | Served from | File |
 |---|---|---|
-| `/staff/helpdesk/` | `helpdesk/frontend/dist/index.html` | `helpdesk/.htaccess` (SPA fallback) |
-| `/staff/helpdesk/assets/*` | `helpdesk/frontend/dist/assets/*` | same |
+| `/staff/helpdesk/` | `helpdesk/frontend/dist-build/index.html` | `helpdesk/.htaccess` (SPA fallback) |
+| `/staff/helpdesk/assets/*` | `helpdesk/frontend/dist-build/assets/*` | same |
 | `/staff/helpdesk/backend/api/v1/*` | `helpdesk/backend/public/index.php` | `helpdesk/backend/.htaccess` → `server.php` |
 | `/staff/helpdesk/screen` | SPA fallback (public route, no chrome) | `helpdesk/.htaccess` |
 
@@ -127,23 +127,38 @@ Key facts:
 - `helpdesk/backend/.htaccess` rewrites **every** URL under `/backend/` to `server.php`. The `Authorization` header is explicitly preserved (`SetEnvIf Authorization`) so Sanctum Bearer tokens reach PHP.
 - `vite.config.ts` sets `base: '/staff/helpdesk/'` so the production bundle's asset URLs (and Vue Router `createWebHistory`) work under the subpath.
 - The SPA's axios client reads `VITE_HELPDESK_API_BASE_URL` (defaults to `/staff/helpdesk/backend`) so calls resolve to the Apache-served API on the same host (no CORS).
-- The Staff portal home page (`application/modules/home/controllers/Home.php`) builds the SSO redirect URL: `<host>/staff/helpdesk?token=<JWT>` — override the subpath via the `HELPDESK_SPA_PATH` env if you mount the SPA elsewhere.
+- The Staff portal home page launches modules via **`POST home/launch_module`** → auto-POST JWT to `<module>/sso/accept`. See [INTEGRATION.md](./INTEGRATION.md#cross-module-sso-staff--helpdesk--apm--finance).
 
 ---
 
 ## Authentication & SSO
 
-Two flows are supported; the SPA always uses (1).
+Three entry paths exist; the SPA always ends up with a Sanctum bearer token.
 
-### 1. Staff portal JWT → Sanctum token (browser SSO)
+### 1. Secure POST launch (production — Staff → Helpdesk)
 
 ```
-Staff portal home  ─►  /staff/helpdesk/?token=<HS256 JWT, JWT_SECRET signed>
-SPA boot           ─►  POST /api/v1/auth/staff-sso { token }
-StaffSsoController ─►  verify JWT, check HELPDESK_SSO_PERMISSION_CODES
-                   ─►  upsert User + HelpdeskProfile
-                   ─►  return { token: Sanctum bearer with abilities ['helpdesk:*'] }
+Staff home / CBP dropdown  ──POST home/launch_module──►  sso_launch_redirect
+                          ──POST staff_sso_jwt──────────►  /staff/helpdesk/backend/sso/accept
+SsoAcceptController       ──bridge view────────────────►  POST /api/v1/auth/staff-sso
+StaffSsoController        ──Sanctum token──────────────►  SPA authenticated
 ```
+
+Implementation: `application/helpers/sso_launch_helper.php`, `helpdesk/backend/sso_accept_dispatch.php`, `SsoAcceptController`, `StaffSsoController`.
+
+JWT claims are **compact** (`staff_sso_compact_claims`) — only fields modules need (`staff_id`, `permissions`, `work_email`, …), not the full CodeIgniter session object.
+
+### 2. Staff portal JWT in URL (legacy / dev)
+
+```
+/staff/helpdesk/?token=<HS256 JWT>  ──►  POST /api/v1/auth/staff-sso { token }
+```
+
+Disabled in production unless `SSO_ALLOW_URL_TOKEN=1`. Prefer flow (1).
+
+### 3. Server-to-server bridge
+
+`POST /api/v1/auth/exchange` accepts `{ payload, sig }` where `sig = HMAC_SHA256(payload, HELPDESK_BRIDGE_SECRET)`. Useful when CI/APM backends need an API token without bouncing a user through the browser. **Never expose the secret to the browser.**
 
 Role assignment rules in `StaffSsoController::resolveRole`:
 
@@ -152,9 +167,11 @@ Role assignment rules in `StaffSsoController::resolveRole`:
 3. Else if the JWT's `division_id` matches `default_agent_division_ids` → `agent`.
 4. Otherwise the role from the existing profile is preserved (or `user` for first-time logins).
 
-### 2. Server-to-server bridge
+### CBP Modules URLs (`GET /api/v1/cbp-modules`)
 
-`POST /api/v1/auth/exchange` accepts `{ payload, sig }` where `sig = HMAC_SHA256(payload, HELPDESK_BRIDGE_SECRET)`. Useful when CI/APM backends need an API token without bouncing a user through the browser. **Never expose the secret to the browser.**
+`CbpModulesNavService` serves the Helpdesk header dropdown. On `localhost`, it rewrites staff-portal URLs in API responses to the current request origin. Frontend fallback: `src/lib/sso.ts` (`staffPortalHomeUrl`).
+
+After changing `HELPDESK_STAFF_PORTAL_URL`, run `php artisan cache:clear` and rebuild the SPA if `VITE_STAFF_*` changed.
 
 ### Sanctum tokens
 

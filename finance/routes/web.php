@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SsoAcceptController;
 use App\Http\Middleware\EnsureFinanceSession;
 use App\Support\AppBasePath;
+use App\Support\StaffSsoPolicy;
 use App\Support\StaffSsoToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +15,7 @@ use Inertia\Inertia;
 Route::get('/', function (Request $request) {
     $rawToken = $request->query('token');
 
-    if ($rawToken) {
+    if ($rawToken && StaffSsoPolicy::urlTokenAllowed()) {
         try {
             $json = StaffSsoToken::decode(is_string($rawToken) ? $rawToken : null);
             if (! $json) {
@@ -37,6 +39,10 @@ Route::get('/', function (Request $request) {
         }
     }
 
+    if ($rawToken && ! StaffSsoPolicy::urlTokenAllowed()) {
+        Log::warning('Finance SSO: rejected legacy URL token (SSO_ALLOW_URL_TOKEN=false)');
+    }
+
     $user = session('user', []);
     if (is_array($user) && ! empty($user['staff_id'])) {
         return redirect()->to(AppBasePath::url('/dashboard'));
@@ -46,6 +52,16 @@ Route::get('/', function (Request $request) {
 
     return redirect($base.'/auth/login');
 });
+
+Route::post('/sso/accept', SsoAcceptController::class)
+    ->middleware('throttle:30,1')
+    ->name('sso.accept');
+
+Route::get('/sso/accept', function () {
+    $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
+
+    return redirect($base.'/auth/login?sso=post_required');
+})->name('sso.accept.get');
 
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 

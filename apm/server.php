@@ -14,6 +14,12 @@ $uri = urldecode(
 // This file allows us to emulate Apache's "mod_rewrite" functionality from the
 // built-in PHP web server. This provides a convenient way to test a Laravel
 // application without having installed a "real" web server software here.
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if ($method === 'POST' && preg_match('#/sso/accept/?$#', $uri)) {
+    require __DIR__.'/sso_accept_dispatch.php';
+    exit;
+}
+
 if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
     return false;
 }

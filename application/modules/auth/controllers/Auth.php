@@ -23,6 +23,65 @@ class Auth extends MX_Controller
     $this->redirect_uri = base_url('auth/callback');
   
   }
+
+  /**
+   * Require an authenticated session user; redirect or JSON 401 otherwise.
+   *
+   * @return object
+   */
+  private function _require_auth_user()
+  {
+    $user = $this->session->userdata('user');
+    if (empty($user) || empty($user->user_id)) {
+      if ($this->input->is_ajax_request()) {
+        $this->output
+          ->set_status_header(401)
+          ->set_content_type('application/json')
+          ->set_output(json_encode(array('error' => 'Unauthorized')));
+        exit;
+      }
+      redirect('auth');
+      exit;
+    }
+
+    return $user;
+  }
+
+  /**
+   * Require permission id 17 (user management).
+   *
+   * @return object
+   */
+  private function _require_user_admin()
+  {
+    $user = $this->_require_auth_user();
+    if (!staff_user_has_permission_id(17)) {
+      if ($this->input->is_ajax_request()) {
+        $this->output
+          ->set_status_header(403)
+          ->set_content_type('application/json')
+          ->set_output(json_encode(array('error' => 'Forbidden')));
+        exit;
+      }
+      $this->session->set_flashdata('error', 'You do not have permission to perform this action.');
+      redirect('home/index');
+      exit;
+    }
+
+    return $user;
+  }
+
+  /**
+   * JSON 403 for admin-only AJAX endpoints.
+   */
+  private function _deny_json_forbidden()
+  {
+    $this->output
+      ->set_status_header(403)
+      ->set_content_type('application/json')
+      ->set_output(json_encode(array('error' => 'Forbidden')));
+    exit;
+  }
    
   
   public function index()
@@ -84,7 +143,8 @@ class Auth extends MX_Controller
         'response_type' => 'code',
         'redirect_uri'  => $this->redirect_uri,
         'response_mode' => 'query',
-        'scope'         => 'openid profile email offline_access User.Read'
+        'scope'         => 'openid profile email offline_access User.Read',
+        'state'         => staff_auth_oauth_state_create(),
     ];
     redirect($authorize_url . '?' . http_build_query($params));
 }
@@ -96,6 +156,12 @@ public function callback() {
         } else {
             exit('Invalid request');
         }
+    }
+
+    if (!staff_auth_oauth_state_validate($this->input->get('state'))) {
+        $this->session->set_flashdata('error', 'Sign-in session expired or invalid. Please try again.');
+        redirect('auth');
+        return;
     }
 
     $token = $this->get_access_token($this->input->get('code'));
@@ -220,10 +286,12 @@ private function handle_login($user_data, $email) {
   $users['permissions'] = $this->auth_mdl->user_permissions($users['role'],$users['user_id']);
   $users['is_admin'] = false;
 
+  staff_auth_regenerate_session();
   $this->session->set_userdata('user', (object)$users);
 
 
   if ($users['role']) {
+      log_user_action('User logged in successfully using Microsoft SSO');
       redirect('home/index', 'refresh');
   }
   else{
@@ -240,15 +308,32 @@ private function handle_login($user_data, $email) {
 public function cred_login()
 {
     $postdata = $this->input->post();
-    $post_password = trim($this->input->post('password'));
+    $email = isset($postdata['email']) ? trim((string) $postdata['email']) : '';
+    $post_password = isset($postdata['password']) ? trim((string) $postdata['password']) : '';
+    $ip = $this->input->ip_address();
+
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $this->session->set_flashdata('error', 'Invalid email or password.');
+        redirect('auth');
+        return;
+    }
+
+    if (!staff_login_rate_limit_is_allowed($email, $ip)) {
+        $remaining = staff_login_rate_limit_lockout_remaining($email, $ip);
+        $minutes = max(1, (int) ceil($remaining / 60));
+        $this->session->set_flashdata('error', 'Too many failed sign-in attempts. Try again in about ' . $minutes . ' minute(s).');
+        redirect('auth');
+        return;
+    }
 
     // Fetch user data
-    $data['users'] = $this->auth_mdl->login($postdata);
+    $data['users'] = $this->auth_mdl->login(array('email' => $email));
 
     // Check if user exists
     if (empty($data['users'])) {
-        $this->session->set_flashdata('error', 'Invalid email or user does not exist.');
-        redirect('auth'); // Redirect back to login page
+        staff_login_rate_limit_record_failure($email, $ip);
+        $this->session->set_flashdata('error', 'Invalid email or password.');
+        redirect('auth');
         return;
     }
 
@@ -256,7 +341,8 @@ public function cred_login()
     // duplicate column names in mysqli, so user.allow_email_login may be missing or wrong.
     $userId = isset($data['users']->user_id) ? (int) $data['users']->user_id : 0;
     if ($userId <= 0) {
-        $this->session->set_flashdata('error', 'Invalid account.');
+        staff_login_rate_limit_record_failure($email, $ip);
+        $this->session->set_flashdata('error', 'Invalid email or password.');
         redirect('auth');
         return;
     }
@@ -269,7 +355,6 @@ public function cred_login()
     }
 
     $data['contract'] = $this->staff_mdl->get_latest_contracts($data['users']->staff_id);
-    //dd( $data['contract']);
 
     $users_array = (array)$data['users'];
     $contract_array = (array)$data['contract'];
@@ -277,35 +362,44 @@ public function cred_login()
     
     // Use the stored hash from the database
     $dbpassword = $data['users']->password;
-    $role = $data['users']->role;
     $auth = $this->validate_password($post_password, $dbpassword);
 
     if ($auth && !empty($data['users'])) {
+        staff_login_rate_limit_clear($email, $ip);
         unset($users['password']);
         $users['permissions'] = $this->auth_mdl->user_permissions($users['role'],$users['user_id']);
         $users['is_admin'] = false;
-        $_SESSION['user'] = (object)$users;
+        staff_auth_regenerate_session();
+        $this->session->set_userdata('user', (object)$users);
         $log_message = "User Logged in Successfully using Email and Password";
         log_user_action($log_message);
         redirect('home');
-    }else{
-        $this->session->set_flashdata('error', 'Incorrect password. Please try again.');
-        redirect('auth'); // Redirect back to login page
+    } else {
+        staff_login_rate_limit_record_failure($email, $ip);
+        $this->session->set_flashdata('error', 'Invalid email or password.');
+        redirect('auth');
     }
 }
 
 public function impersonate($user_id)
 {
-    // Check if current user is admin
-    $current_user = $this->session->userdata('user');
-    if (!$current_user || $current_user->role != 10) {
-        show_error('You are not authorized to impersonate users.', 403);
+    if (strtoupper($this->input->method(true)) !== 'POST') {
+        show_error('Invalid request method.', 405);
+    }
+
+    $current_user = $this->_require_user_admin();
+    $user_id = (int) $user_id;
+    if ($user_id <= 0) {
+        $this->session->set_flashdata('error', 'Invalid user.');
+        redirect('auth/users');
+        return;
     }
 
     // Prevent impersonating yourself
-    if ($current_user->user_id == $user_id) {
+    if ((int) $current_user->user_id === $user_id) {
         $this->session->set_flashdata('error', 'You cannot impersonate yourself.');
         redirect('dashboard');
+        return;
     }
 
     // Store current session as "original user"
@@ -348,6 +442,7 @@ public function impersonate($user_id)
 
 public function revert()
 {
+    $this->_require_auth_user();
     $original = $this->session->userdata('original_user');
 
     if ($original) {
@@ -386,12 +481,10 @@ public function revert()
 
   public function profile()
   {
+    $staff = $this->_require_auth_user();
     $data['module'] = "auth";
     $data['view'] = "profile";
     $data['title'] = "My Profile";
-    
-    // Get current user from session
-    $staff = $this->session->userdata('user');
     
     // Get comprehensive contract information
     $this->load->model('staff/staff_mdl');
@@ -750,6 +843,10 @@ public function revert()
 
   public function fetch_users_ajax()
   {
+      if (!staff_user_has_permission_id(17)) {
+          $this->_deny_json_forbidden();
+      }
+
       $searchkey = $this->input->get('search');
       $group_id = $this->input->get('group_id');
       $status = $this->input->get('status');
@@ -785,18 +882,21 @@ public function revert()
               'totalPages' => ceil($totalUsers / $pageSize)
           ]);
       } catch (Exception $e) {
-          // Return error response
+          log_message('error', 'fetch_users_ajax: ' . $e->getMessage());
           http_response_code(500);
           header('Content-Type: application/json; charset=utf-8');
           echo json_encode([
-              'error' => 'Database error occurred',
-              'message' => $e->getMessage()
+              'error' => 'Unable to load users.',
           ]);
       }
   }
   
   public function export_users_excel()
   {
+      if (!staff_user_has_permission_id(17)) {
+          show_error('Forbidden', 403);
+      }
+
       // Get filter parameters
       $search = $this->input->get('search');
       $group_id = $this->input->get('group_id');
@@ -865,14 +965,22 @@ public function revert()
       fclose($output);
       exit;
       } catch (Exception $e) {
-          // Return error response
+          log_message('error', 'export_users_excel: ' . $e->getMessage());
           http_response_code(500);
-          echo 'Error exporting users: ' . $e->getMessage();
+          echo 'Unable to export users.';
       }
   }
   
   public function refreshCSRF()
   {
+      $user = $this->session->userdata('user');
+      if (empty($user) || empty($user->user_id)) {
+          return $this->output
+            ->set_status_header(401)
+            ->set_content_type('application/json')
+            ->set_output(json_encode(['error' => 'Unauthorized']));
+      }
+
       $response = [
           'csrf_token' => $this->security->get_csrf_hash()
       ];
@@ -1085,7 +1193,7 @@ public function revert()
 
   public function addUser()
   {
-    
+    $this->_require_user_admin();
     $postdata = $this->input->post();
     $res = $this->auth_mdl->addUser($postdata);
     echo $res;
@@ -1105,7 +1213,7 @@ public function revert()
   }
   public function updateUser()
   {
-    
+    $this->_require_user_admin();
     $postdata = $this->input->post();
     
       $res = $this->auth_mdl->updateUser($postdata);
@@ -1114,6 +1222,7 @@ public function revert()
   }
 
   public function acdc_users($job=FALSE){
+  $this->_require_user_admin();
   $final=array();
   $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2,7) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
     foreach ($staffs as $staff):
@@ -1143,7 +1252,7 @@ public function revert()
 
   public function changePass()
 {
-    
+    $this->_require_auth_user();
     $postdata = $this->input->post();
 
     $res = $this->auth_mdl->changePass($postdata);
@@ -1161,12 +1270,14 @@ public function revert()
 
 
   public function change_password(){
+    $this->_require_auth_user();
     $data['title'] = "Change Password";
     $data['module'] = "auth";
     render('users/change_pass', $data);
   }
   public function resetPass()
   {
+    $this->_require_user_admin();
     try {
       $postdata = $this->input->post();
       
@@ -1179,17 +1290,19 @@ public function revert()
       echo json_encode(['message' => $res]);
     } catch (Exception $e) {
       log_message('error', 'Reset password error: ' . $e->getMessage());
-      echo json_encode(['message' => 'Error resetting password: ' . $e->getMessage()]);
+      echo json_encode(['message' => 'Unable to reset password. Please try again.']);
     }
   }
   public function blockUser()
   {
+    $this->_require_user_admin();
     $postdata = $this->input->post();
     $res = $this->auth_mdl->blockUser($postdata);
     echo json_encode(['message' => $res]);
   }
   public function unblockUser()
   {
+    $this->_require_user_admin();
     $postdata = $this->input->post();
     $res = $this->auth_mdl->unblockUser($postdata);
     echo json_encode(['message' => $res]);
@@ -1197,6 +1310,7 @@ public function revert()
 
   public function setAllowEmailLogin()
   {
+    $this->_require_user_admin();
     $postdata = $this->input->post();
     $res = $this->auth_mdl->setAllowEmailLogin($postdata);
     echo json_encode(['message' => $res]);
@@ -1224,7 +1338,18 @@ public function revert()
 
   public function update_profile()
   {
+    $sessionUser = $this->_require_auth_user();
     $data = $this->input->post();
+    $data['user_id'] = (int) $sessionUser->user_id;
+    $data['staff_id'] = !empty($sessionUser->auth_staff_id)
+      ? (int) $sessionUser->auth_staff_id
+      : (int) ($sessionUser->staff_id ?? 0);
+    if ($data['staff_id'] <= 0) {
+      Modules::run('utility/setFlash', array('msg' => 'Your account is not linked to a staff profile.', 'type' => 'error'));
+      redirect('auth/profile');
+      return;
+    }
+
     $upload_errors = array();
     $this->load->library('upload');
 

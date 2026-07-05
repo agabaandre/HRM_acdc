@@ -182,6 +182,15 @@ body {
   color: inherit;
 }
 
+.cbp-home .cbp-module-launch-form .settings-card {
+  cursor: pointer;
+}
+
+.cbp-home .cbp-module-launch-form .settings-card:focus {
+  outline: 2px solid var(--cbp-primary);
+  outline-offset: 2px;
+}
+
 .cbp-home .settings-card {
   animation: cbpFadeInUp 0.55s ease forwards;
 }
@@ -279,8 +288,24 @@ if ($helpdeskErrorParam === 'sso') {
       if ($modKey === '') {
         $modKey = 'mod_' . md5($href . $label);
       }
+      $ssoLaunch = !empty($mod['sso_launch']);
+      $csrfName = $this->security->get_csrf_token_name();
+      $csrfHash = $this->security->get_csrf_hash();
     ?>
     <div class="col setting-card-item" data-module-key="<?= htmlspecialchars($modKey) ?>" data-title="<?= strtolower(htmlspecialchars($label)) ?>">
+      <?php if ($ssoLaunch) : ?>
+      <form method="post" action="<?= site_url('home/launch_module') ?>" class="text-decoration-none d-flex h-100 cbp-module-launch-form">
+        <input type="hidden" name="module_key" value="<?= htmlspecialchars($modKey, ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="<?= htmlspecialchars($csrfName, ENT_QUOTES, 'UTF-8') ?>" value="<?= htmlspecialchars($csrfHash, ENT_QUOTES, 'UTF-8') ?>">
+        <button type="submit" class="settings-card w-100 border-0 bg-white text-start">
+          <div>
+            <h6><?= htmlspecialchars($label) ?></h6>
+            <p><?= htmlspecialchars($desc) ?></p>
+          </div>
+          <div class="widgets-icons"><i class="fas <?= htmlspecialchars($icon) ?>"></i></div>
+        </button>
+      </form>
+      <?php else : ?>
       <a href="<?= htmlspecialchars($href) ?>" class="text-decoration-none d-flex h-100">
         <div class="settings-card w-100">
           <div>
@@ -290,6 +315,7 @@ if ($helpdeskErrorParam === 'sso') {
           <div class="widgets-icons"><i class="fas <?= htmlspecialchars($icon) ?>"></i></div>
         </div>
       </a>
+      <?php endif; ?>
     </div>
     <?php endforeach; ?>
   </div>

@@ -544,10 +544,24 @@ class Auth_mdl extends CI_Model
 	}
 	public function updateProfile($data)
 	{
-		$user_id = $data['user_id'];
+		$user_id = (int) ($data['user_id'] ?? 0);
+		if ($user_id <= 0) {
+			return 'Invalid user account.';
+		}
+		$sessionUser = $this->session->userdata('user');
+		if (!$sessionUser || (int) $sessionUser->user_id !== $user_id) {
+			return 'You are not allowed to update this profile.';
+		}
+		$staff_id = (int) ($data['staff_id'] ?? 0);
+		$expectedStaffId = !empty($sessionUser->auth_staff_id)
+			? (int) $sessionUser->auth_staff_id
+			: (int) ($sessionUser->staff_id ?? 0);
+		if ($staff_id <= 0 || $staff_id !== $expectedStaffId) {
+			return 'Invalid staff profile for this account.';
+		}
 	
 		$insert = [
-			'auth_staff_id' => $data['staff_id'],
+			'auth_staff_id' => $staff_id,
 			'user_id'       => $user_id,
 			'name'          => $data['name'],
 			'langauge'      => $data['langauge']
@@ -758,9 +772,13 @@ class Auth_mdl extends CI_Model
 	}
 	public function groupPermissions($group)
 	{
-		$query = $this->db->query("SELECT permissions.id, name, definition,id,group_permissions.permission_id from permissions,group_permissions where permissions.id=group_permissions.permission_id and id='$group'");
-		$perms = $query->result_array();
-		return $perms;
+		$groupId = (int) $group;
+		$this->db->select('permissions.id, permissions.name, permissions.definition, group_permissions.group_id, group_permissions.permission_id');
+		$this->db->from('permissions');
+		$this->db->join('group_permissions', 'permissions.id = group_permissions.permission_id');
+		$this->db->where('group_permissions.group_id', $groupId);
+		$query = $this->db->get();
+		return $query->result_array();
 	}
 	public function getGroupPerms($groupId = FALSE)
 	{
@@ -846,8 +864,8 @@ class Auth_mdl extends CI_Model
 
 		$uid = $postdata['user_id'];
 		
-		// Get the password - use provided password or default password
-		$password = isset($postdata['password']) ? $postdata['password'] : setting()->default_password;
+		// Always use the configured default password; never accept a client-supplied value.
+		$password = setting()->default_password;
 		
 		// Hash the password
 		$hashedPassword = $this->argonhash->make($password);

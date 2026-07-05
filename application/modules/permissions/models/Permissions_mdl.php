@@ -25,9 +25,13 @@ class Permissions_mdl extends CI_Model
 	}
 	public function groupPermissions($group)
 	{
-		$query = $this->db->query("SELECT permissions.id, name, definition,group_id,group_permissions.permission_id from permissions,group_permissions where permissions.id=group_permissions.permission_id and group_id='$group'");
-		$perms = $query->result_array();
-		return $perms;
+		$groupId = (int) $group;
+		$this->db->select('permissions.id, permissions.name, permissions.definition, group_permissions.group_id, group_permissions.permission_id');
+		$this->db->from('permissions');
+		$this->db->join('group_permissions', 'permissions.id = group_permissions.permission_id');
+		$this->db->where('group_permissions.group_id', $groupId);
+		$query = $this->db->get();
+		return $query->result_array();
 	}
 	public function getGroupPerms($groupId = FALSE)
 	{

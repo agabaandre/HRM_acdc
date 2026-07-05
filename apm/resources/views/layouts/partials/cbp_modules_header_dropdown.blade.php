@@ -57,7 +57,24 @@
                     }
                     $absolute = !empty($mod['opens_in_new_tab']);
                     $active = !empty($mod['is_active']);
+                    $ssoLaunch = !empty($mod['sso_launch']);
+                    $moduleKey = (string) ($mod['module_key'] ?? $mod['id'] ?? '');
                 @endphp
+                @if ($ssoLaunch && $moduleKey !== '')
+                <button
+                    type="button"
+                    class="cbp-modules-dd-item{{ $active ? ' is-active' : '' }} w-100 border-0 bg-transparent text-start"
+                    role="menuitem"
+                    data-cbp-module-key="{{ $moduleKey }}"
+                    data-cbp-open-new-tab="{{ $absolute ? '1' : '0' }}"
+                    onclick="if (window.cbpLaunchModule) { cbpLaunchModule(this.dataset.cbpModuleKey, this.dataset.cbpOpenNewTab === '1'); }"
+                >
+                    <i class="{{ $icon }} cbp-modules-dd-icon" aria-hidden="true"></i>
+                    <span class="cbp-modules-dd-item-text">
+                        <span class="cbp-modules-dd-item-label">{{ $label }}</span>
+                    </span>
+                </button>
+                @else
                 <a
                     href="{{ $href }}"
                     class="cbp-modules-dd-item{{ $active ? ' is-active' : '' }}"
@@ -69,12 +86,14 @@
                         <span class="cbp-modules-dd-item-label">{{ $label }}</span>
                     </span>
                 </a>
+                @endif
             @endforeach
         @else
             <p class="cbp-modules-dd-empty" role="status">No other CBP systems are assigned to your account.</p>
         @endif
     </div>
 </li>
+<script src="{{ rtrim($cbpCssBase !== '' ? $cbpCssBase : ($staffWebBaseUrl ?? ''), '/') }}/assets/js/cbp-sso-launch.js" defer></script>
 <script>
 (function () {
     var root = document.getElementById('cbp-modules-dd');

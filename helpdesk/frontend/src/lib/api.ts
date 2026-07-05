@@ -10,13 +10,15 @@ const MAX_TRANSIENT_RETRIES = 2
 type RetryableConfig = InternalAxiosRequestConfig & { __retryCount?: number }
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return sessionStorage.getItem(TOKEN_KEY) ?? localStorage.getItem(TOKEN_KEY)
 }
 
 export function setStoredToken(token: string | null): void {
   if (token) {
+    sessionStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem(TOKEN_KEY, token)
   } else {
+    sessionStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(TOKEN_KEY)
   }
 }

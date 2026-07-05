@@ -7,6 +7,9 @@ export interface CbpSystemLink {
   label: string
   href: string
   description?: string
+  sso_launch?: boolean
+  module_key?: string
+  launch_url?: string
 }
 
 /** Keep Staff portal JWT for hand-off to APM / Finance (same `?token=` as home dashboard). */
@@ -26,18 +29,8 @@ export function getPersistedStaffSsoToken(): string | null {
   }
 }
 
-function withSsoToken(url: string): string {
-  const token = getPersistedStaffSsoToken()
-  if (!token?.trim()) {
-    return url
-  }
-  try {
-    const u = new URL(url, window.location.origin)
-    u.searchParams.set('token', token.trim())
-    return u.toString()
-  } catch {
-    return url
-  }
+function staffLaunchUrl(): string {
+  return `${staffPortalBaseUrl()}/home/launch_module`
 }
 
 function resolveFinanceUrl(): string {
@@ -69,13 +62,19 @@ export function cbpSystemLinks(): CbpSystemLink[] {
       id: 'apm',
       label: 'APM',
       description: 'Approvals & memos',
-      href: withSsoToken(resolveApmUrl(staffBase)),
+      href: resolveApmUrl(staffBase),
+      sso_launch: true,
+      module_key: 'approvals_management',
+      launch_url: staffLaunchUrl(),
     },
     {
       id: 'finance',
       label: 'Finance',
       description: 'Budgets & transactions',
-      href: withSsoToken(resolveFinanceUrl()),
+      href: resolveFinanceUrl(),
+      sso_launch: true,
+      module_key: 'finance_management',
+      launch_url: staffLaunchUrl(),
     },
   ]
 }
@@ -100,6 +99,9 @@ export interface CbpNavModule {
   icon?: string
   opens_in_new_tab?: boolean
   is_active?: boolean
+  sso_launch?: boolean
+  launch_url?: string
+  module_key?: string
 }
 
 export interface CbpNavPayload {
@@ -125,6 +127,9 @@ export function fallbackCbpNavPayload(): CbpNavPayload {
       icon: link.id === 'apm' ? 'fa fa-sitemap' : 'fa fa-wallet',
       opens_in_new_tab: false,
       is_active: false,
+      sso_launch: true,
+      module_key: link.id === 'apm' ? 'approvals_management' : 'finance_management',
+      launch_url: staffLaunchUrl(),
     })),
   }
 }

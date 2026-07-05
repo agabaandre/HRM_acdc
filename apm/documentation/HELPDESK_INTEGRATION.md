@@ -1,6 +1,6 @@
 # Helpdesk (ITSM) integration with Staff & APM
 
-The **Helpdesk** module is a separate Laravel 11 API plus Vue 3 SPA under `helpdesk/` in this repository. **Identity is always the Staff portal session:** users open the Helpdesk from `home/index` with the same **JWT `?token=`** hand-off as Finance and APM (HS256, `JWT_SECRET` shared with the Helpdesk API). An optional **HMAC** `POST /api/v1/auth/exchange` exists for server-only integrations (`HELPDESK_BRIDGE_SECRET` must never ship to browsers).
+The **Helpdesk** module is a separate Laravel 11 API plus Vue 3 SPA under `helpdesk/` in this repository. **Identity is always the Staff portal session:** users open Helpdesk (and other CBP modules) via **secure POST SSO** — Staff `home/launch_module` auto-POSTs a JWT to `/sso/accept` on each module (JWT never in the browser URL). An optional **HMAC** `POST /api/v1/auth/exchange` exists for server-only integrations (`HELPDESK_BRIDGE_SECRET` must never ship to browsers).
 
 ## URLs (typical development)
 
@@ -9,8 +9,8 @@ The **Helpdesk** module is a separate Laravel 11 API plus Vue 3 SPA under `helpd
 | Staff (CodeIgniter) | `CI_BASE_URL` / `BASE_URL` — e.g. `http://localhost/staff/` |
 | APM (this Laravel app) | `APP_URL` — e.g. `http://localhost/staff/apm/` |
 | APM system settings (branding) | `{APP_URL}system-settings` |
-| Helpdesk API | `http://127.0.0.1:8000` (or your deployed host) |
-| Helpdesk SPA | `HELPDESK_FRONTEND_URL` — e.g. `http://127.0.0.1:5174` |
+| Helpdesk API | `http://localhost/staff/helpdesk/backend/api/v1/*` |
+| Helpdesk SPA | `http://localhost/staff/helpdesk/` |
 
 Canonical Helpdesk env template: `helpdesk/backend/.env.example`.  
 Helpdesk integration overview: [`helpdesk/documentation/INTEGRATION.md`](../../helpdesk/documentation/INTEGRATION.md).
@@ -20,11 +20,16 @@ Helpdesk integration overview: [`helpdesk/documentation/INTEGRATION.md`](../../h
 > - [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md) — stack, schema, REST API, extension points & runbooks.
 > - [Architecture](../../helpdesk/documentation/ARCHITECTURE.md) — one-page overview.
 
-## Authentication flow (primary: Staff portal JWT)
+## Authentication flow (primary: POST SSO launch)
 
 1. User signs in on the **CodeIgniter Staff** app.
-2. On **Home**, the **IT Service Desk** card links to the Helpdesk SPA with `?token=<jwt>` (built by `Home::build_sso_jwt` / `Cbp_modules_mdl`, same mechanism as Finance).
-3. The Vue app calls **`POST /api/v1/auth/staff-sso`** with `{ "token": "<jwt>" }`. The Helpdesk API verifies the signature using **`JWT_SECRET` (must match the Staff `.env`)**, checks the user has at least one permission in **`HELPDESK_SSO_PERMISSION_CODES`** (default `92,93`), then returns a **Sanctum** Bearer token stored in the browser for `/api/v1/*`.
+2. On **Home** or the **CBP Modules** dropdown, clicking Helpdesk / APM / Finance **POST**s to `home/launch_module` with `module_key`.
+3. Staff renders `sso_launch_redirect`, which **auto-POST**s `staff_sso_jwt` to the module accept URL (e.g. `/staff/helpdesk/backend/sso/accept`).
+4. The module verifies **`JWT_SECRET`** (must match Staff root `.env`), starts a session, and the Helpdesk SPA calls **`POST /api/v1/auth/staff-sso`** to obtain a **Sanctum** Bearer token.
+
+Legacy `?token=` on the Helpdesk URL still works in non-production when `SSO_ALLOW_URL_TOKEN` is enabled.
+
+Shared helper: `application/helpers/sso_launch_helper.php`.
 
 ## Optional: HMAC exchange (server-only)
 

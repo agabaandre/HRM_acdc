@@ -16,7 +16,7 @@ class StaffSsoToken
         }
         $token = trim($token);
         $parts = explode('.', $token);
-        $jwtSecret = (string) (env('JWT_SECRET', env('APP_KEY', '')));
+        $jwtSecret = self::signingSecret();
 
         if (count($parts) === 3 && $jwtSecret !== '') {
             [$h, $p, $s] = $parts;
@@ -37,5 +37,35 @@ class StaffSsoToken
         $json = is_string($decoded) ? json_decode($decoded, true) : null;
 
         return is_array($json) ? $json : null;
+    }
+
+    private static function signingSecret(): string
+    {
+        $secret = trim((string) config('jwt.secret', ''));
+        if ($secret !== '') {
+            return $secret;
+        }
+
+        $envSecret = trim((string) env('JWT_SECRET', ''));
+        if ($envSecret !== '') {
+            return $envSecret;
+        }
+
+        $envFile = dirname(__DIR__, 2).'/.env';
+        if (! is_readable($envFile)) {
+            return '';
+        }
+
+        foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#') || ! str_contains($line, '=')) {
+                continue;
+            }
+            if (str_starts_with($line, 'JWT_SECRET=')) {
+                return trim(substr($line, strlen('JWT_SECRET=')), " \t\"'");
+            }
+        }
+
+        return '';
     }
 }

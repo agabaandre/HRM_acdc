@@ -669,13 +669,17 @@ $(document).ready(function() {
           <td class="px-2 py-2 text-end">
             <div class="actions-container">
               <div class="user-action-group justify-content-end">
-                  <a href="<?php echo site_url('auth/impersonate/'); ?>${user.user_id}"
-                     class="btn btn-sm user-action-btn"
-                     data-bs-toggle="tooltip"
-                     title="Impersonate this user"
-                     aria-label="Impersonate">
-                    <i class="fa fa-user-secret"></i><span class="btn-text ms-1">Impersonate</span>
-                  </a>
+                  <form method="post" action="<?php echo site_url('auth/impersonate/'); ?>${user.user_id}" class="d-inline impersonate-user-form">
+                    <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
+                    <button type="submit"
+                            class="btn btn-sm user-action-btn"
+                            data-bs-toggle="tooltip"
+                            title="Impersonate this user"
+                            aria-label="Impersonate"
+                            onclick="return confirm('Impersonate this user? You will see the portal as they do.');">
+                      <i class="fa fa-user-secret"></i><span class="btn-text ms-1">Impersonate</span>
+                    </button>
+                  </form>
                   <button type="button"
                           class="btn btn-sm user-action-btn edit-user"
                           data-user-id="${user.user_id}"
@@ -1110,7 +1114,6 @@ $(document).ready(function() {
         method: 'POST',
         data: { 
           user_id: userId,
-          password: '<?= setting()->default_password ?? "password123" ?>',
           '<?php echo $this->security->get_csrf_token_name(); ?>': csrfToken
         },
         dataType: 'json',

@@ -26,15 +26,19 @@ export function stripStaffSsoTokenFromUrl(): void {
 }
 
 export function staffPortalHomeUrl(): string {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, host } = window.location
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${host}/staff/home/index`
+    }
+    const fromEnv = import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined
+    if (fromEnv?.startsWith('/')) {
+      return `${protocol}//${host}${fromEnv}`
+    }
+  }
   const fromEnv = import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined
   if (fromEnv && fromEnv.trim() !== '') {
     return fromEnv.trim()
-  }
-  if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `${protocol}//${hostname}/staff/home/index`
-    }
   }
   return 'http://localhost/staff/home/index'
 }
@@ -52,6 +56,16 @@ export function redirectToStaffPortalHome(): void {
 
 /** Base Staff portal URL (no `/home/index`) for shared assets, e.g. logo — same pattern as Finance. */
 export function staffPortalBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, host } = window.location
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return `${protocol}//${host}/staff`
+    }
+    const explicit = import.meta.env.VITE_STAFF_BASE_URL as string | undefined
+    if (explicit?.startsWith('/')) {
+      return `${protocol}//${host}${explicit.replace(/\/$/, '')}`
+    }
+  }
   const explicit = import.meta.env.VITE_STAFF_BASE_URL as string | undefined
   if (explicit?.trim()) {
     return explicit.trim().replace(/\/$/, '')
