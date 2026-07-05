@@ -31,7 +31,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
 
     .performance-signature-img {
       width: 130px;
-      height: 60px;
+      height: 55px;
       object-fit: contain;
       display: block;
       margin: 0 auto;
