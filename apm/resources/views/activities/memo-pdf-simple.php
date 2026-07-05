@@ -105,7 +105,32 @@
         margin-top: 1px;
     }
     
-    /* Signature styling — see memo-pdf-layout-styles.php (.signature-block) */
+    /* Signature styling */
+    .signature-image {
+        width: 130px;
+        height: 45px;
+        object-fit: contain;
+        filter: contrast(1.2);
+        display: block;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .signature-date {
+        color: #666; 
+        font-size: 8px; 
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
+    }
+    
+    .signature-hash {
+        color: #999; 
+        font-size: 8px;
+        margin: 0;
+        padding: 0;
+        line-height: 1.1;
+    }
     
     /* Table borders for specific sections */
     .bordered-table {
@@ -307,7 +332,7 @@
                 <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php renderApproverInfo($approver, $approver['role'], $section, $matrix); ?>
       </td>
-                <td class="signature-cell" style="width: 30%; vertical-align: top; text-align: left;">
+                <td style="width: 30%; vertical-align: top; text-align: left;">
                     <?php 
                     $order = $approver['order'];
                     if ($order === 'division_head') {
