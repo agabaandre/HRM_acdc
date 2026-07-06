@@ -232,20 +232,29 @@ class NotificationService
 
             $emailViewContext = $data['email_view_context'] ?? [];
 
-            SendNotificationEmailJob::dispatch(
+            $job = new SendNotificationEmailJob(
                 $model,
                 $recipient,
                 $notification->type ?? 'notification',
                 $notification->message ?? 'You have a new notification',
                 $template,
                 is_array($emailViewContext) ? $emailViewContext : []
-            )
-                ->onQueue('default')
-                ->delay(now()->addSeconds(5)); // Small delay to prevent overwhelming the queue
+            );
+
+            $isStaleApprovalMail = in_array($notification->type, ['stale_pending_approvals_escalation', 'stale_pending_approvals_reminder'], true);
+
+            // Stale approval alerts must not sit behind a long general notification queue.
+            if ($isStaleApprovalMail) {
+                dispatch_sync($job);
+            } else {
+                dispatch($job)->onQueue('default')->delay(now()->addSeconds(5));
+            }
 
             Log::info('Email notification job dispatched', [
                 'notification_id' => $notification->id,
-                'staff_id' => $notification->staff_id
+                'staff_id' => $notification->staff_id,
+                'type' => $notification->type,
+                'sync' => $isStaleApprovalMail,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to dispatch email notification job', [

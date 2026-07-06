@@ -20,9 +20,9 @@ class SendStalePendingApprovalsRemindersCommand extends Command
             return $this->runDryRun();
         }
 
-        $this->info('Dispatching stale pending approvals reminder job…');
-        dispatch(new SendStalePendingApprovalsReminderJob());
-        $this->info('Done. Job queued.');
+        $this->info('Running stale pending approvals reminder job (reminders + escalation)…');
+        dispatch_sync(new SendStalePendingApprovalsReminderJob());
+        $this->info('Done.');
 
         return self::SUCCESS;
     }

@@ -246,14 +246,21 @@ class StaleApprovalEscalationService
             return $recipients;
         }
 
-        $workflowId = (int) ($model->forward_workflow_id ?? 0);
+        $workflowId = $this->resolveWorkflowIdForEscalation($model) ?? 0;
         $currentLevel = (int) ($model->approval_level ?? 0);
         if ($workflowId <= 0 || $currentLevel <= 0) {
             return $recipients;
         }
 
         if ($workflowId === GeneralWorkflowEscalationConfig::WORKFLOW_ID) {
-            foreach (GeneralWorkflowEscalationConfig::escalationOrders() as $order) {
+            $configuredOrders = GeneralWorkflowEscalationConfig::escalationOrders();
+            if ($configuredOrders === []) {
+                Log::info('Stale escalation: general_workflow_stale_escalation_orders is empty; skipping configured approvers', [
+                    'model_type' => $model::class,
+                    'model_id' => $model->getKey(),
+                ]);
+            }
+            foreach ($configuredOrders as $order) {
                 $this->addApproversAtLevel($model, $workflowId, $order, $recipients, $exclude, 'configured_approver');
             }
         } else {
@@ -310,5 +317,25 @@ class StaleApprovalEscalationService
         }
 
         return (int) ($model->division->division_head ?? 0);
+    }
+
+    /**
+     * Workflow used for escalation routing (matches memo index / change-request routing when column is unset).
+     */
+    private function resolveWorkflowIdForEscalation(Model $model): ?int
+    {
+        $fromColumn = (int) ($model->forward_workflow_id ?? 0);
+        if ($fromColumn > 0) {
+            return $fromColumn;
+        }
+
+        if ($model instanceof ChangeRequest) {
+            $status = (string) ($model->overall_status ?? '');
+            if (in_array($status, ['returned', 'draft', 'submitted', 'pending'], true)) {
+                return $model->inferWorkflowIdFromChangeFlags();
+            }
+        }
+
+        return null;
     }
 }
