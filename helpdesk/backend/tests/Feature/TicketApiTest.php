@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskTicket;
 use App\Models\User;
 use Database\Seeders\HelpdeskCategorySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -144,5 +145,50 @@ class TicketApiTest extends TestCase
 
         $this->deleteJson('/api/v1/tickets/'.$tid)->assertNoContent();
         $this->assertDatabaseMissing('helpdesk_tickets', ['id' => $tid]);
+    }
+
+    public function test_ticket_list_assigned_to_me_returns_only_agent_assignments(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $agentA = $this->actingHelpdeskUser(88001, HelpdeskProfile::ROLE_AGENT);
+        $agentB = $this->actingHelpdeskUser(88002, HelpdeskProfile::ROLE_AGENT);
+
+        $mine = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-MINE-1',
+            'category_id' => $cat->id,
+            'subject' => 'Assigned to agent A',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 900,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentA->id,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-OTHER-1',
+            'category_id' => $cat->id,
+            'subject' => 'Assigned to agent B',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 901,
+            'requester_name' => 'Other',
+            'requester_email' => 'other@example.org',
+            'assigned_user_id' => $agentB->id,
+        ]);
+
+        Sanctum::actingAs($agentA);
+        $res = $this->getJson('/api/v1/tickets?assigned_to_me=1&status_in=open');
+        $res->assertOk();
+
+        $ids = array_map('intval', array_column($res->json('data'), 'id'));
+        $this->assertContains($mine->id, $ids);
+        $this->assertCount(1, $ids);
     }
 }

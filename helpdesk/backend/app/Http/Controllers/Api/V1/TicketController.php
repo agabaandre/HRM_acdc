@@ -58,6 +58,18 @@ class TicketController extends Controller
                 });
             }
 
+            if ($request->boolean('assigned_to_me')) {
+                $q->assignedToUser((int) $user->id);
+            }
+
+            $statusIn = trim((string) $request->query('status_in', ''));
+            if ($statusIn !== '') {
+                $statuses = array_values(array_filter(array_map('trim', explode(',', $statusIn))));
+                if ($statuses !== []) {
+                    $q->whereIn('status', $statuses);
+                }
+            }
+
             $this->applyTicketSearch($q, $qTerm);
             $this->applyTicketSort($q, $request);
 

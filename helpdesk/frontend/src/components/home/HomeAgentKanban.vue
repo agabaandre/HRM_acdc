@@ -82,6 +82,11 @@ const configureTicket = ref<ReassignTicketRef | null>(null)
 const resolveTicket = ref<ResolveTicketRef | null>(null)
 let loadAbort: AbortController | null = null
 const KANBAN_PAGE_SIZE = 50
+const KANBAN_STATUSES = [...ACTIVE_STATUSES, ...RESOLVED_STATUSES].join(',')
+
+const boardTickets = computed(() =>
+  tickets.value.filter((t) => boardColumnId(t.status) !== null),
+)
 
 const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
@@ -91,23 +96,6 @@ const greeting = computed(() => {
   if (hour < 12) return `Good morning, ${name}`
   if (hour < 17) return `Good afternoon, ${name}`
   return `Good evening, ${name}`
-})
-
-const boardTickets = computed(() => {
-  const meId = auth.me?.id
-  const role = auth.me?.profile?.role ?? ''
-  return tickets.value.filter((t) => {
-    if (!boardColumnId(t.status)) {
-      return false
-    }
-    if (role === 'agent' && meId) {
-      const ids =
-        t.assignees?.map((a) => a.id) ??
-        (t.assigned_user_id ? [t.assigned_user_id] : [])
-      return ids.includes(meId)
-    }
-    return true
-  })
 })
 
 function ticketAssigneeNames(t: KanbanTicket): string {
@@ -182,7 +170,11 @@ async function loadTickets(): Promise<void> {
   loading.value = true
   try {
     const { data } = await api.get<{ data: KanbanTicket[] }>('/api/v1/tickets', {
-      params: { per_page: KANBAN_PAGE_SIZE },
+      params: {
+        per_page: KANBAN_PAGE_SIZE,
+        assigned_to_me: 1,
+        status_in: KANBAN_STATUSES,
+      },
       signal,
     })
     if (signal.aborted) {
