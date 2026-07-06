@@ -98,62 +98,55 @@
     </div>
 </div>
 
-@once
-    @push('scripts')
-    <script>
-    (function () {
-        function bindTravelCashUi(checkboxId, panelId, selectId) {
-            var cashCb = document.getElementById(checkboxId);
-            var cashPanel = document.getElementById(panelId);
-            if (!cashCb || !cashPanel) return;
+<script>
+(function () {
+    function bindTravelCashUi(checkboxId, panelId, selectId) {
+        var cashCb = document.getElementById(checkboxId);
+        var cashPanel = document.getElementById(panelId);
+        if (!cashCb || !cashPanel) return;
 
-            function initCashCarrierSelect2() {
-                if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
-                var $sel = jQuery('#' + selectId);
-                if (!$sel.length) return;
-                if ($sel.hasClass('select2-hidden-accessible')) {
-                    try { $sel.select2('destroy'); } catch (e) {}
-                }
-                $sel.select2({
-                    theme: 'bootstrap4',
-                    width: '100%',
-                    placeholder: $sel.data('placeholder') || 'Select staff (one or more)',
-                    allowClear: true,
-                    closeOnSelect: false
-                });
+        function initCashCarrierSelect2() {
+            if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+            var $sel = jQuery('#' + selectId);
+            if (!$sel.length) return;
+            if ($sel.hasClass('select2-hidden-accessible')) {
+                try { $sel.select2('destroy'); } catch (e) {}
             }
+            $sel.select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                placeholder: $sel.data('placeholder') || 'Select staff (one or more)',
+                allowClear: true,
+                closeOnSelect: false
+            });
+        }
 
-            function syncCashFields() {
-                var on = cashCb.checked;
-                cashPanel.classList.toggle('d-none', !on);
-                var sel = cashPanel.querySelector('#' + selectId);
-                if (sel) {
-                    sel.required = on;
-                }
-                cashPanel.querySelectorAll('[data-sm-cash-required]').forEach(function (el) {
-                    if (el.id !== selectId) {
-                        el.required = on;
-                    }
-                });
-                if (on) {
-                    window.requestAnimationFrame(initCashCarrierSelect2);
-                }
+        function syncCashFields() {
+            var on = cashCb.checked;
+            cashPanel.classList.toggle('d-none', !on);
+            var sel = cashPanel.querySelector('#' + selectId);
+            if (sel) {
+                sel.required = on;
             }
-
-            cashCb.addEventListener('change', syncCashFields);
-            syncCashFields();
-
-            if (typeof jQuery !== 'undefined') {
-                jQuery(document).ready(function () {
-                    if (cashCb.checked) {
-                        initCashCarrierSelect2();
-                    }
-                });
+            cashPanel.querySelectorAll('[data-sm-cash-required]').forEach(function (el) {
+                if (el.id !== selectId) {
+                    el.required = on;
+                }
+            });
+            if (on) {
+                window.requestAnimationFrame(initCashCarrierSelect2);
             }
         }
 
-        bindTravelCashUi('request_travel_with_cash', 'travel-cash-fields', 'cash_carrier_staff_ids');
-    })();
-    </script>
-    @endpush
-@endonce
+        cashCb.removeEventListener('change', cashCb._apmTravelCashSync);
+        cashCb._apmTravelCashSync = syncCashFields;
+        cashCb.addEventListener('change', syncCashFields);
+        syncCashFields();
+        if (cashCb.checked) {
+            initCashCarrierSelect2();
+        }
+    }
+
+    bindTravelCashUi('request_travel_with_cash', 'travel-cash-fields', 'cash_carrier_staff_ids');
+})();
+</script>
