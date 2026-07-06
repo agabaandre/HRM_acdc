@@ -362,8 +362,7 @@ class Activity extends Model
 
     protected function generateActivityRef(): string
     {
-        $division_name = user_session('division_name');
-        $short = ucwords($this->generateShortCodeFromDivision($division_name));
+        $short = ucwords($this->generateShortCodeFromDivision($this->resolveDivisionNameForActivityRef()));
         $prefix = 'AU/CDC/' . $short . '/QM';
         $quarter =  $this->matrix->quarter;
         $year = substr($this->matrix->year, -2);
@@ -379,6 +378,24 @@ class Activity extends Model
     
         return "{$prefix}/{$quarter}/{$year}/" . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+
+    /**
+     * Division label for activity_ref — session first, then activity/matrix division.
+     */
+    protected function resolveDivisionNameForActivityRef(): string
+    {
+        $fromSession = user_session('division_name');
+        if (is_string($fromSession) && trim($fromSession) !== '') {
+            return trim($fromSession);
+        }
+
+        $division = $this->memoIndexDivisionContext();
+        if ($division !== null && filled($division->division_name)) {
+            return trim((string) $division->division_name);
+        }
+
+        return 'Division';
+    }
     
     /**
      * Generate short code from division name by removing joining words and using initials
@@ -386,7 +403,7 @@ class Activity extends Model
     protected function generateShortCodeFromDivision(string $name): string
     {
         $ignore = ['of', 'and', 'for', 'the', 'in'];
-        $words = preg_split('/\s+/', strtolower($name));
+        $words = preg_split('/\s+/', strtolower(trim($name))) ?: [];
         $initials = array_map(function ($word) use ($ignore) {
             // Check if word is not empty before accessing first character
             if (empty($word) || in_array($word, $ignore)) {
@@ -395,7 +412,9 @@ class Activity extends Model
             return strtoupper($word[0]);
         }, $words);
     
-        return implode('', array_filter($initials));
+        $code = implode('', array_filter($initials));
+
+        return $code !== '' ? $code : 'DIV';
     }
 
     public function getBudgetAttribute($value)
