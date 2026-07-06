@@ -50,7 +50,8 @@
     }
 
     /* Stable height before/after Select2 replaces the native multi-select (reduces flicker on load & Livewire navigate) */
-    #internal_participants + .select2-container {
+    #internal_participants + .select2-container,
+    #location_id + .select2-container {
         min-width: 100%;
     }
     .select2-container--default .select2-selection--multiple {
@@ -69,7 +70,7 @@
 @section('content')
     @include('partials.apm-vuetify-like-forms-assets')
 
-    <div class="apm-v-form" data-apm-livewire-page="special-memo-edit">
+    <div class="apm-v-form">
 <div class="card shadow-sm border-0 mb-5">
         <div class="card-header bg-white border-bottom">
             <h5 class="mb-0 text-success">
@@ -337,11 +338,12 @@
 </div>
 
     </div>
+@endsection
 
-{{-- Scripts live inside #apm-content-area so wire:navigate executes them (see other-memos/create). --}}
+@push('scripts')
 <script>
 // Attachment preview functionality
-$(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apmSpecialMemoEdit', '.preview-attachment', function() {
+$(document).on('click', '.preview-attachment', function() {
     var fileUrl = $(this).data('file-url');
     var ext = $(this).data('file-ext');
     var isOffice = $(this).data('file-office') == '1';
@@ -364,45 +366,19 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
     modal.show();
 });
 
-(function () {
-    'use strict';
+const staffData = @json($allStaffGroupedByDivision ?? []);
+const existingParticipants = @json($internalParticipants ?? []);
+const existingExternalParticipants = @json($externalParticipants ?? []);
+const existingBudgetItems = @json($budgetItems ?? []);
+const initialActivityCode = @json($specialMemo->workplan_activity_code ?? '');
 
-    const staffData = @json($allStaffGroupedByDivision ?? []);
-    const existingParticipants = @json($internalParticipants ?? []);
-    const existingExternalParticipants = @json($externalParticipants ?? []);
-    const existingBudgetItems = @json($budgetItems ?? []);
-    const initialActivityCode = @json($specialMemo->workplan_activity_code ?? '');
+console.log('Staff data for external participants:', staffData);
+console.log('Available divisions:', Object.keys(staffData));
+console.log('Existing external participants:', existingExternalParticipants);
 
-    function destroySpecialMemoSelect2Fields() {
-        $('#internal_participants, #location_id, #responsible_person_id, #request_type_id, #budget_codes, #fund_type_id').each(function () {
-            var $el = $(this);
-            if ($el.length && $el.hasClass('select2-hidden-accessible')) {
-                try {
-                    $el.select2('destroy');
-                } catch (e) { /* ignore */ }
-            }
-        });
-        $('#externalParticipantsWrapper .division-select, #externalParticipantsWrapper .staff-names, #budgetGroupContainer .select-cost-item').each(function () {
-            var $el = $(this);
-            if ($el.length && $el.hasClass('select2-hidden-accessible')) {
-                try {
-                    $el.select2('destroy');
-                } catch (e2) { /* ignore */ }
-            }
-        });
-    }
-
-    function initSpecialMemoEditPage() {
-    destroySpecialMemoSelect2Fields();
-
-    document.querySelectorAll('.datepicker, .date-picker').forEach(function (el) {
-        if (el._flatpickr) {
-            try { el._flatpickr.destroy(); } catch (e) { /* ignore */ }
-        }
-    });
-
+$(document).ready(function () {
     const today = new Date().setHours(0, 0, 0, 0);
-    const divisionId = {{ $specialMemo->division_id }};
+    const divisionId = {{ (int) (user_session('division_id') ?: ($specialMemo->division_id ?? 0)) }};
 
     // Activity Title: max 200 characters – real-time validation and counter
     const ACTIVITY_TITLE_MAX = 200;
@@ -980,7 +956,7 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
     }
     $('#location_id').select2({
         theme: 'bootstrap4',
-        placeholder: "Select Location/Venue",
+        placeholder: 'Select Location/Venue',
         allowClear: true,
         width: '100%'
     });
@@ -1105,7 +1081,11 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
 
         $.get('{{ route("budget-codes.by-fund-type") }}', {
             fund_type_id: fundTypeId,
-            division_id: divisionId
+            division_id: divisionId,
+            exclude_special_memo_id: {{ (int) $specialMemo->id }},
+            @if(!empty($changeRequestForEdit))
+            exclude_change_request_id: {{ (int) $changeRequestForEdit->id }},
+            @endif
         }, function (data) {
             budgetCodesSelect.empty();
             if (data.length) {
@@ -1586,7 +1566,6 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
         if ($('#budget_codes').hasClass('select2-hidden-accessible')) {
             const isExtramural = $('#fund_type_id option:selected').text().toLowerCase().indexOf('extramural') > -1;
             $('#budget_codes').select2('destroy').select2({
-                theme: 'bootstrap4',
                 maximumSelectionLength: isExtramural ? 1 : 2,
                 width: '100%'
             });
@@ -1689,10 +1668,6 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
     });
 
     // Initialize flatpickr for date pickers
-    flatpickr('.datepicker', {
-        dateFormat: 'Y-m-d'
-    });
-
     flatpickr('.date-picker', {
         dateFormat: 'Y-m-d'
     });
@@ -1711,23 +1686,98 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
             row.find('.participant-days').val(days);
         }
     });
+});
 
+// Summernote is initialized once in layout (footer) with full toolbar (fontsize, fontname, etc.)
+
+// Initialize attachment UI state
+$(document).ready(function() {
     $('.attachment-block').each(function() {
         const attachmentBlock = $(this);
+        const fileInput = attachmentBlock.find('input[type="file"]');
         const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
         const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
-
+        
+        // Initially hide replace and delete checkboxes
         replaceCheckbox.hide().next('label').hide();
         deleteCheckbox.hide().next('label').hide();
-
+        
+        // Show delete checkbox for existing attachments
         if (attachmentBlock.find('small:contains("Current:")').length > 0) {
             deleteCheckbox.show().next('label').show();
         }
     });
+});
 
-    let attachmentIndex = {{ isset($specialMemo->attachments) ? count($specialMemo->attachments) : 0 }};
-    $('#addAttachment').off('click.apmSpecialMemoEdit').on('click.apmSpecialMemoEdit', function () {
-        const newField = `
+// File input change handler
+$(document).on('change', '.attachment-input', function () {
+    const fileInput = this;
+    const fileName = fileInput.files[0]?.name || '';
+    const ext = fileName.split('.').pop().toLowerCase();
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
+    
+    const attachmentBlock = $(fileInput).closest('.attachment-block');
+    const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+    const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
+    
+    if (fileName === '') {
+        // No file selected - hide replace checkbox and show delete option if it's an existing attachment
+        replaceCheckbox.hide().next('label').hide();
+        if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+            deleteCheckbox.show().next('label').show();
+        } else {
+            deleteCheckbox.hide().next('label').hide();
+        }
+        return;
+    }
+    
+    // Validate file extension
+    if (!allowedExtensions.includes(ext)) {
+        alert("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX files are allowed.");
+        $(fileInput).val(''); // Clear invalid file
+        replaceCheckbox.hide().next('label').hide();
+        return;
+    }
+    
+    // File is valid - show replace checkbox if it's an existing attachment
+    if (attachmentBlock.find('small:contains("Current:")').length > 0) {
+        replaceCheckbox.show().next('label').show();
+    }
+    deleteCheckbox.hide().next('label').hide();
+});
+
+// Delete checkbox change handler
+$(document).on('change', 'input[name*="[delete]"]', function () {
+    const deleteCheckbox = $(this);
+    const attachmentBlock = deleteCheckbox.closest('.attachment-block');
+    const fileInput = attachmentBlock.find('input[type="file"]');
+    const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
+    
+    if (deleteCheckbox.is(':checked')) {
+        // Disable other inputs when deleting
+        attachmentBlock.find('input[name*="[type]"]').prop('disabled', true);
+        fileInput.prop('disabled', true);
+        replaceCheckbox.prop('disabled', true);
+        
+        if (!confirm('Are you sure you want to delete this attachment?')) {
+            deleteCheckbox.prop('checked', false);
+            attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+            fileInput.prop('disabled', false);
+            replaceCheckbox.prop('disabled', false);
+        }
+    } else {
+        // Re-enable inputs when not deleting
+        attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
+        fileInput.prop('disabled', false);
+        replaceCheckbox.prop('disabled', false);
+    }
+});
+
+// Attachment management
+let attachmentIndex = {{ isset($specialMemo->attachments) ? count($specialMemo->attachments) : 0 }};
+
+$('#addAttachment').on('click', function () {
+    const newField = `
         <div class="col-md-4 attachment-block">
             <label class="form-label">Document Type*</label>
             <input type="text" name="attachments[${attachmentIndex}][type]" class="form-control">
@@ -1735,17 +1785,18 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
                    class="form-control mt-1 attachment-input" 
                    accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.xls,.xlsx,.doc,.docx,image/*">
         </div>`;
-        $('#attachmentContainer').append(newField);
-        attachmentIndex++;
-    });
+    $('#attachmentContainer').append(newField);
+    attachmentIndex++;
+});
 
-    $('#removeAttachment').off('click.apmSpecialMemoEdit').on('click.apmSpecialMemoEdit', function () {
-        if ($('.attachment-block').length > 0) {
-            $('.attachment-block').last().remove();
-            attachmentIndex--;
-
-            if ($('.attachment-block').length === 0) {
-                $('#attachmentContainer').html(`
+$('#removeAttachment').on('click', function () {
+    if ($('.attachment-block').length > 0) {
+        $('.attachment-block').last().remove();
+        attachmentIndex--;
+        
+        // If no more attachment blocks, show the info message
+        if ($('.attachment-block').length === 0) {
+            $('#attachmentContainer').html(`
                 <div class="col-12">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -1753,85 +1804,21 @@ $(document).off('click.apmSpecialMemoEdit', '.preview-attachment').on('click.apm
                     </div>
                 </div>
             `);
-            }
+        }
+    }
+});
+
+// Tear down Select2 before Livewire swaps the page (avoids duplicate instances & UI flicker on wire:navigate)
+document.addEventListener('livewire:navigate', function () {
+    $('#internal_participants, #location_id, #responsible_person_id, #request_type_id, #budget_codes').each(function () {
+        var $el = $(this);
+        if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+            try {
+                $el.select2('destroy');
+            } catch (e) { /* ignore */ }
         }
     });
-
-    }
-
-    $(document).off('change.apmSpecialMemoEdit', '.attachment-input').on('change.apmSpecialMemoEdit', '.attachment-input', function () {
-        const fileInput = this;
-        const fileName = fileInput.files[0]?.name || '';
-        const ext = fileName.split('.').pop().toLowerCase();
-        const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'xls', 'xlsx', 'doc', 'docx'];
-
-        const attachmentBlock = $(fileInput).closest('.attachment-block');
-        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
-        const deleteCheckbox = attachmentBlock.find('input[name*="[delete]"]');
-
-        if (fileName === '') {
-            replaceCheckbox.hide().next('label').hide();
-            if (attachmentBlock.find('small:contains("Current:")').length > 0) {
-                deleteCheckbox.show().next('label').show();
-            } else {
-                deleteCheckbox.hide().next('label').hide();
-            }
-            return;
-        }
-
-        if (!allowedExtensions.includes(ext)) {
-            alert("Only PDF, JPG, JPEG, PNG, PPT, PPTX, XLS, XLSX, DOC, DOCX files are allowed.");
-            $(fileInput).val('');
-            replaceCheckbox.hide().next('label').hide();
-            return;
-        }
-
-        if (attachmentBlock.find('small:contains("Current:")').length > 0) {
-            replaceCheckbox.show().next('label').show();
-        }
-        deleteCheckbox.hide().next('label').hide();
-    });
-
-    $(document).off('change.apmSpecialMemoEdit', 'input[name*="[delete]"]').on('change.apmSpecialMemoEdit', 'input[name*="[delete]"]', function () {
-        const deleteCheckbox = $(this);
-        const attachmentBlock = deleteCheckbox.closest('.attachment-block');
-        const fileInput = attachmentBlock.find('input[type="file"]');
-        const replaceCheckbox = attachmentBlock.find('input[name*="[replace]"]');
-
-        if (deleteCheckbox.is(':checked')) {
-            attachmentBlock.find('input[name*="[type]"]').prop('disabled', true);
-            fileInput.prop('disabled', true);
-            replaceCheckbox.prop('disabled', true);
-
-            if (!confirm('Are you sure you want to delete this attachment?')) {
-                deleteCheckbox.prop('checked', false);
-                attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
-                fileInput.prop('disabled', false);
-                replaceCheckbox.prop('disabled', false);
-            }
-        } else {
-            attachmentBlock.find('input[name*="[type]"]').prop('disabled', false);
-            fileInput.prop('disabled', false);
-            replaceCheckbox.prop('disabled', false);
-        }
-    });
-
-    if (!window.__apmSpecialMemoEditNavigateHook) {
-        window.__apmSpecialMemoEditNavigateHook = true;
-        document.addEventListener('livewire:navigate', function () {
-            destroySpecialMemoSelect2Fields();
-        });
-    }
-
-    function bootSpecialMemoEditPage() {
-        if (!document.getElementById('activityForm')) {
-            return;
-        }
-        initSpecialMemoEditPage();
-    }
-
-    bootSpecialMemoEditPage();
-})();
+});
 </script>
 @include('partials.participant-groups-js')
-@endsection
+@endpush

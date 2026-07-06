@@ -95,7 +95,7 @@
                 <label for="location_id" class="form-label fw-semibold">
                     <i class="fas fa-map-marker-alt me-1 text-success"></i> Location/Venue <span class="text-danger">*</span>
                 </label>
-                <select name="location_id[]" id="location_id" class="form-select border-success" multiple required>
+                <select name="location_id[]" id="location_id" class="form-select border-success" multiple required style="width: 100%;">
                     @foreach($locations as $location)
                         @php
                             $locationIds = [];
@@ -126,7 +126,7 @@
                 <label for="internal_participants" class="form-label fw-semibold">
                     <i class="fas fa-user-friends me-1 text-success"></i> Select Internal Participants
                 </label>
-                <select name="internal_participants[]" id="internal_participants" class="form-select select2 border-success" multiple>
+                <select name="internal_participants[]" id="internal_participants" class="form-select border-success" multiple style="width: 100%;">
                     @php
                         // Use processed participants if available, otherwise fall back to raw data (object/array staff, keyed, or list)
                         $selectedParticipantIds = [];
