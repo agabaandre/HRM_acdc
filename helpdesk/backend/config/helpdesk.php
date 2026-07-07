@@ -29,10 +29,7 @@ return [
     | Same tree as APM `config('staff_portal.uploads_root')`: files live under
     | `{staff_uploads_root}/staff/{basename}`. Used by signed /api/v1/avatar/{user}.
     */
-    'staff_uploads_root' => env(
-        'HELPDESK_STAFF_UPLOADS_ROOT',
-        env('STAFF_PORTAL_UPLOADS_ROOT', dirname(dirname(base_path())).DIRECTORY_SEPARATOR.'uploads')
-    ),
+    'staff_uploads_root' => \Staff\Shared\StaffStorage::ciUploadsRoot(dirname(dirname(base_path()))),
 
     /*
     |--------------------------------------------------------------------------

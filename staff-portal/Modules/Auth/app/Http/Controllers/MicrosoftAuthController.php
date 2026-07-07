@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Modules\Auth\Services\MicrosoftAuthService;
 use Modules\Auth\Services\PortalLoginService;
+use Modules\Auth\Support\SpaRedirect;
 
 class MicrosoftAuthController extends Controller
 {
@@ -71,6 +72,6 @@ class MicrosoftAuthController extends Controller
 
         $this->portalLogin->login($user, false, 'User logged in successfully using Microsoft SSO');
 
-        return redirect()->route('core.home');
+        return SpaRedirect::afterLogin();
     }
 }

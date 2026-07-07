@@ -6,6 +6,12 @@ return [
     /** CI3 staff app (PPA editor, prints) until fully ported to Laravel */
     'legacy_base_url' => env('STAFF_LEGACY_BASE_URL', 'http://localhost/staff/'),
 
+    /**
+     * Shared CI uploads root (staff photos, signatures, contracts).
+     * Set STAFF_DATA_ROOT or STAFF_PORTAL_UPLOADS_ROOT in production — see docs/STORAGE.md.
+     */
+    'uploads_root' => \Staff\Shared\StaffStorage::ciUploadsRoot(dirname(base_path())),
+
     'apm_base_url' => env(
         'APM_BASE_URL',
         rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/').'/apm'
@@ -22,6 +28,10 @@ return [
     'sso' => [
         'token_ttl' => (int) env('STAFF_SSO_TOKEN_TTL', 7200),
     ],
+
+    /** Vue SPA (same pattern as helpdesk/frontend). Laravel root = helpdesk/backend equivalent. */
+    'spa_enabled' => env('STAFF_PORTAL_SPA_ENABLED', false),
+    'spa_url' => env('STAFF_PORTAL_SPA_URL', '/staff/staff-portal/'),
 
     'sanctum' => [
         'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'cbp_staff_'),

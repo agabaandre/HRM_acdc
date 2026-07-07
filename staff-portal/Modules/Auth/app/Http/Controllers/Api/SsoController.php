@@ -78,6 +78,6 @@ class SsoController extends Controller
         Auth::login($user);
         session(['user' => $user->toSessionArray(), 'last_activity' => now()]);
 
-        return redirect()->route('core.home');
+        return \Modules\Auth\Support\SpaRedirect::afterLogin();
     }
 }

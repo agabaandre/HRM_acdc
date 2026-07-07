@@ -1,4 +1,18 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Laravel API + web auth (Microsoft SSO, spa-bridge, legacy Livewire)
+    RewriteRule ^public(/|$) - [L]
+
+    # Real files at staff-portal root (README, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Built SPA assets
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
+
+    # Vue Router fallback
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>

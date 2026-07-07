@@ -20,7 +20,7 @@ class Upload extends MX_Controller
         // Ensure a file is being uploaded
         if(isset($_FILES['file']['name']) && $_FILES['file']['name'] != ''){
             // Configure upload options
-            $config['upload_path']   = './uploads/summernote'; // Ensure this directory exists and is writable
+            $config['upload_path']   = staff_uploads_path('summernote/'); // Ensure this directory exists and is writable
             $config['allowed_types'] = 'gif|jpg|jpeg|png';
             $config['max_size']      = 2048; // Maximum size in KB (2MB)
             $config['encrypt_name']  = TRUE; // Encrypt the filename for security

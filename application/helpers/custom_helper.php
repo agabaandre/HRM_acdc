@@ -5,6 +5,48 @@
  *
  */
 
+if (! function_exists('staff_uploads_root')) {
+    /**
+     * Absolute path to the CI/shared uploads root (configurable via STAFF_DATA_ROOT).
+     */
+    function staff_uploads_root(): string
+    {
+        static $root = null;
+        if ($root !== null) {
+            return $root;
+        }
+
+        if (class_exists(\Staff\Shared\StaffStorage::class)) {
+            return $root = \Staff\Shared\StaffStorage::ciUploadsRoot(defined('FCPATH') ? rtrim(FCPATH, '/\\') : null);
+        }
+
+        $ci = &get_instance();
+        $ci->config->load('staff_storage', true);
+        $configured = $ci->config->item('uploads_root', 'staff_storage');
+        if (is_string($configured) && $configured !== '') {
+            return $root = rtrim($configured, '/\\');
+        }
+
+        return $root = rtrim(FCPATH, '/\\').DIRECTORY_SEPARATOR.'uploads';
+    }
+}
+
+if (! function_exists('staff_uploads_path')) {
+    /**
+     * Absolute path under the uploads root, e.g. staff_uploads_path('staff/signature').
+     */
+    function staff_uploads_path(string $relative = ''): string
+    {
+        $base = staff_uploads_root();
+        $relative = ltrim(str_replace(['\\', '..'], ['/', ''], $relative), '/');
+        if ($relative === '') {
+            return $base;
+        }
+
+        return $base.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+    }
+}
+
 //render with navigation
 if (!function_exists('render')) {
 
@@ -955,7 +997,7 @@ if (!function_exists('staff_signature_file_path')) {
         if ($safe === '' || $safe === '.' || $safe === '..') {
             return '';
         }
-        return FCPATH . 'uploads/staff/signature/' . $safe;
+        return staff_uploads_path('staff/signature/'.$safe);
     }
 }
 
@@ -982,8 +1024,8 @@ if (!function_exists('staff_signature_file_candidates')) {
             return [];
         }
         return [
-            FCPATH . 'uploads/staff/signature/' . $base,
-            FCPATH . 'uploads/staff/' . $base,
+            staff_uploads_path('staff/signature/'.$base),
+            staff_uploads_path('staff/'.$base),
         ];
     }
 }
@@ -1588,7 +1630,7 @@ if (!function_exists('staff_save_signature_from_data_url')) {
             $safe_name = 'staff_sig';
         }
 
-        $signature_upload_path = FCPATH . 'uploads/staff/signature';
+        $signature_upload_path = staff_uploads_path('staff/signature');
         if (!is_dir($signature_upload_path)) {
             @mkdir($signature_upload_path, 0755, true);
         }
@@ -1651,7 +1693,7 @@ if (!function_exists('staff_signature_print_src')) {
         if ($safe === '' || $safe === '.' || $safe === '..') {
             return '';
         }
-        $path = FCPATH . 'uploads/staff/signature/' . $safe;
+        $path = staff_uploads_path('staff/signature/'.$safe);
         if (!is_valid_image($path)) {
             return '';
         }
@@ -1727,7 +1769,7 @@ if (!function_exists('generate_user_avatar')) {
         $clean_image_path = '';
         
         if (!empty($photo) && $photo !== null && trim($photo) !== '') {
-            $absolute_path = FCPATH . 'uploads/staff/' . ltrim((string) $photo, '/');
+            $absolute_path = staff_uploads_path('staff/'.ltrim((string) $photo, '/'));
             if (file_exists($absolute_path) && is_valid_image($absolute_path)) {
                 $photo_exists = true;
                 $clean_image_path = staff_secure_upload_url('photo', $photo);

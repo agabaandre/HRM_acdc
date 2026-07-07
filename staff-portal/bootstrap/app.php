@@ -12,7 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo(fn () => route('core.home'));
+        $middleware->redirectUsersTo(function () {
+            if ((bool) config('staff-portal.spa_enabled', false)) {
+                return rtrim((string) config('staff-portal.spa_url', '/'), '/').'/';
+            }
+
+            return route('core.home');
+        });
         $middleware->alias([
             'staff.audit' => \Modules\Audit\Http\Middleware\LogStaffPortalAccess::class,
         ]);

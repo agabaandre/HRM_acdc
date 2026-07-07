@@ -36,9 +36,9 @@ class Secure_upload extends CI_Controller
 		}
 
 		$paths = [
-			'photo' => FCPATH . 'uploads/staff/',
-			'signature' => FCPATH . 'uploads/staff/signature/',
-			'passport_biodata' => FCPATH . 'uploads/staff/passport_biodata/',
+			'photo' => staff_uploads_path('staff/'),
+			'signature' => staff_uploads_path('staff/signature/'),
+			'passport_biodata' => staff_uploads_path('staff/passport_biodata/'),
 		];
 		$columns = [
 			'photo' => 'photo',

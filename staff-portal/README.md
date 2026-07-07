@@ -58,11 +58,37 @@ Schema source: `database/schema/staff-legacy-structure.sql` (mysqldump `--no-dat
 | `STAFF_LEGACY_SCHEMA_SKIP` | `true` on existing DB — skips `staff-portal:install-legacy-schema` |
 | `STAFF_AUDIT_INTEGRITY_CHAIN` | `true` when `user_logs` has `audit_row_hash` columns |
 | `STAFF_SSO_TOKEN_TTL` | JWT lifetime in seconds (default `7200`) |
+| `STAFF_PORTAL_SPA_ENABLED` | `true` — Microsoft login + post-auth redirect use Vue SPA + Sanctum token bridge |
+| `STAFF_PORTAL_SPA_URL` | Public SPA URL (e.g. `/staff/staff-portal/` or `http://localhost:5175/`) |
 
-## Architecture
+## Vue SPA (helpdesk-aligned)
+
+The `frontend/` app reuses Helpdesk UI components via Vite aliases (`@cbp/ui`, `@cbp/layout`, `@cbp/common`) and the same Sanctum Bearer auth pattern as Helpdesk.
+
+```bash
+# From staff-portal/
+npm run install:all
+npm run dev:all          # Laravel :8081 + Vite :5175
+
+cd frontend && npm run build   # → frontend/dist-build/
+```
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/v1/auth/login` | Email/password → Sanctum token |
+| `GET /api/v1/me` | Current user profile |
+| `GET /api/v1/cbp-modules` | CBP module launcher data |
+| `GET /auth/spa-bridge` | Post-Microsoft OAuth token hand-off to SPA |
+
+Set `STAFF_PORTAL_SPA_ENABLED=true` to route logins through the SPA shell. Legacy Livewire routes remain at `public/{module}` until each module is ported.
+
 
 ```
 staff-portal/
+├── public/                 # Laravel entry (API + web auth) — same role as helpdesk/backend/public
+├── frontend/               # Vue 3 SPA (Vite) — same role as helpdesk/frontend
+│   └── dist-build/         # Production build (served by root .htaccess)
+├── Modules/                # Laravel modules (API + legacy Livewire during migration)
 ├── app/                    # Shared commands, SsoJwt, LegacySchema
 ├── Modules/
 │   ├── Core/               # Layouts, CBP home (module tiles), navigation shell

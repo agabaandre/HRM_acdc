@@ -196,7 +196,7 @@
     <?php 
         $surname = $data->lname;
         $other_name = $data->fname;
-        $photoFs = FCPATH . 'uploads/staff/' . ltrim((string) ($data->photo ?? ''), '/');
+        $photoFs = staff_uploads_path('staff/'.ltrim((string) ($data->photo ?? ''), '/'));
         if (!empty($data->photo) && is_file($photoFs) && function_exists('is_valid_image') && is_valid_image($photoFs)) {
             $mime = function_exists('mime_content_type') ? @mime_content_type($photoFs) : 'image/jpeg';
             if (!is_string($mime) || $mime === '') {

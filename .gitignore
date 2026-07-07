@@ -13,8 +13,8 @@ application/cache/*
 node_modules
 /Afcdc theme/
 
-# Exclud Uploads From Git
-# /uploads/
+# Exclude uploads from Git (use STAFF_DATA_ROOT in production — see docs/STORAGE.md)
+/uploads/
 .env
 .env
 .sql

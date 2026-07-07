@@ -2424,7 +2424,7 @@ public function check_work_email()
 			$safe_name = 'staff_' . $staff_id;
 		}
 
-		$signature_upload_path = FCPATH . 'uploads/staff/signature';
+		$signature_upload_path = staff_uploads_path('staff/signature');
 		if (!is_dir($signature_upload_path)) {
 			@mkdir($signature_upload_path, 0755, true);
 		}

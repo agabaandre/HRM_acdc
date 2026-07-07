@@ -58,7 +58,7 @@ class Leave extends MX_Controller
 
 			if (!empty($doc['name'])) {
 				$doc['name'] = str_replace(' ', '_', $employee) . time() . pathinfo($doc['name'], PATHINFO_EXTENSION);
-				$config['upload_path'] = './uploads/leave';
+				$config['upload_path'] = staff_uploads_path('leave/');
 				$config['allowed_types'] = 'pdf|doc|docx|png|jpeg';
 				$config['file_name'] = $doc['name'];
 				$config['max_size'] = 2000;

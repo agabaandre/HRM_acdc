@@ -38,7 +38,8 @@
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "Database\\Seeders\\": "database/seeders/",
+            "Staff\\Shared\\": "../shared/"
         },
         "files": [
         "app/Helpers/CustomHelper.php",

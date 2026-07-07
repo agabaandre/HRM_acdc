@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\Api\SsoController;
 use Modules\Auth\Http\Controllers\MicrosoftAuthController;
+use Modules\Auth\Http\Controllers\SpaBridgeController;
 use Modules\Auth\Livewire\AuditLogs;
 use Modules\Auth\Livewire\LoginForm;
 use Modules\Auth\Livewire\UsersIndex;
@@ -26,6 +27,7 @@ Route::middleware('web')->group(function (): void {
     Route::get('sso/callback', [SsoController::class, 'acceptSsoRedirect'])->name('auth.sso.callback');
 
     Route::middleware('auth')->group(function (): void {
+        Route::get('auth/spa-bridge', SpaBridgeController::class)->name('auth.spa-bridge');
         Route::get('auth/users', UsersIndex::class)->name('auth.users');
         Route::get('auth/logs', AuditLogs::class)->name('auth.logs');
     });

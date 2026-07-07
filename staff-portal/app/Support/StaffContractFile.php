@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Staff\Shared\StaffStorage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class StaffContractFile
@@ -10,7 +11,7 @@ final class StaffContractFile
     {
         $safe = basename(str_replace('\\', '/', $filename));
 
-        return base_path('../uploads/staff/contracts/'.$safe);
+        return StaffStorage::ciPath('staff/contracts/'.$safe);
     }
 
     public static function exists(?string $filename): bool
@@ -33,7 +34,7 @@ final class StaffContractFile
 
     public static function ensureDirectory(): void
     {
-        $dir = base_path('../uploads/staff/contracts');
+        $dir = StaffStorage::ciPath('staff/contracts');
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }

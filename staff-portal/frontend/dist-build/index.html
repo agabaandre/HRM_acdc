@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link id="app-favicon" rel="icon" type="image/png" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <title>Africa CDC · Staff Portal</title>
+    <style>
+      #portal-boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(248, 249, 250, 0.96);
+      }
+      #portal-boot-loader .sp-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      #portal-boot-loader .sp-spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        border: 3px solid rgba(13, 122, 58, 0.14);
+        border-top-color: #0d7a3a;
+        animation: sp-spin 0.75s linear infinite;
+      }
+      @keyframes sp-spin { to { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="/staff/staff-portal/assets/index-DYilDA9x.js"></script>
+    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/http-WsEjtSl1.js">
+    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vue-vendor-BpuYrlBM.js">
+    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vuetify-b4bvVaWZ.js">
+    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/vuetify-Dcftei5X.css">
+    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/index-Ce8dib5c.css">
+  </head>
+  <body>
+    <div id="portal-boot-loader" aria-live="polite" role="status">
+      <div class="sp-inner">
+        <div class="sp-spinner" aria-hidden="true"></div>
+        <p style="margin:0;font-size:0.72rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#0d7a3a;">Staff Portal</p>
+      </div>
+    </div>
+    <div id="app"></div>
+  </body>
+</html>

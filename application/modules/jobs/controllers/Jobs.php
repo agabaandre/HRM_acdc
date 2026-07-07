@@ -1754,7 +1754,7 @@ public function add_other_associated_divisions_to_staff_contracts($drop = false)
     private function staff_profile_extension_missing_labels($staff)
     {
         $missing = [];
-        $passDir = FCPATH . 'uploads/staff/passport_biodata/';
+        $passDir = staff_uploads_path('staff/passport_biodata/');
         $fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
         if ($fn === '' || !is_file($passDir . $fn)) {
             $missing[] = 'Passport biodata page for travel purposes (upload)';

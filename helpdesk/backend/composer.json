@@ -27,7 +27,8 @@
             "App\\": "app/",
             "AgabaandreOffice365\\ExchangeEmailService\\": "app/ExchangeEmailService/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/"
+            "Database\\Seeders\\": "database/seeders/",
+            "Staff\\Shared\\": "../../shared/"
         }
     },
     "autoload-dev": {

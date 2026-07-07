@@ -2,16 +2,23 @@
 
 namespace App\Support;
 
+use Staff\Shared\StaffStorage;
+
 final class StaffPhoto
 {
     /** @var list<string> */
     private const COLORS = ['#119a48', '#1bb85a', '#0d7a3a', '#9f2240', '#c44569', '#2c3e50'];
 
+    public static function uploadsRoot(): string
+    {
+        return (string) config('staff-portal.uploads_root', StaffStorage::ciUploadsRoot(dirname(base_path())));
+    }
+
     public static function uploadsPath(string $filename): string
     {
         $safe = basename(str_replace('\\', '/', $filename));
 
-        return base_path('../uploads/staff/'.$safe);
+        return StaffStorage::ciPath('staff/'.$safe);
     }
 
     public static function exists(?string $filename): bool

@@ -6,13 +6,13 @@ $supervisor = isset($supervisor) ? $supervisor : null;
 $second_supervisor = isset($second_supervisor) ? $second_supervisor : null;
 $directorate = isset($directorate) ? $directorate : null;
 
-$photo_url = (!empty($staff->photo) && is_file(FCPATH . 'uploads/staff/' . $staff->photo)) ? staff_secure_upload_url('photo', $staff->photo) : '';
-$signature_url = (!empty($staff->signature) && is_file(FCPATH . 'uploads/staff/signature/' . $staff->signature)) ? staff_secure_upload_url('signature', $staff->signature) : '';
+$photo_url = (!empty($staff->photo) && is_file(staff_uploads_path('staff/'.$staff->photo))) ? staff_secure_upload_url('photo', $staff->photo) : '';
+$signature_url = (!empty($staff->signature) && is_file(staff_uploads_path('staff/signature/'.$staff->signature))) ? staff_secure_upload_url('signature', $staff->signature) : '';
 $photo_display = $photo_url !== '' ? $photo_url : base_url('assets/images/pp.png');
 $signature_display = $signature_url !== '' ? $signature_url : base_url('assets/images/pp.png');
 
 $passport_fn = isset($staff->passport_biodata_page) ? (string) $staff->passport_biodata_page : '';
-$passport_path = FCPATH . 'uploads/staff/passport_biodata/' . $passport_fn;
+$passport_path = staff_uploads_path('staff/passport_biodata/'.$passport_fn);
 $passport_url = ($passport_fn !== '' && is_file($passport_path)) ? staff_secure_upload_url('passport_biodata', $passport_fn) : '';
 $passport_ext = $passport_fn !== '' ? strtolower(pathinfo($passport_fn, PATHINFO_EXTENSION)) : '';
 $passport_image_preview = $passport_url !== '' && !in_array($passport_ext, ['pdf'], true);
@@ -475,7 +475,7 @@ $has_saved_signature = ($signature_url !== '');
               <i class="fas fa-user-tie fa-md text-primary me-2"></i>
               <strong>Primary Supervisor:</strong><br>
               <div class="ms-4 d-flex align-items-center text-start mt-1">
-                <?php if (!empty($supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $supervisor->photo)): ?>
+                <?php if (!empty($supervisor->photo) && file_exists(staff_uploads_path('staff/'.$supervisor->photo))): ?>
                   <img src="<?= htmlspecialchars(staff_secure_upload_url('photo', $supervisor->photo)) ?>"
                        class="rounded-circle me-2 flex-shrink-0"
                        style="width: 40px; height: 40px; object-fit: cover;"
@@ -493,7 +493,7 @@ $has_saved_signature = ($signature_url !== '');
               <i class="fas fa-user-tie fa-md text-secondary me-2"></i>
               <strong>Secondary Supervisor:</strong><br>
               <div class="ms-4 d-flex align-items-center text-start mt-1">
-                <?php if (!empty($second_supervisor->photo) && file_exists(FCPATH . 'uploads/staff/' . $second_supervisor->photo)): ?>
+                <?php if (!empty($second_supervisor->photo) && file_exists(staff_uploads_path('staff/'.$second_supervisor->photo))): ?>
                   <img src="<?= htmlspecialchars(staff_secure_upload_url('photo', $second_supervisor->photo)) ?>"
                        class="rounded-circle me-2 flex-shrink-0"
                        style="width: 40px; height: 40px; object-fit: cover;"

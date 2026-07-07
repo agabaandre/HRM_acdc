@@ -37,10 +37,43 @@ if (!function_exists('cache_list')) {
 
             // Only cache if data is not empty
             if (!empty($data)) {
-                file_put_contents($cache_file, json_encode($data));
+                cache_list_write($cache_file, $data);
             }
 
             return $data;
         }
+    }
+}
+
+if (!function_exists('cache_list_write')) {
+    /**
+     * Write JSON cache file when application/cache is writable (avoids permission warnings).
+     *
+     * @param string $cache_file Absolute path to cache file
+     * @param mixed  $data       Data to encode as JSON
+     */
+    function cache_list_write($cache_file, $data)
+    {
+        $cache_dir = dirname($cache_file);
+        if (!is_dir($cache_dir)) {
+            @mkdir($cache_dir, 0775, true);
+        }
+
+        $dir_writable = is_dir($cache_dir) && is_writable($cache_dir);
+        $file_writable = file_exists($cache_file) && is_writable($cache_file);
+        if (!$dir_writable && !$file_writable) {
+            if (function_exists('log_message')) {
+                log_message('error', 'Cache directory not writable: ' . $cache_dir . ' — run scripts/fix-ci-app-permissions.sh');
+            }
+
+            return false;
+        }
+
+        $written = @file_put_contents($cache_file, json_encode($data), LOCK_EX);
+        if ($written === false && function_exists('log_message')) {
+            log_message('error', 'Failed to write cache file: ' . $cache_file);
+        }
+
+        return $written !== false;
     }
 }

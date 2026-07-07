@@ -1479,7 +1479,7 @@ public function revert()
       $safe_name = 'staff_sig';
     }
 
-    $signature_upload_path = FCPATH . 'uploads/staff/signature';
+    $signature_upload_path = staff_uploads_path('staff/signature');
     if (!is_dir($signature_upload_path)) {
       @mkdir($signature_upload_path, 0755, true);
     }
@@ -1539,9 +1539,9 @@ public function revert()
     $signature = isset($_FILES['signature']) ? $_FILES['signature'] : null;
     $passport_biodata = isset($_FILES['passport_biodata']) ? $_FILES['passport_biodata'] : null;
 
-    $staff_upload_path = FCPATH . 'uploads/staff';
-    $signature_upload_path = FCPATH . 'uploads/staff/signature';
-    $passport_upload_path = FCPATH . 'uploads/staff/passport_biodata';
+    $staff_upload_path = staff_uploads_path('staff');
+    $signature_upload_path = staff_uploads_path('staff/signature');
+    $passport_upload_path = staff_uploads_path('staff/passport_biodata');
     if (!is_dir($staff_upload_path)) {
       @mkdir($staff_upload_path, 0755, true);
     }

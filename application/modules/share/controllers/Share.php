@@ -621,7 +621,7 @@ public function get_signature()
 				return;
 			}
 			
-			$signaturePath = FCPATH . 'uploads/staff/signature/' . basename($signature);
+			$signaturePath = staff_uploads_path('staff/signature/'.basename($signature));
 			
 			if (!file_exists($signaturePath)) {
 				header('Content-Type: application/json');
@@ -727,7 +727,7 @@ public function get_photo()
 				return;
 			}
 			
-			$photoPath = FCPATH . 'uploads/staff/' . basename($photo);
+			$photoPath = staff_uploads_path('staff/'.basename($photo));
 			
 			if (!file_exists($photoPath)) {
 				header('Content-Type: application/json');

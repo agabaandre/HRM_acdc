@@ -103,7 +103,7 @@ if (!function_exists('make_qr_code')) {
 		$ci->load->library('ciqrcode');
 
 		if (!$store_path)
-			$store_path = "uploads/qrcodes/";
+			$store_path = staff_uploads_path('qrcodes/');
 
 		if (!$file_name)
 			$file_name = time() . mt_rand(111, 9999999);
