@@ -34,6 +34,7 @@ The core CodeIgniter application that handles:
 
 **Documentation:**
 - [Environment Variables Configuration](../assets/ENVIRONMENT_VARIABLES.md) - Environment variable setup
+- [File storage & uploads](../docs/STORAGE.md) - Host-side uploads, migration, CI cache permissions
 - [Auth Module Improvements](../application/modules/auth/README_IMPROVEMENTS.md) - Authentication improvements
 - [Shared Header Usage](../application/modules/templates/views/partials/SHARED_HEADER_USAGE.md) - Header component documentation
 
@@ -278,7 +279,19 @@ staff/
 
 ### Key Configuration Files
 - Environment Variables: [assets/ENVIRONMENT_VARIABLES.md](../assets/ENVIRONMENT_VARIABLES.md)
+- File storage: [docs/STORAGE.md](../docs/STORAGE.md)
 - Apache Config: [000-default.conf](../000-default.conf)
+
+### Operations scripts
+
+| Script | Purpose |
+|--------|---------|
+| [scripts/storage/migrate-all.sh](../scripts/storage/migrate-all.sh) | Copy uploads to `/var/staffdata/{site-id}/` |
+| [scripts/storage/fix-staff-storage-permissions.sh](../scripts/storage/fix-staff-storage-permissions.sh) | Host data directory permissions |
+| [scripts/fix-ci-app-permissions.sh](../scripts/fix-ci-app-permissions.sh) | CI3 `application/cache` and `application/logs` |
+| [apm/fix-storage-permissions.sh](../apm/fix-storage-permissions.sh) | APM Laravel `storage/` permissions |
+
+Knowledge Hub admins can also manage staff storage at **Settings → Storage Management → Staff ecosystem** when `STAFF_REPO_ROOT` is configured.
 
 ## 📞 Support
 
@@ -294,6 +307,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2024
+**Last Updated**: July 2026
 **Version**: 1.0.0
 

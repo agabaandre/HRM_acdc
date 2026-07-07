@@ -222,10 +222,11 @@ Seed via existing CI3 data or admin UI (to be ported into **Lookup** Livewire CR
 1. Deploy `staff-portal/` next to `application/` and `apm/`.
 2. `composer install --no-dev --optimize-autoloader`
 3. Link assets: `ln -sfn ../../assets public/cbp-assets`
-4. Configure `.env` on server (`APP_URL`, `DB_*`, `JWT_SECRET`).
-5. Apache: `DocumentRoot` → `staff-portal/public` or rewrite via `staff-portal/.htaccess` + `server.php` (same pattern as `apm/`).
-6. Run only **Sanctum** + **module** migrations on existing DB (see Quick start).
-7. Cutover plan: change `BASE_URL` / portal links from `index.php` to `staff-portal/public`; keep CI3 read-only until sign-off.
+4. Configure `.env` on server (`APP_URL`, `DB_*`, `JWT_SECRET`, `STAFF_DATA_ROOT` — see [File storage](../docs/STORAGE.md)).
+5. `php artisan storage:link` (points `public/storage` at host files root when `STAFF_USE_HOST_STORAGE=true`).
+6. Apache: `DocumentRoot` → `staff-portal/public` or rewrite via `staff-portal/.htaccess` + `server.php` (same pattern as `apm/`).
+7. Run only **Sanctum** + **module** migrations on existing DB (see Quick start).
+8. Cutover plan: change `BASE_URL` / portal links from `index.php` to `staff-portal/public`; keep CI3 read-only until sign-off.
 
 ## Transition from CodeIgniter
 
@@ -247,6 +248,7 @@ Add feature tests for SSO encode/decode, login, and audit row creation.
 ## Related documentation
 
 - [CBP documentation hub](../documentation/README.md)
+- [File storage & uploads](../docs/STORAGE.md)
 - [APM documentation](../apm/documentation/README.md)
 - [CI3 auth improvements](../application/modules/auth/README_IMPROVEMENTS.md)
 - [Staff portal security notes](../STAFF_PORTAL_SECURITY_README.txt)

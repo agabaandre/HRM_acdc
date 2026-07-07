@@ -30,7 +30,7 @@ Copy that file to `.env` and replace placeholders. The sections below summarize 
 | **Database** | `DB_*` | MySQL (typical) connection for APM. |
 | **Session / queue / cache** | `SESSION_*`, `QUEUE_CONNECTION`, `CACHE_*`, `REDIS_*` | Laravel session storage (`database` driver needs `sessions` table), queue driver (`database` is common), optional Redis. |
 | **JWT** | `JWT_SECRET`, optional `JWT_TTL`, `JWT_REFRESH_TTL` | Bearer tokens for `/api/apm/v1`. Generate with `php artisan jwt:secret`. |
-| **Staff portal** | `CI_*`, `STAFF_API_USERNAME`, `STAFF_API_PASSWORD`, optional `STAFF_API_TOKEN`, `STAFF_UPLOADS_PATH` | Reading CodeIgniter sessions from the shared DB; optional staff API and uploads path for resolving assets. |
+| **Staff portal** | `CI_*`, `STAFF_API_USERNAME`, `STAFF_API_PASSWORD`, optional `STAFF_API_TOKEN`, `STAFF_UPLOADS_PATH`, `STAFF_PORTAL_UPLOADS_ROOT`, `STAFF_DATA_ROOT`, `STAFF_APM_FILES_ROOT` | Reading CodeIgniter sessions; staff API; shared uploads tree and APM public disk root. See [File storage](../../docs/STORAGE.md). |
 | **Mail / Exchange** | `MAIL_*`, `USE_EXCHANGE_EMAIL`, `EXCHANGE_*` | Outbound email via Microsoft Graph (`exchange_oauth`). Register an app in Azure AD and set tenant, client ID, secret, and redirect URI. |
 | **PHPMailer** | `PHPMailer_*` | SMTP fallback when not using Exchange. |
 | **Helpdesk (ITSM)** | `HELPDESK_*`, `HELPDESK_BRIDGE_SECRET`, Helpdesk `MAIL_*` / `MAIL_FAILOVER_MAILERS` | Separate Laravel API under `helpdesk/backend/`. Uses Sanctum + HMAC exchange (see [Helpdesk integration](./HELPDESK_INTEGRATION.md)). Reuse the same `EXCHANGE_*` and `JWT_SECRET` naming as APM/Finance where helpful; secrets only in each app’s own `.env`. |
@@ -54,6 +54,7 @@ Copy that file to `.env` and replace placeholders. The sections below summarize 
 
 ## Related documentation
 
+- [File storage & uploads](../../docs/STORAGE.md) — host-side uploads, migration scripts, permissions
 - [Helpdesk (ITSM) integration](./HELPDESK_INTEGRATION.md) — token exchange, URLs, mail/JWT alignment with Helpdesk API
 - [Deployment Guide](./DEPLOYMENT.md)
 - [API Documentation](./API_DOCUMENTATION.md) — API base URL derives from the same host as `APP_URL`.

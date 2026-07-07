@@ -236,6 +236,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | IT Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
 | [**👤 Helpdesk User Guide**](./helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
 | [**🧑‍💻 Helpdesk Developer Guide**](./helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
+| [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
 
 </div>
 
@@ -246,6 +247,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 - [OpenAPI/Swagger spec](./apm/documentation/APM_API_OPENAPI.yaml) - Full request/response schemas; interactive docs at `/docs` when APM is running
 
 **Infrastructure & Setup:**
+- [File storage & uploads](./docs/STORAGE.md) - Host-side storage (`/var/staffdata`), migration scripts, git-safe uploads
 - [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
 - [APM Environment Guide](./apm/documentation/ENVIRONMENT.md) - `.env` setup and examples
 - [APM Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
@@ -288,6 +290,13 @@ staff/
 ├── 📄 README.md                         # This file
 ├── 📚 documentation/                    # Main documentation hub
 │   └── README.md                        # Central documentation index
+├── 💾 docs/
+│   └── STORAGE.md                       # Host-side uploads, migration, permissions
+├── 📜 scripts/
+│   ├── fix-ci-app-permissions.sh        # CI3 cache/logs writable by web server
+│   └── storage/                         # migrate-*.sh, fix-staff-storage-permissions.sh
+├── 🔗 shared/
+│   └── StaffStorage.php                 # Shared upload path resolver (all modules)
 ├── 👥 application/                      # CodeIgniter Staff Portal
 │   ├── modules/                         # Application modules (auth, share, staff, …)
 │   │   └── share/                       # Share API (users, divisions, directorates, get_current_staff)

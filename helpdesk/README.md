@@ -130,6 +130,12 @@ Use **`http://localhost/staff`** everywhere — not your Mac’s mDNS hostname (
 
 After changing env values, rebuild the SPA (`cd frontend && npm run build`) and clear Laravel caches (`php artisan cache:clear`; delete `bootstrap/cache/config.php` if present).
 
+### File storage (production)
+
+Ticket attachments and rich-text images use Laravel’s `public` disk. Staff portrait files are read from the shared CI uploads tree (`STAFF_PORTAL_UPLOADS_ROOT`).
+
+See [File storage & uploads](../docs/STORAGE.md) for host-side paths, migration scripts, and `.env` variables (`STAFF_HELPDESK_FILES_ROOT`, `HELPDESK_STAFF_UPLOADS_ROOT`).
+
 The CBP Modules API (`GET /api/v1/cbp-modules`) rewrites staff-portal URLs to the current request host when accessed on `localhost`, so cached Staff Share responses cannot send you to the wrong hostname.
 
 ## Production: systemd (boot + auto-restart)

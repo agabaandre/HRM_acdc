@@ -1,5 +1,40 @@
 # Environment Variables Configuration
 
+## File storage (uploads)
+
+Staff photos, memo attachments, helpdesk files, and other uploads should live **outside the git repo** in production.
+
+> **Full guide:** [docs/STORAGE.md](../docs/STORAGE.md)
+
+### Core variables (root `.env`, mirrored in APM / Helpdesk / staff-portal)
+
+```env
+# Production — host-side storage
+STAFF_SITE_ID=localhost-staff
+STAFF_DATA_ROOT=/var/staffdata/localhost-staff
+STAFF_USE_HOST_STORAGE=true
+
+# Per-module overrides (optional)
+STAFF_PORTAL_UPLOADS_ROOT=/var/staffdata/localhost-staff/ci
+STAFF_APM_FILES_ROOT=/var/staffdata/localhost-staff/apm
+STAFF_HELPDESK_FILES_ROOT=/var/staffdata/localhost-staff/helpdesk
+STAFF_PORTAL_MODULE_FILES_ROOT=/var/staffdata/localhost-staff/staff-portal
+```
+
+When unset, apps use in-repo paths (`uploads/`, `storage/app/public`) — normal for local development.
+
+### Knowledge Hub integration
+
+On the Knowledge Hub server:
+
+```env
+HUB_STAFF_STORAGE_ENABLED=true
+STAFF_REPO_ROOT=/path/to/staff
+STAFF_BASE_URL=http://localhost/staff
+```
+
+---
+
 ## Alternative Login Configuration
 
 The application supports an environment variable to control whether alternative sign-in methods are available on the login page.
