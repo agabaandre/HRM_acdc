@@ -57,6 +57,23 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Staff portal JWT always reflects the real CI user. While impersonating in APM,
+        // do not replace the impersonated web session (cbp-session-refresh.js runs every ~15 min).
+        if ($this->impersonationIsActive()) {
+            $this->refreshOriginalUserSsoToken($jwt);
+
+            $user = session('user', []);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Session refresh skipped while impersonating',
+                'impersonating' => true,
+                'expires_at' => isset($user['sso_jwt_exp'])
+                    ? date('c', (int) $user['sso_jwt_exp'])
+                    : now()->addHours(2)->toIso8601String(),
+            ]);
+        }
+
         try {
             $this->openSessionFromStaffToken($jwt);
 
@@ -105,6 +122,36 @@ class AuthController extends Controller
         }
 
         return redirect(RuntimeUrl::staffPortalLoginUrl());
+    }
+
+    private function impersonationIsActive(): bool
+    {
+        return session()->has('original_user')
+            && (bool) data_get(session('user'), 'is_impersonated', false);
+    }
+
+    /**
+     * Keep the admin's Staff SSO JWT fresh on original_user while browsing as someone else.
+     */
+    private function refreshOriginalUserSsoToken(string $jwt): void
+    {
+        $json = StaffSsoToken::decode($jwt);
+        if (! is_array($json)) {
+            return;
+        }
+
+        $original = session('original_user');
+        if (! is_array($original)) {
+            return;
+        }
+
+        $original['sso_jwt'] = $jwt;
+        if (isset($json['exp'])) {
+            $original['sso_jwt_exp'] = (int) $json['exp'];
+        }
+
+        session(['original_user' => $original]);
+        session()->save();
     }
 
     /**
