@@ -14,6 +14,7 @@
 @php
     $sourceId = $id ?? 'apm-rich-' . preg_replace('/[^a-zA-Z0-9_-]+/', '-', $name);
     $editorId = $sourceId . '-editor';
+    $editorHtml = \App\Helpers\PrintHelper::prepareRichTextForEditor($value);
 @endphp
 
 <div @class([
@@ -31,6 +32,7 @@
         class="d-none apm-quill-source"
         name="{{ $name }}"
         id="{{ $sourceId }}"
+        data-apm-initial-html="{{ base64_encode($editorHtml) }}"
         @if ($placeholder !== '') placeholder="{{ $placeholder }}" @endif
-    >{{ $value }}</textarea>
+    ></textarea>
 </div>

@@ -571,57 +571,6 @@ class Activity extends Model
         return route(( $this->is_single_memo ? 'activities.single-memos.show' : 'activities.show'), $this->id);
     }
 
-    /**
-     * Latest approved change request that amended this activity (if any).
-     */
-    public function latestApprovedChangeRequest(): ?ChangeRequest
-    {
-        return ChangeRequest::query()
-            ->where(function ($query) {
-                $query->where('activity_id', $this->id)
-                    ->orWhere(function ($nested) {
-                        $nested->where('parent_memo_id', $this->id)
-                            ->whereIn('parent_memo_model', [
-                                self::class,
-                                'App\\Models\\Activity',
-                            ]);
-                    });
-            })
-            ->where('overall_status', 'approved')
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    /**
-     * Background/Context for display — uses approved change request when present.
-     */
-    public function getEffectiveBackground(): ?string
-    {
-        $cr = $this->latestApprovedChangeRequest();
-        if ($cr && is_string($cr->background) && trim($cr->background) !== '') {
-            return $cr->background;
-        }
-
-        $value = $this->background;
-
-        return is_string($value) && trim($value) !== '' ? $value : null;
-    }
-
-    /**
-     * Request for Approval for display — uses approved change request when present.
-     */
-    public function getEffectiveActivityRequestRemarks(): ?string
-    {
-        $cr = $this->latestApprovedChangeRequest();
-        if ($cr && is_string($cr->activity_request_remarks) && trim($cr->activity_request_remarks) !== '') {
-            return $cr->activity_request_remarks;
-        }
-
-        $value = $this->activity_request_remarks;
-
-        return is_string($value) && trim($value) !== '' ? $value : null;
-    }
-
     /** @return array<int, string> */
     protected function summernoteHtmlFieldsToTrim(): array
     {

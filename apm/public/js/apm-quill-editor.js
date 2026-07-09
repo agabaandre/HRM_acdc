@@ -781,11 +781,65 @@
         });
     }
 
+    function decodeBase64Utf8(b64) {
+        if (!b64) {
+            return '';
+        }
+        try {
+            var binary = atob(b64);
+            if (typeof TextDecoder !== 'undefined') {
+                var bytes = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return new TextDecoder('utf-8').decode(bytes);
+            }
+            return decodeURIComponent(
+                Array.prototype.map.call(binary, function (ch) {
+                    return '%' + ('00' + ch.charCodeAt(0).toString(16)).slice(-2);
+                }).join('')
+            );
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function decodeHtmlEntities(html) {
+        if (!html || html.indexOf('&') === -1) {
+            return html;
+        }
+        var el = document.createElement('textarea');
+        el.innerHTML = html;
+        return el.value;
+    }
+
     function sourceHtml(el) {
         if (!el) {
             return '';
         }
-        return el.value !== undefined && el.value !== null ? String(el.value) : String(el.textContent || '');
+        var b64 = el.getAttribute('data-apm-initial-html');
+        if (b64) {
+            var fromB64 = decodeBase64Utf8(b64);
+            if (fromB64) {
+                return fromB64;
+            }
+        }
+        var raw = el.value !== undefined && el.value !== null ? String(el.value) : String(el.textContent || '');
+        return decodeHtmlEntities(raw);
+    }
+
+    function loadHtmlIntoQuill(quill, html) {
+        if (!quill || !html) {
+            return;
+        }
+        html = decodeHtmlEntities(String(html));
+        try {
+            quill.setText('');
+            quill.clipboard.dangerouslyPasteHTML(0, html, 'silent');
+        } catch (e) {
+            quill.root.innerHTML = html;
+        }
+        normalizeArialContent(quill.root);
     }
 
     function shouldKeepSummernote(textarea) {
@@ -934,8 +988,7 @@
 
         var html = sourceHtml(hidden);
         if (html) {
-            quill.root.innerHTML = html;
-            normalizeArialContent(quill.root);
+            loadHtmlIntoQuill(quill, html);
             hidden.value = quill.root.innerHTML;
         } else {
             normalizeArialContent(quill.root);
