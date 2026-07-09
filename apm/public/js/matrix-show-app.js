@@ -259,9 +259,8 @@
                         { title: 'Document #', key: 'document_number', sortable: false, width: 130 },
                         { title: 'Title', key: 'activity_title', sortable: false, minWidth: 200 },
                         { title: 'Date Range', key: 'date_range', sortable: false, width: 150 },
-                        { title: 'Responsible Person', key: 'responsible_person', sortable: false, width: 150 },
-                        { title: 'Participants', key: 'total_participants', sortable: false, width: 120, align: 'center' },
-                        { title: 'Funding', key: 'funding', sortable: false, width: 180, align: 'center' },
+                        { title: 'Owner', key: 'responsible_person', sortable: false, width: 150 },
+                        { title: 'Participants & Funding', key: 'participants_funding', sortable: false, width: 200, align: 'center' },
                         { title: 'Budget (Est./Avail.)', key: 'budget', sortable: false, width: 140, align: 'center' },
                         { title: 'Status', key: 'status', sortable: false, width: 110, align: 'center' },
                         { title: 'Actions', key: 'actions', sortable: false, width: 150, align: 'center' },
@@ -283,9 +282,8 @@
                     { title: 'Document #', key: 'document_number', sortable: false, width: 130 },
                     { title: 'Title', key: 'activity_title', sortable: false, minWidth: 200 },
                     { title: 'Date Range', key: 'date_range', sortable: false, width: 150 },
-                    { title: 'Responsible Person', key: 'responsible_person', sortable: false, width: 150 },
-                    { title: 'Participants', key: 'total_participants', sortable: false, width: 120, align: 'center' },
-                    { title: 'Fund Type', key: 'fund_type', sortable: false, width: 120, align: 'center' },
+                    { title: 'Owner', key: 'responsible_person', sortable: false, width: 150 },
+                    { title: 'Participants & Funding', key: 'participants_funding', sortable: false, width: 200, align: 'center' },
                     { title: 'Budget (Est./Avail.)', key: 'budget', sortable: false, width: 140, align: 'center' },
                     { title: 'Status', key: 'status', sortable: false, width: 110, align: 'center' },
                     { title: 'Actions', key: 'actions', sortable: false, width: 130, align: 'center' },
@@ -953,31 +951,31 @@
           </div>
           <span v-else class="text-medium-emphasis">Not assigned</span>
         </template>
-        <template #item.total_participants="{ item }">
-          <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
-            <v-icon icon="mdi-account-group" size="18" color="primary" />
-            <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
-          </div>
-        </template>
-        <template #item.funding="{ item }">
-          <div class="mx-funding-cell">
-            <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
-              {{ item.fund_type ? item.fund_type.name : 'N/A' }}
-            </v-chip>
-            <div v-if="item._funder" class="mx-funding-cell__funder">{{ item._funder.name }}</div>
-            <div v-else-if="!item.fund_type" class="mx-funding-cell__code">Not specified</div>
-            <div v-if="item._funder && item._funder.code && item._funder.code !== item._funder.name" class="mx-funding-cell__code">
-              {{ item._funder.code }}
+        <template #item.participants_funding="{ item }">
+          <div class="mx-participants-funding-cell">
+            <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
+              <v-icon icon="mdi-account-group" size="18" color="primary" />
+              <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
             </div>
-            <div v-if="item._budgetCodes && item._budgetCodes.length" class="mx-funding-cell__budget-codes">
-              <v-chip
-                v-for="code in item._budgetCodes"
-                :key="code"
-                size="x-small"
-                color="primary"
-                variant="outlined"
-                class="mx-budget-code-chip"
-              >{{ code }}</v-chip>
+            <div class="mx-funding-cell">
+              <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
+                {{ item.fund_type ? item.fund_type.name : 'N/A' }}
+              </v-chip>
+              <div v-if="item._funder" class="mx-funding-cell__funder">{{ item._funder.name }}</div>
+              <div v-else-if="!item.fund_type" class="mx-funding-cell__code">Not specified</div>
+              <div v-if="item._funder && item._funder.code && item._funder.code !== item._funder.name" class="mx-funding-cell__code">
+                {{ item._funder.code }}
+              </div>
+              <div v-if="item._budgetCodes && item._budgetCodes.length" class="mx-funding-cell__budget-codes">
+                <v-chip
+                  v-for="code in item._budgetCodes"
+                  :key="code"
+                  size="x-small"
+                  color="primary"
+                  variant="outlined"
+                  class="mx-budget-code-chip"
+                >{{ code }}</v-chip>
+              </div>
             </div>
           </div>
         </template>
@@ -1153,10 +1151,6 @@
         </template>
         <template #item.activity_title="{ item }">
           <div class="font-weight-medium">{{ item.activity_title }}</div>
-          <div v-if="item.responsible_person" class="text-caption text-medium-emphasis">
-            <v-icon icon="mdi-account" size="x-small" class="me-1" />
-            {{ item.responsible_person.fname }} {{ item.responsible_person.lname }}
-          </div>
         </template>
         <template #item.date_range="{ item }">
           <div class="text-body-2">
@@ -1175,17 +1169,17 @@
           </div>
           <span v-else class="text-medium-emphasis">Not assigned</span>
         </template>
-        <template #item.total_participants="{ item }">
-          <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
-            <v-icon icon="mdi-account-group" size="18" color="primary" />
-            <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
-          </div>
-        </template>
-        <template #item.fund_type="{ item }">
-          <div class="mx-funding-cell">
-            <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
-              {{ item.fund_type ? item.fund_type.name : 'N/A' }}
-            </v-chip>
+        <template #item.participants_funding="{ item }">
+          <div class="mx-participants-funding-cell">
+            <div class="mx-participant-count" :title="participantCountTitle(item.total_participants)">
+              <v-icon icon="mdi-account-group" size="18" color="primary" />
+              <span class="mx-participant-count__num">{{ item.total_participants || 0 }}</span>
+            </div>
+            <div class="mx-funding-cell">
+              <v-chip color="primary" variant="flat" size="small" class="mx-funding-cell__type">
+                {{ item.fund_type ? item.fund_type.name : 'N/A' }}
+              </v-chip>
+            </div>
           </div>
         </template>
         <template #item.budget="{ item }">

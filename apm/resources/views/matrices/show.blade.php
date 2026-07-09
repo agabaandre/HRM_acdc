@@ -232,6 +232,15 @@
         line-height: 1;
         color: #0f6b34;
     }
+    #matrix-show-app .mx-participants-funding-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 10rem;
+        padding: 0.15rem 0;
+    }
     #matrix-show-app .mx-funding-cell {
         text-align: center;
         min-width: 8rem;

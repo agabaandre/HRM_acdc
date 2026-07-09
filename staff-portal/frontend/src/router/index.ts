@@ -23,6 +23,18 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 76, title: 'Dashboard' },
     },
     {
+      path: '/admin/staff',
+      name: 'admin-staff',
+      component: () => import('../views/admin/StaffAdminView.vue'),
+      meta: { requiresAuth: true, permission: 72, title: 'Staff directory' },
+    },
+    {
+      path: '/admin/rbac',
+      name: 'admin-rbac',
+      component: () => import('../views/admin/RbacAdminView.vue'),
+      meta: { requiresAuth: true, permission: 17, title: 'RBAC' },
+    },
+    {
       path: '/staff',
       name: 'staff',
       component: () => import('../views/PlaceholderView.vue'),

@@ -4,6 +4,8 @@ namespace Modules\Staff\Services;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\PortalTable;
 
@@ -18,11 +20,53 @@ class StaffDirectoryService
         int $page = 1,
         int $perPage = 20
     ): LengthAwarePaginator {
-        $query = $this->baseQuery($search, $statusId)
-            ->orderBy('s.lname')
-            ->orderBy('s.fname');
+        $perPage = min(100, max(10, $perPage));
+        $page = max(1, $page);
 
-        return PortalTable::paginateDistinct($query, 's.staff_id', $perPage, $page);
+        $light = $this->lightQuery($search, $statusId);
+        $total = (int) (clone $light)->count(DB::raw('DISTINCT s.staff_id'));
+
+        if ($total === 0) {
+            return new LengthAwarePaginator(
+                collect(),
+                0,
+                $perPage,
+                $page,
+                PortalTable::paginationOptions($pageName = 'page')
+            );
+        }
+
+        $ids = (clone $light)
+            ->select('s.staff_id')
+            ->distinct()
+            ->orderBy('s.lname')
+            ->orderBy('s.fname')
+            ->forPage($page, $perPage)
+            ->pluck('s.staff_id');
+
+        if ($ids->isEmpty()) {
+            return new LengthAwarePaginator(
+                collect(),
+                $total,
+                $perPage,
+                $page,
+                PortalTable::paginationOptions()
+            );
+        }
+
+        $items = $this->detailQuery()
+            ->whereIn('s.staff_id', $ids->all())
+            ->orderBy('s.lname')
+            ->orderBy('s.fname')
+            ->get();
+
+        return new LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            PortalTable::paginationOptions()
+        );
     }
 
     /**
@@ -30,31 +74,60 @@ class StaffDirectoryService
      */
     public function filterCounts(string $search = ''): array
     {
-        return [
-            'active' => $this->countForStatus($search, [1, 2]),
-            'due' => $this->countForStatus($search, 2),
-            'expired' => $this->countForStatus($search, 3),
-            'former' => $this->countForStatus($search, 4),
-            'renewal' => $this->countForStatus($search, 7),
-            'all' => $this->countForStatus($search, null),
-        ];
-    }
+        $cacheKey = 'staff_directory_filter_counts:'.md5($search);
 
-    protected function countForStatus(string $search, int|array|null $statusId): int
-    {
-        return (int) $this->baseQuery($search, $statusId)->count(DB::raw('DISTINCT s.staff_id'));
+        return Cache::remember($cacheKey, 60, function () use ($search): array {
+            $row = $this->lightQuery($search, null)
+                ->selectRaw('
+                    COUNT(DISTINCT CASE WHEN sc.status_id IN (1, 2) THEN s.staff_id END) as active_count,
+                    COUNT(DISTINCT CASE WHEN sc.status_id = 2 THEN s.staff_id END) as due_count,
+                    COUNT(DISTINCT CASE WHEN sc.status_id = 3 THEN s.staff_id END) as expired_count,
+                    COUNT(DISTINCT CASE WHEN sc.status_id = 4 THEN s.staff_id END) as former_count,
+                    COUNT(DISTINCT CASE WHEN sc.status_id = 7 THEN s.staff_id END) as renewal_count,
+                    COUNT(DISTINCT s.staff_id) as all_count
+                ')
+                ->first();
+
+            return [
+                'active' => (int) ($row->active_count ?? 0),
+                'due' => (int) ($row->due_count ?? 0),
+                'expired' => (int) ($row->expired_count ?? 0),
+                'former' => (int) ($row->former_count ?? 0),
+                'renewal' => (int) ($row->renewal_count ?? 0),
+                'all' => (int) ($row->all_count ?? 0),
+            ];
+        });
     }
 
     /**
+     * Minimal joins for counts and ID pagination.
+     *
      * @param  int|list<int>|null  $statusId
      */
-    protected function baseQuery(string $search, int|array|null $statusId): Builder
+    protected function lightQuery(string $search, int|array|null $statusId): Builder
     {
         $sub = DB::table('staff_contracts')
             ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
             ->groupBy('staff_id');
 
         $q = DB::table('staff as s')
+            ->joinSub($sub, 'lc', 'lc.staff_id', '=', 's.staff_id')
+            ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid');
+
+        $this->applyStatusFilter($q, $statusId);
+        $this->applySearchFilter($q, $search);
+
+        return $q;
+    }
+
+    /** Full row payload — only for the current page of staff IDs. */
+    protected function detailQuery(): Builder
+    {
+        $sub = DB::table('staff_contracts')
+            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
+            ->groupBy('staff_id');
+
+        return DB::table('staff as s')
             ->joinSub($sub, 'lc', 'lc.staff_id', '=', 's.staff_id')
             ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->leftJoin('grades as g', 'g.grade_id', '=', 'sc.grade_id')
@@ -98,7 +171,13 @@ class StaffDirectoryService
                 DB::raw("TRIM(CONCAT(COALESCE(sup1.fname,''), ' ', COALESCE(sup1.lname,''))) as first_supervisor_name"),
                 DB::raw("TRIM(CONCAT(COALESCE(sup2.fname,''), ' ', COALESCE(sup2.lname,''))) as second_supervisor_name"),
             ]);
+    }
 
+    /**
+     * @param  int|list<int>|null  $statusId
+     */
+    protected function applyStatusFilter(Builder $q, int|array|null $statusId): void
+    {
         if (is_array($statusId)) {
             $q->whereIn('sc.status_id', $statusId);
         } elseif ($statusId !== null) {
@@ -106,18 +185,21 @@ class StaffDirectoryService
         } else {
             $q->whereIn('sc.status_id', [1, 2, 3, 4, 7]);
         }
+    }
 
-        if ($search !== '') {
-            $term = '%'.$search.'%';
-            $q->where(function ($w) use ($term): void {
-                $w->where('s.fname', 'like', $term)
-                    ->orWhere('s.lname', 'like', $term)
-                    ->orWhere('s.oname', 'like', $term)
-                    ->orWhere('s.work_email', 'like', $term)
-                    ->orWhere('s.SAPNO', 'like', $term);
-            });
+    protected function applySearchFilter(Builder $q, string $search): void
+    {
+        if ($search === '') {
+            return;
         }
 
-        return $q;
+        $term = '%'.$search.'%';
+        $q->where(function ($w) use ($term): void {
+            $w->where('s.fname', 'like', $term)
+                ->orWhere('s.lname', 'like', $term)
+                ->orWhere('s.oname', 'like', $term)
+                ->orWhere('s.work_email', 'like', $term)
+                ->orWhere('s.SAPNO', 'like', $term);
+        });
     }
 }
