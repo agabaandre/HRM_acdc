@@ -984,17 +984,20 @@
             </div>
         @endif
 
-        <!-- Background Card -->
-        @if($activity->background)
+        <!-- Background/Context Card -->
+        @php
+            $displayBackground = $activity->getEffectiveBackground();
+        @endphp
+        @if(\App\Helpers\PrintHelper::richTextHasVisibleContent($displayBackground))
             <div class="card content-section memo-show-content-card border-0 mb-4">
                 <div class="card-header bg-transparent border-0 py-3">
                     <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                         <i class="bx bx-info-circle"></i>
-                        Background
+                        Background/Context
                     </h6>
                 </div>
-                <div class="card-body">
-                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->background ?? '') !!}
+                <div class="card-body memo-rich-text-body">
+                    {!! \App\Helpers\PrintHelper::sanitizeRichTextForDisplay($displayBackground ?? '') !!}
                 </div>
             </div>
         @endif
@@ -1228,7 +1231,10 @@
 
         <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
             <!-- Request for Approval Card -->
-            @if($activity->activity_request_remarks)
+            @php
+                $displayRequestForApproval = $activity->getEffectiveActivityRequestRemarks();
+            @endphp
+            @if(\App\Helpers\PrintHelper::richTextHasVisibleContent($displayRequestForApproval))
                 <div class="card content-section memo-show-content-card border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
                         <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
@@ -1236,8 +1242,8 @@
                             Request For Approval
                         </h6>
                         </div>
-                    <div class="card-body">
-                        {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->activity_request_remarks ?? '') !!}
+                    <div class="card-body memo-rich-text-body">
+                        {!! \App\Helpers\PrintHelper::sanitizeRichTextForDisplay($displayRequestForApproval ?? '') !!}
                             </div>
                             </div>
                                 @endif
@@ -1519,6 +1525,12 @@
 
 .html-content u {
     text-decoration: underline;
+}
+
+.memo-show-content-card .memo-rich-text-body,
+.memo-show-content-card .memo-rich-text-body .rich-text-content,
+.memo-show-content-card .memo-rich-text-body .html-content {
+    color: rgba(0, 0, 0, 0.87);
 }
 
 /* Loading animation */

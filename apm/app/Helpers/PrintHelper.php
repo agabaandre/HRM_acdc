@@ -2254,10 +2254,111 @@ class PrintHelper
         }
         $inner = Str::trim($inner);
         if ($inner === '') {
+            if (self::richTextHasVisibleContent($html)) {
+                return self::sanitizeRichTextForMpdfFallback($decoded);
+            }
+
             return '';
         }
 
         return '<div class="rich-text-content html-content" style="margin:8px 0;text-align:left;overflow:visible;">' . $inner . '</div>';
+    }
+
+    /**
+     * True when HTML has readable text, tables, or images (ignores empty Summernote blocks).
+     */
+    public static function richTextHasVisibleContent(?string $html): bool
+    {
+        $html = self::trimRichTextInput($html);
+        if ($html === '') {
+            return false;
+        }
+
+        $decoded = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (preg_match('/<img\b/i', $decoded)) {
+            return true;
+        }
+        if (preg_match('/<table\b/i', $decoded)) {
+            $tableText = trim(preg_replace('/\s+/u', ' ', strip_tags($decoded)));
+
+            return $tableText !== '';
+        }
+
+        $text = strip_tags($decoded);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/[\x{00A0}\x{200B}-\x{200D}\x{FEFF}]/u', ' ', $text ?? '');
+        $text = Str::trim($text ?? '');
+
+        return $text !== '';
+    }
+
+    /**
+     * Browser-safe rich HTML for memo show pages (fixes invisible Word/Quill white text).
+     */
+    public static function sanitizeRichTextForDisplay(?string $html): string
+    {
+        $sanitized = self::sanitizeRichTextForMpdf($html);
+        if ($sanitized === '' && self::richTextHasVisibleContent($html)) {
+            $decoded = html_entity_decode(self::trimRichTextInput($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $sanitized = self::sanitizeRichTextForMpdfFallback($decoded);
+        }
+
+        return self::normalizeRichTextColorsForScreen($sanitized);
+    }
+
+    private static function normalizeRichTextColorsForScreen(string $html): string
+    {
+        if ($html === '') {
+            return '';
+        }
+
+        return preg_replace_callback(
+            '/\bcolor\s*:\s*([^;"\']+)(;?)/i',
+            static function (array $matches): string {
+                $color = trim($matches[1]);
+                if (self::isLightTextColor($color)) {
+                    return 'color: rgba(0, 0, 0, 0.87)' . ($matches[2] ?? '');
+                }
+
+                return $matches[0];
+            },
+            $html
+        ) ?? $html;
+    }
+
+    private static function isLightTextColor(string $color): bool
+    {
+        $color = strtolower(trim($color));
+        if ($color === '' || $color === 'inherit' || $color === 'transparent') {
+            return false;
+        }
+
+        if (in_array($color, ['white', '#fff', '#ffffff', 'rgb(255,255,255)', 'rgb(255, 255, 255)'], true)) {
+            return true;
+        }
+
+        if (preg_match('/^#([0-9a-f]{3})$/i', $color, $m)) {
+            $hex = $m[1];
+            $r = hexdec(str_repeat($hex[0], 2));
+            $g = hexdec(str_repeat($hex[1], 2));
+            $b = hexdec(str_repeat($hex[2], 2));
+
+            return $r > 240 && $g > 240 && $b > 240;
+        }
+
+        if (preg_match('/^#([0-9a-f]{6})$/i', $color, $m)) {
+            $r = hexdec(substr($m[1], 0, 2));
+            $g = hexdec(substr($m[1], 2, 2));
+            $b = hexdec(substr($m[1], 4, 2));
+
+            return $r > 240 && $g > 240 && $b > 240;
+        }
+
+        if (preg_match('/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i', $color, $m)) {
+            return (int) $m[1] > 240 && (int) $m[2] > 240 && (int) $m[3] > 240;
+        }
+
+        return false;
     }
 
     /**

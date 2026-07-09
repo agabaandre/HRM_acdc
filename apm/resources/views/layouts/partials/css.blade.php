@@ -141,6 +141,12 @@
         margin: 0.75rem auto;
     }
 
+    .memo-show-content-card .memo-rich-text-body,
+    .memo-show-content-card .memo-rich-text-body .rich-text-content,
+    .memo-show-content-card .memo-rich-text-body .html-content {
+        color: rgba(0, 0, 0, 0.87);
+    }
+
     /* Summernote editor + rendered other-memo rich text: tables */
     .note-editable table,
     .apm-quill-editor .ql-editor table,

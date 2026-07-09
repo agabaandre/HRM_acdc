@@ -978,19 +978,22 @@
                 </div>
             @endif
 
-            <!-- Background Card -->
-            @if($activity->background)
+            <!-- Background/Context Card -->
+            @php
+                $displayBackground = $activity->getEffectiveBackground();
+            @endphp
+            @if(\App\Helpers\PrintHelper::richTextHasVisibleContent($displayBackground))
                 <div class="card content-section memo-show-content-card border-0 mb-4">
                     <div class="card-header bg-transparent border-0 py-3">
                         <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                             <i class="bx bx-info-circle"></i>
-                            Background
+                            Background/Context
                         </h6>
-                                </div>
-                    <div class="card-body">
-                        {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->background ?? '') !!}
-                                </div>
-                            </div>
+                    </div>
+                    <div class="card-body memo-rich-text-body">
+                        {!! \App\Helpers\PrintHelper::sanitizeRichTextForDisplay($displayBackground ?? '') !!}
+                    </div>
+                </div>
             @endif
 
             <div class="row">
@@ -1184,6 +1187,9 @@
 
                 <div class="container-fluid py-4"> <!-- Reopen container-fluid -->
                     <!-- Request for Approval Card -->
+                    @php
+                        $displayRequestForApproval = $activity->getEffectiveActivityRequestRemarks();
+                    @endphp
                     <div class="card content-section memo-show-content-card border-0 mb-4">
                         <div class="card-header bg-transparent border-0 py-3">
                             <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
@@ -1191,8 +1197,12 @@
                                 Request For Approval
                             </h6>
                         </div>
-                        <div class="card-body">
-                            {!! \App\Helpers\PrintHelper::sanitizeRichTextForMpdf($activity->activity_request_remarks ?? '') !!}
+                        <div class="card-body memo-rich-text-body">
+                            @if(\App\Helpers\PrintHelper::richTextHasVisibleContent($displayRequestForApproval))
+                                {!! \App\Helpers\PrintHelper::sanitizeRichTextForDisplay($displayRequestForApproval ?? '') !!}
+                            @else
+                                <p class="text-muted mb-0">No request for approval text provided.</p>
+                            @endif
                             </div>
                         </div>
                 </div>
