@@ -868,6 +868,82 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('stale_draft_archive_notice')) {
+        /**
+         * @return array<string, mixed>|null
+         */
+        function stale_draft_archive_notice(?object $memo): ?array
+        {
+            if ($memo === null) {
+                return null;
+            }
+
+            return app(\App\Services\StaleDraftArchiveSchedule::class)->noticeForMemo($memo);
+        }
+    }
+
+    if (! function_exists('can_archive_stale_draft_memo')) {
+        /**
+         * Owner, responsible person, division HOD, focal person, or platform admin may archive a stale draft.
+         *
+         * @param  array<string, mixed>|object  $memoOrItem
+         */
+        function can_archive_stale_draft_memo($memoOrItem, $user = null): bool
+        {
+            if ($user === null) {
+                $user = (object) session('user', []);
+            }
+
+            $userRole = $user->role ?? $user->user_role ?? null;
+            if ((int) $userRole === 10 || in_array(89, user_session('permissions', []), true)) {
+                return true;
+            }
+
+            $staffId = isset($user->staff_id) ? (int) $user->staff_id : 0;
+            if ($staffId <= 0) {
+                return false;
+            }
+
+            if (is_array($memoOrItem)) {
+                $ownerId = (int) ($memoOrItem['staff_id'] ?? 0);
+                $responsibleId = (int) ($memoOrItem['responsible_person_id'] ?? 0);
+                $divisionId = (int) ($memoOrItem['division_id'] ?? 0);
+            } else {
+                $ownerId = (int) ($memoOrItem->staff_id ?? 0);
+                $responsibleId = (int) ($memoOrItem->responsible_person_id ?? 0);
+                $divisionId = (int) ($memoOrItem->division_id ?? 0);
+                if ($divisionId <= 0 && isset($memoOrItem->matrix)) {
+                    $divisionId = (int) ($memoOrItem->matrix->division_id ?? 0);
+                }
+            }
+
+            if ($ownerId === $staffId || ($responsibleId > 0 && $responsibleId === $staffId)) {
+                return true;
+            }
+
+            if ($divisionId <= 0) {
+                return false;
+            }
+
+            $division = \App\Models\Division::query()->find($divisionId);
+            if ($division === null) {
+                return false;
+            }
+
+            if ((int) ($division->focal_person ?? 0) === $staffId) {
+                return true;
+            }
+
+            if (function_exists('effective_division_head_staff_id')) {
+                $headId = effective_division_head_staff_id($division);
+
+                return $headId !== null && (int) $headId === $staffId;
+            }
+
+            return (int) ($division->division_head ?? 0) === $staffId;
+        }
+    }
+
     if (! function_exists('can_delete_memo')) {
         function can_delete_memo($memo, $user = null)
         {

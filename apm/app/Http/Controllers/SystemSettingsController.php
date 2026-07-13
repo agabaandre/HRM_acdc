@@ -172,6 +172,7 @@ class SystemSettingsController extends Controller
             'budget_committed_memo_statuses' => 'budget',
             'budget_committed_change_request_statuses' => 'budget',
             'budget_stale_draft_reminders_enabled' => 'budget',
+            'budget_stale_draft_auto_archive_enabled' => 'budget',
         ];
         return $map[$key] ?? 'general';
     }

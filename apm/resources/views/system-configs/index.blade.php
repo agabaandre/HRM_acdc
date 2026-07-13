@@ -44,6 +44,13 @@
                 <button type="button" class="btn btn-sm btn-success" onclick="typeof showDatabaseModal === 'function' && showDatabaseModal()">
                     <i class="bx bx-data"></i> Manage databases
                 </button>
+            @elseif ($tab === 'stale-memos' && !empty($panelData['pendingStale']))
+                <form action="{{ route('stale-memos.archive-all') }}" method="POST" class="d-inline" onsubmit="return confirm('Archive all {{ count($panelData['pendingStale']) }} stale draft memo(s) now? This releases held budget.');">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-warning">
+                        <i class="bx bx-archive-in"></i> Archive all now
+                    </button>
+                </form>
             @endif
         </div>
     </div>
@@ -68,6 +75,9 @@
                 @break
             @case('backups')
                 @include('backups.index', $panelData)
+                @break
+            @case('stale-memos')
+                @include('stale-memos.index', $panelData)
                 @break
         @endswitch
     </div>

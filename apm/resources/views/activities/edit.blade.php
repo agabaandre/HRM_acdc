@@ -53,6 +53,8 @@
                     </div>
                 @endif
 
+                @include('partials.stale-draft-archive-notice', ['memo' => request('change_request_id') && !empty($changeRequestForEdit) ? $changeRequestForEdit : $activity])
+
                 @includeIf('activities.form')
 
                 @if(request('change_request'))

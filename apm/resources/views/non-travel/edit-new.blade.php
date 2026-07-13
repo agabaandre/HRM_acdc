@@ -64,6 +64,8 @@
                     @endif
                 @endif
 
+                @include('partials.stale-draft-archive-notice', ['memo' => request('change_request_id') && !empty($changeRequestForEdit) ? $changeRequestForEdit : $nonTravel])
+
                 <!-- Section 1: Basic Information -->
                 <div class="mb-5">
                     <h6 class="fw-bold text-success mb-4 border-bottom pb-2">

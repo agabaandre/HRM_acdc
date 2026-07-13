@@ -181,8 +181,13 @@ class NotificationService
             }
 
             $count = count($items);
+            $schedule = new \App\Services\StaleDraftArchiveSchedule();
+            $nextRun = $schedule->nextWeeklyRun()->format('l, j F Y \a\t H:i');
             $message = "You have {$count} stale draft memo(s) older than {$months} month(s) with budget allocated. "
                 . 'Please delete or submit them to release fund code balances.';
+            if ((new BudgetCommitmentSettings())->staleDraftAutoArchiveEnabled()) {
+                $message .= " Unacted stale drafts are auto-archived weekly (next run: {$nextRun}).";
+            }
 
             $notifications[] = $this->createNotification([
                 'staff_id' => (int) $staffId,
@@ -196,6 +201,9 @@ class NotificationService
                     'staleDraftItems' => $items,
                     'staleCount' => $count,
                     'draftMaxAgeMonths' => $months,
+                    'nextWeeklyArchiveRun' => (new BudgetCommitmentSettings())->staleDraftAutoArchiveEnabled()
+                        ? (new \App\Services\StaleDraftArchiveSchedule())->nextWeeklyRun()->format('l, j F Y \a\t H:i')
+                        : null,
                 ],
             ]);
         }

@@ -198,7 +198,7 @@
                 </li>
             @endif
 
-            <!-- Pending Approvals -->
+            <!-- Returned memos -->
             <li class="nav-item">
                 <a href="{{ route('returned-memos.index') }}" wire:navigate
                     class="nav-link {{ Request::is('returned-memos*') ? 'active' : '' }}">
@@ -207,6 +207,14 @@
                     @if ($returnedCount > 0)
                         <span class="badge bg-danger ms-2">{{ $returnedCount }}</span>
                     @endif
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="{{ route('stale-drafts.index') }}" wire:navigate
+                    class="nav-link {{ Request::is('stale-drafts*') ? 'active' : '' }}">
+                    <div class="parent-icon"><i class="bx bx-archive-in"></i></div>
+                    <div class="menu-title">Stale drafts</div>
                 </a>
             </li>
 

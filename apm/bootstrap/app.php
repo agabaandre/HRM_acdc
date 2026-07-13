@@ -85,6 +85,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Archive stale draft memos weekly (Mondays 06:00) when auto-archive is enabled
+        $schedule->command('memos:archive-stale-drafts')
+            ->weeklyOn(1, '06:00')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Sync users from staff app user table into apm_api_users (hourly)
         $schedule->command('users:sync')
             ->hourly()

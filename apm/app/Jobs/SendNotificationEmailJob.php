@@ -176,6 +176,7 @@ class SendNotificationEmailJob implements ShouldQueue
                 'staleDraftItems' => $this->emailViewContext['staleDraftItems'] ?? [],
                 'staleCount' => $this->emailViewContext['staleCount'] ?? 0,
                 'draftMaxAgeMonths' => $this->emailViewContext['draftMaxAgeMonths'] ?? 2,
+                'nextWeeklyArchiveRun' => $this->emailViewContext['nextWeeklyArchiveRun'] ?? null,
             ]);
         }
 

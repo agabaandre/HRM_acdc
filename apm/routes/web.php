@@ -234,8 +234,15 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // System configuration hub (jobs default tab)
     Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
-        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups')
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos')
         ->name('system-configs.index');
+    Route::post('/system-configs/stale-memos/archive-all', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveAll'])
+        ->name('stale-memos.archive-all');
+
+    Route::get('/stale-drafts', [App\Http\Controllers\StaleMemoArchivesController::class, 'userIndex'])
+        ->name('stale-drafts.index');
+    Route::post('/stale-drafts/archive', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveOne'])
+        ->name('stale-drafts.archive');
 
     // Jobs Management Routes
     Route::get('/jobs', [App\Http\Controllers\JobsController::class, 'index'])->name('jobs.index');

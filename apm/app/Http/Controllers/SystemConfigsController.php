@@ -35,6 +35,11 @@ class SystemConfigsController extends Controller
             'icon' => 'bx-data',
             'description' => 'Scheduled backups, retention policy & archive delivery',
         ],
+        'stale-memos' => [
+            'label' => 'Stale memos',
+            'icon' => 'bx-archive-in',
+            'description' => 'Auto-archive abandoned draft memos holding budget & archive history',
+        ],
     ];
 
     public function index(Request $request, string $tab = 'jobs'): View|RedirectResponse|StreamedResponse
@@ -72,6 +77,7 @@ class SystemConfigsController extends Controller
             'app-settings' => app(SystemSettingsController::class)->getIndexData(),
             'audit-logs' => app(AuditLogsController::class)->getIndexData($request),
             'backups' => app(BackupController::class)->getIndexData(),
+            'stale-memos' => app(StaleMemoArchivesController::class)->getIndexData($request),
             default => [],
         };
     }

@@ -72,6 +72,7 @@
             'budget_committed_memo_statuses' => 'Special & non-travel memo statuses that commit fund codes (comma-separated).',
             'budget_committed_change_request_statuses' => 'Change request statuses that commit fund codes (comma-separated).',
             'budget_stale_draft_reminders_enabled' => 'Email + in-app reminders to delete stale drafts that still hold budget.',
+            'budget_stale_draft_auto_archive_enabled' => 'Automatically archive stale draft memos holding budget on the weekly schedule (Mondays 06:00).',
             'approval_warning_days' => 'Days before pending approvals trigger a stale reminder at the approver\'s level.',
             'general_workflow_stale_escalation_orders' => 'General workflow (workflow 1) only: comma-separated approval orders to email when the stale threshold is exceeded (e.g. 5,6,7). Creator and HOD are always included for all workflows.',
         ];

@@ -109,6 +109,8 @@
                     </div>
                 @endif
 
+                @include('partials.stale-draft-archive-notice', ['memo' => request('change_request_id') && !empty($changeRequestForEdit) ? $changeRequestForEdit : $specialMemo])
+
                 @if(request('change_request'))
                     @include('change-requests.partials.travel-cash-and-details', [
                         'changeRequestForEdit' => $changeRequestForEdit ?? null,

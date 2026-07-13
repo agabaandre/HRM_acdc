@@ -79,6 +79,13 @@ class BudgetCommitmentSettings
         return ! in_array(strtolower((string) $value), ['0', 'false', 'no', 'off'], true);
     }
 
+    public function staleDraftAutoArchiveEnabled(): bool
+    {
+        $value = SystemSetting::get('budget_stale_draft_auto_archive_enabled', '1');
+
+        return ! in_array(strtolower((string) $value), ['0', 'false', 'no', 'off'], true);
+    }
+
     /**
      * Cache-bust token when commitment settings change.
      */

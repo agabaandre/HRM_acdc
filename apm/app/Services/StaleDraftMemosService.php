@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Models\ChangeRequest;
+use App\Models\Division;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use Carbon\Carbon;
@@ -38,10 +39,10 @@ class StaleDraftMemosService
         }
 
         $items = array_merge(
-            $this->staleActivities($staffId, $cutoff),
-            $this->staleSpecialMemos($staffId, $cutoff),
-            $this->staleNonTravelMemos($staffId, $cutoff),
-            $this->staleChangeRequests($staffId, $cutoff)
+            $this->staleActivities($cutoff, $staffId),
+            $this->staleSpecialMemos($cutoff, $staffId),
+            $this->staleNonTravelMemos($cutoff, $staffId),
+            $this->staleChangeRequests($cutoff, $staffId)
         );
 
         usort($items, static fn (array $a, array $b): int => strcmp($b['updated_at'], $a['updated_at']));
@@ -74,20 +75,165 @@ class StaleDraftMemosService
     }
 
     /**
+     * All stale draft memos system-wide (for admin archive review).
+     *
      * @return list<array<string, mixed>>
      */
-    private function staleActivities(int $staffId, Carbon $cutoff): array
+    public function getAllStaleDrafts(): array
+    {
+        $cutoff = $this->settings->draftBudgetCutoff();
+        if ($cutoff === null) {
+            return [];
+        }
+
+        $items = array_merge(
+            $this->staleActivities($cutoff),
+            $this->staleSpecialMemos($cutoff),
+            $this->staleNonTravelMemos($cutoff),
+            $this->staleChangeRequests($cutoff)
+        );
+
+        usort($items, static fn (array $a, array $b): int => strcmp($b['updated_at'], $a['updated_at']));
+
+        return $items;
+    }
+
+    /**
+     * Stale drafts visible to owner, responsible person, division HOD, or focal person.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getStaleDraftsVisibleToUser(int $staffId): array
+    {
+        $cutoff = $this->settings->draftBudgetCutoff();
+        if ($cutoff === null || $staffId <= 0) {
+            return [];
+        }
+
+        $divisionIds = $this->divisionIdsForStaffOversight($staffId);
+        $items = array_merge(
+            $this->staleActivities($cutoff, $staffId),
+            $this->staleSpecialMemos($cutoff, $staffId),
+            $this->staleNonTravelMemos($cutoff, $staffId),
+            $this->staleChangeRequests($cutoff, $staffId)
+        );
+
+        if ($divisionIds !== []) {
+            $items = array_merge(
+                $items,
+                $this->staleActivities($cutoff, null, $divisionIds),
+                $this->staleSpecialMemos($cutoff, null, $divisionIds),
+                $this->staleNonTravelMemos($cutoff, null, $divisionIds),
+                $this->staleChangeRequests($cutoff, null, $divisionIds)
+            );
+        }
+
+        return $this->dedupeStaleItems($items);
+    }
+
+    public function findStaleDraftItem(string $type, int $id): ?array
+    {
+        foreach ($this->getAllStaleDrafts() as $item) {
+            if (($item['type'] ?? '') === $type && (int) ($item['id'] ?? 0) === $id) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function divisionIdsForStaffOversight(int $staffId): array
+    {
+        return Division::query()
+            ->get(['id', 'division_head', 'focal_person', 'head_oic_id', 'head_oic_start_date', 'head_oic_end_date'])
+            ->filter(function (Division $division) use ($staffId): bool {
+                if ((int) ($division->focal_person ?? 0) === $staffId) {
+                    return true;
+                }
+
+                if (function_exists('effective_division_head_staff_id')) {
+                    $headId = effective_division_head_staff_id($division);
+
+                    return $headId !== null && (int) $headId === $staffId;
+                }
+
+                return (int) ($division->division_head ?? 0) === $staffId;
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    private function dedupeStaleItems(array $items): array
+    {
+        $seen = [];
+        $unique = [];
+        foreach ($items as $item) {
+            $key = ($item['type'] ?? '') . ':' . ($item['id'] ?? 0);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $unique[] = $item;
+        }
+
+        usort($unique, static fn (array $a, array $b): int => strcmp($b['updated_at'], $a['updated_at']));
+
+        return $unique;
+    }
+
+    public function memoHoldsBudget(object $memo): bool
+    {
+        if ($memo instanceof Activity) {
+            return (float) DB::table('activity_budgets')
+                ->where('activity_id', $memo->id)
+                ->sum('total') > 0;
+        }
+
+        if ($memo instanceof SpecialMemo || $memo instanceof NonTravelMemo || $memo instanceof ChangeRequest) {
+            return $this->breakdownTotal($memo->budget_breakdown ?? null) > 0;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function staleActivities(Carbon $cutoff, ?int $staffId = null, ?array $divisionIds = null): array
     {
         if (! in_array('draft', $this->settings->committedActivityStatuses(), true)) {
             return [];
         }
 
         $rows = Activity::query()
+            ->with('matrix:id,division_id')
             ->where('overall_status', 'draft')
             ->where('updated_at', '<', $cutoff)
-            ->where(function ($q) use ($staffId) {
-                $q->where('staff_id', $staffId)
-                    ->orWhere('responsible_person_id', $staffId);
+            ->when($staffId !== null || ($divisionIds !== null && $divisionIds !== []), function ($q) use ($staffId, $divisionIds) {
+                $q->where(function ($outer) use ($staffId, $divisionIds) {
+                    if ($staffId !== null) {
+                        $outer->where(function ($inner) use ($staffId) {
+                            $inner->where('staff_id', $staffId)
+                                ->orWhere('responsible_person_id', $staffId);
+                        });
+                    }
+                    if ($divisionIds !== null && $divisionIds !== []) {
+                        $outer->orWhere(function ($inner) use ($divisionIds) {
+                            $inner->whereIn('division_id', $divisionIds)
+                                ->orWhereHas('matrix', fn ($matrix) => $matrix->whereIn('division_id', $divisionIds));
+                        });
+                    }
+                });
             })
             ->whereExists(function ($q) {
                 $q->select(DB::raw(1))
@@ -95,7 +241,7 @@ class StaleDraftMemosService
                     ->whereColumn('activity_budgets.activity_id', 'activities.id')
                     ->where('activity_budgets.total', '>', 0);
             })
-            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'matrix_id', 'is_single_memo']);
+            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'matrix_id', 'is_single_memo', 'staff_id', 'responsible_person_id', 'division_id']);
 
         return $rows->map(function (Activity $activity) {
             $budgetTotal = (float) DB::table('activity_budgets')
@@ -110,6 +256,9 @@ class StaleDraftMemosService
                 'document_number' => $activity->document_number,
                 'updated_at' => $activity->updated_at?->toDateTimeString() ?? '',
                 'budget_total' => round($budgetTotal, 2),
+                'staff_id' => (int) ($activity->staff_id ?? 0),
+                'responsible_person_id' => (int) ($activity->responsible_person_id ?? 0),
+                'division_id' => (int) ($activity->division_id ?: $activity->matrix?->division_id ?: 0),
                 'edit_url' => $this->activityEditUrl($activity),
             ];
         })->all();
@@ -118,7 +267,7 @@ class StaleDraftMemosService
     /**
      * @return list<array<string, mixed>>
      */
-    private function staleSpecialMemos(int $staffId, Carbon $cutoff): array
+    private function staleSpecialMemos(Carbon $cutoff, ?int $staffId = null, ?array $divisionIds = null): array
     {
         if (! in_array('draft', $this->settings->committedMemoStatuses(), true)) {
             return [];
@@ -127,11 +276,20 @@ class StaleDraftMemosService
         return SpecialMemo::query()
             ->where('overall_status', 'draft')
             ->where('updated_at', '<', $cutoff)
-            ->where(function ($q) use ($staffId) {
-                $q->where('staff_id', $staffId)
-                    ->orWhere('responsible_person_id', $staffId);
+            ->when($staffId !== null || ($divisionIds !== null && $divisionIds !== []), function ($q) use ($staffId, $divisionIds) {
+                $q->where(function ($outer) use ($staffId, $divisionIds) {
+                    if ($staffId !== null) {
+                        $outer->where(function ($inner) use ($staffId) {
+                            $inner->where('staff_id', $staffId)
+                                ->orWhere('responsible_person_id', $staffId);
+                        });
+                    }
+                    if ($divisionIds !== null && $divisionIds !== []) {
+                        $outer->orWhereIn('division_id', $divisionIds);
+                    }
+                });
             })
-            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown'])
+            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown', 'staff_id', 'responsible_person_id', 'division_id'])
             ->filter(fn (SpecialMemo $memo) => $this->breakdownTotal($memo->budget_breakdown) > 0)
             ->map(fn (SpecialMemo $memo) => [
                 'type' => 'special_memo',
@@ -141,6 +299,9 @@ class StaleDraftMemosService
                 'document_number' => $memo->document_number,
                 'updated_at' => $memo->updated_at?->toDateTimeString() ?? '',
                 'budget_total' => $this->breakdownTotal($memo->budget_breakdown),
+                'staff_id' => (int) ($memo->staff_id ?? 0),
+                'responsible_person_id' => (int) ($memo->responsible_person_id ?? 0),
+                'division_id' => (int) ($memo->division_id ?? 0),
                 'edit_url' => route('special-memo.edit', $memo->id),
             ])
             ->values()
@@ -150,7 +311,7 @@ class StaleDraftMemosService
     /**
      * @return list<array<string, mixed>>
      */
-    private function staleNonTravelMemos(int $staffId, Carbon $cutoff): array
+    private function staleNonTravelMemos(Carbon $cutoff, ?int $staffId = null, ?array $divisionIds = null): array
     {
         if (! in_array('draft', $this->settings->committedMemoStatuses(), true)) {
             return [];
@@ -159,8 +320,17 @@ class StaleDraftMemosService
         return NonTravelMemo::query()
             ->where('overall_status', 'draft')
             ->where('updated_at', '<', $cutoff)
-            ->where('staff_id', $staffId)
-            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown'])
+            ->when($staffId !== null || ($divisionIds !== null && $divisionIds !== []), function ($q) use ($staffId, $divisionIds) {
+                $q->where(function ($outer) use ($staffId, $divisionIds) {
+                    if ($staffId !== null) {
+                        $outer->where('staff_id', $staffId);
+                    }
+                    if ($divisionIds !== null && $divisionIds !== []) {
+                        $outer->orWhereIn('division_id', $divisionIds);
+                    }
+                });
+            })
+            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown', 'staff_id', 'division_id'])
             ->filter(fn (NonTravelMemo $memo) => $this->breakdownTotal($memo->budget_breakdown) > 0)
             ->map(fn (NonTravelMemo $memo) => [
                 'type' => 'non_travel_memo',
@@ -170,6 +340,9 @@ class StaleDraftMemosService
                 'document_number' => $memo->document_number,
                 'updated_at' => $memo->updated_at?->toDateTimeString() ?? '',
                 'budget_total' => $this->breakdownTotal($memo->budget_breakdown),
+                'staff_id' => (int) ($memo->staff_id ?? 0),
+                'responsible_person_id' => 0,
+                'division_id' => (int) ($memo->division_id ?? 0),
                 'edit_url' => route('non-travel.edit', $memo->id),
             ])
             ->values()
@@ -179,7 +352,7 @@ class StaleDraftMemosService
     /**
      * @return list<array<string, mixed>>
      */
-    private function staleChangeRequests(int $staffId, Carbon $cutoff): array
+    private function staleChangeRequests(Carbon $cutoff, ?int $staffId = null, ?array $divisionIds = null): array
     {
         if (! in_array('draft', $this->settings->committedChangeRequestStatuses(), true)) {
             return [];
@@ -188,11 +361,20 @@ class StaleDraftMemosService
         return ChangeRequest::query()
             ->where('overall_status', 'draft')
             ->where('updated_at', '<', $cutoff)
-            ->where(function ($q) use ($staffId) {
-                $q->where('staff_id', $staffId)
-                    ->orWhere('responsible_person_id', $staffId);
+            ->when($staffId !== null || ($divisionIds !== null && $divisionIds !== []), function ($q) use ($staffId, $divisionIds) {
+                $q->where(function ($outer) use ($staffId, $divisionIds) {
+                    if ($staffId !== null) {
+                        $outer->where(function ($inner) use ($staffId) {
+                            $inner->where('staff_id', $staffId)
+                                ->orWhere('responsible_person_id', $staffId);
+                        });
+                    }
+                    if ($divisionIds !== null && $divisionIds !== []) {
+                        $outer->orWhereIn('division_id', $divisionIds);
+                    }
+                });
             })
-            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown'])
+            ->get(['id', 'activity_title', 'document_number', 'updated_at', 'budget_breakdown', 'staff_id', 'responsible_person_id', 'division_id'])
             ->filter(fn (ChangeRequest $cr) => $this->breakdownTotal($cr->budget_breakdown) > 0)
             ->map(fn (ChangeRequest $cr) => [
                 'type' => 'change_request',
@@ -202,6 +384,9 @@ class StaleDraftMemosService
                 'document_number' => $cr->document_number,
                 'updated_at' => $cr->updated_at?->toDateTimeString() ?? '',
                 'budget_total' => $this->breakdownTotal($cr->budget_breakdown),
+                'staff_id' => (int) ($cr->staff_id ?? 0),
+                'responsible_person_id' => (int) ($cr->responsible_person_id ?? 0),
+                'division_id' => (int) ($cr->division_id ?? 0),
                 'edit_url' => route('change-requests.edit', $cr->id),
             ])
             ->values()

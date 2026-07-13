@@ -26,6 +26,11 @@
     </div>
     <p>Please review the items below. If you no longer need them, delete the drafts to release budget for colleagues.</p>
 
+    @if(!empty($nextWeeklyArchiveRun))
+        <p><strong>Auto-archive:</strong> Stale drafts that remain unacted are archived automatically each Monday.
+        The next weekly archive run is <strong>{{ $nextWeeklyArchiveRun }}</strong>.</p>
+    @endif
+
     @if(!empty($staleDraftItems))
         <table>
             <thead>

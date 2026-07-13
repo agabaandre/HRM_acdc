@@ -151,6 +151,15 @@ class ScheduleServiceProvider extends ServiceProvider
                 Log::error('Stale draft memos reminder failed');
             });
 
+        $schedule->command('memos:archive-stale-drafts')
+            ->weeklyOn(1, '06:00')
+            ->description('Archive stale draft memos holding budget')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Stale draft memos archive failed');
+            });
+
         // Deactivate fund codes from previous years on the first day of each new year
         $schedule->command('fund-codes:deactivate-past-year')
             ->yearlyOn(1, 1, '01:00')
