@@ -238,6 +238,8 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
         ->name('system-configs.index');
     Route::post('/system-configs/stale-memos/archive-all', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveAll'])
         ->name('stale-memos.archive-all');
+    Route::post('/system-configs/stale-memos/unarchive', [App\Http\Controllers\StaleMemoArchivesController::class, 'unarchiveOne'])
+        ->name('stale-memos.unarchive');
 
     Route::get('/stale-drafts', [App\Http\Controllers\StaleMemoArchivesController::class, 'userIndex'])
         ->name('stale-drafts.index');

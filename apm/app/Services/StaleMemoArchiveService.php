@@ -103,7 +103,35 @@ class StaleMemoArchiveService
         return true;
     }
 
-    private function resolveModel(string $type, int $id): Activity|SpecialMemo|NonTravelMemo|ChangeRequest|null
+    /**
+     * Restore a previously archived stale draft (admin / system-configs).
+     */
+    public function unarchiveMemoItem(string $type, int $id, ?string $fallbackStatus = 'draft'): bool
+    {
+        $model = $this->resolveModel($type, $id);
+        if ($model === null) {
+            return false;
+        }
+
+        if ((string) ($model->overall_status ?? '') !== 'archived') {
+            return false;
+        }
+
+        $restored = (string) ($model->previous_overall_status ?: $fallbackStatus ?: 'draft');
+        if ($restored === 'archived') {
+            $restored = 'draft';
+        }
+
+        $model->overall_status = $restored;
+        $model->previous_overall_status = null;
+        $model->save();
+
+        app(FundCodeWorkingBalanceService::class)->bustForArchiveStatusChange($model);
+
+        return true;
+    }
+
+    public function resolveModel(string $type, int $id): Activity|SpecialMemo|NonTravelMemo|ChangeRequest|null
     {
         return match ($type) {
             'activity', 'single_memo' => Activity::query()->find($id),
