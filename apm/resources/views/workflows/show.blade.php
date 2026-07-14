@@ -22,6 +22,26 @@
 .workflow-show-definition-actions .btn i {
     font-size: 0.85rem;
 }
+.workflow-flowchart-pane {
+    min-height: 280px;
+    background: #f8fafc;
+}
+.workflow-flowchart-pane .mermaid {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 1rem 0.5rem;
+}
+.workflow-flowchart-legend .badge {
+    font-weight: 500;
+}
+.workflow-definitions-tabs .nav-link {
+    color: #495057;
+}
+.workflow-definitions-tabs .nav-link.active {
+    color: #119a48;
+    font-weight: 600;
+}
 </style>
 <div class="card shadow-sm">
     <div class="card-header bg-light">
@@ -140,116 +160,180 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Approval Order</th>
-                                <th>Role</th>
-                                <th>Fund Type</th>
-                                <th>Divisions</th>
-                                <th>Allowed Funders</th>
-                                <th>Division Specific</th>
-                                <th>Print Order</th>
-                                <th>Status</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($workflowDefinitions->sortBy('approval_order') as $definition)
-                                <tr>
-                                    <td>{{ $definition->approval_order }}</td>
-                                    <td>{{ $definition->role }}</td>
-                                    <td>
-                                        @if($definition->fund_type)
-                                            @php
-                                                $fundType = \App\Models\FundType::find($definition->fund_type);
-                                            @endphp
-                                            <span class="badge bg-info">{{ $fundType ? $fundType->name : 'N/A' }}</span>
-                                        @else
-                                            <span class="badge bg-secondary">Not Set</span>
-                                        @endif
-                                    </td>
-                                    <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
-                                        @php
-                                            $definitionDivisions = is_array($definition->divisions) ? $definition->divisions : (is_string($definition->divisions) ? json_decode($definition->divisions, true) : []);
-                                            $definitionDivisions = $definitionDivisions ?: [];
-                                        @endphp
-                                        @if(!empty($definitionDivisions))
-                                            @foreach($definitionDivisions as $divId)
-                                                @if(isset($divisions[$divId]))
-                                                    <span class="badge bg-secondary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $divisions[$divId]->division_name }}</span>
+                <ul class="nav nav-tabs workflow-definitions-tabs px-3 pt-3" id="workflowDefinitionsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link active"
+                            id="workflow-table-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#workflow-table-pane"
+                            type="button"
+                            role="tab"
+                            aria-controls="workflow-table-pane"
+                            aria-selected="true"
+                        >
+                            <i class="bx bx-table me-1"></i>Table
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link"
+                            id="workflow-flowchart-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#workflow-flowchart-pane"
+                            type="button"
+                            role="tab"
+                            aria-controls="workflow-flowchart-pane"
+                            aria-selected="false"
+                        >
+                            <i class="bx bx-git-branch me-1"></i>Flowchart
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div
+                        class="tab-pane fade show active"
+                        id="workflow-table-pane"
+                        role="tabpanel"
+                        aria-labelledby="workflow-table-tab"
+                        tabindex="0"
+                    >
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Approval Order</th>
+                                        <th>Role</th>
+                                        <th>Fund Type</th>
+                                        <th>Divisions</th>
+                                        <th>Allowed Funders</th>
+                                        <th>Division Specific</th>
+                                        <th>Print Order</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($workflowDefinitions->sortBy('approval_order') as $definition)
+                                        <tr>
+                                            <td>{{ $definition->approval_order }}</td>
+                                            <td>{{ $definition->role }}</td>
+                                            <td>
+                                                @if($definition->fund_type)
+                                                    @php
+                                                        $fundType = ($fundTypes ?? collect())->get($definition->fund_type)
+                                                            ?? \App\Models\FundType::find($definition->fund_type);
+                                                    @endphp
+                                                    <span class="badge bg-info">{{ $fundType ? $fundType->name : 'N/A' }}</span>
+                                                @else
+                                                    <span class="badge bg-secondary">Not Set</span>
                                                 @endif
-                                            @endforeach
-                                        @else
-                                            <span class="text-muted">All Divisions</span>
-                                        @endif
-                                    </td>
-                                    <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
-                                        @php
-                                            $definitionFunders = is_array($definition->allowed_funders) ? $definition->allowed_funders : (is_string($definition->allowed_funders) ? json_decode($definition->allowed_funders, true) : []);
-                                            $definitionFunders = $definitionFunders ?: [];
-                                        @endphp
-                                        @if(!empty($definitionFunders))
-                                            @foreach($definitionFunders as $funderId)
-                                                @php $funderId = (int) $funderId; @endphp
-                                                @if(isset($funders[$funderId]))
-                                                    <span class="badge bg-primary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $funders[$funderId]->name }}</span>
+                                            </td>
+                                            <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                                @php
+                                                    $definitionDivisions = is_array($definition->divisions) ? $definition->divisions : (is_string($definition->divisions) ? json_decode($definition->divisions, true) : []);
+                                                    $definitionDivisions = $definitionDivisions ?: [];
+                                                @endphp
+                                                @if(!empty($definitionDivisions))
+                                                    @foreach($definitionDivisions as $divId)
+                                                        @if(isset($divisions[$divId]))
+                                                            <span class="badge bg-secondary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $divisions[$divId]->division_name }}</span>
+                                                        @endif
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted">All Divisions</span>
                                                 @endif
-                                            @endforeach
-                                        @else
-                                            <span class="text-muted">All Funders</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($definition->is_division_specific)
-                                            <span class="badge bg-warning">Yes</span>
-                                        @else
-                                            <span class="badge bg-secondary">No</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $definition->print_order ?? 'N/A' }}</td>
-                                    <td>
-                                        @if($definition->is_enabled)
-                                            <span class="badge bg-success">Enabled</span>
-                                        @else
-                                            <span class="badge bg-danger">Disabled</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="btn-group workflow-show-definition-actions" role="group">
-                                            <a href="{{ route('workflows.edit-definition', [$workflow->id, $definition->id]) }}" 
-                                               class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit Definition">
-                                                <i class="bx bx-edit me-1"></i>Edit
-                                            </a>
-                                            <form action="{{ route('workflows.copy-definition', [$workflow->id, $definition->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Copy this definition as a new one? Approvers and conditions will be copied.');">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Copy as new definition">
-                                                    <i class="bx bx-copy me-1"></i>Copy
-                                                </button>
-                                            </form>
-                                            <button type="button" class="btn btn-sm btn-danger delete-definition-btn" 
-                                                    data-bs-toggle="tooltip" title="Delete Definition"
-                                                    data-definition-id="{{ $definition->id }}"
-                                                    data-definition-role="{{ $definition->role }}"
-                                                    data-definition-approval-order="{{ $definition->approval_order }}">
-                                                <i class="bx bx-trash me-1"></i>Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="9" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="bx bx-list-x fs-1"></i>
-                                            <p class="mt-2">No workflow definitions found</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                                            </td>
+                                            <td style="max-width: 200px; word-wrap: break-word; word-break: break-word; white-space: normal; overflow-wrap: break-word;">
+                                                @php
+                                                    $definitionFunders = is_array($definition->allowed_funders) ? $definition->allowed_funders : (is_string($definition->allowed_funders) ? json_decode($definition->allowed_funders, true) : []);
+                                                    $definitionFunders = $definitionFunders ?: [];
+                                                @endphp
+                                                @if(!empty($definitionFunders))
+                                                    @foreach($definitionFunders as $funderId)
+                                                        @php $funderId = (int) $funderId; @endphp
+                                                        @if(isset($funders[$funderId]))
+                                                            <span class="badge bg-primary mb-1" style="display: inline-block; word-wrap: break-word; white-space: normal;">{{ $funders[$funderId]->name }}</span>
+                                                        @endif
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted">All Funders</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($definition->is_division_specific)
+                                                    <span class="badge bg-warning">Yes</span>
+                                                @else
+                                                    <span class="badge bg-secondary">No</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $definition->print_order ?? 'N/A' }}</td>
+                                            <td>
+                                                @if($definition->is_enabled)
+                                                    <span class="badge bg-success">Enabled</span>
+                                                @else
+                                                    <span class="badge bg-danger">Disabled</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="btn-group workflow-show-definition-actions" role="group">
+                                                    <a href="{{ route('workflows.edit-definition', [$workflow->id, $definition->id]) }}"
+                                                       class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Edit Definition">
+                                                        <i class="bx bx-edit me-1"></i>Edit
+                                                    </a>
+                                                    <form action="{{ route('workflows.copy-definition', [$workflow->id, $definition->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Copy this definition as a new one? Approvers and conditions will be copied.');">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Copy as new definition">
+                                                            <i class="bx bx-copy me-1"></i>Copy
+                                                        </button>
+                                                    </form>
+                                                    <button type="button" class="btn btn-sm btn-danger delete-definition-btn"
+                                                            data-bs-toggle="tooltip" title="Delete Definition"
+                                                            data-definition-id="{{ $definition->id }}"
+                                                            data-definition-role="{{ $definition->role }}"
+                                                            data-definition-approval-order="{{ $definition->approval_order }}">
+                                                        <i class="bx bx-trash me-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="text-center py-4">
+                                                <div class="text-muted">
+                                                    <i class="bx bx-list-x fs-1"></i>
+                                                    <p class="mt-2">No workflow definitions found</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div
+                        class="tab-pane fade"
+                        id="workflow-flowchart-pane"
+                        role="tabpanel"
+                        aria-labelledby="workflow-flowchart-tab"
+                        tabindex="0"
+                    >
+                        <div class="px-3 pt-3 workflow-flowchart-legend d-flex flex-wrap gap-2">
+                            <span class="badge bg-success">Enabled step</span>
+                            <span class="badge bg-danger">Disabled step</span>
+                            <span class="badge bg-secondary">Start / End</span>
+                            <span class="text-muted small align-self-center">Ordered by approval_order (top → bottom)</span>
+                        </div>
+                        <div class="workflow-flowchart-pane p-3">
+                            <div id="workflow-mermaid-mount" class="mermaid">Loading flowchart…</div>
+                            <div id="workflow-mermaid-empty" class="text-center text-muted py-5 d-none">
+                                <i class="bx bx-git-branch fs-1"></i>
+                                <p class="mt-2 mb-0">No workflow definitions to chart</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -301,7 +385,9 @@
 @push('scripts')
 <script>
     window.workflowDefinitionsList = @json($workflowDefinitions->sortBy('approval_order')->map(function($d) { return ['id' => $d->id, 'role' => $d->role, 'approval_order' => $d->approval_order]; })->values());
+    window.workflowFlowchartSteps = @json($flowchartSteps ?? []);
 </script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
     $(document).ready(function() {
         console.log('Workflow show page loaded');
@@ -310,6 +396,118 @@
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        function escapeMermaidLabel(text) {
+            return String(text || '')
+                .replace(/\\/g, '/')
+                .replace(/"/g, "'")
+                .replace(/[\[\]]/g, '')
+                .replace(/\r?\n/g, ' ');
+        }
+
+        function buildMermaidSource(steps) {
+            var lines = [
+                'flowchart TD',
+                '  START(["Submitted"])',
+                '  ENDNODE(["Approved"])',
+                '  classDef enabled fill:#d1e7dd,stroke:#198754,color:#0f5132,stroke-width:1.5px',
+                '  classDef disabled fill:#f8d7da,stroke:#dc3545,color:#842029,stroke-width:1.5px,stroke-dasharray: 5 4',
+                '  classDef terminal fill:#e2e3e5,stroke:#6c757d,color:#41464b,stroke-width:1.5px',
+                '  class START,ENDNODE terminal'
+            ];
+
+            if (!steps.length) {
+                lines.push('  START --> ENDNODE');
+                return lines.join('\n');
+            }
+
+            steps.forEach(function (step, index) {
+                var nodeId = 'S' + String(step.id || index);
+                var status = step.is_enabled ? 'Enabled' : 'Disabled';
+                var parts = [
+                    '#' + step.approval_order + ' ' + escapeMermaidLabel(step.role),
+                    'Fund: ' + escapeMermaidLabel(step.fund_type),
+                    status
+                ];
+                if (step.is_division_specific) {
+                    parts.push('Division-specific');
+                }
+                var label = parts.join('<br/>');
+                lines.push('  ' + nodeId + '["' + label + '"]');
+                lines.push('  class ' + nodeId + ' ' + (step.is_enabled ? 'enabled' : 'disabled'));
+            });
+
+            lines.push('  START --> S' + String(steps[0].id || 0));
+            for (var i = 0; i < steps.length - 1; i++) {
+                var fromId = 'S' + String(steps[i].id || i);
+                var toId = 'S' + String(steps[i + 1].id || (i + 1));
+                lines.push('  ' + fromId + ' --> ' + toId);
+            }
+            lines.push('  S' + String(steps[steps.length - 1].id || (steps.length - 1)) + ' --> ENDNODE');
+
+            return lines.join('\n');
+        }
+
+        var flowchartRendered = false;
+        async function renderWorkflowFlowchart() {
+            if (flowchartRendered) {
+                return;
+            }
+
+            var steps = window.workflowFlowchartSteps || [];
+            var mount = document.getElementById('workflow-mermaid-mount');
+            var empty = document.getElementById('workflow-mermaid-empty');
+            if (!mount) {
+                return;
+            }
+
+            if (!steps.length) {
+                mount.classList.add('d-none');
+                if (empty) {
+                    empty.classList.remove('d-none');
+                }
+                flowchartRendered = true;
+                return;
+            }
+
+            if (typeof mermaid === 'undefined') {
+                mount.textContent = 'Mermaid library failed to load.';
+                return;
+            }
+
+            mermaid.initialize({
+                startOnLoad: false,
+                securityLevel: 'loose',
+                theme: 'base',
+                themeVariables: {
+                    fontFamily: 'inherit',
+                    fontSize: '14px',
+                },
+                flowchart: {
+                    htmlLabels: true,
+                    curve: 'basis',
+                    padding: 12,
+                    nodeSpacing: 28,
+                    rankSpacing: 40,
+                },
+            });
+
+            var source = buildMermaidSource(steps);
+            mount.removeAttribute('data-processed');
+            mount.textContent = source;
+
+            try {
+                await mermaid.run({ nodes: [mount] });
+                flowchartRendered = true;
+            } catch (err) {
+                console.error('Mermaid render failed', err);
+                mount.textContent = 'Could not render flowchart.';
+            }
+        }
+
+        document.getElementById('workflow-flowchart-tab')?.addEventListener('shown.bs.tab', function () {
+            renderWorkflowFlowchart();
         });
 
         // Handle workflow definition delete buttons

@@ -71,8 +71,32 @@ class WorkflowController extends Controller
 
         $divisions = \App\Models\Division::orderBy('division_name')->get()->keyBy('id');
         $funders = \App\Models\Funder::orderBy('name')->get()->keyBy('id');
+        $fundTypes = \App\Models\FundType::orderBy('name')->get()->keyBy('id');
 
-        return view('workflows.show', compact('workflow', 'workflowDefinitions', 'divisions', 'funders'));
+        $flowchartSteps = $workflowDefinitions->sortBy('approval_order')->values()->map(function (WorkflowDefinition $definition) use ($fundTypes) {
+            $fundTypeId = (int) ($definition->fund_type ?? 0);
+            $fundTypeName = $fundTypeId > 0 && isset($fundTypes[$fundTypeId])
+                ? (string) $fundTypes[$fundTypeId]->name
+                : 'Not set';
+
+            return [
+                'id' => (int) $definition->id,
+                'approval_order' => (int) $definition->approval_order,
+                'role' => (string) ($definition->role ?? 'Untitled role'),
+                'fund_type' => $fundTypeName,
+                'is_enabled' => (bool) $definition->is_enabled,
+                'is_division_specific' => (bool) $definition->is_division_specific,
+            ];
+        })->all();
+
+        return view('workflows.show', compact(
+            'workflow',
+            'workflowDefinitions',
+            'divisions',
+            'funders',
+            'fundTypes',
+            'flowchartSteps'
+        ));
     }
 
     /**
