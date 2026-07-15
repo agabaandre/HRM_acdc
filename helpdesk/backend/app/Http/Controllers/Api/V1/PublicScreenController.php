@@ -49,6 +49,7 @@ class PublicScreenController extends Controller
                 'wait' => $this->waitMetrics($now, $firstResponse),
                 'sla' => $this->slaMetrics($sevenDaysAgo, $now),
                 'by_priority' => $this->byPriority(),
+                'priority_matrix_by_group' => $leaderboard->priorityMatrixBySupportGroup($now),
                 'by_category' => $this->byCategory(),
                 'by_duty_station' => $this->byDutyStation($now, $startOfWeek, $directory),
                 'closures_by_agent_month' => $this->closuresByAgentThisMonth($startOfMonth, $now),

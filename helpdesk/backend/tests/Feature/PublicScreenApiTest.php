@@ -461,4 +461,108 @@ class PublicScreenApiTest extends TestCase
         $response->assertJsonPath('data.agent_of_week.agent.tickets_worked', 2);
         $response->assertJsonPath('data.agent_of_month.agent.name', $slowAgent->name);
     }
+
+    public function test_screen_includes_agent_of_week_per_support_group(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $infraAgent = $this->helpdeskUser(99601, HelpdeskProfile::ROLE_AGENT);
+        $appsAgent = $this->helpdeskUser(99602, HelpdeskProfile::ROLE_AGENT);
+
+        $infraGroup = \App\Models\HelpdeskSupportGroup::query()->create([
+            'name' => 'Infrastructure',
+            'slug' => 'infrastructure',
+            'sort_order' => 1,
+            'is_active' => true,
+            'is_system' => false,
+        ]);
+        $infraGroup->members()->sync([$infraAgent->id]);
+
+        $appsGroup = \App\Models\HelpdeskSupportGroup::query()->create([
+            'name' => 'Applications',
+            'slug' => 'applications',
+            'sort_order' => 2,
+            'is_active' => true,
+            'is_system' => false,
+        ]);
+        $appsGroup->members()->sync([$appsAgent->id]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009950',
+            'category_id' => $cat->id,
+            'subject' => 'Server down',
+            'description' => 'Outage',
+            'priority' => 'high',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 99699,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_group_id' => $infraGroup->id,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009951',
+            'category_id' => $cat->id,
+            'subject' => 'VPN',
+            'description' => 'Fixed',
+            'priority' => 'medium',
+            'status' => 'resolved',
+            'source' => 'web',
+            'requester_staff_id' => 99699,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $infraAgent->id,
+            'assigned_group_id' => $infraGroup->id,
+            'resolved_by_user_id' => $infraAgent->id,
+            'first_response_at' => now()->subMinutes(10),
+            'resolved_at' => now(),
+            'created_at' => now()->subMinutes(15),
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009952',
+            'category_id' => $cat->id,
+            'subject' => 'App bug',
+            'description' => 'Crash',
+            'priority' => 'low',
+            'status' => 'resolved',
+            'source' => 'web',
+            'requester_staff_id' => 99699,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $appsAgent->id,
+            'assigned_group_id' => $appsGroup->id,
+            'resolved_by_user_id' => $appsAgent->id,
+            'first_response_at' => now()->subMinutes(5),
+            'resolved_at' => now(),
+            'created_at' => now()->subMinutes(8),
+        ]);
+
+        $response = $this->getJson('/api/v1/public/screen');
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'data' => [
+                'priority_matrix_by_group' => [
+                    '*' => [
+                        'group' => ['id', 'name', 'slug'],
+                        'by_priority' => ['urgent', 'high', 'medium', 'low'],
+                        'agent_of_week' => ['period_label', 'weights', 'agent'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $matrix = collect($response->json('data.priority_matrix_by_group'));
+        $infraRow = $matrix->firstWhere('group.slug', 'infrastructure');
+        $appsRow = $matrix->firstWhere('group.slug', 'applications');
+
+        $this->assertNotNull($infraRow);
+        $this->assertNotNull($appsRow);
+        $this->assertSame(1, $infraRow['by_priority']['high']);
+        $this->assertSame($infraAgent->name, $infraRow['agent_of_week']['agent']['name']);
+        $this->assertSame($appsAgent->name, $appsRow['agent_of_week']['agent']['name']);
+    }
 }
