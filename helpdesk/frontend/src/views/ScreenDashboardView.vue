@@ -78,12 +78,23 @@ interface AgentLeaderboard {
   weights: { tickets: number; response: number }
   agent: AgentLeaderboardAgent | null
 }
+interface SupportGroupRef {
+  id: number
+  name: string
+  slug: string
+}
+interface PriorityMatrixByGroupRow {
+  group: SupportGroupRef
+  by_priority: { urgent: number; high: number; medium: number; low: number }
+  agent_of_week: AgentLeaderboard
+}
 interface ScreenData {
   generated_at: string
   volumes: Volumes
   wait: Wait
   sla: Sla
   by_priority: { urgent: number; high: number; medium: number; low: number }
+  priority_matrix_by_group: PriorityMatrixByGroupRow[]
   by_category: CategoryRow[]
   by_duty_station: DutyStationRow[]
   closures_by_agent_month: AgentClosureRow[]
@@ -117,6 +128,10 @@ async function fetchScreen(): Promise<void> {
     lastFetchedAt.value = Date.now()
     consecutiveErrors.value = 0
     isStale.value = false
+    if (groupAgentSlideIndex.value >= (payload.data.priority_matrix_by_group?.length ?? 0)) {
+      groupAgentSlideIndex.value = 0
+    }
+    restartGroupAgentSlider()
   } catch (e) {
     consecutiveErrors.value += 1
   }
@@ -153,6 +168,44 @@ const priorityBars = computed(() => {
     { key: 'low', label: 'Low', color: '#64748b', count: p.low, pct: (p.low / total) * 100 },
   ]
 })
+
+const priorityMatrixByGroup = computed(() => data.value?.priority_matrix_by_group ?? [])
+const groupAgentSlideIndex = ref(0)
+let groupAgentSlideTimer: number | undefined
+
+const GROUP_AGENT_SLIDE_MS = 6000
+
+const activeGroupAgentSlide = computed(() => {
+  const rows = priorityMatrixByGroup.value
+  if (!rows.length) return null
+  const idx = groupAgentSlideIndex.value % rows.length
+  return rows[idx] ?? null
+})
+
+function groupActiveTotal(row: PriorityMatrixByGroupRow): number {
+  const p = row.by_priority
+  return p.urgent + p.high + p.medium + p.low
+}
+
+function goToGroupAgentSlide(index: number): void {
+  const len = priorityMatrixByGroup.value.length
+  if (len < 1) return
+  groupAgentSlideIndex.value = ((index % len) + len) % len
+}
+
+function advanceGroupAgentSlide(): void {
+  const len = priorityMatrixByGroup.value.length
+  if (len < 2) return
+  groupAgentSlideIndex.value = (groupAgentSlideIndex.value + 1) % len
+}
+
+function restartGroupAgentSlider(): void {
+  if (groupAgentSlideTimer) window.clearInterval(groupAgentSlideTimer)
+  groupAgentSlideTimer = undefined
+  const len = priorityMatrixByGroup.value.length
+  if (len < 2) return
+  groupAgentSlideTimer = window.setInterval(advanceGroupAgentSlide, GROUP_AGENT_SLIDE_MS)
+}
 
 const trendMaxValue = computed(() => {
   const t = data.value?.trend ?? []
@@ -199,19 +252,6 @@ const inProgressAgentsDuration = computed(() => {
   const count = inProgressAgents.value.length
   if (count < 1) return '0s'
   return `${Math.max(28, count * 4)}s`
-})
-
-const statusPipeline = computed(() => {
-  const v = data.value?.volumes
-  if (!v) return []
-  const items = [
-    { key: 'open', label: 'Open', count: v.open, color: '#2563eb' },
-    { key: 'pending', label: 'Pending', count: v.pending, color: '#4f46e5' },
-    { key: 'in_progress', label: 'In progress', count: v.in_progress, color: '#7c3aed' },
-    { key: 'awaiting', label: 'Awaiting confirm', count: v.awaiting_confirm, color: '#b45309' },
-  ]
-  const total = items.reduce((sum, item) => sum + item.count, 0) || 1
-  return items.map((item) => ({ ...item, pct: (item.count / total) * 100 }))
 })
 
 const lastUpdatedLabel = computed(() => {
@@ -292,6 +332,7 @@ onUnmounted(() => {
   if (pollTimer) window.clearInterval(pollTimer)
   if (clockTimer) window.clearInterval(clockTimer)
   if (staleTimer) window.clearInterval(staleTimer)
+  if (groupAgentSlideTimer) window.clearInterval(groupAgentSlideTimer)
   document.documentElement.classList.remove('screen-mode')
   document.body.classList.remove('screen-mode')
 })
@@ -417,30 +458,82 @@ onUnmounted(() => {
         </article>
       </section>
 
-      <!-- Queue status pipeline -->
-      <section class="card status-pipeline-card">
+      <!-- Agent of the week by support group (replaces queue breakdown) -->
+      <section class="card status-pipeline-card group-agent-slider-card">
         <header class="card-head">
-          <h2>Queue breakdown</h2>
-          <span class="card-sub">{{ data.volumes.total_active }} active</span>
+          <h2>Agent of the week by support group</h2>
+          <span class="card-sub">
+            {{ priorityMatrixByGroup.length }} group{{ priorityMatrixByGroup.length === 1 ? '' : 's' }}
+          </span>
         </header>
-        <div class="status-pipeline">
-          <div class="status-pipeline-bar" role="img" :aria-label="`Queue: ${statusPipeline.map((s) => `${s.count} ${s.label}`).join(', ')}`">
-            <span
-              v-for="seg in statusPipeline"
-              :key="seg.key"
-              class="status-seg"
-              :style="{ width: seg.pct + '%', background: seg.color }"
-              :title="`${seg.label}: ${seg.count}`"
+        <div v-if="activeGroupAgentSlide" class="group-agent-slider">
+          <Transition name="group-slide" mode="out-in">
+            <article
+              :key="activeGroupAgentSlide.group.id"
+              class="group-agent-slide"
+            >
+              <div class="group-agent-slide-main">
+                <div class="group-agent-slide-identity">
+                  <p class="group-agent-slide-group">{{ activeGroupAgentSlide.group.name }}</p>
+                  <template v-if="activeGroupAgentSlide.agent_of_week?.agent">
+                    <div class="group-agent-slide-row">
+                      <CbpAvatar
+                        :name="activeGroupAgentSlide.agent_of_week.agent.name"
+                        :image-url="activeGroupAgentSlide.agent_of_week.agent.avatar_url ?? null"
+                        size="lg"
+                      />
+                      <div class="group-agent-slide-meta">
+                        <p class="group-agent-slide-name">{{ activeGroupAgentSlide.agent_of_week.agent.name }}</p>
+                        <p class="group-agent-slide-stats">
+                          {{ activeGroupAgentSlide.agent_of_week.agent.tickets_worked }} tickets worked
+                          <span class="dot">·</span>
+                          {{ fmtMinutes(activeGroupAgentSlide.agent_of_week.agent.avg_response_minutes) }} avg response
+                        </p>
+                      </div>
+                    </div>
+                  </template>
+                  <p v-else class="group-agent-slide-empty">No qualifying activity this week</p>
+                </div>
+                <div class="group-agent-slide-priority" aria-label="Active tickets by priority">
+                  <div class="group-agent-prio-item">
+                    <span class="group-agent-prio-label">Active</span>
+                    <strong class="group-agent-prio-value">{{ groupActiveTotal(activeGroupAgentSlide) }}</strong>
+                  </div>
+                  <div class="group-agent-prio-item urgent">
+                    <span class="group-agent-prio-label">Urgent</span>
+                    <strong class="group-agent-prio-value">{{ activeGroupAgentSlide.by_priority.urgent }}</strong>
+                  </div>
+                  <div class="group-agent-prio-item high">
+                    <span class="group-agent-prio-label">High</span>
+                    <strong class="group-agent-prio-value">{{ activeGroupAgentSlide.by_priority.high }}</strong>
+                  </div>
+                  <div class="group-agent-prio-item medium">
+                    <span class="group-agent-prio-label">Medium</span>
+                    <strong class="group-agent-prio-value">{{ activeGroupAgentSlide.by_priority.medium }}</strong>
+                  </div>
+                  <div class="group-agent-prio-item low">
+                    <span class="group-agent-prio-label">Low</span>
+                    <strong class="group-agent-prio-value">{{ activeGroupAgentSlide.by_priority.low }}</strong>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </Transition>
+          <div v-if="priorityMatrixByGroup.length > 1" class="group-agent-dots" role="tablist" aria-label="Support groups">
+            <button
+              v-for="(row, index) in priorityMatrixByGroup"
+              :key="row.group.id"
+              type="button"
+              class="group-agent-dot"
+              :class="{ active: index === groupAgentSlideIndex }"
+              :aria-label="row.group.name"
+              :aria-selected="index === groupAgentSlideIndex"
+              role="tab"
+              @click="goToGroupAgentSlide(index); restartGroupAgentSlider()"
             />
           </div>
-          <ul class="status-legend">
-            <li v-for="seg in statusPipeline" :key="seg.key" class="status-legend-item">
-              <span class="status-swatch" :style="{ background: seg.color }" />
-              <span class="status-legend-label">{{ seg.label }}</span>
-              <strong class="status-legend-count">{{ seg.count }}</strong>
-            </li>
-          </ul>
         </div>
+        <p v-else class="muted">No active support groups configured.</p>
       </section>
 
       <!-- Wait times -->
@@ -1023,61 +1116,139 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
 }
 .kpi-sub .dot { color: #475569; }
 
-/* Queue status pipeline */
-.status-pipeline {
+/* Agent of the week by support group slider */
+.group-agent-slider {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
 }
-.status-pipeline-bar {
-  display: flex;
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(148, 163, 184, 0.12);
-}
-.status-seg {
-  display: block;
-  height: 100%;
-  min-width: 2px;
-  transition: width 0.6s ease;
-}
-.status-legend {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-@media (max-width: 640px) {
-  .status-legend {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.status-legend-item {
+.group-agent-slide-main {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--ink-muted);
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.group-agent-slide-identity {
+  min-width: 0;
+  flex: 1 1 280px;
+}
+.group-agent-slide-group {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+.group-agent-slide-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
   min-width: 0;
 }
-.status-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 2px;
-  flex-shrink: 0;
+.group-agent-slide-meta {
+  min-width: 0;
 }
-.status-legend-label {
+.group-agent-slide-name {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.15;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.status-legend-count {
-  margin-left: auto;
-  color: var(--ink);
+.group-agent-slide-stats {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.group-agent-slide-stats .dot { color: #475569; }
+.group-agent-slide-empty {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-faint);
+}
+.group-agent-slide-priority {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  flex: 0 1 auto;
+}
+.group-agent-prio-item {
+  min-width: 4.2rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--tile-border);
+  border-radius: 4px;
+  text-align: center;
+}
+.group-agent-prio-item.urgent { border-color: rgba(239, 68, 68, 0.45); }
+.group-agent-prio-item.high { border-color: rgba(249, 115, 22, 0.45); }
+.group-agent-prio-item.medium { border-color: rgba(59, 130, 246, 0.45); }
+.group-agent-prio-item.low { border-color: rgba(100, 116, 139, 0.45); }
+.group-agent-prio-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.group-agent-prio-value {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
   font-variant-numeric: tabular-nums;
+}
+.group-agent-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.group-agent-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.group-agent-dot.active {
+  background: #fbbf24;
+  transform: scale(1.25);
+}
+.group-slide-enter-active,
+.group-slide-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.group-slide-enter-from {
+  opacity: 0;
+  transform: translateX(18px);
+}
+.group-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-18px);
+}
+.screen.theme-light .group-agent-slide-name,
+.screen.theme-light .group-agent-prio-value {
+  color: #0f172a;
+}
+.screen.theme-light .group-agent-prio-item {
+  background: rgba(255, 255, 255, 0.7);
 }
 
 /* Cards */
@@ -1566,7 +1737,6 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wait-row { grid-template-columns: 1fr; }
   .priority-grid { grid-template-columns: 1fr; }
-  .status-legend { grid-template-columns: 1fr 1fr; }
   .duty-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1582,6 +1752,5 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
 
 @media (max-width: 380px) {
   .kpis { grid-template-columns: 1fr; }
-  .status-legend { grid-template-columns: 1fr; }
 }
 </style>
