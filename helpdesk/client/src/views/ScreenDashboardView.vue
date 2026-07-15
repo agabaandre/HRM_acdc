@@ -88,6 +88,12 @@ interface PriorityMatrixByGroupRow {
   by_priority: { urgent: number; high: number; medium: number; low: number }
   agent_of_week: AgentLeaderboard
 }
+interface ScreenConfig {
+  duty_station_items_per_page: number
+  category_items_per_page: number
+  list_slider_interval_seconds: number
+  support_group_slider_interval_seconds: number
+}
 interface ScreenData {
   generated_at: string
   volumes: Volumes
@@ -103,6 +109,7 @@ interface ScreenData {
   trend: TrendDay[]
   agent_of_week: AgentLeaderboard
   agent_of_month: AgentLeaderboard
+  screen: ScreenConfig
   csat: { avg_score: number | null; responses: number; note?: string }
 }
 
@@ -120,9 +127,16 @@ let staleTimer: number | undefined
 const REFRESH_INTERVAL_MS = 15000
 const STALE_THRESHOLD_MS = 60000
 const THEME_STORAGE_KEY = 'helpdesk.screen.theme'
-const LIST_SLIDER_THRESHOLD = 6
-const LIST_SLIDER_PAGE_SIZE = 6
-const LIST_SLIDER_MS = 5000
+
+const screenConfig = computed<ScreenConfig>(() => ({
+  duty_station_items_per_page: Math.max(1, data.value?.screen?.duty_station_items_per_page ?? 3),
+  category_items_per_page: Math.max(1, data.value?.screen?.category_items_per_page ?? 3),
+  list_slider_interval_seconds: Math.max(2, data.value?.screen?.list_slider_interval_seconds ?? 5),
+  support_group_slider_interval_seconds: Math.max(2, data.value?.screen?.support_group_slider_interval_seconds ?? 6),
+}))
+
+const listSliderIntervalMs = computed(() => screenConfig.value.list_slider_interval_seconds * 1000)
+const supportGroupSliderIntervalMs = computed(() => screenConfig.value.support_group_slider_interval_seconds * 1000)
 
 function chunkList<T>(items: T[], pageSize: number): T[][] {
   if (items.length === 0) return []
@@ -143,9 +157,11 @@ async function fetchScreen(): Promise<void> {
     if (groupAgentSlideIndex.value >= (payload.data.priority_matrix_by_group?.length ?? 0)) {
       groupAgentSlideIndex.value = 0
     }
-    const dutyPages = chunkList(payload.data.by_duty_station ?? [], LIST_SLIDER_PAGE_SIZE)
+    const dutyPageSize = Math.max(1, payload.data.screen?.duty_station_items_per_page ?? 3)
+    const categoryPageSize = Math.max(1, payload.data.screen?.category_items_per_page ?? 3)
+    const dutyPages = chunkList(payload.data.by_duty_station ?? [], dutyPageSize)
     if (dutySlideIndex.value >= dutyPages.length) dutySlideIndex.value = 0
-    const categoryPagesCount = chunkList(payload.data.by_category ?? [], LIST_SLIDER_PAGE_SIZE).length
+    const categoryPagesCount = chunkList(payload.data.by_category ?? [], categoryPageSize).length
     if (categorySlideIndex.value >= categoryPagesCount) categorySlideIndex.value = 0
     restartGroupAgentSlider()
     restartDutyStationSlider()
@@ -191,8 +207,6 @@ const priorityMatrixByGroup = computed(() => data.value?.priority_matrix_by_grou
 const groupAgentSlideIndex = ref(0)
 let groupAgentSlideTimer: number | undefined
 
-const GROUP_AGENT_SLIDE_MS = 6000
-
 const activeGroupAgentSlide = computed(() => {
   const rows = priorityMatrixByGroup.value
   if (!rows.length) return null
@@ -222,12 +236,13 @@ function restartGroupAgentSlider(): void {
   groupAgentSlideTimer = undefined
   const len = priorityMatrixByGroup.value.length
   if (len < 2) return
-  groupAgentSlideTimer = window.setInterval(advanceGroupAgentSlide, GROUP_AGENT_SLIDE_MS)
+  groupAgentSlideTimer = window.setInterval(advanceGroupAgentSlide, supportGroupSliderIntervalMs.value)
 }
 
 const dutyStations = computed(() => data.value?.by_duty_station ?? [])
-const dutyStationUsesSlider = computed(() => dutyStations.value.length > LIST_SLIDER_THRESHOLD)
-const dutyStationPages = computed(() => chunkList(dutyStations.value, LIST_SLIDER_PAGE_SIZE))
+const dutyStationPageSize = computed(() => screenConfig.value.duty_station_items_per_page)
+const dutyStationUsesSlider = computed(() => dutyStations.value.length > dutyStationPageSize.value)
+const dutyStationPages = computed(() => chunkList(dutyStations.value, dutyStationPageSize.value))
 const dutySlideIndex = ref(0)
 let dutySlideTimer: number | undefined
 
@@ -249,12 +264,13 @@ function restartDutyStationSlider(): void {
   if (dutySlideTimer) window.clearInterval(dutySlideTimer)
   dutySlideTimer = undefined
   if (!dutyStationUsesSlider.value || dutyStationPages.value.length < 2) return
-  dutySlideTimer = window.setInterval(advanceDutySlide, LIST_SLIDER_MS)
+  dutySlideTimer = window.setInterval(advanceDutySlide, listSliderIntervalMs.value)
 }
 
 const categories = computed(() => data.value?.by_category ?? [])
-const categoryUsesSlider = computed(() => categories.value.length > LIST_SLIDER_THRESHOLD)
-const categoryPages = computed(() => chunkList(categories.value, LIST_SLIDER_PAGE_SIZE))
+const categoryPageSize = computed(() => screenConfig.value.category_items_per_page)
+const categoryUsesSlider = computed(() => categories.value.length > categoryPageSize.value)
+const categoryPages = computed(() => chunkList(categories.value, categoryPageSize.value))
 const categorySlideIndex = ref(0)
 let categorySlideTimer: number | undefined
 
@@ -276,7 +292,7 @@ function restartCategorySlider(): void {
   if (categorySlideTimer) window.clearInterval(categorySlideTimer)
   categorySlideTimer = undefined
   if (!categoryUsesSlider.value || categoryPages.value.length < 2) return
-  categorySlideTimer = window.setInterval(advanceCategorySlide, LIST_SLIDER_MS)
+  categorySlideTimer = window.setInterval(advanceCategorySlide, listSliderIntervalMs.value)
 }
 
 const trendMaxValue = computed(() => {

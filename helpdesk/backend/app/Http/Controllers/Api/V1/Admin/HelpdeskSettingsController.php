@@ -40,6 +40,10 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT,
             HelpdeskSetting::KEY_SCREEN_AGENT_TICKETS_WEIGHT,
             HelpdeskSetting::KEY_SCREEN_AGENT_RESPONSE_WEIGHT,
+            HelpdeskSetting::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE,
+            HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE,
+            HelpdeskSetting::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS,
+            HelpdeskSetting::KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS,
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_ENABLED,
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED,
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
@@ -63,6 +67,10 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] = (int) ($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] ?? 12);
         $data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] = (int) ($data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] ?? 7);
         $data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE] = HelpdeskSetting::screenDutyStationItemsPerPage();
+        $data[HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE] = HelpdeskSetting::screenCategoryItemsPerPage();
+        $data[HelpdeskSetting::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS] = HelpdeskSetting::screenListSliderIntervalSeconds();
+        $data[HelpdeskSetting::KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS] = HelpdeskSetting::screenSupportGroupSliderIntervalSeconds();
 
         $rawKey = HelpdeskSetting::getValue(HelpdeskSetting::KEY_AI_API_KEY);
         $data[HelpdeskSetting::KEY_AI_API_KEY] = '';
@@ -122,6 +130,10 @@ class HelpdeskSettingsController extends Controller
             'faq_sources_json' => ['nullable', 'string', 'max:65535'],
             'screen_agent_leaderboard_tickets_weight' => ['nullable', 'integer', 'min:0', 'max:100'],
             'screen_agent_leaderboard_response_weight' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'screen_duty_station_items_per_page' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'screen_category_items_per_page' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'screen_list_slider_interval_seconds' => ['nullable', 'integer', 'min:2', 'max:60'],
+            'screen_support_group_slider_interval_seconds' => ['nullable', 'integer', 'min:2', 'max:60'],
             'agent_monthly_report_enabled' => ['nullable', 'boolean'],
             'agent_monthly_report_email_enabled' => ['nullable', 'boolean'],
             'agent_monthly_report_retention_months' => ['nullable', 'integer', 'min:1', 'max:120'],
@@ -144,6 +156,10 @@ class HelpdeskSettingsController extends Controller
             'teams_messaging_path' => HelpdeskSetting::KEY_TEAMS_MESSAGING_PATH,
             'screen_agent_leaderboard_tickets_weight' => HelpdeskSetting::KEY_SCREEN_AGENT_TICKETS_WEIGHT,
             'screen_agent_leaderboard_response_weight' => HelpdeskSetting::KEY_SCREEN_AGENT_RESPONSE_WEIGHT,
+            'screen_duty_station_items_per_page' => HelpdeskSetting::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE,
+            'screen_category_items_per_page' => HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE,
+            'screen_list_slider_interval_seconds' => HelpdeskSetting::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS,
+            'screen_support_group_slider_interval_seconds' => HelpdeskSetting::KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS,
         ];
 
         foreach ($map as $reqKey => $dbKey) {

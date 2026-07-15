@@ -452,6 +452,12 @@ class PublicScreenApiTest extends TestCase
             'data' => [
                 'agent_of_week' => ['period_label', 'weights', 'agent'],
                 'agent_of_month' => ['period_label', 'weights', 'agent'],
+                'screen' => [
+                    'duty_station_items_per_page',
+                    'category_items_per_page',
+                    'list_slider_interval_seconds',
+                    'support_group_slider_interval_seconds',
+                ],
             ],
         ]);
         $response->assertJsonPath('data.agent_of_week.weights.tickets', 60);

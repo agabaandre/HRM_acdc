@@ -19,6 +19,10 @@ export interface HelpdeskSettingsPayload {
   requester_unsatisfied_follow_up_enabled: boolean
   screen_agent_leaderboard_tickets_weight: string | number | null
   screen_agent_leaderboard_response_weight: string | number | null
+  screen_duty_station_items_per_page: number
+  screen_category_items_per_page: number
+  screen_list_slider_interval_seconds: number
+  screen_support_group_slider_interval_seconds: number
   agent_monthly_report_enabled: boolean
   agent_monthly_report_email_enabled: boolean
   agent_monthly_report_retention_months: number
@@ -42,6 +46,10 @@ export interface HelpdeskAdminSettingsForm {
   requester_unsatisfied_follow_up_enabled: boolean
   screen_agent_leaderboard_tickets_weight: number
   screen_agent_leaderboard_response_weight: number
+  screen_duty_station_items_per_page: number
+  screen_category_items_per_page: number
+  screen_list_slider_interval_seconds: number
+  screen_support_group_slider_interval_seconds: number
   agent_monthly_report_enabled: boolean
   agent_monthly_report_email_enabled: boolean
   agent_monthly_report_retention_months: number
@@ -78,6 +86,10 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     requester_unsatisfied_follow_up_enabled: true,
     screen_agent_leaderboard_tickets_weight: 60,
     screen_agent_leaderboard_response_weight: 40,
+    screen_duty_station_items_per_page: 3,
+    screen_category_items_per_page: 3,
+    screen_list_slider_interval_seconds: 5,
+    screen_support_group_slider_interval_seconds: 6,
     agent_monthly_report_enabled: true,
     agent_monthly_report_email_enabled: true,
     agent_monthly_report_retention_months: 12,
@@ -103,6 +115,10 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.requester_unsatisfied_follow_up_enabled = d.requester_unsatisfied_follow_up_enabled !== false
       form.screen_agent_leaderboard_tickets_weight = Number(d.screen_agent_leaderboard_tickets_weight ?? 60)
       form.screen_agent_leaderboard_response_weight = Number(d.screen_agent_leaderboard_response_weight ?? 40)
+      form.screen_duty_station_items_per_page = Number(d.screen_duty_station_items_per_page ?? 3)
+      form.screen_category_items_per_page = Number(d.screen_category_items_per_page ?? 3)
+      form.screen_list_slider_interval_seconds = Number(d.screen_list_slider_interval_seconds ?? 5)
+      form.screen_support_group_slider_interval_seconds = Number(d.screen_support_group_slider_interval_seconds ?? 6)
       form.agent_monthly_report_enabled = d.agent_monthly_report_enabled !== false
       form.agent_monthly_report_email_enabled = d.agent_monthly_report_email_enabled !== false
       form.agent_monthly_report_retention_months = Number(d.agent_monthly_report_retention_months ?? 12)

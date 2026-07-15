@@ -166,6 +166,10 @@ async function saveGeneral() {
       requester_unsatisfied_follow_up_enabled: ctx.form.requester_unsatisfied_follow_up_enabled,
       screen_agent_leaderboard_tickets_weight: ctx.form.screen_agent_leaderboard_tickets_weight,
       screen_agent_leaderboard_response_weight: ctx.form.screen_agent_leaderboard_response_weight,
+      screen_duty_station_items_per_page: ctx.form.screen_duty_station_items_per_page,
+      screen_category_items_per_page: ctx.form.screen_category_items_per_page,
+      screen_list_slider_interval_seconds: ctx.form.screen_list_slider_interval_seconds,
+      screen_support_group_slider_interval_seconds: ctx.form.screen_support_group_slider_interval_seconds,
       agent_monthly_report_enabled: ctx.form.agent_monthly_report_enabled,
       agent_monthly_report_email_enabled: ctx.form.agent_monthly_report_email_enabled,
       agent_monthly_report_retention_months: ctx.form.agent_monthly_report_retention_months,
@@ -406,6 +410,60 @@ function roleLabel(c: CandidateRow): string {
         <p class="hint-tight">
           Faster average response scores higher. Defaults: 60% volume, 40% response. Weights are normalized if they do not sum to 100.
         </p>
+        <div class="weight-grid weight-grid--screen-lists">
+          <UFormField
+            label="Duty stations per page"
+            name="screen_duty_station_items_per_page"
+            description="Shown on the lobby screen before paging. Extra stations slide automatically."
+          >
+            <UInput
+              v-model.number="ctx.form.screen_duty_station_items_per_page"
+              type="number"
+              min="1"
+              max="20"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            label="Categories per page"
+            name="screen_category_items_per_page"
+            description="Open-by-category rows per slide on the lobby screen."
+          >
+            <UInput
+              v-model.number="ctx.form.screen_category_items_per_page"
+              type="number"
+              min="1"
+              max="20"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            label="List slider interval (seconds)"
+            name="screen_list_slider_interval_seconds"
+            description="How long each duty station / category page stays visible."
+          >
+            <UInput
+              v-model.number="ctx.form.screen_list_slider_interval_seconds"
+              type="number"
+              min="2"
+              max="60"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
+            label="Support group slider interval (seconds)"
+            name="screen_support_group_slider_interval_seconds"
+            description="How long each agent-of-the-week support group slide stays visible."
+          >
+            <UInput
+              v-model.number="ctx.form.screen_support_group_slider_interval_seconds"
+              type="number"
+              min="2"
+              max="60"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
       </article>
 
       <article class="settings-card settings-card--monthly-reports">

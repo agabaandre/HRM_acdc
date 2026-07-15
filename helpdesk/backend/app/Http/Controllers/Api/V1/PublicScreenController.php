@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
 use App\Services\AgentLeaderboardService;
@@ -58,6 +59,7 @@ class PublicScreenController extends Controller
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
                 'agent_of_week' => $leaderboard->agentOfWeek($now),
                 'agent_of_month' => $leaderboard->agentOfMonth($now),
+                'screen' => HelpdeskSetting::screenDisplayConfig(),
                 'csat' => [
                     'avg_score' => null,
                     'responses' => 0,

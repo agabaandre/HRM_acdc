@@ -77,6 +77,18 @@ class HelpdeskSetting extends Model
 
     public const KEY_SCREEN_AGENT_RESPONSE_WEIGHT = 'screen_agent_leaderboard_response_weight';
 
+    /** Lobby screen — duty station table items per slider page. */
+    public const KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE = 'screen_duty_station_items_per_page';
+
+    /** Lobby screen — category list items per slider page. */
+    public const KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE = 'screen_category_items_per_page';
+
+    /** Lobby screen — seconds between duty station / category slider pages. */
+    public const KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS = 'screen_list_slider_interval_seconds';
+
+    /** Lobby screen — seconds between support-group agent-of-week slides. */
+    public const KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS = 'screen_support_group_slider_interval_seconds';
+
     public const KEY_AGENT_MONTHLY_REPORT_ENABLED = 'agent_monthly_report_enabled';
 
     public const KEY_AGENT_MONTHLY_REPORT_EMAIL_ENABLED = 'agent_monthly_report_email_enabled';
@@ -132,6 +144,52 @@ class HelpdeskSetting extends Model
         }
 
         return ['tickets' => $tickets, 'response' => $response];
+    }
+
+    public static function screenDutyStationItemsPerPage(): int
+    {
+        $v = (int) static::getValue(self::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE, '3');
+
+        return max(1, min(20, $v));
+    }
+
+    public static function screenCategoryItemsPerPage(): int
+    {
+        $v = (int) static::getValue(self::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE, '3');
+
+        return max(1, min(20, $v));
+    }
+
+    public static function screenListSliderIntervalSeconds(): int
+    {
+        $v = (int) static::getValue(self::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS, '5');
+
+        return max(2, min(60, $v));
+    }
+
+    public static function screenSupportGroupSliderIntervalSeconds(): int
+    {
+        $v = (int) static::getValue(self::KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS, '6');
+
+        return max(2, min(60, $v));
+    }
+
+    /**
+     * @return array{
+     *     duty_station_items_per_page: int,
+     *     category_items_per_page: int,
+     *     list_slider_interval_seconds: int,
+     *     support_group_slider_interval_seconds: int
+     * }
+     */
+    public static function screenDisplayConfig(): array
+    {
+        return [
+            'duty_station_items_per_page' => self::screenDutyStationItemsPerPage(),
+            'category_items_per_page' => self::screenCategoryItemsPerPage(),
+            'list_slider_interval_seconds' => self::screenListSliderIntervalSeconds(),
+            'support_group_slider_interval_seconds' => self::screenSupportGroupSliderIntervalSeconds(),
+        ];
     }
 
     public static function agentMonthlyReportEnabled(): bool
