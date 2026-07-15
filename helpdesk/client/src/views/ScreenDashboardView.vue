@@ -120,6 +120,18 @@ let staleTimer: number | undefined
 const REFRESH_INTERVAL_MS = 15000
 const STALE_THRESHOLD_MS = 60000
 const THEME_STORAGE_KEY = 'helpdesk.screen.theme'
+const LIST_SLIDER_THRESHOLD = 6
+const LIST_SLIDER_PAGE_SIZE = 6
+const LIST_SLIDER_MS = 5000
+
+function chunkList<T>(items: T[], pageSize: number): T[][] {
+  if (items.length === 0) return []
+  const pages: T[][] = []
+  for (let i = 0; i < items.length; i += pageSize) {
+    pages.push(items.slice(i, i + pageSize))
+  }
+  return pages
+}
 
 async function fetchScreen(): Promise<void> {
   try {
@@ -131,7 +143,13 @@ async function fetchScreen(): Promise<void> {
     if (groupAgentSlideIndex.value >= (payload.data.priority_matrix_by_group?.length ?? 0)) {
       groupAgentSlideIndex.value = 0
     }
+    const dutyPages = chunkList(payload.data.by_duty_station ?? [], LIST_SLIDER_PAGE_SIZE)
+    if (dutySlideIndex.value >= dutyPages.length) dutySlideIndex.value = 0
+    const categoryPagesCount = chunkList(payload.data.by_category ?? [], LIST_SLIDER_PAGE_SIZE).length
+    if (categorySlideIndex.value >= categoryPagesCount) categorySlideIndex.value = 0
     restartGroupAgentSlider()
+    restartDutyStationSlider()
+    restartCategorySlider()
   } catch (e) {
     consecutiveErrors.value += 1
   }
@@ -205,6 +223,60 @@ function restartGroupAgentSlider(): void {
   const len = priorityMatrixByGroup.value.length
   if (len < 2) return
   groupAgentSlideTimer = window.setInterval(advanceGroupAgentSlide, GROUP_AGENT_SLIDE_MS)
+}
+
+const dutyStations = computed(() => data.value?.by_duty_station ?? [])
+const dutyStationUsesSlider = computed(() => dutyStations.value.length > LIST_SLIDER_THRESHOLD)
+const dutyStationPages = computed(() => chunkList(dutyStations.value, LIST_SLIDER_PAGE_SIZE))
+const dutySlideIndex = ref(0)
+let dutySlideTimer: number | undefined
+
+const activeDutyStationPage = computed(() => dutyStationPages.value[dutySlideIndex.value] ?? [])
+
+function goToDutySlide(index: number): void {
+  const len = dutyStationPages.value.length
+  if (len < 1) return
+  dutySlideIndex.value = ((index % len) + len) % len
+}
+
+function advanceDutySlide(): void {
+  const len = dutyStationPages.value.length
+  if (len < 2) return
+  dutySlideIndex.value = (dutySlideIndex.value + 1) % len
+}
+
+function restartDutyStationSlider(): void {
+  if (dutySlideTimer) window.clearInterval(dutySlideTimer)
+  dutySlideTimer = undefined
+  if (!dutyStationUsesSlider.value || dutyStationPages.value.length < 2) return
+  dutySlideTimer = window.setInterval(advanceDutySlide, LIST_SLIDER_MS)
+}
+
+const categories = computed(() => data.value?.by_category ?? [])
+const categoryUsesSlider = computed(() => categories.value.length > LIST_SLIDER_THRESHOLD)
+const categoryPages = computed(() => chunkList(categories.value, LIST_SLIDER_PAGE_SIZE))
+const categorySlideIndex = ref(0)
+let categorySlideTimer: number | undefined
+
+const activeCategoryPage = computed(() => categoryPages.value[categorySlideIndex.value] ?? [])
+
+function goToCategorySlide(index: number): void {
+  const len = categoryPages.value.length
+  if (len < 1) return
+  categorySlideIndex.value = ((index % len) + len) % len
+}
+
+function advanceCategorySlide(): void {
+  const len = categoryPages.value.length
+  if (len < 2) return
+  categorySlideIndex.value = (categorySlideIndex.value + 1) % len
+}
+
+function restartCategorySlider(): void {
+  if (categorySlideTimer) window.clearInterval(categorySlideTimer)
+  categorySlideTimer = undefined
+  if (!categoryUsesSlider.value || categoryPages.value.length < 2) return
+  categorySlideTimer = window.setInterval(advanceCategorySlide, LIST_SLIDER_MS)
 }
 
 const trendMaxValue = computed(() => {
@@ -333,6 +405,8 @@ onUnmounted(() => {
   if (clockTimer) window.clearInterval(clockTimer)
   if (staleTimer) window.clearInterval(staleTimer)
   if (groupAgentSlideTimer) window.clearInterval(groupAgentSlideTimer)
+  if (dutySlideTimer) window.clearInterval(dutySlideTimer)
+  if (categorySlideTimer) window.clearInterval(categorySlideTimer)
   document.documentElement.classList.remove('screen-mode')
   document.body.classList.remove('screen-mode')
 })
@@ -562,33 +636,63 @@ onUnmounted(() => {
       <section class="card duty-card">
         <header class="card-head">
           <h2>Tickets by duty station</h2>
-          <span class="card-sub">Open · closed this week · overtime</span>
+          <span class="card-sub">
+            Open · closed this week · overtime
+            <template v-if="dutyStationUsesSlider"> · {{ dutyStations.length }} stations</template>
+          </span>
         </header>
-        <div v-if="data.by_duty_station.length" class="duty-table-wrap">
-          <table class="duty-table">
-            <thead>
-              <tr>
-                <th>Duty station</th>
-                <th class="num">Open</th>
-                <th class="num">Closed (wk)</th>
-                <th class="num">Overtime</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, index) in data.by_duty_station" :key="`${row.name}-${index}`">
-                <td class="duty-name">{{ row.name }}</td>
-                <td class="num">
-                  <span class="duty-pill open">{{ row.open }}</span>
-                </td>
-                <td class="num">
-                  <span class="duty-pill closed">{{ row.closed_this_week }}</span>
-                </td>
-                <td class="num">
-                  <span class="duty-pill overtime" :class="{ hot: row.overtime > 0 }">{{ row.overtime }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-if="dutyStations.length" class="list-slider">
+          <div class="list-slider-viewport">
+            <Transition name="list-slide" mode="out-in">
+              <div :key="dutyStationUsesSlider ? dutySlideIndex : 0" class="list-slider-panel">
+                <div class="duty-table-wrap">
+                  <table class="duty-table">
+                    <thead>
+                      <tr>
+                        <th>Duty station</th>
+                        <th class="num">Open</th>
+                        <th class="num">Closed (wk)</th>
+                        <th class="num">Overtime</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="(row, index) in (dutyStationUsesSlider ? activeDutyStationPage : dutyStations)"
+                        :key="`${row.name}-${index}`"
+                      >
+                        <td class="duty-name">{{ row.name }}</td>
+                        <td class="num">
+                          <span class="duty-pill open">{{ row.open }}</span>
+                        </td>
+                        <td class="num">
+                          <span class="duty-pill closed">{{ row.closed_this_week }}</span>
+                        </td>
+                        <td class="num">
+                          <span class="duty-pill overtime" :class="{ hot: row.overtime > 0 }">{{ row.overtime }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Transition>
+          </div>
+          <div v-if="dutyStationUsesSlider && dutyStationPages.length > 1" class="list-slider-nav">
+            <span class="list-slider-counter">{{ dutySlideIndex + 1 }} / {{ dutyStationPages.length }}</span>
+            <div class="list-slider-dots" role="tablist" aria-label="Duty station pages">
+              <button
+                v-for="(_, index) in dutyStationPages"
+                :key="`duty-page-${index}`"
+                type="button"
+                class="list-slider-dot"
+                :class="{ active: index === dutySlideIndex }"
+                :aria-label="`Duty station page ${index + 1}`"
+                :aria-selected="index === dutySlideIndex"
+                role="tab"
+                @click="goToDutySlide(index); restartDutyStationSlider()"
+              />
+            </div>
+          </div>
         </div>
         <p v-else class="muted">No ticket activity by duty station.</p>
       </section>
@@ -597,17 +701,45 @@ onUnmounted(() => {
       <section class="card category-card">
         <header class="card-head">
           <h2>Open by category</h2>
-          <span class="card-sub">Top {{ data.by_category.length }}</span>
+          <span class="card-sub">Top {{ categories.length }}</span>
         </header>
-        <ul v-if="data.by_category.length" class="category-list">
-          <li v-for="c in data.by_category" :key="c.id" class="cat-row">
-            <span class="cat-name">{{ c.name }}</span>
-            <span class="cat-bar">
-              <span class="cat-fill" :style="{ width: ((c.open / maxCategory) * 100) + '%' }" />
-            </span>
-            <span class="cat-count">{{ c.open }}</span>
-          </li>
-        </ul>
+        <div v-if="categories.length" class="list-slider">
+          <div class="list-slider-viewport">
+            <Transition name="list-slide" mode="out-in">
+              <div :key="categoryUsesSlider ? categorySlideIndex : 0" class="list-slider-panel">
+                <ul class="category-list">
+                  <li
+                    v-for="c in (categoryUsesSlider ? activeCategoryPage : categories)"
+                    :key="c.id"
+                    class="cat-row"
+                  >
+                    <span class="cat-name">{{ c.name }}</span>
+                    <span class="cat-bar">
+                      <span class="cat-fill" :style="{ width: ((c.open / maxCategory) * 100) + '%' }" />
+                    </span>
+                    <span class="cat-count">{{ c.open }}</span>
+                  </li>
+                </ul>
+              </div>
+            </Transition>
+          </div>
+          <div v-if="categoryUsesSlider && categoryPages.length > 1" class="list-slider-nav">
+            <span class="list-slider-counter">{{ categorySlideIndex + 1 }} / {{ categoryPages.length }}</span>
+            <div class="list-slider-dots" role="tablist" aria-label="Category pages">
+              <button
+                v-for="(_, index) in categoryPages"
+                :key="`category-page-${index}`"
+                type="button"
+                class="list-slider-dot"
+                :class="{ active: index === categorySlideIndex }"
+                :aria-label="`Category page ${index + 1}`"
+                :aria-selected="index === categorySlideIndex"
+                role="tab"
+                @click="goToCategorySlide(index); restartCategorySlider()"
+              />
+            </div>
+          </div>
+        </div>
         <p v-else class="muted">No open tickets across categories.</p>
       </section>
 
@@ -1454,8 +1586,87 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
   border-radius: 999px;
   transition: width 0.6s ease;
 }
+.cat-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #fff;
+  min-width: 28px;
+  text-align: right;
+}
 .duty-fill {
   background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+/* Paginated list sliders (duty stations, categories) */
+.list-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex: 1;
+  min-height: 0;
+}
+.list-slider-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 2%, #000 98%, transparent 100%);
+}
+.list-slider-panel {
+  min-height: 0;
+}
+.list-slider-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.15rem;
+}
+.list-slider-counter {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.list-slider-dots {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.list-slider-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.list-slider-dot.active {
+  background: #38bdf8;
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+.category-card .list-slider-dot.active {
+  background: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+.list-slide-enter-active,
+.list-slide-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.list-slide-enter-from {
+  opacity: 0;
+  transform: translateX(24px);
+}
+.list-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-24px);
 }
 
 /* Duty station table */
@@ -1593,14 +1804,6 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
   font-size: 0.76rem;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
-}
-
-.cat-count {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  color: #fff;
-  min-width: 24px;
-  text-align: right;
 }
 
 /* Trend chart */
