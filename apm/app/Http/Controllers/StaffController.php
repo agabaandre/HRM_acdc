@@ -78,7 +78,7 @@ class StaffController extends Controller
             'pageConfig' => [
                 'csrf' => csrf_token(),
                 'showParticipantGroups' => (bool) user_session('division_id'),
-                'showWhatsAppGroups' => in_array(89, user_session('permissions', []), true),
+                'showWhatsAppGroups' => whatsapp_module_can_access(),
                 'routes' => [
                     'ajax' => route('staff.ajax'),
                     'show' => url('staff'),

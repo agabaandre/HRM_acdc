@@ -5,7 +5,7 @@
 @section('header', 'Staff Management')
 
 @section('header-actions')
-@if(in_array(89, user_session('permissions', [])))
+@if(whatsapp_module_can_access())
 <a href="{{ route('whatsapp-groups.index') }}" class="btn btn-outline-success btn-sm me-2" wire:navigate>
     <i class="bx bxl-whatsapp me-1"></i> WhatsApp groups
 </a>

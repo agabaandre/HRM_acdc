@@ -241,20 +241,67 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::post('/system-configs/stale-memos/unarchive', [App\Http\Controllers\StaleMemoArchivesController::class, 'unarchiveOne'])
         ->name('stale-memos.unarchive');
     Route::post('/system-configs/whatsapp', [App\Http\Controllers\WhatsAppSettingsController::class, 'update'])
+        ->middleware(['whatsapp.access:config', 'throttle:20,1'])
         ->name('whatsapp-settings.update');
-    Route::get('/system-configs/whatsapp/test', [App\Http\Controllers\WhatsAppSettingsController::class, 'testConnection'])
+    Route::post('/system-configs/whatsapp/test', [App\Http\Controllers\WhatsAppSettingsController::class, 'testConnection'])
+        ->middleware(['whatsapp.access:config', 'throttle:15,1'])
         ->name('whatsapp-settings.test');
+    Route::post('/system-configs/whatsapp/pair', [App\Http\Controllers\WhatsAppSettingsController::class, 'requestPairing'])
+        ->middleware(['whatsapp.access:config', 'throttle:5,1'])
+        ->name('whatsapp-settings.pair');
+    Route::post('/system-configs/whatsapp/qr', [App\Http\Controllers\WhatsAppSettingsController::class, 'qrCode'])
+        ->middleware(['whatsapp.access:config', 'throttle:30,1'])
+        ->name('whatsapp-settings.qr');
+    Route::post('/system-configs/whatsapp/qr/start', [App\Http\Controllers\WhatsAppSettingsController::class, 'startQrPairing'])
+        ->middleware(['whatsapp.access:config', 'throttle:5,1'])
+        ->name('whatsapp-settings.qr-start');
+    Route::post('/system-configs/whatsapp/bootstrap', [App\Http\Controllers\WhatsAppSettingsController::class, 'bootstrapPlatform'])
+        ->middleware(['whatsapp.access:config', 'throttle:5,1'])
+        ->name('whatsapp-settings.bootstrap');
+    Route::post('/system-configs/whatsapp/sync', [App\Http\Controllers\WhatsAppSettingsController::class, 'syncGroups'])
+        ->middleware(['whatsapp.access:config', 'throttle:10,1'])
+        ->name('whatsapp-settings.sync');
+    Route::post('/system-configs/whatsapp/sync-primary', [App\Http\Controllers\WhatsAppSettingsController::class, 'syncPrimaryGroup'])
+        ->middleware(['whatsapp.access:config', 'throttle:10,1'])
+        ->name('whatsapp-settings.sync-primary');
 
-    Route::prefix('whatsapp-groups')->name('whatsapp-groups.')->group(function () {
+    Route::prefix('whatsapp-groups')->name('whatsapp-groups.')->middleware(['whatsapp.access:module', 'throttle:60,1'])->group(function () {
         Route::get('/', [App\Http\Controllers\WhatsAppGroupsController::class, 'index'])->name('index');
         Route::get('/status', [App\Http\Controllers\WhatsAppGroupsController::class, 'status'])->name('status');
         Route::get('/groups', [App\Http\Controllers\WhatsAppGroupsController::class, 'groups'])->name('groups');
+        Route::post('/sync', [App\Http\Controllers\WhatsAppGroupsController::class, 'syncGroups'])
+            ->middleware('throttle:10,1')
+            ->name('sync');
         Route::patch('/groups/{jid}', [App\Http\Controllers\WhatsAppGroupsController::class, 'updateGroup'])
             ->where('jid', '.+')
             ->name('groups.update');
         Route::get('/groups/{jid}/members', [App\Http\Controllers\WhatsAppGroupsController::class, 'members'])
             ->where('jid', '.+')
             ->name('groups.members');
+        Route::get('/groups/{jid}/messages', [App\Http\Controllers\WhatsAppGroupsController::class, 'messages'])
+            ->where('jid', '.+')
+            ->name('groups.messages');
+        Route::get('/groups/{jid}/chat-ticket', [App\Http\Controllers\WhatsAppGroupsController::class, 'chatTicket'])
+            ->where('jid', '.+')
+            ->name('groups.chat-ticket');
+        Route::post('/groups/{jid}/messages', [App\Http\Controllers\WhatsAppGroupsController::class, 'sendMessage'])
+            ->where('jid', '.+')
+            ->middleware('throttle:30,1')
+            ->name('groups.messages.send');
+        Route::get('/messages/{id}/media', [App\Http\Controllers\WhatsAppGroupsController::class, 'messageMedia'])
+            ->whereNumber('id')
+            ->name('messages.media');
+        Route::post('/groups/{jid}/members/remove', [App\Http\Controllers\WhatsAppGroupsController::class, 'removeMember'])
+            ->where('jid', '.+')
+            ->name('groups.members.remove');
+        Route::post('/groups/{jid}/members/remove-inactive', [App\Http\Controllers\WhatsAppGroupsController::class, 'removeInactiveMembers'])
+            ->where('jid', '.+')
+            ->middleware('throttle:10,1')
+            ->name('groups.members.remove-inactive');
+        Route::post('/groups/{jid}/members/add', [App\Http\Controllers\WhatsAppGroupsController::class, 'addMembers'])
+            ->where('jid', '.+')
+            ->middleware('throttle:10,1')
+            ->name('groups.members.add');
         Route::post('/primary', [App\Http\Controllers\WhatsAppGroupsController::class, 'setPrimary'])->name('set-primary');
     });
 

@@ -49,12 +49,20 @@ class SystemConfigsController extends Controller
 
     public function index(Request $request, string $tab = 'jobs'): View|RedirectResponse|StreamedResponse
     {
-        if (! in_array(89, user_session('permissions', []))) {
+        if ($tab === 'whatsapp') {
+            if (! whatsapp_config_can_access()) {
+                abort(403, 'Unauthorized access to WhatsApp configuration.');
+            }
+        } elseif (! in_array(89, user_session('permissions', []))) {
             abort(403, 'Unauthorized access to system configuration');
         }
 
-        if (! array_key_exists($tab, self::TABS)) {
-            return redirect()->route('system-configs.index', ['tab' => 'jobs']);
+        $tabs = $this->visibleTabs();
+
+        if (! array_key_exists($tab, $tabs)) {
+            $defaultTab = array_key_first($tabs) ?: 'jobs';
+
+            return redirect()->route('system-configs.index', ['tab' => $defaultTab]);
         }
 
         if ($tab === 'audit-logs' && $request->has('export')) {
@@ -66,9 +74,25 @@ class SystemConfigsController extends Controller
 
         return view('system-configs.index', [
             'tab' => $tab,
-            'tabs' => self::TABS,
+            'tabs' => $tabs,
             'panelData' => $panelData,
         ]);
+    }
+
+    /**
+     * @return array<string, array{label: string, icon: string, description: string}>
+     */
+    public function visibleTabs(): array
+    {
+        if (in_array(89, user_session('permissions', []))) {
+            return self::TABS;
+        }
+
+        if (whatsapp_config_can_access()) {
+            return ['whatsapp' => self::TABS['whatsapp']];
+        }
+
+        return [];
     }
 
     /**

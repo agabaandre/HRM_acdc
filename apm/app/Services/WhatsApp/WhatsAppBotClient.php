@@ -21,10 +21,12 @@ class WhatsAppBotClient
     /**
      * @return array<string, mixed>
      */
-    public function publicStatus(): array
+    public function publicStatus(?string $apiUrl = null): array
     {
+        $base = $this->resolveApiUrl($apiUrl);
+
         try {
-            $response = Http::timeout(8)->get($this->config->apiUrl().'/api/status');
+            $response = Http::timeout(8)->get($base.'/api/status');
 
             if (! $response->successful()) {
                 return [
@@ -48,7 +50,7 @@ class WhatsAppBotClient
                 'reachable' => false,
                 'connected' => false,
                 'registered' => false,
-                'error' => $e->getMessage(),
+                'error' => $this->connectionHint($base, $e),
             ];
         }
     }
@@ -56,9 +58,9 @@ class WhatsAppBotClient
     /**
      * @return array<string, mixed>
      */
-    public function adminStats(): array
+    public function adminStats(?string $apiUrl = null, ?string $adminPassword = null): array
     {
-        return $this->authorizedJson('GET', '/api/admin/stats');
+        return $this->authorizedJson('GET', '/api/admin/stats', [], $apiUrl, $adminPassword);
     }
 
     /**
@@ -96,20 +98,31 @@ class WhatsAppBotClient
     /**
      * @return array<string, mixed>
      */
-    private function authorizedJson(string $method, string $path, array $body = []): array
-    {
-        if (! $this->config->isConfigured()) {
-            throw new RuntimeException('WhatsApp bot is not configured. Set API URL and admin password in System configs → WhatsApp.');
+    private function authorizedJson(
+        string $method,
+        string $path,
+        array $body = [],
+        ?string $apiUrl = null,
+        ?string $adminPassword = null,
+    ): array {
+        $base = $this->resolveApiUrl($apiUrl);
+        $password = $adminPassword ?? $this->config->adminPassword();
+
+        if ($password === '') {
+            throw new RuntimeException('Admin password is not set. Enter ADMIN_PASSWORD from the bot .env and save settings.');
         }
 
         $jar = new CookieJar;
-        $base = $this->config->apiUrl();
 
-        $login = Http::timeout(12)
-            ->withOptions(['cookies' => $jar])
-            ->post($base.'/api/admin/login', [
-                'password' => $this->config->adminPassword(),
-            ]);
+        try {
+            $login = Http::timeout(12)
+                ->withOptions(['cookies' => $jar])
+                ->post($base.'/api/admin/login', [
+                    'password' => $password,
+                ]);
+        } catch (ConnectionException $e) {
+            throw new RuntimeException($this->connectionHint($base, $e));
+        }
 
         if (! $login->successful()) {
             throw new RuntimeException('WhatsApp bot login failed. Check the admin password in settings.');
@@ -141,5 +154,23 @@ class WhatsAppBotClient
         $json = $response->json();
 
         return is_array($json) ? $json : ['ok' => true];
+    }
+
+    private function resolveApiUrl(?string $apiUrl): string
+    {
+        $url = trim($apiUrl ?? $this->config->apiUrl());
+
+        return rtrim($url !== '' ? $url : 'http://127.0.0.1:8000', '/');
+    }
+
+    private function connectionHint(string $base, ConnectionException $e): string
+    {
+        $message = $e->getMessage();
+        if (str_contains($message, 'Failed to connect') || str_contains($message, 'Connection refused')) {
+            return 'Cannot reach the bot at '.$base.'. Start WhatsAppBotMultiDevice on that host (e.g. `pnpm start` in the bot folder; default port 8000). '
+                .'If APM runs in Docker or on another machine, use a URL reachable from the PHP server — not 127.0.0.1 unless the bot runs on the same host as PHP.';
+        }
+
+        return $message;
     }
 }

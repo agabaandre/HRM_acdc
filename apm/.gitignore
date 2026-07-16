@@ -7,6 +7,8 @@
 # Firebase service account (never commit)
 /storage/app/firebase-credentials.json
 /storage/pail
+/storage/whatsapp-auth
+/whatsapp-service/.env
 /vendor
 .env
 .env.backup

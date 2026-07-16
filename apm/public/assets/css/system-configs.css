@@ -98,6 +98,7 @@
 .sys-config-panel > .sys-config-settings,
 .sys-config-panel > .sys-config-backups,
 .sys-config-panel > .sys-config-audit,
+.sys-config-panel > .whatsapp-settings-panel,
 .sys-config-panel > .container-fluid,
 .sys-config-panel > .row,
 .sys-config-panel > #settings-alert,
@@ -721,4 +722,50 @@
     justify-content: center;
     min-width: calc(50% - 0.25rem);
   }
+}
+
+/* WhatsApp settings tab */
+.whatsapp-settings-panel {
+  padding: 1.25rem 1.35rem 1.5rem;
+}
+
+.whatsapp-test-output {
+  border: 2px solid var(--sys-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f8fafc;
+}
+
+.whatsapp-test-output > :last-child {
+  margin-bottom: 0;
+}
+
+.whatsapp-test-output pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-qr-box {
+  border: 2px solid var(--sys-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  min-width: 304px;
+  min-height: 304px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whatsapp-qr-image {
+  display: block;
+  border-radius: 8px;
+}
+
+.whatsapp-qr-placeholder {
+  text-align: center;
+  padding: 1rem;
 }

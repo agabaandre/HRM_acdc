@@ -77,11 +77,19 @@
             'route' => 'apm-api-users.index',
             'icon' => 'fas fa-key',
             'title' => 'API users',
+            'gate' => 'system_config',
+        ],
+        [
+            'url' => route('system-configs.index', ['tab' => 'whatsapp']),
+            'icon' => 'bx bxl-whatsapp',
+            'title' => 'WhatsApp settings',
+            'gate' => 'whatsapp_config',
         ],
         [
             'route' => 'system-configs.index',
             'icon' => 'fas fa-cogs',
             'title' => 'System configs',
+            'gate' => 'system_config',
         ],
         [
             'route' => 'faqs.index',
@@ -355,7 +363,7 @@
 
 
             <!-- Settings -->
-            @if (in_array(89, user_session('permissions', [])))
+            @if (in_array(89, user_session('permissions', [])) || whatsapp_config_can_access())
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle {{ Request::is('memo-type-definitions*') || Request::is('fund-types*') || Request::is('partners*') || Request::is('fund-codes*') || Request::is('funders*') || Request::is('divisions*') || Request::is('directorates*') || Request::is('request-types*') || Request::is('non-travel-categories*') || Request::is('locations*') || Request::is('cost-items*') || Request::is('apm-api-users*') || Request::is('system-configs*') || Request::is('audit-logs*') || Request::is('jobs*') || Request::is('system-settings*') || Request::is('systemd-monitor*') || Request::is('backups*') || Request::is('faqs*') || Request::is('faq-categories*') || Request::is('weekly-briefing/settings*') ? 'active' : '' }}"
                         href="#" data-bs-toggle="dropdown">
@@ -364,6 +372,15 @@
                     </a>
                     <ul class="dropdown-menu">
                         @foreach ($settingsMenuItems as $item)
+                            @php
+                                $gate = $item['gate'] ?? 'system_config';
+                            @endphp
+                            @if ($gate === 'system_config' && ! in_array(89, user_session('permissions', [])))
+                                @continue
+                            @endif
+                            @if ($gate === 'whatsapp_config' && ! whatsapp_config_can_access())
+                                @continue
+                            @endif
                             @if (($item['route'] ?? null) === 'weekly-briefing.settings.edit' && (int) (user_session('role') ?? user_session('user_role') ?? 0) !== 10)
                                 @continue
                             @endif

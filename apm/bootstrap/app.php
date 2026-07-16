@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'accept.token.in.query' => \App\Http\Middleware\AcceptTokenInQuery::class,
             'accept.token.for.apm.refresh' => \App\Http\Middleware\AcceptTokenForApmRefresh::class,
             'auth.session.or.jwt' => \App\Http\Middleware\AuthenticateSessionOrJwt::class,
+            'whatsapp.access' => \App\Http\Middleware\EnsureWhatsAppAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

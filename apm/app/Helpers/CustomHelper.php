@@ -300,6 +300,88 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('whatsapp_session_role')) {
+        function whatsapp_session_role(): int
+        {
+            return (int) (user_session('role') ?? user_session('user_role') ?? 0);
+        }
+    }
+
+    if (! function_exists('whatsapp_session_permission_ids')) {
+        /**
+         * @return list<int>
+         */
+        function whatsapp_session_permission_ids(): array
+        {
+            $perms = user_session('permissions', []) ?? [];
+
+            return array_values(array_unique(array_filter(array_map('intval', (array) $perms))));
+        }
+    }
+
+    if (! function_exists('whatsapp_user_has_any_permission')) {
+        /**
+         * @param  list<int>  $required
+         */
+        function whatsapp_user_has_any_permission(array $required): bool
+        {
+            if ($required === []) {
+                return false;
+            }
+
+            return count(array_intersect($required, whatsapp_session_permission_ids())) > 0;
+        }
+    }
+
+    if (! function_exists('whatsapp_module_can_access')) {
+        /**
+         * Whether the current user may open Staff → WhatsApp groups.
+         * Default: all authenticated staff. Admins (role 10) always have access.
+         */
+        function whatsapp_module_can_access(): bool
+        {
+            if ((int) user_session('staff_id') <= 0) {
+                return false;
+            }
+
+            if (whatsapp_session_role() === 10) {
+                return true;
+            }
+
+            $config = app(\App\Services\WhatsApp\WhatsAppConfig::class);
+            if ($config->moduleGrantAll()) {
+                return true;
+            }
+
+            return whatsapp_user_has_any_permission($config->modulePermissionIds());
+        }
+    }
+
+    if (! function_exists('whatsapp_config_can_access')) {
+        /**
+         * Whether the current user may open System configs → WhatsApp.
+         * Default: role 10 only, with optional extra permission IDs.
+         */
+        function whatsapp_config_can_access(): bool
+        {
+            if ((int) user_session('staff_id') <= 0) {
+                return false;
+            }
+
+            if (whatsapp_session_role() === 10) {
+                return true;
+            }
+
+            $config = app(\App\Services\WhatsApp\WhatsAppConfig::class);
+
+            if (! $config->configAdminOnly()) {
+                return whatsapp_user_has_any_permission($config->configPermissionIds());
+            }
+
+            return whatsapp_user_has_any_permission($config->configPermissionIds());
+        }
+    }
+
     if (! function_exists('format_approver_timing_elapsed_display')) {
         /**
          * Hours and calendar-day equivalent for approver timing report (hours + h/24 days).
