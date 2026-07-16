@@ -78,10 +78,12 @@ class StaffController extends Controller
             'pageConfig' => [
                 'csrf' => csrf_token(),
                 'showParticipantGroups' => (bool) user_session('division_id'),
+                'showWhatsAppGroups' => in_array(89, user_session('permissions', []), true),
                 'routes' => [
                     'ajax' => route('staff.ajax'),
                     'show' => url('staff'),
                     'participantGroups' => route('participant-groups.index'),
+                    'whatsappGroups' => route('whatsapp-groups.index'),
                     'exportExcel' => route('staff.export', 'excel'),
                     'exportPdf' => route('staff.export', 'pdf'),
                 ],

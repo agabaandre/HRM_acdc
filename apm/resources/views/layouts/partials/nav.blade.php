@@ -316,7 +316,7 @@
 
             <!-- Staff List -->
             <li class="nav-item">
-                <a class="nav-link {{ Request::is('staff*') ? 'active' : '' }}"
+                    <a class="nav-link {{ Request::is('staff*') && !Request::is('whatsapp-groups*') ? 'active' : '' }}"
                     href="{{ route('staff.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-user-cog"></i></div>
                     <div class="menu-title">Staff List</div>

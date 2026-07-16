@@ -5,6 +5,11 @@
 @section('header', 'Staff Management')
 
 @section('header-actions')
+@if(in_array(89, user_session('permissions', [])))
+<a href="{{ route('whatsapp-groups.index') }}" class="btn btn-outline-success btn-sm me-2" wire:navigate>
+    <i class="bx bxl-whatsapp me-1"></i> WhatsApp groups
+</a>
+@endif
 @if(user_session('division_id'))
 <a href="{{ route('participant-groups.index') }}" class="btn btn-outline-success btn-sm me-2">
     <i class="fas fa-layer-group me-1"></i> Participant Groups

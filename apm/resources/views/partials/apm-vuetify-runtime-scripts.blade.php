@@ -53,6 +53,7 @@
 <script src="{{ asset('js/pending-approvals-app.js') }}?v=10"></script>
 <script src="{{ asset('js/returned-memos-app.js') }}?v=2"></script>
 <script src="{{ asset('js/stale-memos-app.js') }}?v=1"></script>
+<script src="{{ asset('js/whatsapp-groups-app.js') }}?v=1"></script>
 <script src="{{ asset('js/audit-logs-app.js') }}?v=1"></script>
 <script src="{{ asset('js/apm-memo-list-filters.js') }}?v=5"></script>
 <script src="{{ asset('js/apm-matrix-list-filters.js') }}?v=2"></script>

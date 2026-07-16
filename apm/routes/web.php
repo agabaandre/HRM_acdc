@@ -234,12 +234,29 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // System configuration hub (jobs default tab)
     Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
-        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos')
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos|whatsapp')
         ->name('system-configs.index');
     Route::post('/system-configs/stale-memos/archive-all', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveAll'])
         ->name('stale-memos.archive-all');
     Route::post('/system-configs/stale-memos/unarchive', [App\Http\Controllers\StaleMemoArchivesController::class, 'unarchiveOne'])
         ->name('stale-memos.unarchive');
+    Route::post('/system-configs/whatsapp', [App\Http\Controllers\WhatsAppSettingsController::class, 'update'])
+        ->name('whatsapp-settings.update');
+    Route::get('/system-configs/whatsapp/test', [App\Http\Controllers\WhatsAppSettingsController::class, 'testConnection'])
+        ->name('whatsapp-settings.test');
+
+    Route::prefix('whatsapp-groups')->name('whatsapp-groups.')->group(function () {
+        Route::get('/', [App\Http\Controllers\WhatsAppGroupsController::class, 'index'])->name('index');
+        Route::get('/status', [App\Http\Controllers\WhatsAppGroupsController::class, 'status'])->name('status');
+        Route::get('/groups', [App\Http\Controllers\WhatsAppGroupsController::class, 'groups'])->name('groups');
+        Route::patch('/groups/{jid}', [App\Http\Controllers\WhatsAppGroupsController::class, 'updateGroup'])
+            ->where('jid', '.+')
+            ->name('groups.update');
+        Route::get('/groups/{jid}/members', [App\Http\Controllers\WhatsAppGroupsController::class, 'members'])
+            ->where('jid', '.+')
+            ->name('groups.members');
+        Route::post('/primary', [App\Http\Controllers\WhatsAppGroupsController::class, 'setPrimary'])->name('set-primary');
+    });
 
     Route::get('/stale-drafts', [App\Http\Controllers\StaleMemoArchivesController::class, 'userIndex'])
         ->name('stale-drafts.index');

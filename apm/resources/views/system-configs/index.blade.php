@@ -72,6 +72,9 @@
             @case('stale-memos')
                 @include('stale-memos.index', $panelData)
                 @break
+            @case('whatsapp')
+                @include('whatsapp-settings.index', $panelData)
+                @break
         @endswitch
     </div>
 </div>

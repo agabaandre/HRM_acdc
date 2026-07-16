@@ -23,6 +23,7 @@ class SystemSettingsController extends Controller
         'approvals'  => 'Approvals & reminders',
         'budget'     => 'Budget commitment',
         'service_requests' => 'Service requests',
+        'whatsapp' => 'WhatsApp',
         'general'    => 'Other settings',
     ];
 
@@ -35,7 +36,7 @@ class SystemSettingsController extends Controller
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
-        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'general'];
+        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'whatsapp', 'general'];
         $groups = [];
         foreach ($order as $g) {
             $groups[$g] = [
@@ -173,6 +174,12 @@ class SystemSettingsController extends Controller
             'budget_committed_change_request_statuses' => 'budget',
             'budget_stale_draft_reminders_enabled' => 'budget',
             'budget_stale_draft_auto_archive_enabled' => 'budget',
+            'whatsapp_bot_enabled' => 'whatsapp',
+            'whatsapp_bot_api_url' => 'whatsapp',
+            'whatsapp_bot_number' => 'whatsapp',
+            'whatsapp_bot_admin_password' => 'whatsapp',
+            'whatsapp_primary_group_jid' => 'whatsapp',
+            'whatsapp_primary_group_name' => 'whatsapp',
         ];
         return $map[$key] ?? 'general';
     }

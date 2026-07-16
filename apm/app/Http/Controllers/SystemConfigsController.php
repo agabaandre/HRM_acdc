@@ -40,6 +40,11 @@ class SystemConfigsController extends Controller
             'icon' => 'bx-archive-in',
             'description' => 'Auto-archive abandoned draft memos holding budget & archive history',
         ],
+        'whatsapp' => [
+            'label' => 'WhatsApp',
+            'icon' => 'bxl-whatsapp',
+            'description' => 'WhatsApp bot connection, bot number & staff group integration',
+        ],
     ];
 
     public function index(Request $request, string $tab = 'jobs'): View|RedirectResponse|StreamedResponse
@@ -78,6 +83,7 @@ class SystemConfigsController extends Controller
             'audit-logs' => app(AuditLogsController::class)->getIndexData($request),
             'backups' => app(BackupController::class)->getIndexData(),
             'stale-memos' => app(StaleMemoArchivesController::class)->getIndexData($request),
+            'whatsapp' => app(WhatsAppSettingsController::class)->getIndexData(),
             default => [],
         };
     }
