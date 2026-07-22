@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
@@ -540,7 +540,15 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
   }
 }
 
-onMounted(async () => {
+async function bootstrapReports(): Promise<void> {
+  if (!auth.me && auth.isAuthenticated) {
+    try {
+      await auth.fetchMe()
+    } catch {
+      // keep going with whatever role state we have
+    }
+  }
+
   try {
     const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
     categories.value = Array.isArray(data.data) ? data.data : []
@@ -575,7 +583,22 @@ onMounted(async () => {
     tab.value = 'mine'
   }
   await load()
+}
+
+onMounted(() => {
+  void bootstrapReports()
 })
+
+watch(
+  () => auth.me?.profile?.role,
+  (role, prev) => {
+    if (!role || role === prev) return
+    // Profile arrived after first paint — re-bootstrap once so admin/staff tabs populate.
+    if (!adminCounts.value && !myStats.value && !monthlyReports.value.length) {
+      void bootstrapReports()
+    }
+  },
+)
 </script>
 
 <template>
@@ -1228,6 +1251,8 @@ onMounted(async () => {
       </template>
     </template>
 
+    <p v-else-if="tab === 'admin' && adminLoading" class="muted">Loading admin overview…</p>
+    <p v-else-if="tab === 'mine' && myLoading" class="muted">Loading your issues…</p>
     <p v-else-if="tab !== 'monthly' && tab !== 'infosystems'" class="muted">Loading…</p>
     </div>
   </div>

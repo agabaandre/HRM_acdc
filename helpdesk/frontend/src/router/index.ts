@@ -210,11 +210,7 @@ const router = createRouter({
   },
 })
 
-router.beforeEach(async (to, from) => {
-  if (to.path !== from.path && from.matched.length > 0) {
-    startRoutePreloader()
-  }
-
+router.beforeEach(async (to) => {
   if (to.meta.public) {
     return true
   }
@@ -299,6 +295,13 @@ router.beforeEach(async (to, from) => {
         return { name: 'home' }
       }
     }
+  }
+})
+
+/** Start only after guards succeed — redirects/aborts never leave the content clipped. */
+router.beforeResolve((to, from) => {
+  if (to.path !== from.path && from.matched.length > 0) {
+    startRoutePreloader()
   }
 })
 
