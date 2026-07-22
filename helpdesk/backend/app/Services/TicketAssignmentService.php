@@ -177,16 +177,69 @@ class TicketAssignmentService
      */
     public function assignAdminRoundRobin(HelpdeskTicket $ticket): array
     {
+        return $this->assignRoundRobinAmongProfiles($ticket, function ($q) {
+            $q->where('role', HelpdeskProfile::ROLE_ADMIN)
+                ->orWhere('grant_helpdesk_admin', true);
+        });
+    }
+
+    /**
+     * Round-robin among supervisors (role or grant_supervisor_access) by open workload.
+     * Used when category routing finds no eligible agent.
+     *
+     * @return array{user_id: ?int, group_id: ?int}
+     */
+    public function assignSupervisorRoundRobin(HelpdeskTicket $ticket): array
+    {
+        $result = $this->assignRoundRobinAmongProfiles($ticket, function ($q) {
+            $q->where('role', HelpdeskProfile::ROLE_SUPERVISOR)
+                ->orWhere('grant_supervisor_access', true);
+        });
+
+        if ($result['user_id']) {
+            return $result;
+        }
+
+        // No supervisors configured — fall back to helpdesk admins.
+        return $this->assignAdminRoundRobin($ticket);
+    }
+
+    /**
+     * Prefer an eligible agent; if none, assign a supervisor (then admin) by load.
+     *
+     * @return array{user_id: ?int, group_id: ?int, fallback: bool}
+     */
+    public function assignAgentOrSupervisorFallback(HelpdeskTicket $ticket, ?string $requesterDutyStation): array
+    {
+        $result = $this->assignAgent($ticket, $requesterDutyStation);
+        if ($result['user_id'] || $result['group_id']) {
+            return ['user_id' => $result['user_id'], 'group_id' => $result['group_id'], 'fallback' => false];
+        }
+
+        $fallback = $this->assignSupervisorRoundRobin($ticket);
+
+        return [
+            'user_id' => $fallback['user_id'],
+            'group_id' => $fallback['group_id'],
+            'fallback' => $fallback['user_id'] !== null,
+        ];
+    }
+
+    /**
+     * @param  callable(\Illuminate\Database\Eloquent\Builder): void  $profileConstraint
+     * @return array{user_id: ?int, group_id: ?int}
+     */
+    private function assignRoundRobinAmongProfiles(HelpdeskTicket $ticket, callable $profileConstraint): array
+    {
         $excludeUserId = (int) ($ticket->created_by_user_id ?? 0);
 
-        $adminIds = User::query()
-            ->whereHas('helpdeskProfile', function ($q) {
+        $ids = User::query()
+            ->whereHas('helpdeskProfile', function ($q) use ($profileConstraint) {
                 $q->where(function ($q) {
                     $q->where('is_agent_disabled', false)
                         ->orWhereNull('is_agent_disabled');
-                })->where(function ($q) {
-                    $q->where('role', HelpdeskProfile::ROLE_ADMIN)
-                        ->orWhere('grant_helpdesk_admin', true);
+                })->where(function ($q) use ($profileConstraint) {
+                    $profileConstraint($q);
                 });
             })
             ->pluck('id')
@@ -194,14 +247,14 @@ class TicketAssignmentService
             ->all();
 
         if ($excludeUserId > 0) {
-            $adminIds = array_values(array_filter($adminIds, fn (int $id) => $id !== $excludeUserId));
+            $ids = array_values(array_filter($ids, fn (int $id) => $id !== $excludeUserId));
         }
 
-        if ($adminIds === []) {
+        if ($ids === []) {
             return ['user_id' => null, 'group_id' => null];
         }
 
-        $ranked = $this->rankAgentUserIds($adminIds, $ticket, null);
+        $ranked = $this->rankAgentUserIds($ids, $ticket, null);
 
         return [
             'user_id' => $ranked[0] ?? null,

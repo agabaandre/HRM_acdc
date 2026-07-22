@@ -40,6 +40,61 @@ const candidatesLoaded = ref(false)
 const candidateSearch = ref("")
 const onlyMarked = ref(false)
 const busyStaffId = ref<number | null>(null)
+const cleanupBusy = ref(false)
+const cleanupPreviewBusy = ref(false)
+const cleanupCount = ref<number | null>(null)
+const cleanupPreviewMsg = ref<string | null>(null)
+
+async function previewEmailCleanup() {
+  cleanupPreviewBusy.value = true
+  cleanupPreviewMsg.value = null
+  try {
+    const { data } = await api.get<{ data: { count: number } }>('/api/v1/admin/email-ticket-cleanup', {
+      params: { unassigned_only: true, source_email_only: true, open_only: true },
+    })
+    cleanupCount.value = Number(data.data?.count ?? 0)
+    cleanupPreviewMsg.value = `${cleanupCount.value} open unassigned email ticket(s) match.`
+  } catch (e: unknown) {
+    cleanupCount.value = null
+    notifyError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Preview failed')
+  } finally {
+    cleanupPreviewBusy.value = false
+  }
+}
+
+async function runEmailCleanup() {
+  if (cleanupCount.value == null) {
+    await previewEmailCleanup()
+  }
+  const n = cleanupCount.value ?? 0
+  if (n < 1) {
+    notifyWarning('Nothing to delete.')
+    return
+  }
+  if (!window.confirm(`Permanently delete ${n} open unassigned email ticket(s)? This cannot be undone.`)) {
+    return
+  }
+  cleanupBusy.value = true
+  try {
+    const { data } = await api.post<{ message?: string; data?: { deleted: number } }>(
+      '/api/v1/admin/email-ticket-cleanup',
+      {
+        confirm: true,
+        unassigned_only: true,
+        source_email_only: true,
+        open_only: true,
+        limit: 2000,
+      },
+    )
+    notifySuccess(data.message ?? `Deleted ${data.data?.deleted ?? 0} ticket(s).`)
+    cleanupCount.value = 0
+    cleanupPreviewMsg.value = 'Cleanup complete.'
+  } catch (e: unknown) {
+    notifyError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Cleanup failed')
+  } finally {
+    cleanupBusy.value = false
+  }
+}
 
 function parseDivisionCsv(csv: string): number[] {
   return csv
@@ -382,8 +437,25 @@ function roleLabel(c: CandidateRow): string {
             <span class="toggle-hint">
               Off by default. When on, the scheduler polls each unit with intake enabled (e.g. helpdesk@africacdc.org for IT &amp; MIS), creates tickets, categorizes, and assigns.
               Use <strong>Test read</strong> on a Business Unit to verify Graph access without creating tickets.
+              New mail keeps only the latest message (reply threads are stripped). If category routing finds no agent, tickets are assigned to supervisors (then admins) by open workload — grant Supervisor under Agents.
             </span>
           </span>
+        </div>
+        <div class="cleanup-block">
+          <h4 class="cleanup-title">Clean up bad email tickets</h4>
+          <p class="toggle-hint">
+            Deletes open, unassigned tickets created from email intake (up to 2,000 per run). Use after a bad sync imported reply threads.
+            This cannot be undone.
+          </p>
+          <div class="cleanup-actions">
+            <UButton color="neutral" variant="outline" :loading="cleanupPreviewBusy" @click="previewEmailCleanup">
+              Preview count
+            </UButton>
+            <UButton color="error" :loading="cleanupBusy" :disabled="cleanupCount === null" @click="runEmailCleanup">
+              Delete {{ cleanupCount ?? '…' }} matching tickets
+            </UButton>
+          </div>
+          <p v-if="cleanupPreviewMsg" class="cleanup-msg">{{ cleanupPreviewMsg }}</p>
         </div>
       </article>
 
@@ -892,6 +964,31 @@ function roleLabel(c: CandidateRow): string {
   font-weight: 400;
   color: #64748b;
   line-height: 1.45;
+}
+.cleanup-block {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cleanup-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #334155;
+}
+.cleanup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.cleanup-msg {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
 }
 .field-block--agents {
   margin-top: 0.5rem;

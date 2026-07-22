@@ -70,7 +70,7 @@ class CategorizeTicketWithAi implements ShouldQueue
             $ticket->save();
 
             if (! $ticket->assigned_user_id && ! $ticket->assigned_group_id) {
-                $result = $assignment->assignAgent($ticket, $this->requesterDutyStation);
+                $result = $assignment->assignAgentOrSupervisorFallback($ticket, $this->requesterDutyStation);
                 if ($result['user_id'] || $result['group_id']) {
                     $ticket->assigned_user_id = $result['user_id'];
                     $ticket->assigned_group_id = $result['group_id'];
@@ -78,20 +78,26 @@ class CategorizeTicketWithAi implements ShouldQueue
                     if ($result['user_id']) {
                         $assignees->sync($ticket, [(int) $result['user_id']], (int) $result['user_id']);
                     }
+                    if ($result['fallback']) {
+                        $meta = is_array($ticket->meta) ? $ticket->meta : [];
+                        $meta['assigned_via_supervisor_fallback'] = true;
+                        $ticket->meta = $meta;
+                        $ticket->save();
+                    }
                 }
             }
 
             return;
         }
 
-        // Categorization failed — equalize admin workload.
+        // Categorization failed — supervisors (then admins) by open workload.
         if ($ticket->assigned_user_id || $ticket->assigned_group_id) {
             return;
         }
 
-        $result = $assignment->assignAdminRoundRobin($ticket);
+        $result = $assignment->assignSupervisorRoundRobin($ticket);
         if (! $result['user_id']) {
-            Log::warning('helpdesk.ai_categorize.no_admin_assignee', ['ticket_id' => $ticket->id]);
+            Log::warning('helpdesk.ai_categorize.no_supervisor_assignee', ['ticket_id' => $ticket->id]);
 
             return;
         }
@@ -102,6 +108,7 @@ class CategorizeTicketWithAi implements ShouldQueue
 
         $meta = is_array($ticket->meta) ? $ticket->meta : [];
         $meta['ai_categorization_failed'] = true;
+        $meta['assigned_via_supervisor_fallback'] = true;
         $ticket->meta = $meta;
         $ticket->save();
     }

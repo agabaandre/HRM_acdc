@@ -31,13 +31,18 @@ class AssignEndUserTicket
             return;
         }
 
-        $result = $assignment->assignAgent($ticket, $this->requesterDutyStation);
+        $result = $assignment->assignAgentOrSupervisorFallback($ticket, $this->requesterDutyStation);
         if (! $result['user_id'] && ! $result['group_id']) {
             return;
         }
 
         $ticket->assigned_user_id = $result['user_id'];
         $ticket->assigned_group_id = $result['group_id'];
+        if ($result['fallback']) {
+            $meta = is_array($ticket->meta) ? $ticket->meta : [];
+            $meta['assigned_via_supervisor_fallback'] = true;
+            $ticket->meta = $meta;
+        }
         $ticket->save();
 
         if ($result['user_id']) {

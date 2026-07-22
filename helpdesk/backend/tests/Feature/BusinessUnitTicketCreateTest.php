@@ -36,17 +36,88 @@ class BusinessUnitTicketCreateTest extends TestCase
         return $user->fresh(['helpdeskProfile']);
     }
 
+    private function assignAgentToUnit(HelpdeskBusinessUnit $unit, int $staffId): User
+    {
+        $categoryIds = HelpdeskCategory::query()
+            ->where('business_unit_id', $unit->id)
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+        $agent = $this->actingHelpdeskUser($staffId, HelpdeskProfile::ROLE_AGENT);
+        $agent->helpdeskAgentCategories()->sync($categoryIds);
+
+        return $agent;
+    }
+
     public function test_business_units_index_includes_meta_and_categories(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $category = HelpdeskCategory::query()->where('business_unit_id', $unit->id)->firstOrFail();
+
+        $agent = $this->actingHelpdeskUser(70100, HelpdeskProfile::ROLE_AGENT);
+        $agent->helpdeskAgentCategories()->sync([$category->id]);
+
         $user = $this->actingHelpdeskUser(70101);
         Sanctum::actingAs($user);
 
         $res = $this->getJson('/api/v1/business-units');
         $res->assertOk();
         $this->assertArrayHasKey('show_issue_category_on_request_form', $res->json('meta'));
+        $this->assertTrue((bool) $res->json('meta.agent_coverage_enforced'));
         $this->assertNotEmpty($res->json('data'));
         $this->assertNotEmpty($res->json('data.0.categories'));
+    }
+
+    public function test_business_units_without_agents_are_hidden_from_request_form(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $it = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $protocol = HelpdeskBusinessUnit::query()->where('slug', 'protocol')->first();
+        if ($protocol === null) {
+            $protocol = HelpdeskBusinessUnit::query()->create([
+                'name' => 'Protocol',
+                'slug' => 'protocol',
+                'sort_order' => 40,
+                'is_active' => true,
+                'allows_anonymous' => false,
+            ]);
+            HelpdeskCategory::query()->create([
+                'business_unit_id' => $protocol->id,
+                'name' => 'Visa Processing',
+                'slug' => 'visa-processing-test',
+                'sort_order' => 1,
+                'is_active' => true,
+                'default_priority' => 'medium',
+            ]);
+        }
+
+        $itCategory = HelpdeskCategory::query()->where('business_unit_id', $it->id)->firstOrFail();
+        $agent = $this->actingHelpdeskUser(70111, HelpdeskProfile::ROLE_AGENT);
+        $agent->helpdeskAgentCategories()->sync([$itCategory->id]);
+
+        $user = $this->actingHelpdeskUser(70112);
+        Sanctum::actingAs($user);
+
+        $res = $this->getJson('/api/v1/business-units');
+        $res->assertOk();
+        $slugs = collect($res->json('data'))->pluck('slug')->all();
+        $this->assertContains('it-mis', $slugs);
+        $this->assertNotContains('protocol', $slugs);
+    }
+
+    public function test_cannot_create_ticket_for_business_unit_without_agents(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+
+        $user = $this->actingHelpdeskUser(70113);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $unit->id,
+            'description' => '<p>No agents configured for this unit</p>',
+        ])->assertStatus(422);
     }
 
     public function test_end_user_can_create_ticket_with_business_unit_only_and_dispatches_ai_job(): void
@@ -54,6 +125,9 @@ class BusinessUnitTicketCreateTest extends TestCase
         Bus::fake([CategorizeTicketWithAi::class]);
         $this->seed(HelpdeskCategorySeeder::class);
         $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $category = HelpdeskCategory::query()->where('business_unit_id', $unit->id)->firstOrFail();
+        $agent = $this->actingHelpdeskUser(70114, HelpdeskProfile::ROLE_AGENT);
+        $agent->helpdeskAgentCategories()->sync([$category->id]);
 
         $user = $this->actingHelpdeskUser(70102);
         Sanctum::actingAs($user);
@@ -77,6 +151,7 @@ class BusinessUnitTicketCreateTest extends TestCase
             ['value' => '1']
         );
         $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $this->assignAgentToUnit($unit, 70115);
 
         $user = $this->actingHelpdeskUser(70103);
         Sanctum::actingAs($user);
@@ -92,6 +167,8 @@ class BusinessUnitTicketCreateTest extends TestCase
         $this->seed(HelpdeskCategorySeeder::class);
         $it = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
         $io = HelpdeskBusinessUnit::query()->where('slug', 'internal-oversight')->firstOrFail();
+        $this->assignAgentToUnit($it, 70116);
+        $this->assignAgentToUnit($io, 70117);
 
         $user = $this->actingHelpdeskUser(70104);
         Sanctum::actingAs($user);

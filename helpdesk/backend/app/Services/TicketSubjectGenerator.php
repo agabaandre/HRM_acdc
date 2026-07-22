@@ -27,7 +27,8 @@ class TicketSubjectGenerator
 
     private function build(string $scopeName, string $requesterName, ?string $descriptionHtml): string
     {
-        $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $descriptionHtml)));
+        $plain = HtmlSanitizer::toPlainText($descriptionHtml) ?? '';
+        $plain = trim(preg_replace('/\s+/', ' ', $plain) ?? '');
         $snippet = Str::limit($plain, 56, '');
         $aiBit = trim($this->ai->hint($plain));
 

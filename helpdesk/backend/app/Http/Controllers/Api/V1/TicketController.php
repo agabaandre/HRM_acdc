@@ -17,6 +17,7 @@ use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
 use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
+use App\Services\AgentCategoryRoutingService;
 use App\Services\HtmlSanitizer;
 use App\Services\RequesterTicketFollowUpService;
 use App\Services\StaffDirectoryLookupService;
@@ -89,6 +90,7 @@ class TicketController extends Controller
         TicketSubjectGenerator $subjects,
         StaffDirectoryLookupService $directoryLookup,
         TicketPriorityResolver $priorityResolver,
+        AgentCategoryRoutingService $routing,
     ): JsonResponse {
         $user = $request->user();
         $profile = $user->helpdeskProfile;
@@ -114,10 +116,20 @@ class TicketController extends Controller
         }
 
         $businessUnit = HelpdeskBusinessUnit::query()->findOrFail((int) $request->validated('business_unit_id'));
+        if (! $routing->businessUnitHasRoutableAgents((int) $businessUnit->id)) {
+            abort(422, 'This business unit has no agents configured to handle tickets. Choose another unit or ask an administrator to assign agents.');
+        }
+
         $categoryId = $request->filled('category_id') ? (int) $request->validated('category_id') : null;
         $category = $categoryId
             ? HelpdeskCategory::query()->findOrFail($categoryId)
             : null;
+        if ($category !== null) {
+            $covered = $routing->categoryIdsCoveredByEligibleAgents();
+            if (! in_array((int) $category->id, $covered, true)) {
+                abort(422, 'No agents are configured for this issue category. Choose another category or ask an administrator to assign agents.');
+            }
+        }
         $description = HtmlSanitizer::sanitize($request->validated('description'));
         if ($description === null) {
             abort(422, 'A description is required. Add text or images in the editor.');

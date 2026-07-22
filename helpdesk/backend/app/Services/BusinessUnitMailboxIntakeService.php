@@ -18,6 +18,7 @@ class BusinessUnitMailboxIntakeService
         private StaffDirectoryLookupService $directory,
         private TicketNumberGenerator $numbers,
         private TicketSubjectGenerator $subjects,
+        private EmailBodyNormalizer $bodyNormalizer,
     ) {}
 
     /**
@@ -170,14 +171,14 @@ class BusinessUnitMailboxIntakeService
     {
         $fromEmail = $this->fromAddress($message);
         $fromName = $this->fromName($message);
-        $body = $this->extractBody($message);
-        $description = HtmlSanitizer::sanitize($body)
-            ?? '<p>'.e(trim(strip_tags($body)) ?: 'Email body was empty.').'</p>';
+        $description = $this->extractBody($message);
 
         $subjectLine = trim((string) ($message['subject'] ?? ''));
         if ($subjectLine === '') {
             $subjectLine = 'Email request';
         }
+        // Prefer clean mailbox subject; avoid stuffing the whole thread into the subject line.
+        $displaySubject = mb_substr(html_entity_decode($subjectLine, ENT_QUOTES | ENT_HTML5, 'UTF-8'), 0, 255);
 
         $resolved = $fromEmail ? $this->directory->resolveByWorkEmail($fromEmail) : null;
         $requesterStaffId = $resolved['staff_id'] ?? null;
@@ -191,16 +192,6 @@ class BusinessUnitMailboxIntakeService
         $meta = ['email_intake' => true];
         if ($dutyStation) {
             $meta['requester_duty_station'] = $dutyStation;
-        }
-
-        $displaySubject = $this->subjects->generateForBusinessUnit(
-            $unit->name,
-            (string) $requesterName,
-            $description
-        );
-        // Prefer mailbox subject when present (still generated subject if empty above).
-        if (trim((string) ($message['subject'] ?? '')) !== '') {
-            $displaySubject = mb_substr($subjectLine, 0, 255);
         }
 
         return HelpdeskTicket::query()->create([
@@ -251,18 +242,14 @@ class BusinessUnitMailboxIntakeService
     {
         $body = $message['body'] ?? null;
         if (is_array($body) && isset($body['content']) && is_string($body['content']) && trim($body['content']) !== '') {
-            $content = $body['content'];
-            $type = strtolower((string) ($body['contentType'] ?? 'text'));
-            if ($type === 'text') {
-                return '<p>'.nl2br(e($content)).'</p>';
-            }
+            $type = strtolower((string) ($body['contentType'] ?? 'html'));
 
-            return $content;
+            return $this->bodyNormalizer->toTicketHtml($body['content'], $type);
         }
 
         $preview = trim((string) ($message['bodyPreview'] ?? ''));
         if ($preview !== '') {
-            return '<p>'.nl2br(e($preview)).'</p>';
+            return $this->bodyNormalizer->toTicketHtml($preview, 'text');
         }
 
         return '<p>Email body was empty.</p>';

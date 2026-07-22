@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError, isCheckboxChecked, type CheckboxValue, type SelectNumberItem } from '../../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
@@ -89,39 +90,89 @@ const activeTab = ref<SettingsTab>('groups')
 const cats = ref<Cat[]>([])
 const groups = ref<SupportGroupRow[]>([])
 const agents = ref<AgentRow[]>([])
-const groupDraft = reactive<Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }>>({})
-const newGroupForm = reactive({
-  open: false,
+const groupModalOpen = ref(false)
+const groupEditingId = ref<number | null>(null)
+const groupEditingIsSystem = ref(false)
+const groupForm = reactive({
   name: '',
   description: '',
+  sort_order: 0,
   category_ids: [] as number[],
   member_user_ids: [] as number[],
+  is_active: true,
 })
 const selection = ref<Record<number, number[]>>({})
 const groupSelection = ref<Record<number, number[]>>({})
-const kbToggle = ref<Record<number, boolean>>({})
-const reassignToggle = ref<Record<number, boolean>>({})
-const deleteAttachmentToggle = ref<Record<number, boolean>>({})
-const changeCategoryToggle = ref<Record<number, boolean>>({})
-const itAssetsToggle = ref<Record<number, boolean>>({})
-const licensesToggle = ref<Record<number, boolean>>({})
-const swSubmitToggle = ref<Record<number, boolean>>({})
-const swApproveToggle = ref<Record<number, boolean>>({})
-const swManageToggle = ref<Record<number, boolean>>({})
-const adminToggle = ref<Record<number, boolean>>({})
-const supervisorToggle = ref<Record<number, boolean>>({})
+const agentPermSelection = ref<Record<number, string[]>>({})
 const staffPermissions = ref<StaffPermissionRow[]>([])
-const staffPermAdmin = ref<Record<number, boolean>>({})
-const staffPermSupervisor = ref<Record<number, boolean>>({})
-const staffPermKb = ref<Record<number, boolean>>({})
-const staffPermReassign = ref<Record<number, boolean>>({})
-const staffPermDeleteAttachment = ref<Record<number, boolean>>({})
-const staffPermChangeCategory = ref<Record<number, boolean>>({})
-const staffPermItAssets = ref<Record<number, boolean>>({})
-const staffPermLicenses = ref<Record<number, boolean>>({})
-const staffPermSwSubmit = ref<Record<number, boolean>>({})
-const staffPermSwApprove = ref<Record<number, boolean>>({})
-const staffPermSwManage = ref<Record<number, boolean>>({})
+const staffPermSelection = ref<Record<number, string[]>>({})
+
+const groupHeaders: DataTableHeader[] = [
+  { title: 'Name', key: 'name', sortable: false, minWidth: '200px' },
+  { title: 'Categories', key: 'categories', sortable: false, minWidth: '200px' },
+  { title: 'Members', key: 'members_count', sortable: false, width: '100px' },
+  { title: 'Active', key: 'is_active', sortable: false, width: '90px', align: 'center' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '180px', align: 'end' },
+]
+
+const STAFF_OVERRIDE_OPTIONS = [
+  { key: 'grant_helpdesk_admin', label: 'Helpdesk admin' },
+  { key: 'grant_supervisor_access', label: 'Supervisor' },
+  { key: 'can_manage_kb', label: 'Manage FAQs' },
+  { key: 'can_reassign_tickets', label: 'Reassign tickets' },
+  { key: 'can_delete_request_attachments', label: 'Delete attachments' },
+  { key: 'can_change_ticket_category', label: 'Change category' },
+  { key: 'can_manage_it_assets', label: 'IT assets' },
+  { key: 'can_manage_licenses', label: 'Licenses' },
+  { key: 'can_submit_software_requests', label: 'SW requests (submit)' },
+  { key: 'can_approve_software_requests', label: 'SW requests (approve)' },
+  { key: 'can_manage_software_requests', label: 'SW requests (manage)' },
+] as const
+
+const staffOverrideSelectItems = STAFF_OVERRIDE_OPTIONS.map((o) => ({
+  label: o.label,
+  value: o.key,
+}))
+
+type StaffOverrideKey = (typeof STAFF_OVERRIDE_OPTIONS)[number]['key']
+
+function agentOverrideKeysFromAgent(a: AgentRow): string[] {
+  const keys: string[] = []
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    if ((a as unknown as Record<string, unknown>)[opt.key]) {
+      keys.push(opt.key)
+    }
+  }
+  return keys
+}
+
+function staffOverrideKeysFromRow(row: StaffPermissionRow): string[] {
+  const keys: string[] = []
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    if (row[opt.key as keyof StaffPermissionRow]) {
+      keys.push(opt.key)
+    }
+  }
+  return keys
+}
+
+function overridePayloadFromKeys(selectedKeys: string[]): Record<StaffOverrideKey, boolean> {
+  const selected = new Set(selectedKeys)
+  const payload = {} as Record<StaffOverrideKey, boolean>
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    payload[opt.key] = selected.has(opt.key)
+  }
+  return payload
+}
+
+function staffOverridePayload(userId: number): Record<StaffOverrideKey, boolean> {
+  return overridePayloadFromKeys(staffPermSelection.value[userId] ?? [])
+}
+
+function agentOverridePayload(userId: number): Record<StaffOverrideKey, boolean> {
+  return overridePayloadFromKeys(agentPermSelection.value[userId] ?? [])
+}
+
 const pickerOpen = ref(false)
 const candidates = ref<CandidateRow[]>([])
 const candidatesLoading = ref(false)
@@ -151,14 +202,13 @@ const activeGroupSelectItems = computed((): SelectNumberItem[] =>
   groups.value.filter((g) => g.is_active).map((g) => ({ label: g.name, value: g.id })),
 )
 
-function toggleIdInList(list: number[], id: number, value: CheckboxValue): void {
-  const checked = isCheckboxChecked(value)
-  const i = list.indexOf(id)
-  if (checked && i < 0) {
-    list.push(id)
-  } else if (!checked && i >= 0) {
-    list.splice(i, 1)
-  }
+const groupModalTitle = computed(() => (groupEditingId.value ? 'Edit support group' : 'Add support group'))
+
+function categoriesLabel(group: SupportGroupRow): string {
+  const list = group.categories ?? []
+  if (list.length === 0) return 'All categories (catch-all)'
+  if (list.length <= 3) return list.map((c) => c.name).join(', ')
+  return `${list.slice(0, 2).map((c) => c.name).join(', ')} +${list.length - 2}`
 }
 
 async function loadCats() {
@@ -166,25 +216,9 @@ async function loadCats() {
   cats.value = Array.isArray(data.data) ? data.data : []
 }
 
-function hydrateGroupDrafts(list: SupportGroupRow[]) {
-  const draft: Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }> = {}
-  for (const g of list) {
-    draft[g.id] = {
-      name: g.name,
-      description: g.description ?? '',
-      category_ids: (g.categories ?? []).map((c) => c.id),
-      member_user_ids: (g.members ?? []).map((m) => m.id),
-      is_active: g.is_active,
-    }
-  }
-  Object.assign(groupDraft, draft)
-}
-
 async function loadGroups() {
   const { data } = await api.get<{ data: SupportGroupRow[] }>('/api/v1/admin/support-groups')
-  const list = Array.isArray(data.data) ? data.data : []
-  groups.value = list
-  hydrateGroupDrafts(list)
+  groups.value = Array.isArray(data.data) ? data.data : []
 }
 
 async function loadAgents() {
@@ -193,66 +227,26 @@ async function loadAgents() {
   agents.value = list
   const map: Record<number, number[]> = {}
   const grp: Record<number, number[]> = {}
-  const kb: Record<number, boolean> = {}
-  const reassign: Record<number, boolean> = {}
-  const deleteAttachment: Record<number, boolean> = {}
-  const changeCategory: Record<number, boolean> = {}
-  const admin: Record<number, boolean> = {}
-  const supervisor: Record<number, boolean> = {}
+  const perms: Record<number, string[]> = {}
   for (const a of list) {
     map[a.id] = (a.categories ?? []).map((c) => c.id)
     grp[a.id] = (a.support_groups ?? []).map((g) => g.id)
-    kb[a.id] = !!a.can_manage_kb
-    reassign[a.id] = !!a.can_reassign_tickets
-    deleteAttachment[a.id] = !!a.can_delete_request_attachments
-    changeCategory[a.id] = !!a.can_change_ticket_category
-    itAssetsToggle.value[a.id] = !!a.can_manage_it_assets
-    licensesToggle.value[a.id] = !!a.can_manage_licenses
-    swSubmitToggle.value[a.id] = !!a.can_submit_software_requests
-    swApproveToggle.value[a.id] = !!a.can_approve_software_requests
-    swManageToggle.value[a.id] = !!a.can_manage_software_requests
-    admin[a.id] = !!a.grant_helpdesk_admin
-    supervisor[a.id] = !!a.grant_supervisor_access
+    perms[a.id] = agentOverrideKeysFromAgent(a)
   }
   selection.value = map
   groupSelection.value = grp
-  kbToggle.value = kb
-  reassignToggle.value = reassign
-  deleteAttachmentToggle.value = deleteAttachment
-  changeCategoryToggle.value = changeCategory
-  adminToggle.value = admin
-  supervisorToggle.value = supervisor
+  agentPermSelection.value = perms
 }
 
 async function loadStaffPermissions() {
   const { data } = await api.get<{ data: StaffPermissionRow[] }>('/api/v1/admin/staff-permissions')
   const list = Array.isArray(data.data) ? data.data : []
   staffPermissions.value = list
-  const admin: Record<number, boolean> = {}
-  const supervisor: Record<number, boolean> = {}
-  const kb: Record<number, boolean> = {}
-  const reassign: Record<number, boolean> = {}
-  const deleteAttachment: Record<number, boolean> = {}
-  const changeCategory: Record<number, boolean> = {}
+  const map: Record<number, string[]> = {}
   for (const row of list) {
-    admin[row.id] = !!row.grant_helpdesk_admin
-    supervisor[row.id] = !!row.grant_supervisor_access
-    kb[row.id] = !!row.can_manage_kb
-    reassign[row.id] = !!row.can_reassign_tickets
-    deleteAttachment[row.id] = !!row.can_delete_request_attachments
-    changeCategory[row.id] = !!row.can_change_ticket_category
-    staffPermItAssets.value[row.id] = !!row.can_manage_it_assets
-    staffPermLicenses.value[row.id] = !!row.can_manage_licenses
-    staffPermSwSubmit.value[row.id] = !!row.can_submit_software_requests
-    staffPermSwApprove.value[row.id] = !!row.can_approve_software_requests
-    staffPermSwManage.value[row.id] = !!row.can_manage_software_requests
+    map[row.id] = staffOverrideKeysFromRow(row)
   }
-  staffPermAdmin.value = admin
-  staffPermSupervisor.value = supervisor
-  staffPermKb.value = kb
-  staffPermReassign.value = reassign
-  staffPermDeleteAttachment.value = deleteAttachment
-  staffPermChangeCategory.value = changeCategory
+  staffPermSelection.value = map
 }
 
 async function loadAll() {
@@ -281,61 +275,82 @@ async function loadAll() {
   }
 }
 
-async function saveGroup(group: SupportGroupRow) {
-  const draft = groupDraft[group.id]
-  if (!draft) return
-  savingGroupId.value = group.id
-  try {
-    await api.put(`/api/v1/admin/support-groups/${group.id}`, {
-      name: draft.name.trim() || group.name,
-      description: draft.description.trim() || null,
-      sort_order: group.sort_order,
-      is_active: draft.is_active,
-      category_ids: draft.category_ids.map((id) => Number(id)),
-      member_user_ids: draft.member_user_ids.map((id) => Number(id)),
-    })
-    notifySuccess(`Saved ${group.name}`)
-    await loadGroups()
-    await loadAgents()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to save support group.'))
-  } finally {
-    savingGroupId.value = null
-  }
+function resetGroupForm() {
+  groupForm.name = ''
+  groupForm.description = ''
+  groupForm.sort_order = 0
+  groupForm.category_ids = []
+  groupForm.member_user_ids = []
+  groupForm.is_active = true
 }
 
-async function onCreateGroup(_event: FormSubmitEvent<typeof newGroupForm>) {
-  const name = newGroupForm.name.trim()
-  savingGroupId.value = -1
-  try {
-    await api.post('/api/v1/admin/support-groups', {
-      name,
-      description: newGroupForm.description.trim() || null,
-      category_ids: newGroupForm.category_ids.map((id) => Number(id)),
-      member_user_ids: newGroupForm.member_user_ids.map((id) => Number(id)),
-      is_active: true,
-    })
-    notifySuccess(`Created ${name}`)
-    newGroupForm.open = false
-    newGroupForm.name = ''
-    newGroupForm.description = ''
-    newGroupForm.category_ids = []
-    newGroupForm.member_user_ids = []
-    await loadGroups()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to create support group.'))
-  } finally {
-    savingGroupId.value = null
-  }
+function openCreateGroupModal() {
+  groupEditingId.value = null
+  groupEditingIsSystem.value = false
+  resetGroupForm()
+  groupModalOpen.value = true
 }
 
-function validateNewGroup(state: typeof newGroupForm): FormError[] {
+function openEditGroupModal(group: SupportGroupRow) {
+  groupEditingId.value = group.id
+  groupEditingIsSystem.value = group.is_system
+  groupForm.name = group.name
+  groupForm.description = group.description ?? ''
+  groupForm.sort_order = group.sort_order
+  groupForm.category_ids = (group.categories ?? []).map((c) => c.id)
+  groupForm.member_user_ids = (group.members ?? []).map((m) => m.id)
+  groupForm.is_active = group.is_active
+  groupModalOpen.value = true
+}
+
+function closeGroupModal() {
+  groupModalOpen.value = false
+  groupEditingId.value = null
+  groupEditingIsSystem.value = false
+  resetGroupForm()
+}
+
+function validateGroupForm(state: typeof groupForm): FormError[] {
   const errors: FormError[] = []
   const nameErr = fieldError('name', state.name, 'Enter a group name')
   if (nameErr) {
     errors.push(nameErr)
   }
   return errors
+}
+
+async function saveGroupModal(_event?: FormSubmitEvent<typeof groupForm>) {
+  const name = groupForm.name.trim()
+  if (!name) {
+    notifyError('Enter a group name')
+    return
+  }
+  const payload = {
+    name,
+    description: groupForm.description.trim() || null,
+    sort_order: groupForm.sort_order,
+    is_active: groupForm.is_active,
+    category_ids: groupForm.category_ids.map((id) => Number(id)),
+    member_user_ids: groupForm.member_user_ids.map((id) => Number(id)),
+  }
+
+  savingGroupId.value = groupEditingId.value ?? -1
+  try {
+    if (groupEditingId.value) {
+      await api.put(`/api/v1/admin/support-groups/${groupEditingId.value}`, payload)
+      notifySuccess(`Saved ${name}`)
+    } else {
+      await api.post('/api/v1/admin/support-groups', payload)
+      notifySuccess(`Created ${name}`)
+    }
+    closeGroupModal()
+    await loadGroups()
+    await loadAgents()
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, groupEditingId.value ? 'Failed to save support group.' : 'Failed to create support group.'))
+  } finally {
+    savingGroupId.value = null
+  }
 }
 
 async function deleteGroup(group: SupportGroupRow) {
@@ -356,19 +371,7 @@ async function deleteGroup(group: SupportGroupRow) {
 
 async function saveStaffPermissions(userId: number) {
   try {
-    await api.put(`/api/v1/admin/staff-permissions/${userId}`, {
-      grant_helpdesk_admin: !!staffPermAdmin.value[userId],
-      grant_supervisor_access: !!staffPermSupervisor.value[userId],
-      can_manage_kb: !!staffPermKb.value[userId],
-      can_reassign_tickets: !!staffPermReassign.value[userId],
-      can_delete_request_attachments: !!staffPermDeleteAttachment.value[userId],
-      can_change_ticket_category: !!staffPermChangeCategory.value[userId],
-      can_manage_it_assets: !!staffPermItAssets.value[userId],
-      can_manage_licenses: !!staffPermLicenses.value[userId],
-      can_submit_software_requests: !!staffPermSwSubmit.value[userId],
-      can_approve_software_requests: !!staffPermSwApprove.value[userId],
-      can_manage_software_requests: !!staffPermSwManage.value[userId],
-    })
+    await api.put(`/api/v1/admin/staff-permissions/${userId}`, staffOverridePayload(userId))
     notifySuccess(`Saved permission overrides for user #${userId}`)
     await loadStaffPermissions()
     await loadAgents()
@@ -393,19 +396,10 @@ async function saveAgent(userId: number) {
     await api.put(`/api/v1/admin/agents/${userId}`, {
       category_ids: (selection.value[userId] ?? []).map((id) => Number(id)),
       support_group_ids: (groupSelection.value[userId] ?? []).map((id) => Number(id)),
-      can_manage_kb: !!kbToggle.value[userId],
-      can_reassign_tickets: !!reassignToggle.value[userId],
-      can_delete_request_attachments: !!deleteAttachmentToggle.value[userId],
-      can_change_ticket_category: !!changeCategoryToggle.value[userId],
-      can_manage_it_assets: !!itAssetsToggle.value[userId],
-      can_manage_licenses: !!licensesToggle.value[userId],
-      can_submit_software_requests: !!swSubmitToggle.value[userId],
-      can_approve_software_requests: !!swApproveToggle.value[userId],
-      can_manage_software_requests: !!swManageToggle.value[userId],
-      grant_helpdesk_admin: !!adminToggle.value[userId],
-      grant_supervisor_access: !!supervisorToggle.value[userId],
+      ...agentOverridePayload(userId),
     })
     notifySuccess(`Saved settings for agent #${userId}`)
+    configuringAgentId.value = null
     await loadAgents()
     await loadGroups()
     await loadStaffPermissions()
@@ -539,18 +533,15 @@ const configuringAgent = computed(() =>
   agents.value.find((a) => a.id === configuringAgentId.value) ?? null,
 )
 
+const configureModalOpen = computed({
+  get: () => configuringAgentId.value != null,
+  set: (open: boolean) => {
+    if (!open) configuringAgentId.value = null
+  },
+})
+
 function toggleConfigureAgent(a: AgentRow) {
   configuringAgentId.value = configuringAgentId.value === a.id ? null : a.id
-}
-
-function toggleCategoryInDraft(groupId: number, catId: number, value: CheckboxValue) {
-  const checked = isCheckboxChecked(value)
-  const draft = groupDraft[groupId]
-  if (!draft) return
-  const set = new Set(draft.category_ids)
-  if (checked) set.add(catId)
-  else set.delete(catId)
-  draft.category_ids = [...set]
 }
 
 onMounted(() => {
@@ -574,7 +565,7 @@ onMounted(() => {
       <UButton v-if="activeTab === 'agents'" type="button" color="primary" @click="openPicker">
         + Add agent
       </UButton>
-      <UButton v-else-if="activeTab === 'groups'" type="button" color="primary" @click="newGroupForm.open = true">
+      <UButton v-else-if="activeTab === 'groups'" type="button" color="primary" @click="openCreateGroupModal">
         + New group
       </UButton>
     </header>
@@ -601,114 +592,122 @@ onMounted(() => {
 
     <!-- Support groups -->
     <div v-show="activeTab === 'groups'" class="tab-panel">
-      <UCard v-if="newGroupForm.open" class="card--new">
-        <template #header>
-          <h3>New support group</h3>
-        </template>
-        <UForm
-          :state="newGroupForm"
-          :validate="validateNewGroup"
-          class="hd-form hd-form--grid"
-          @submit="onCreateGroup"
-        >
-          <UFormField label="Name" name="name" required class="full">
-            <UInput v-model="newGroupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
-          </UFormField>
-          <UFormField label="Description" name="description" class="full">
-            <UTextarea v-model="newGroupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
-          </UFormField>
-          <fieldset class="full cat-fieldset">
-            <legend>Issue categories</legend>
-            <div class="cat-grid">
-              <UCheckbox
-                v-for="c in cats"
-                :key="c.id"
-                :model-value="newGroupForm.category_ids.includes(c.id)"
-                :label="c.name"
-                class="cat-check"
-                @update:model-value="(value: CheckboxValue) => toggleIdInList(newGroupForm.category_ids, c.id, value)"
-              />
-            </div>
-            <p class="hint">Leave all unchecked to route every category to this group.</p>
-          </fieldset>
-          <UFormField label="Members" name="member_user_ids" class="full">
-            <USelect
-              v-model="newGroupForm.member_user_ids"
-              multiple
-              :items="agentSelectItems"
-              placeholder="Select agents…"
-              class="w-full"
-            />
-          </UFormField>
-          <div class="full hd-form-actions">
-            <UButton type="submit" color="primary" :loading="savingGroupId === -1">Create group</UButton>
-            <UButton type="button" color="neutral" variant="outline" @click="newGroupForm.open = false">Cancel</UButton>
-          </div>
-        </UForm>
-      </UCard>
-
-      <div v-if="groups.length" class="group-grid">
-        <article v-for="g in groups" :key="g.id" class="card group-card">
-          <header class="group-card-head">
-            <div class="group-card-title-block">
-              <UFormField v-if="groupDraft[g.id]" label="Group name" :name="`group-name-${g.id}`" class="group-name-field">
-                <UInput v-model="groupDraft[g.id].name" type="text" class="w-full" />
-              </UFormField>
-              <UFormField v-if="groupDraft[g.id]" label="Description" :name="`group-desc-${g.id}`" class="group-desc-field">
-                <UTextarea v-model="groupDraft[g.id].description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
-              </UFormField>
-              <div class="badges">
-                <span v-if="g.is_system" class="badge badge-system">Default</span>
-                <span class="badge" :class="groupDraft[g.id]?.is_active ? 'badge-on' : 'badge-off'">
-                  {{ groupDraft[g.id]?.is_active ? 'Active' : 'Inactive' }}
-                </span>
-                <span class="badge badge-muted">{{ g.members_count }} member{{ g.members_count === 1 ? '' : 's' }}</span>
-              </div>
-            </div>
-          </header>
-
-          <fieldset class="cat-fieldset">
-            <legend>Categories</legend>
-            <div class="cat-grid">
-              <UCheckbox
-                v-for="c in cats"
-                :key="c.id"
-                :model-value="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
-                :label="c.name"
-                class="cat-check"
-                @update:model-value="(value: CheckboxValue) => toggleCategoryInDraft(g.id, c.id, value)"
-              />
-            </div>
-          </fieldset>
-
-          <UFormField label="Members">
-            <USelect
-              v-if="groupDraft[g.id]"
-              v-model="groupDraft[g.id].member_user_ids"
-              multiple
-              :items="agentSelectItems"
-              placeholder="Select members…"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField v-if="groupDraft[g.id]" name="is_active">
-            <USwitch v-model="groupDraft[g.id].is_active" label="Group is active for routing" />
-          </UFormField>
-
-          <div class="card-actions">
-            <UButton type="button" color="primary" size="sm" :loading="savingGroupId === g.id" @click="saveGroup(g)">
-              Save group
-            </UButton>
-            <UButton v-if="!g.is_system" type="button" color="error" variant="link" size="sm" @click="deleteGroup(g)">Delete</UButton>
-          </div>
-        </article>
+      <div class="toolbar">
+        <p class="toolbar-hint muted">
+          Edit each group in a modal (categories, members, active). Leave categories empty for a catch-all group.
+        </p>
+        <UButton color="primary" @click="openCreateGroupModal">Add group</UButton>
       </div>
+
+      <v-card v-if="groups.length" class="group-table-card" elevation="10">
+        <v-data-table
+          :headers="groupHeaders"
+          :items="groups"
+          item-value="id"
+          density="comfortable"
+          class="hd-data-table"
+          hide-default-footer
+        >
+          <template #item.name="{ item }">
+            <strong>{{ item.name }}</strong>
+            <div v-if="item.description" class="group-desc">{{ item.description }}</div>
+            <div class="badges">
+              <span v-if="item.is_system" class="badge badge-system">Default</span>
+              <span class="badge badge-muted">{{ item.slug }}</span>
+            </div>
+          </template>
+          <template #item.categories="{ item }">
+            <span class="routes-cell" :title="categoriesLabel(item)">{{ categoriesLabel(item) }}</span>
+          </template>
+          <template #item.members_count="{ item }">
+            {{ item.members_count }}
+          </template>
+          <template #item.is_active="{ item }">
+            <span class="status-pill" :class="item.is_active ? 'status-pill--on' : 'status-pill--off'">
+              {{ item.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </template>
+          <template #item.actions="{ item }">
+            <div class="action-row">
+              <UButton type="button" color="neutral" variant="outlined" size="small" @click="openEditGroupModal(item)">
+                Edit
+              </UButton>
+              <UButton
+                v-if="!item.is_system"
+                type="button"
+                color="error"
+                variant="soft"
+                size="small"
+                @click="deleteGroup(item)"
+              >
+                Delete
+              </UButton>
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
       <div v-else class="empty-state">
         <p class="empty-title">No support groups yet</p>
         <p class="empty-text">Create groups to share category routing across agents. Default groups are seeded on deploy.</p>
-        <UButton type="button" color="primary" @click="newGroupForm.open = true">+ New group</UButton>
+        <UButton type="button" color="primary" @click="openCreateGroupModal">+ New group</UButton>
       </div>
+
+      <UModal
+        v-model:open="groupModalOpen"
+        :title="groupModalTitle"
+        :ui="{ content: 'max-w-xl' }"
+      >
+        <template #body>
+          <UForm :state="groupForm" :validate="validateGroupForm" class="hd-form hd-form--grid" @submit="saveGroupModal">
+            <UFormField label="Name" name="name" required class="span-2">
+              <UInput v-model="groupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
+            </UFormField>
+            <UFormField label="Description" name="description" class="span-2" stacked-label>
+              <UTextarea v-model="groupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
+            </UFormField>
+            <UFormField
+              label="Issue categories"
+              name="category_ids"
+              class="span-2"
+              stacked-label
+              description="Leave empty to route every category (catch-all)"
+            >
+              <USelect
+                v-model="groupForm.category_ids"
+                multiple
+                :items="categorySelectItems"
+                placeholder="Select categories…"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Members" name="member_user_ids" class="span-2">
+              <USelect
+                v-model="groupForm.member_user_ids"
+                multiple
+                :items="agentSelectItems"
+                placeholder="Select agents…"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Sort order" name="sort_order">
+              <UInput v-model.number="groupForm.sort_order" type="number" min="0" />
+            </UFormField>
+            <UFormField name="is_active">
+              <USwitch v-model="groupForm.is_active" label="Group is active for routing" />
+            </UFormField>
+            <p v-if="groupEditingIsSystem" class="hint span-2">Default system group — deactivate instead of deleting.</p>
+          </UForm>
+        </template>
+        <template #footer>
+          <UButton color="neutral" variant="outline" :disabled="savingGroupId !== null" @click="closeGroupModal">Cancel</UButton>
+          <UButton
+            color="primary"
+            :loading="savingGroupId !== null"
+            :label="groupEditingId ? 'Save changes' : 'Create group'"
+            @click="saveGroupModal()"
+          />
+        </template>
+      </UModal>
     </div>
 
     <!-- Agents -->
@@ -840,7 +839,7 @@ onMounted(() => {
               <td class="col-actions">
                 <div class="action-row">
                   <UButton type="button" color="neutral" variant="outline" size="xs" @click="toggleConfigureAgent(a)">
-                    {{ configuringAgentId === a.id ? 'Close' : 'Configure' }}
+                    Configure
                   </UButton>
                   <UButton
                     type="button"
@@ -867,70 +866,6 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
-
-        <article v-if="configuringAgent" :key="'cfg-' + configuringAgent.id" class="card agent-card config-card">
-          <header class="agent-card-head">
-            <div>
-              <h3>Configure {{ configuringAgent.name }}</h3>
-              <p class="agent-email">{{ configuringAgent.email }} · Staff ID {{ configuringAgent.staff_id ?? '—' }}</p>
-            </div>
-            <div class="effective-pill" :title="effectiveLabel(configuringAgent.effective_categories)">
-              Routes: {{ effectiveLabel(configuringAgent.effective_categories) }}
-            </div>
-          </header>
-
-          <div class="agent-cols">
-            <div class="agent-col">
-              <h4>Support groups</h4>
-              <USelect
-                v-model="groupSelection[configuringAgent.id]"
-                multiple
-                :items="activeGroupSelectItems"
-                placeholder="Select groups…"
-                class="w-full"
-              />
-              <p v-if="configuringAgent.inherited_categories.length" class="inherited">
-                Inherited:
-                <span v-for="c in configuringAgent.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
-              </p>
-            </div>
-
-            <div class="agent-col">
-              <h4>Direct categories</h4>
-              <USelect
-                v-model="selection[configuringAgent.id]"
-                multiple
-                :items="categorySelectItems"
-                placeholder="Select categories…"
-                class="w-full"
-              />
-              <p v-if="!(selection[configuringAgent.id] ?? []).length" class="hint">
-                No direct categories — agent is only eligible via support-group categories (or a catch-all group).
-              </p>
-            </div>
-
-            <div class="agent-col">
-              <h4>Permissions</h4>
-              <UCheckbox v-model="adminToggle[configuringAgent.id]" label="Helpdesk admin" class="perm-toggle" />
-              <UCheckbox v-model="supervisorToggle[configuringAgent.id]" label="Supervisor access" class="perm-toggle" />
-              <UCheckbox v-model="kbToggle[configuringAgent.id]" label="Manage FAQs" class="perm-toggle" />
-              <UCheckbox v-model="reassignToggle[configuringAgent.id]" label="Reassign tickets" class="perm-toggle" />
-              <UCheckbox v-model="deleteAttachmentToggle[configuringAgent.id]" label="Delete request attachments" class="perm-toggle" />
-              <UCheckbox v-model="changeCategoryToggle[configuringAgent.id]" label="Change ticket category" class="perm-toggle" />
-              <p class="perm-group-label">Tools</p>
-              <UCheckbox v-model="itAssetsToggle[configuringAgent.id]" label="Manage IT assets" class="perm-toggle" />
-              <UCheckbox v-model="licensesToggle[configuringAgent.id]" label="Manage licenses" class="perm-toggle" />
-              <UCheckbox v-model="swSubmitToggle[configuringAgent.id]" label="Submit software requests" class="perm-toggle" />
-              <UCheckbox v-model="swApproveToggle[configuringAgent.id]" label="Approve software requests" class="perm-toggle" />
-              <UCheckbox v-model="swManageToggle[configuringAgent.id]" label="Manage software requests" class="perm-toggle" />
-            </div>
-          </div>
-
-          <div class="card-actions">
-            <UButton type="button" color="primary" size="sm" @click="saveAgent(configuringAgent.id)">Save agent</UButton>
-            <UButton type="button" color="neutral" variant="outline" size="sm" @click="configuringAgentId = null">Done</UButton>
-          </div>
-        </article>
       </div>
       <div v-else class="empty-state">
         <p class="empty-title">No agents yet</p>
@@ -938,6 +873,62 @@ onMounted(() => {
         <UButton type="button" color="primary" @click="openPicker">+ Add agent</UButton>
       </div>
     </div>
+
+    <UModal
+      v-model:open="configureModalOpen"
+      :title="configuringAgent ? `Configure ${configuringAgent.name}` : 'Configure agent'"
+      :description="configuringAgent ? `${configuringAgent.email} · Staff ID ${configuringAgent.staff_id ?? '—'}` : undefined"
+      :ui="{ content: 'max-w-2xl' }"
+    >
+      <template v-if="configuringAgent" #body>
+        <div class="config-modal-body">
+          <div class="effective-pill" :title="effectiveLabel(configuringAgent.effective_categories)">
+            Routes: {{ effectiveLabel(configuringAgent.effective_categories) }}
+          </div>
+
+          <UFormField label="Support groups">
+            <USelect
+              v-model="groupSelection[configuringAgent.id]"
+              multiple
+              :items="activeGroupSelectItems"
+              placeholder="Select groups…"
+              class="w-full"
+            />
+            <p v-if="configuringAgent.inherited_categories.length" class="inherited">
+              Inherited:
+              <span v-for="c in configuringAgent.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
+            </p>
+          </UFormField>
+
+          <UFormField label="Direct categories">
+            <USelect
+              v-model="selection[configuringAgent.id]"
+              multiple
+              :items="categorySelectItems"
+              placeholder="Select categories…"
+              class="w-full"
+            />
+            <p v-if="!(selection[configuringAgent.id] ?? []).length" class="hint">
+              No direct categories — agent is only eligible via support-group categories (or a catch-all group).
+            </p>
+          </UFormField>
+
+          <UFormField label="Permissions">
+            <USelect
+              v-model="agentPermSelection[configuringAgent.id]"
+              multiple
+              :items="staffOverrideSelectItems"
+              placeholder="Select permissions…"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+      </template>
+      <template v-if="configuringAgent" #footer>
+        <UButton type="button" color="neutral" variant="outline" @click="configureModalOpen = false">Cancel</UButton>
+        <UButton type="button" color="primary" @click="saveAgent(configuringAgent.id)">Save agent</UButton>
+      </template>
+    </UModal>
 
     <!-- Permissions -->
     <div v-show="activeTab === 'permissions'" class="tab-panel">
@@ -954,18 +945,14 @@ onMounted(() => {
             </td>
             <td>{{ portalRoleLabel(row.staff_portal_role) }}</td>
             <td>{{ row.role ?? '—' }}</td>
-            <td>
-              <UCheckbox v-model="staffPermAdmin[row.id]" label="Helpdesk admin" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSupervisor[row.id]" label="Supervisor" class="perm-toggle" />
-              <UCheckbox v-model="staffPermKb[row.id]" label="Manage FAQs" class="perm-toggle" />
-              <UCheckbox v-model="staffPermReassign[row.id]" label="Reassign" class="perm-toggle" />
-              <UCheckbox v-model="staffPermDeleteAttachment[row.id]" label="Delete attachments" class="perm-toggle" />
-              <UCheckbox v-model="staffPermChangeCategory[row.id]" label="Change category" class="perm-toggle" />
-              <UCheckbox v-model="staffPermItAssets[row.id]" label="IT assets" class="perm-toggle" />
-              <UCheckbox v-model="staffPermLicenses[row.id]" label="Licenses" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwSubmit[row.id]" label="SW requests (submit)" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwApprove[row.id]" label="SW requests (approve)" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwManage[row.id]" label="SW requests (manage)" class="perm-toggle" />
+            <td class="overrides-cell">
+              <USelect
+                v-model="staffPermSelection[row.id]"
+                multiple
+                :items="staffOverrideSelectItems"
+                placeholder="Select overrides…"
+                class="w-full overrides-select"
+              />
             </td>
             <td><UButton type="button" color="primary" size="xs" @click="saveStaffPermissions(row.id)">Save</UButton></td>
           </tr>
@@ -1000,24 +987,30 @@ onMounted(() => {
 .hub-tab.active .tab-count { background: #e8f5ee; color: #0d7a3a; }
 .tab-panel { display: flex; flex-direction: column; gap: 1rem; }
 .card {
-  border: 1px solid #e2e8f0; border-radius: 4px; background: #fff;
-  padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+  border: none; border-radius: 12px; background: #fff;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+  padding: 1.1rem 1.15rem; display: flex; flex-direction: column; gap: 0.75rem;
 }
-.card--new { background: #f8fafc; border-style: dashed; }
+.card--new { background: #f8fafc; border: 1px dashed #dfe5ef; box-shadow: none; }
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 .agent-list { display: flex; flex-direction: column; gap: 1rem; }
-.agent-table-wrap { display: flex; flex-direction: column; gap: 0.85rem; }
+.agent-table-wrap {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  border: none; border-radius: 12px; background: #fff; overflow: hidden;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+  padding: 0.85rem;
+}
 .agent-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .agent-toolbar .search-wrap { flex: 1; min-width: 12rem; max-width: 22rem; }
 .agent-table {
-  width: 100%; border-collapse: collapse; background: #fff;
-  border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden;
+  width: 100%; border-collapse: collapse; background: transparent;
+  border: none; border-radius: 0; overflow: hidden;
 }
 .agent-table th, .agent-table td {
-  text-align: left; padding: 0.7rem 0.85rem; border-bottom: 1px solid #e2e8f0;
+  text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid rgba(223, 229, 239, 0.85);
   vertical-align: top; font-size: 0.875rem;
 }
-.agent-table th { background: #f8fafc; color: #475569; font-weight: 600; }
+.agent-table th { background: #f8fafc; color: #3a4752; font-weight: 600; }
 .agent-table tr:last-child td { border-bottom: 0; }
 .agent-table .row-disabled { background: #f8fafc; opacity: 0.92; }
 .agent-table .row-active-config { background: #f0fdf4; }
@@ -1034,7 +1027,14 @@ onMounted(() => {
 .status-pill--on { background: #dcfce7; color: #166534; }
 .status-pill--off { background: #e2e8f0; color: #475569; }
 .status-pill--warn { background: #fef3c7; color: #92400e; }
-.config-card { margin-top: 0.25rem; }
+.config-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.config-modal-body .effective-pill {
+  align-self: flex-start;
+}
 .group-card-head h3, .agent-card-head h3 { margin: 0; font-size: 1rem; }
 .group-desc, .agent-email { margin: 0.25rem 0 0; font-size: 0.82rem; color: #64748b; }
 .badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
@@ -1088,22 +1088,30 @@ onMounted(() => {
 .perm-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #3a4452; margin-bottom: 0.3rem; cursor: pointer; }
 .perm-group-label { margin: 0.5rem 0 0.15rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 0.88rem; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
-.tbl th, .tbl td { text-align: left; padding: 0.6rem 0.55rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.tbl th, .tbl td { text-align: left; padding: 0.6rem 0.55rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
 .tbl th { background: #f8fafc; font-size: 0.74rem; text-transform: uppercase; color: #475569; }
+.overrides-cell { min-width: 16rem; max-width: 28rem; }
+.overrides-select { min-width: 14rem; }
 .agent-name { font-weight: 600; }
 .empty-state { text-align: center; padding: 2rem 1rem; border: 2px dashed #cbd5e1; border-radius: 4px; background: #f8fafc; }
 .empty-title { margin: 0 0 0.5rem; font-weight: 700; }
 .empty-text { margin: 0 0 1rem; color: #475569; font-size: 0.9rem; }
-.picker { padding: 0.85rem 1rem; border-radius: 4px; border: 1px solid #e2e8f0; background: #f8fafc; }
+.picker {
+  padding: 1rem 1.1rem; border-radius: 12px; border: none; background: #fff;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+}
 .picker-head { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.65rem; }
-.picker-hint { margin: 0; font-size: 0.85rem; color: #64748b; }
+.picker-hint { margin: 0; font-size: 0.85rem; color: #768b9e; }
 .picker-toolbar { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; margin-bottom: 0.5rem; }
 .search-wrap { flex: 1 1 16rem; }
-.search-input { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 4px; }
-.picker-table-wrap { border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; overflow: auto; max-height: 16rem; }
-.picker-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.picker-table th { background: #f1f5f9; text-align: left; padding: 0.5rem 0.7rem; font-size: 0.74rem; }
-.picker-table td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; }
+.search-input { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #dfe5ef; border-radius: 8px; }
+.picker-table-wrap {
+  border: none; border-radius: 10px; background: #fff; overflow: auto; max-height: 16rem;
+  box-shadow: rgba(145, 158, 171, 0.08) 0 4px 12px -2px, rgba(145, 158, 171, 0.14) 0 0 1px 0;
+}
+.picker-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.picker-table th { background: #f8fafc; text-align: left; padding: 0.65rem 0.85rem; font-size: 0.8125rem; font-weight: 600; color: #3a4752; }
+.picker-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid rgba(223, 229, 239, 0.85); }
 .cand-name { font-weight: 600; }
 .cand-sub { font-size: 0.78rem; color: #64748b; }
 .btn-add { padding: 0.32rem 0.7rem; border-radius: 4px; border: none; background: #0d7a3a; color: #fff; font-weight: 600; cursor: pointer; }

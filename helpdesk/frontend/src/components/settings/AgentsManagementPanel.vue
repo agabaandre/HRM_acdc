@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../../types/form'
 import { RouterLink } from 'vue-router'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { fieldError, isCheckboxChecked, type CheckboxValue, type SelectNumberItem } from '../../lib/helpdeskForm'
+import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 
 interface Cat {
@@ -89,19 +90,30 @@ const activeTab = ref<SettingsTab>('groups')
 const cats = ref<Cat[]>([])
 const groups = ref<SupportGroupRow[]>([])
 const agents = ref<AgentRow[]>([])
-const groupDraft = reactive<Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }>>({})
-const newGroupForm = reactive({
-  open: false,
+const groupModalOpen = ref(false)
+const groupEditingId = ref<number | null>(null)
+const groupEditingIsSystem = ref(false)
+const groupForm = reactive({
   name: '',
   description: '',
+  sort_order: 0,
   category_ids: [] as number[],
   member_user_ids: [] as number[],
+  is_active: true,
 })
 const selection = ref<Record<number, number[]>>({})
 const groupSelection = ref<Record<number, number[]>>({})
 const agentPermSelection = ref<Record<number, string[]>>({})
 const staffPermissions = ref<StaffPermissionRow[]>([])
 const staffPermSelection = ref<Record<number, string[]>>({})
+
+const groupHeaders: DataTableHeader[] = [
+  { title: 'Name', key: 'name', sortable: false, minWidth: '200px' },
+  { title: 'Categories', key: 'categories', sortable: false, minWidth: '200px' },
+  { title: 'Members', key: 'members_count', sortable: false, width: '100px' },
+  { title: 'Active', key: 'is_active', sortable: false, width: '90px', align: 'center' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '180px', align: 'end' },
+]
 
 const STAFF_OVERRIDE_OPTIONS = [
   { key: 'grant_helpdesk_admin', label: 'Helpdesk admin' },
@@ -190,14 +202,13 @@ const activeGroupSelectItems = computed((): SelectNumberItem[] =>
   groups.value.filter((g) => g.is_active).map((g) => ({ label: g.name, value: g.id })),
 )
 
-function toggleIdInList(list: number[], id: number, value: CheckboxValue): void {
-  const checked = isCheckboxChecked(value)
-  const i = list.indexOf(id)
-  if (checked && i < 0) {
-    list.push(id)
-  } else if (!checked && i >= 0) {
-    list.splice(i, 1)
-  }
+const groupModalTitle = computed(() => (groupEditingId.value ? 'Edit support group' : 'Add support group'))
+
+function categoriesLabel(group: SupportGroupRow): string {
+  const list = group.categories ?? []
+  if (list.length === 0) return 'All categories (catch-all)'
+  if (list.length <= 3) return list.map((c) => c.name).join(', ')
+  return `${list.slice(0, 2).map((c) => c.name).join(', ')} +${list.length - 2}`
 }
 
 async function loadCats() {
@@ -205,25 +216,9 @@ async function loadCats() {
   cats.value = Array.isArray(data.data) ? data.data : []
 }
 
-function hydrateGroupDrafts(list: SupportGroupRow[]) {
-  const draft: Record<number, { name: string; description: string; category_ids: number[]; member_user_ids: number[]; is_active: boolean }> = {}
-  for (const g of list) {
-    draft[g.id] = {
-      name: g.name,
-      description: g.description ?? '',
-      category_ids: (g.categories ?? []).map((c) => c.id),
-      member_user_ids: (g.members ?? []).map((m) => m.id),
-      is_active: g.is_active,
-    }
-  }
-  Object.assign(groupDraft, draft)
-}
-
 async function loadGroups() {
   const { data } = await api.get<{ data: SupportGroupRow[] }>('/api/v1/admin/support-groups')
-  const list = Array.isArray(data.data) ? data.data : []
-  groups.value = list
-  hydrateGroupDrafts(list)
+  groups.value = Array.isArray(data.data) ? data.data : []
 }
 
 async function loadAgents() {
@@ -280,61 +275,82 @@ async function loadAll() {
   }
 }
 
-async function saveGroup(group: SupportGroupRow) {
-  const draft = groupDraft[group.id]
-  if (!draft) return
-  savingGroupId.value = group.id
-  try {
-    await api.put(`/api/v1/admin/support-groups/${group.id}`, {
-      name: draft.name.trim() || group.name,
-      description: draft.description.trim() || null,
-      sort_order: group.sort_order,
-      is_active: draft.is_active,
-      category_ids: draft.category_ids.map((id) => Number(id)),
-      member_user_ids: draft.member_user_ids.map((id) => Number(id)),
-    })
-    notifySuccess(`Saved ${group.name}`)
-    await loadGroups()
-    await loadAgents()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to save support group.'))
-  } finally {
-    savingGroupId.value = null
-  }
+function resetGroupForm() {
+  groupForm.name = ''
+  groupForm.description = ''
+  groupForm.sort_order = 0
+  groupForm.category_ids = []
+  groupForm.member_user_ids = []
+  groupForm.is_active = true
 }
 
-async function onCreateGroup(_event: FormSubmitEvent<typeof newGroupForm>) {
-  const name = newGroupForm.name.trim()
-  savingGroupId.value = -1
-  try {
-    await api.post('/api/v1/admin/support-groups', {
-      name,
-      description: newGroupForm.description.trim() || null,
-      category_ids: newGroupForm.category_ids.map((id) => Number(id)),
-      member_user_ids: newGroupForm.member_user_ids.map((id) => Number(id)),
-      is_active: true,
-    })
-    notifySuccess(`Created ${name}`)
-    newGroupForm.open = false
-    newGroupForm.name = ''
-    newGroupForm.description = ''
-    newGroupForm.category_ids = []
-    newGroupForm.member_user_ids = []
-    await loadGroups()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to create support group.'))
-  } finally {
-    savingGroupId.value = null
-  }
+function openCreateGroupModal() {
+  groupEditingId.value = null
+  groupEditingIsSystem.value = false
+  resetGroupForm()
+  groupModalOpen.value = true
 }
 
-function validateNewGroup(state: typeof newGroupForm): FormError[] {
+function openEditGroupModal(group: SupportGroupRow) {
+  groupEditingId.value = group.id
+  groupEditingIsSystem.value = group.is_system
+  groupForm.name = group.name
+  groupForm.description = group.description ?? ''
+  groupForm.sort_order = group.sort_order
+  groupForm.category_ids = (group.categories ?? []).map((c) => c.id)
+  groupForm.member_user_ids = (group.members ?? []).map((m) => m.id)
+  groupForm.is_active = group.is_active
+  groupModalOpen.value = true
+}
+
+function closeGroupModal() {
+  groupModalOpen.value = false
+  groupEditingId.value = null
+  groupEditingIsSystem.value = false
+  resetGroupForm()
+}
+
+function validateGroupForm(state: typeof groupForm): FormError[] {
   const errors: FormError[] = []
   const nameErr = fieldError('name', state.name, 'Enter a group name')
   if (nameErr) {
     errors.push(nameErr)
   }
   return errors
+}
+
+async function saveGroupModal(_event?: FormSubmitEvent<typeof groupForm>) {
+  const name = groupForm.name.trim()
+  if (!name) {
+    notifyError('Enter a group name')
+    return
+  }
+  const payload = {
+    name,
+    description: groupForm.description.trim() || null,
+    sort_order: groupForm.sort_order,
+    is_active: groupForm.is_active,
+    category_ids: groupForm.category_ids.map((id) => Number(id)),
+    member_user_ids: groupForm.member_user_ids.map((id) => Number(id)),
+  }
+
+  savingGroupId.value = groupEditingId.value ?? -1
+  try {
+    if (groupEditingId.value) {
+      await api.put(`/api/v1/admin/support-groups/${groupEditingId.value}`, payload)
+      notifySuccess(`Saved ${name}`)
+    } else {
+      await api.post('/api/v1/admin/support-groups', payload)
+      notifySuccess(`Created ${name}`)
+    }
+    closeGroupModal()
+    await loadGroups()
+    await loadAgents()
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, groupEditingId.value ? 'Failed to save support group.' : 'Failed to create support group.'))
+  } finally {
+    savingGroupId.value = null
+  }
 }
 
 async function deleteGroup(group: SupportGroupRow) {
@@ -528,16 +544,6 @@ function toggleConfigureAgent(a: AgentRow) {
   configuringAgentId.value = configuringAgentId.value === a.id ? null : a.id
 }
 
-function toggleCategoryInDraft(groupId: number, catId: number, value: CheckboxValue) {
-  const checked = isCheckboxChecked(value)
-  const draft = groupDraft[groupId]
-  if (!draft) return
-  const set = new Set(draft.category_ids)
-  if (checked) set.add(catId)
-  else set.delete(catId)
-  draft.category_ids = [...set]
-}
-
 onMounted(() => {
   void loadAll()
 })
@@ -559,7 +565,7 @@ onMounted(() => {
       <UButton v-if="activeTab === 'agents'" type="button" color="primary" @click="openPicker">
         + Add agent
       </UButton>
-      <UButton v-else-if="activeTab === 'groups'" type="button" color="primary" @click="newGroupForm.open = true">
+      <UButton v-else-if="activeTab === 'groups'" type="button" color="primary" @click="openCreateGroupModal">
         + New group
       </UButton>
     </header>
@@ -586,114 +592,121 @@ onMounted(() => {
 
     <!-- Support groups -->
     <div v-show="activeTab === 'groups'" class="tab-panel">
-      <UCard v-if="newGroupForm.open" class="card--new">
-        <template #header>
-          <h3>New support group</h3>
-        </template>
-        <UForm
-          :state="newGroupForm"
-          :validate="validateNewGroup"
-          class="hd-form hd-form--grid"
-          @submit="onCreateGroup"
-        >
-          <UFormField label="Name" name="name" required class="full">
-            <UInput v-model="newGroupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
-          </UFormField>
-          <UFormField label="Description" name="description" class="full">
-            <UTextarea v-model="newGroupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
-          </UFormField>
-          <fieldset class="full cat-fieldset">
-            <legend>Issue categories</legend>
-            <div class="cat-grid">
-              <UCheckbox
-                v-for="c in cats"
-                :key="c.id"
-                :model-value="newGroupForm.category_ids.includes(c.id)"
-                :label="c.name"
-                class="cat-check"
-                @update:model-value="(value: CheckboxValue) => toggleIdInList(newGroupForm.category_ids, c.id, value)"
-              />
-            </div>
-            <p class="hint">Leave all unchecked to route every category to this group.</p>
-          </fieldset>
-          <UFormField label="Members" name="member_user_ids" class="full">
-            <USelect
-              v-model="newGroupForm.member_user_ids"
-              multiple
-              :items="agentSelectItems"
-              placeholder="Select agents…"
-              class="w-full"
-            />
-          </UFormField>
-          <div class="full hd-form-actions">
-            <UButton type="submit" color="primary" :loading="savingGroupId === -1">Create group</UButton>
-            <UButton type="button" color="neutral" variant="outline" @click="newGroupForm.open = false">Cancel</UButton>
-          </div>
-        </UForm>
-      </UCard>
-
-      <div v-if="groups.length" class="group-grid">
-        <article v-for="g in groups" :key="g.id" class="card group-card">
-          <header class="group-card-head">
-            <div class="group-card-title-block">
-              <UFormField v-if="groupDraft[g.id]" label="Group name" :name="`group-name-${g.id}`" class="group-name-field">
-                <UInput v-model="groupDraft[g.id].name" type="text" class="w-full" />
-              </UFormField>
-              <UFormField v-if="groupDraft[g.id]" label="Description" :name="`group-desc-${g.id}`" class="group-desc-field">
-                <UTextarea v-model="groupDraft[g.id].description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
-              </UFormField>
-              <div class="badges">
-                <span v-if="g.is_system" class="badge badge-system">Default</span>
-                <span class="badge" :class="groupDraft[g.id]?.is_active ? 'badge-on' : 'badge-off'">
-                  {{ groupDraft[g.id]?.is_active ? 'Active' : 'Inactive' }}
-                </span>
-                <span class="badge badge-muted">{{ g.members_count }} member{{ g.members_count === 1 ? '' : 's' }}</span>
-              </div>
-            </div>
-          </header>
-
-          <fieldset class="cat-fieldset">
-            <legend>Categories</legend>
-            <div class="cat-grid">
-              <UCheckbox
-                v-for="c in cats"
-                :key="c.id"
-                :model-value="(groupDraft[g.id]?.category_ids ?? []).includes(c.id)"
-                :label="c.name"
-                class="cat-check"
-                @update:model-value="(value: CheckboxValue) => toggleCategoryInDraft(g.id, c.id, value)"
-              />
-            </div>
-          </fieldset>
-
-          <UFormField label="Members">
-            <USelect
-              v-if="groupDraft[g.id]"
-              v-model="groupDraft[g.id].member_user_ids"
-              multiple
-              :items="agentSelectItems"
-              placeholder="Select members…"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField v-if="groupDraft[g.id]" name="is_active">
-            <USwitch v-model="groupDraft[g.id].is_active" label="Group is active for routing" />
-          </UFormField>
-
-          <div class="card-actions">
-            <UButton type="button" color="primary" size="sm" :loading="savingGroupId === g.id" @click="saveGroup(g)">
-              Save group
-            </UButton>
-            <UButton v-if="!g.is_system" type="button" color="error" variant="link" size="sm" @click="deleteGroup(g)">Delete</UButton>
-          </div>
-        </article>
+      <div class="toolbar">
+        <p class="toolbar-hint muted">
+          Edit each group in a modal (categories, members, active). Leave categories empty for a catch-all group.
+        </p>
       </div>
+
+      <v-card v-if="groups.length" class="group-table-card" elevation="10">
+        <v-data-table
+          :headers="groupHeaders"
+          :items="groups"
+          item-value="id"
+          density="comfortable"
+          class="hd-data-table"
+          hide-default-footer
+        >
+          <template #item.name="{ item }">
+            <strong>{{ item.name }}</strong>
+            <div v-if="item.description" class="group-desc">{{ item.description }}</div>
+            <div class="badges">
+              <span v-if="item.is_system" class="badge badge-system">Default</span>
+              <span class="badge badge-muted">{{ item.slug }}</span>
+            </div>
+          </template>
+          <template #item.categories="{ item }">
+            <span class="routes-cell" :title="categoriesLabel(item)">{{ categoriesLabel(item) }}</span>
+          </template>
+          <template #item.members_count="{ item }">
+            {{ item.members_count }}
+          </template>
+          <template #item.is_active="{ item }">
+            <span class="status-pill" :class="item.is_active ? 'status-pill--on' : 'status-pill--off'">
+              {{ item.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </template>
+          <template #item.actions="{ item }">
+            <div class="action-row">
+              <UButton type="button" color="neutral" variant="outlined" size="small" @click="openEditGroupModal(item)">
+                Edit
+              </UButton>
+              <UButton
+                v-if="!item.is_system"
+                type="button"
+                color="error"
+                variant="soft"
+                size="small"
+                @click="deleteGroup(item)"
+              >
+                Delete
+              </UButton>
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
       <div v-else class="empty-state">
         <p class="empty-title">No support groups yet</p>
         <p class="empty-text">Create groups to share category routing across agents. Default groups are seeded on deploy.</p>
-        <UButton type="button" color="primary" @click="newGroupForm.open = true">+ New group</UButton>
+        <UButton type="button" color="primary" @click="openCreateGroupModal">+ New group</UButton>
       </div>
+
+      <UModal
+        v-model:open="groupModalOpen"
+        :title="groupModalTitle"
+        :ui="{ content: 'max-w-xl' }"
+      >
+        <template #body>
+          <UForm :state="groupForm" :validate="validateGroupForm" class="hd-form hd-form--grid" @submit="saveGroupModal">
+            <UFormField label="Name" name="name" required class="span-2">
+              <UInput v-model="groupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
+            </UFormField>
+            <UFormField label="Description" name="description" class="span-2" stacked-label>
+              <UTextarea v-model="groupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
+            </UFormField>
+            <UFormField
+              label="Issue categories"
+              name="category_ids"
+              class="span-2"
+              stacked-label
+              description="Leave empty to route every category (catch-all)"
+            >
+              <USelect
+                v-model="groupForm.category_ids"
+                multiple
+                :items="categorySelectItems"
+                placeholder="Select categories…"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Members" name="member_user_ids" class="span-2">
+              <USelect
+                v-model="groupForm.member_user_ids"
+                multiple
+                :items="agentSelectItems"
+                placeholder="Select agents…"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Sort order" name="sort_order">
+              <UInput v-model.number="groupForm.sort_order" type="number" min="0" />
+            </UFormField>
+            <UFormField name="is_active">
+              <USwitch v-model="groupForm.is_active" label="Group is active for routing" />
+            </UFormField>
+            <p v-if="groupEditingIsSystem" class="hint span-2">Default system group — deactivate instead of deleting.</p>
+          </UForm>
+        </template>
+        <template #footer>
+          <UButton color="neutral" variant="outline" :disabled="savingGroupId !== null" @click="closeGroupModal">Cancel</UButton>
+          <UButton
+            color="primary"
+            :loading="savingGroupId !== null"
+            :label="groupEditingId ? 'Save changes' : 'Create group'"
+            @click="saveGroupModal()"
+          />
+        </template>
+      </UModal>
     </div>
 
     <!-- Agents -->
@@ -972,6 +985,21 @@ onMounted(() => {
 }
 .hub-tab.active .tab-count { background: #e8f5ee; color: #0d7a3a; }
 .tab-panel { display: flex; flex-direction: column; gap: 1rem; }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.toolbar-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 14rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.group-table-card { overflow: hidden; }
 .card {
   border: none; border-radius: 12px; background: #fff;
   box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;

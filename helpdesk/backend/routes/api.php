@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskRiskMatrixController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSupportGroupController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSlaRuleController;
+use App\Http\Controllers\Api\V1\Admin\AdminEmailTicketCleanupController;
 use App\Http\Controllers\Api\V1\Admin\AdminReferenceSyncController;
 use App\Http\Controllers\Api\V1\Admin\AdminStaffPermissionController;
 use App\Http\Controllers\Api\V1\Admin\HelpdeskSettingsController;
@@ -143,6 +144,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/sla-rules', [AdminHelpdeskSlaRuleController::class, 'store']);
         Route::put('/admin/sla-rules/{slaRule}', [AdminHelpdeskSlaRuleController::class, 'update']);
         Route::post('/admin/reference-sync', [AdminReferenceSyncController::class, 'store']);
+        Route::get('/admin/email-ticket-cleanup', [AdminEmailTicketCleanupController::class, 'preview']);
+        Route::post('/admin/email-ticket-cleanup', [AdminEmailTicketCleanupController::class, 'destroy']);
         Route::get('/admin/audit-logs', [AdminAuditLogController::class, 'index']);
         Route::post('/admin/audit-logs/{auditLog}/reverse', [AdminAuditLogController::class, 'reverse']);
 

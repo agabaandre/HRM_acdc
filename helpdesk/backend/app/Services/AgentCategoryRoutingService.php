@@ -212,4 +212,85 @@ class AgentCategoryRoutingService
 
         return $merged;
     }
+
+    /**
+     * Active agent user IDs eligible for automatic ticket routing (not disabled).
+     *
+     * @return list<int>
+     */
+    public function eligibleRoutingAgentUserIds(): array
+    {
+        return User::query()
+            ->actsAsHelpdeskAgent()
+            ->whereHas('helpdeskProfile', function ($q) {
+                $q->where(function ($q) {
+                    $q->where('is_agent_disabled', false)
+                        ->orWhereNull('is_agent_disabled');
+                });
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * True when at least one eligible agent belongs to an active catch-all support group
+     * (no categories on the group) and has no direct/group category restrictions.
+     */
+    public function hasEligibleCatchAllAgent(): bool
+    {
+        foreach ($this->eligibleRoutingAgentUserIds() as $userId) {
+            if ($this->effectiveCategoryIdsForUser($userId) === [] && $this->userBelongsToCatchAllGroup($userId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Active category IDs that at least one eligible agent can handle.
+     * Empty when no agents are configured (unless catch-all — then all active categories).
+     *
+     * @return list<int>
+     */
+    public function categoryIdsCoveredByEligibleAgents(): array
+    {
+        if ($this->hasEligibleCatchAllAgent()) {
+            return DB::table('helpdesk_categories')
+                ->where('is_active', true)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        }
+
+        $covered = [];
+        foreach ($this->eligibleRoutingAgentUserIds() as $userId) {
+            $covered = array_merge($covered, $this->effectiveCategoryIdsForUser($userId));
+        }
+
+        return array_values(array_unique(array_map('intval', $covered)));
+    }
+
+    /**
+     * Business unit can appear on the request form when it has ≥1 active category
+     * that an eligible agent is configured to handle.
+     */
+    public function businessUnitHasRoutableAgents(int $businessUnitId): bool
+    {
+        $query = DB::table('helpdesk_categories')
+            ->where('business_unit_id', $businessUnitId)
+            ->where('is_active', true);
+
+        if ($this->hasEligibleCatchAllAgent()) {
+            return $query->exists();
+        }
+
+        $covered = $this->categoryIdsCoveredByEligibleAgents();
+        if ($covered === []) {
+            return false;
+        }
+
+        return $query->whereIn('id', $covered)->exists();
+    }
 }

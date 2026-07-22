@@ -15,6 +15,38 @@ export function isHtmlContent(content: string | null | undefined): boolean {
   return !!content && /<[a-z][\s\S]*>/i.test(content)
 }
 
+/**
+ * Decode over-escaped email HTML (&amp;nbsp; → &nbsp; → nbsp) for safe v-html display.
+ * Does not strip tags — pair with server-side sanitization for stored content.
+ */
+export function decodeHtmlEntities(content: string | null | undefined): string {
+  if (!content) return ''
+  let current = content
+  for (let i = 0; i < 2; i++) {
+    if (!current.includes('&amp;') && !current.includes('&lt;') && !current.includes('&gt;')) {
+      break
+    }
+    const ta = document.createElement('textarea')
+    ta.innerHTML = current
+    const next = ta.value
+    if (next === current) break
+    current = next
+  }
+  return current
+}
+
+/** Plain-text subject/list label with entities decoded. */
+export function displayPlainText(content: string | null | undefined): string {
+  if (!content) return ''
+  const decoded = decodeHtmlEntities(content)
+  if (!isHtmlContent(decoded)) {
+    return decoded
+  }
+  const div = document.createElement('div')
+  div.innerHTML = decoded
+  return (div.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
 /** Quill empty states and whitespace-only HTML count as blank. */
 export function hasRichTextContent(html: string): boolean {
   const stripped = html.replace(/\s+/g, '')

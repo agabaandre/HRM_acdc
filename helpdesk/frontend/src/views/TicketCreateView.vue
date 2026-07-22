@@ -211,7 +211,7 @@ async function loadCats() {
     )
     if (businessUnits.value.length === 0) {
       catsErr.value =
-        'No business units with issue categories are configured yet. An administrator can add them under Settings → Issue categories.'
+        'No business units are available yet. An administrator must configure agents for each unit under Settings → Agents & support groups (and ensure issue categories exist).'
       notifyWarning(catsErr.value)
     }
   } catch {

@@ -14,6 +14,8 @@ import { type PageSize } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import { formatTableCountLabel, priorityMeta, statusMeta } from '../lib/ticketTableMeta'
+import { formatDateTime } from '../lib/formatDateTime'
+import { displayPlainText } from '../lib/richText'
 
 interface AssigneeBrief {
   id: number
@@ -28,6 +30,7 @@ interface TicketRow {
   subject: string
   status: string
   priority: string
+  created_at?: string | null
   requester_name?: string | null
   assignee?: AssigneeBrief | null
   assignees?: AssigneeBrief[]
@@ -88,6 +91,7 @@ const headers = computed((): DataTableHeader[] => {
     { title: 'Assigned to', key: 'assignee_name', sortable: true, minWidth: '150px' },
     { title: 'Status', key: 'status', sortable: true, width: '130px' },
     { title: 'Priority', key: 'priority', sortable: true, width: '110px' },
+    { title: 'Created', key: 'created_at', sortable: true, minWidth: '140px' },
   ]
   if (canReassign.value) {
     cols.push({ title: 'Actions', key: 'actions', sortable: false, align: 'end', width: '110px' })
@@ -167,7 +171,7 @@ function resetSearch() {
   <div>
     <CbpPageHeading title="Tickets" back-to="/" back-label="← Overview" />
 
-    <v-card class="hd-data-table-card hd-page-toolbar" variant="outlined">
+    <v-card class="hd-data-table-card hd-page-toolbar" elevation="10">
       <v-card-text class="hd-page-toolbar__search">
         <UForm :state="searchState" class="hd-search-form" @submit="doSearch">
           <UFormField name="q" label="Search" class="hd-form-toolbar-grow">
@@ -214,7 +218,7 @@ function resetSearch() {
         </template>
 
         <template #item.subject="{ item }">
-          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-subject-link">{{ item.subject }}</RouterLink>
+          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-subject-link">{{ displayPlainText(item.subject) }}</RouterLink>
         </template>
 
         <template #item.requester_name="{ item }">
@@ -248,6 +252,18 @@ function resetSearch() {
           >
             {{ priorityMeta(item.priority).label }}
           </span>
+        </template>
+
+        <template #item.created_at="{ item }">
+          <time
+            v-if="item.created_at"
+            class="hd-dt-created"
+            :datetime="item.created_at"
+            :title="formatDateTime(item.created_at)"
+          >
+            {{ formatDateTime(item.created_at) }}
+          </time>
+          <span v-else class="hd-dt-empty">—</span>
         </template>
 
         <template v-if="canReassign" #item.actions="{ item }">

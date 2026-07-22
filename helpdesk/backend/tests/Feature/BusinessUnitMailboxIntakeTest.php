@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\CategorizeTicketWithAi;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskEmailMessage;
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Services\BusinessUnitMailboxIntakeService;
 use App\Services\ExchangeGraphMailReader;
@@ -21,6 +22,11 @@ class BusinessUnitMailboxIntakeTest extends TestCase
     {
         Bus::fake([CategorizeTicketWithAi::class]);
         $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
 
         $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
         $unit->update([

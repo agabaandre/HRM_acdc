@@ -15,6 +15,7 @@ import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import { formatTableCountLabel, priorityMeta, statusMeta } from '../lib/ticketTableMeta'
 import { formatDateTime } from '../lib/formatDateTime'
+import { displayPlainText } from '../lib/richText'
 
 interface AssigneeBrief {
   id: number
@@ -217,7 +218,7 @@ function resetSearch() {
         </template>
 
         <template #item.subject="{ item }">
-          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-subject-link">{{ item.subject }}</RouterLink>
+          <RouterLink :to="`/tickets/${item.id}`" class="hd-dt-subject-link">{{ displayPlainText(item.subject) }}</RouterLink>
         </template>
 
         <template #item.requester_name="{ item }">

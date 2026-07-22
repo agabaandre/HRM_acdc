@@ -16,7 +16,7 @@ import {
 import { formatDateTime, formatDateTimeLong } from '../lib/formatDateTime'
 import { notifyError, notifySuccess } from '../lib/notify'
 import { statusMeta } from '../lib/ticketTableMeta'
-import { hasRichTextContent, htmlContainsDataUriImages, isAttachmentEmbeddedInHtml, isHtmlContent, removeAttachmentImagesFromHtml } from '../lib/richText'
+import { hasRichTextContent, htmlContainsDataUriImages, isAttachmentEmbeddedInHtml, isHtmlContent, decodeHtmlEntities, removeAttachmentImagesFromHtml } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
 
 const CbpRichTextEditor = defineAsyncComponent(
@@ -179,8 +179,18 @@ const canShowClassification = computed(() =>
   Boolean(ticket.value?.category || ticket.value?.business_unit || canEditCategory.value),
 )
 
-const isHtmlDescription = computed(() => isHtmlContent(ticket.value?.description))
+const isHtmlDescription = computed(() => isHtmlContent(ticket.value?.description) || isHtmlContent(decodeHtmlEntities(ticket.value?.description)))
 const isHtmlResolution = computed(() => isHtmlContent(ticket.value?.resolution_summary ?? null))
+const descriptionHtml = computed(() => decodeHtmlEntities(ticket.value?.description ?? ''))
+const displayPlainDescription = computed(() => decodeHtmlEntities(ticket.value?.description ?? ''))
+const displaySubject = computed(() => {
+  const raw = ticket.value?.subject ?? ''
+  const decoded = decodeHtmlEntities(raw)
+  if (!isHtmlContent(decoded)) return decoded
+  const div = document.createElement('div')
+  div.innerHTML = decoded
+  return (div.textContent || '').replace(/\s+/g, ' ').trim() || raw
+})
 
 /** Files uploaded with the request (excludes inline editor images embedded in the description). */
 const requestAttachments = computed(() => {
@@ -661,7 +671,7 @@ watch(canReopenWithComment, (can) => {
           >
             Created {{ formatDateTime(ticket.created_at) }}
           </span>
-          <span class="subj-inline">{{ ticket.subject }}</span>
+          <span class="subj-inline">{{ displaySubject }}</span>
         </template>
       </CbpPageHeading>
       <div class="cbp-card detail-body">
@@ -751,8 +761,8 @@ watch(canReopenWithComment, (can) => {
           </div>
         </section>
       <section class="desc">
-        <div v-if="isHtmlDescription" class="html rich-text-content" v-html="ticket.description" />
-        <pre v-else class="pre">{{ ticket.description }}</pre>
+        <div v-if="isHtmlDescription" class="html rich-text-content" v-html="descriptionHtml" />
+        <pre v-else class="pre">{{ displayPlainDescription }}</pre>
       </section>
 
       <section v-if="requestAttachments.length" class="attach-section">
