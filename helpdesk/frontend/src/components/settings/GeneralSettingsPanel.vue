@@ -411,7 +411,7 @@ function roleLabel(c: CandidateRow): string {
         <div class="toggle-row">
           <USwitch v-model="ctx.form.show_issue_category_on_request_form" />
           <span class="toggle-copy">
-            <strong>Show issue category on new request form</strong>
+            <strong>Show issue category on create ticket form</strong>
             <span class="toggle-hint">
               Off by default: requesters select a business unit only; AI assigns the issue category (and routes by category).
               On: requesters pick business unit, then category under it; AI categorization is skipped.

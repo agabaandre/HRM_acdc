@@ -210,6 +210,24 @@ When a Business Unit has **Allow Asset** enabled, agents resolving a ticket can 
 
 ---
 
+## Information Systems
+
+**Path:** Helpdesk Modules → Information Systems (permission `can_manage_information_systems`, or Helpdesk admin / portal role 10)
+
+Inventory of Africa CDC information systems and nested modules (shared lifecycle statuses: To be Developed, In development, Under Testing, In Use, Decommissioned). Division `null` means **All**. Programming languages use a normalised catalogue. Profile and manuals are URL links with in-app preview.
+
+Import / refresh from the Excel workbook:
+
+```bash
+cd helpdesk/backend && php artisan helpdesk:import-information-systems
+```
+
+Reports → **Information systems** shows summary, by-division counts, status-change trends, and Excel export.
+
+When a Business Unit has **Allow Information System on resolve** (seeded for **IT & MIS**), the resolve modal on the agent desk and ticket detail can optionally link a non-decommissioned system.
+
+---
+
 ## Jobs (SLA & directory sync)
 
 **Path:** Settings → Jobs
@@ -455,6 +473,7 @@ php artisan helpdesk:verify-production
 | Agent disable / routing | Migration `is_agent_disabled` applied; queue worker running |
 | Multi-BU + Protocol | Protocol BU + categories present (seeded); SPA rebuilt |
 | IT assets on resolve | Brands/assets migrations applied; IT & MIS `allows_asset_link_on_resolve` |
+| Information systems | Migration applied; import run if needed; IT & MIS `allows_information_system_link_on_resolve` |
 | Inbound email tickets | Scheduler timer active; queue listens `default,helpdesk,helpdesk-ai`; Graph **Mail.ReadWrite**; Settings → General **Allow email submission** ON; per-BU mailbox + intake |
 | Branding | Tile/SPA/mail say **Service Desk**; `HELPDESK_MAIL_BRAND_NAME=Africa CDC Service Desk` |
 | Staff portal tile | `cbp_modules.system_name = Service Desk` for `helpdesk_itsm` (auto-repaired on portal load when legacy names remain) |

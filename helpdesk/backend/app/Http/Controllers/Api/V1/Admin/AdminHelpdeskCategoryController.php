@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskCategory;
+use App\Services\CategoryBusinessUnitRemapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -82,12 +83,43 @@ class AdminHelpdeskCategoryController extends Controller
     {
         $this->ensureHelpdeskAdmin($request);
 
-        if ($category->tickets()->exists()) {
-            abort(422, 'Cannot delete a category that has tickets. Deactivate it instead.');
+        abort(422, 'Categories cannot be deleted directly. Use Remap to merge into another category.');
+    }
+
+    public function remap(
+        Request $request,
+        HelpdeskCategory $category,
+        CategoryBusinessUnitRemapService $remap,
+    ): JsonResponse {
+        $this->ensureHelpdeskAdmin($request);
+
+        $validated = $request->validate([
+            'target_category_id' => [
+                'required',
+                'integer',
+                Rule::exists('helpdesk_categories', 'id'),
+            ],
+        ]);
+
+        $target = HelpdeskCategory::query()->findOrFail((int) $validated['target_category_id']);
+        if ($target->id === $category->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'target_category_id' => 'Choose a different category to remap into.',
+            ]);
         }
 
-        $category->delete();
+        $sourceName = $category->name;
+        $targetName = $target->name;
+        $sourceId = $category->id;
+        $counts = $remap->remapCategory($category, $target);
 
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'message' => "Remapped “{$sourceName}” into “{$targetName}”.",
+            'data' => [
+                'source_id' => $sourceId,
+                'target_id' => $target->id,
+                'moved' => $counts,
+            ],
+        ]);
     }
 }

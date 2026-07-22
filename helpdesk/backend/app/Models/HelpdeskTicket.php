@@ -56,6 +56,7 @@ class HelpdeskTicket extends Model
         'category_id',
         'business_unit_id',
         'linked_it_asset_id',
+        'linked_information_system_id',
         'subject',
         'description',
         'resolution_summary',
@@ -112,6 +113,11 @@ class HelpdeskTicket extends Model
     public function linkedItAsset(): BelongsTo
     {
         return $this->belongsTo(HelpdeskItAsset::class, 'linked_it_asset_id');
+    }
+
+    public function linkedInformationSystem(): BelongsTo
+    {
+        return $this->belongsTo(HelpdeskInformationSystem::class, 'linked_information_system_id');
     }
 
     public function assignee(): BelongsTo

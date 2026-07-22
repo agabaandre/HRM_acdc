@@ -42,6 +42,7 @@ class HelpdeskProfile extends Model
         'can_change_ticket_category',
         'can_manage_it_assets',
         'can_manage_licenses',
+        'can_manage_information_systems',
         'can_submit_software_requests',
         'can_approve_software_requests',
         'can_manage_software_requests',
@@ -66,6 +67,7 @@ class HelpdeskProfile extends Model
             'can_change_ticket_category' => 'boolean',
             'can_manage_it_assets' => 'boolean',
             'can_manage_licenses' => 'boolean',
+            'can_manage_information_systems' => 'boolean',
             'can_submit_software_requests' => 'boolean',
             'can_approve_software_requests' => 'boolean',
             'can_manage_software_requests' => 'boolean',
@@ -251,6 +253,15 @@ class HelpdeskProfile extends Model
         return (bool) $this->can_manage_licenses;
     }
 
+    public function canManageInformationSystems(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_manage_information_systems;
+    }
+
     public function canSubmitSoftwareRequests(): bool
     {
         if ($this->isHelpdeskAdmin()) {
@@ -291,6 +302,7 @@ class HelpdeskProfile extends Model
     {
         return $this->canManageItAssets()
             || $this->canManageLicenses()
+            || $this->canManageInformationSystems()
             || $this->canSubmitSoftwareRequests()
             || $this->canApproveSoftwareRequests()
             || $this->canManageSoftwareRequests();

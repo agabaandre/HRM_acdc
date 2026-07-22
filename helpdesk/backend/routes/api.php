@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Tools\ItAssetController;
 use App\Http\Controllers\Api\V1\Tools\LicenseController;
 use App\Http\Controllers\Api\V1\Tools\SoftwareRequestController;
+use App\Http\Controllers\Api\V1\Tools\InformationSystemController;
 use App\Http\Controllers\Api\V1\Admin\AdminAuditLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
@@ -87,6 +88,7 @@ Route::prefix('v1')->group(function () {
         // Ticket reassignment (open status only; reason required; logged).
         Route::get('/tickets/{ticket}/eligible-agents', [TicketController::class, 'eligibleAgents']);
         Route::get('/tickets/{ticket}/linkable-assets', [TicketController::class, 'linkableAssets']);
+        Route::get('/tickets/{ticket}/linkable-information-systems', [TicketController::class, 'linkableInformationSystems']);
         Route::post('/tickets/{ticket}/reassign', [TicketController::class, 'reassign']);
 
         Route::apiResource('tickets', TicketController::class);
@@ -129,11 +131,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/admin/categories', [AdminHelpdeskCategoryController::class, 'index']);
         Route::post('/admin/categories', [AdminHelpdeskCategoryController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'update']);
+        Route::post('/admin/categories/{category}/remap', [AdminHelpdeskCategoryController::class, 'remap']);
         Route::delete('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'destroy']);
         Route::get('/admin/business-units', [AdminHelpdeskBusinessUnitController::class, 'index']);
         Route::post('/admin/business-units', [AdminHelpdeskBusinessUnitController::class, 'store']);
         Route::put('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'update']);
         Route::post('/admin/business-units/{businessUnit}/test-email-read', [AdminHelpdeskBusinessUnitController::class, 'testEmailRead']);
+        Route::post('/admin/business-units/{businessUnit}/remap', [AdminHelpdeskBusinessUnitController::class, 'remap']);
         Route::delete('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'destroy']);
         Route::get('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'index']);
         Route::post('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'store']);
@@ -169,6 +173,20 @@ Route::prefix('v1')->group(function () {
         Route::post('/tools/licenses', [LicenseController::class, 'store']);
         Route::put('/tools/licenses/{license}', [LicenseController::class, 'update']);
         Route::delete('/tools/licenses/{license}', [LicenseController::class, 'destroy']);
+
+        Route::get('/tools/information-systems/languages', [InformationSystemController::class, 'languages']);
+        Route::post('/tools/information-systems/languages', [InformationSystemController::class, 'storeLanguage']);
+        Route::get('/tools/information-systems/summary', [InformationSystemController::class, 'summary']);
+        Route::get('/tools/information-systems/export', [InformationSystemController::class, 'export']);
+        Route::get('/tools/information-systems/reports/trends', [InformationSystemController::class, 'trends']);
+        Route::get('/tools/information-systems', [InformationSystemController::class, 'index']);
+        Route::post('/tools/information-systems', [InformationSystemController::class, 'store']);
+        Route::get('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'show']);
+        Route::put('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'update']);
+        Route::delete('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'destroy']);
+        Route::post('/tools/information-systems/{informationSystem}/modules', [InformationSystemController::class, 'storeModule']);
+        Route::put('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'updateModule']);
+        Route::delete('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'destroyModule']);
 
         Route::get('/tools/software-requests', [SoftwareRequestController::class, 'index']);
         Route::post('/tools/software-requests', [SoftwareRequestController::class, 'store']);

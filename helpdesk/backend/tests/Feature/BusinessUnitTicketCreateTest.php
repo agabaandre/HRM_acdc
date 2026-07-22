@@ -208,8 +208,17 @@ class BusinessUnitTicketCreateTest extends TestCase
             'is_active' => true,
         ])->assertOk()->assertJsonPath('data.name', 'Legal');
 
-        $this->deleteJson('/api/v1/admin/business-units/'.$id)->assertOk();
+        $target = $this->postJson('/api/v1/admin/business-units', [
+            'name' => 'Legal Merge Target',
+            'sort_order' => 61,
+        ])->assertCreated();
+        $targetId = (int) $target->json('data.id');
+
+        $this->postJson('/api/v1/admin/business-units/'.$id.'/remap', [
+            'target_business_unit_id' => $targetId,
+        ])->assertOk();
         $this->assertDatabaseMissing('helpdesk_business_units', ['id' => $id]);
+        $this->assertDatabaseHas('helpdesk_business_units', ['id' => $targetId]);
     }
 
     public function test_ai_job_falls_back_to_admin_round_robin_when_categorization_fails(): void

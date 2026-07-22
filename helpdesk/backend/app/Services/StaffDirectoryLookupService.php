@@ -109,6 +109,92 @@ class StaffDirectoryLookupService
     }
 
     /**
+     * @return list<array{staff_id:int,name:string,work_email:string}>
+     */
+    public function searchByName(string $query, int $limit = 25): array
+    {
+        $needle = strtolower(trim($query));
+        if ($needle === '') {
+            return [];
+        }
+
+        $this->ensureStaffCacheWarm();
+
+        $fetchLimit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
+        $cacheKey = 'helpdesk_reference_staff_v1_'.$fetchLimit;
+        $staffRows = Cache::get($cacheKey);
+        if (! is_array($staffRows)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($staffRows as $raw) {
+            if (! is_array($raw)) {
+                continue;
+            }
+            $row = StaffShareNormalizer::staff($raw);
+            $id = (int) ($row['id'] ?? 0);
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($id < 1 || $name === '') {
+                continue;
+            }
+            if (! str_contains(strtolower($name), $needle) && strtolower($name) !== $needle) {
+                // Also allow full-string fuzzy candidates later — keep substring matches for search
+                similar_text(strtolower($name), $needle, $pct);
+                if ($pct < 60) {
+                    continue;
+                }
+            }
+            $out[] = [
+                'staff_id' => $id,
+                'name' => $name,
+                'work_email' => trim((string) ($row['work_email'] ?? '')),
+            ];
+            if (count($out) >= $limit) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Match division display name to Staff/APM division id. "All" / blank → null.
+     */
+    public function resolveDivisionIdByName(?string $name): ?int
+    {
+        $raw = trim((string) $name);
+        if ($raw === '' || strcasecmp($raw, 'all') === 0) {
+            return null;
+        }
+
+        $needle = strtolower($raw);
+        foreach ($this->divisionsKeyedById() as $id => $div) {
+            $divName = strtolower(trim((string) ($div['name'] ?? '')));
+            if ($divName !== '' && $divName === $needle) {
+                return (int) $id;
+            }
+        }
+
+        // Fuzzy fallback
+        $bestId = null;
+        $best = 0.0;
+        foreach ($this->divisionsKeyedById() as $id => $div) {
+            $divName = strtolower(trim((string) ($div['name'] ?? '')));
+            if ($divName === '') {
+                continue;
+            }
+            similar_text($needle, $divName, $pct);
+            if ($pct > $best) {
+                $best = $pct;
+                $bestId = (int) $id;
+            }
+        }
+
+        return ($bestId !== null && $best >= 85.0) ? $bestId : null;
+    }
+
+    /**
      * Duty station label for routing (Staff directory first, then Helpdesk profile sync field).
      */
     public function dutyStationForStaffId(int $staffId): ?string
@@ -241,6 +327,24 @@ class StaffDirectoryLookupService
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * @return list<array{id:int,name:string}>
+     */
+    public function divisionsForSelect(): array
+    {
+        $this->ensureStaffCacheWarm();
+
+        return $this->divisionsKeyedById()
+            ->map(fn (array $d) => [
+                'id' => (int) $d['id'],
+                'name' => (string) ($d['name'] ?? ''),
+            ])
+            ->filter(fn (array $d) => $d['id'] > 0 && $d['name'] !== '')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskBusinessUnit;
 use App\Services\BusinessUnitMailboxIntakeService;
+use App\Services\CategoryBusinessUnitRemapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,6 +46,7 @@ class AdminHelpdeskBusinessUnitController extends Controller
             'is_active' => ['sometimes', 'boolean'],
             'allows_anonymous' => ['sometimes', 'boolean'],
             'allows_asset_link_on_resolve' => ['sometimes', 'boolean'],
+            'allows_information_system_link_on_resolve' => ['sometimes', 'boolean'],
             'support_mailbox' => ['nullable', 'email', 'max:191'],
             'email_intake_enabled' => ['sometimes', 'boolean'],
         ]);
@@ -62,6 +64,7 @@ class AdminHelpdeskBusinessUnitController extends Controller
             'is_active' => $validated['is_active'] ?? true,
             'allows_anonymous' => $validated['allows_anonymous'] ?? false,
             'allows_asset_link_on_resolve' => $validated['allows_asset_link_on_resolve'] ?? false,
+            'allows_information_system_link_on_resolve' => $validated['allows_information_system_link_on_resolve'] ?? false,
             'support_mailbox' => $validated['support_mailbox'] ?? null,
             'email_intake_enabled' => $validated['email_intake_enabled'] ?? false,
         ]);
@@ -81,6 +84,7 @@ class AdminHelpdeskBusinessUnitController extends Controller
             'is_active' => ['sometimes', 'boolean'],
             'allows_anonymous' => ['sometimes', 'boolean'],
             'allows_asset_link_on_resolve' => ['sometimes', 'boolean'],
+            'allows_information_system_link_on_resolve' => ['sometimes', 'boolean'],
             'support_mailbox' => ['sometimes', 'nullable', 'email', 'max:191'],
             'email_intake_enabled' => ['sometimes', 'boolean'],
         ]);
@@ -95,13 +99,44 @@ class AdminHelpdeskBusinessUnitController extends Controller
     {
         $this->ensureHelpdeskAdmin($request);
 
-        if ($businessUnit->categories()->exists()) {
-            abort(422, 'Cannot delete a business unit that has categories. Move or deactivate them first.');
+        abort(422, 'Business units cannot be deleted directly. Use Remap to merge into another business unit.');
+    }
+
+    public function remap(
+        Request $request,
+        HelpdeskBusinessUnit $businessUnit,
+        CategoryBusinessUnitRemapService $remap,
+    ): JsonResponse {
+        $this->ensureHelpdeskAdmin($request);
+
+        $validated = $request->validate([
+            'target_business_unit_id' => [
+                'required',
+                'integer',
+                Rule::exists('helpdesk_business_units', 'id'),
+            ],
+        ]);
+
+        $target = HelpdeskBusinessUnit::query()->findOrFail((int) $validated['target_business_unit_id']);
+        if ($target->id === $businessUnit->id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'target_business_unit_id' => 'Choose a different business unit to remap into.',
+            ]);
         }
 
-        $businessUnit->delete();
+        $sourceName = $businessUnit->name;
+        $targetName = $target->name;
+        $sourceId = $businessUnit->id;
+        $counts = $remap->remapBusinessUnit($businessUnit, $target);
 
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'message' => "Remapped “{$sourceName}” into “{$targetName}”.",
+            'data' => [
+                'source_id' => $sourceId,
+                'target_id' => $target->id,
+                'moved' => $counts,
+            ],
+        ]);
     }
 
     /**

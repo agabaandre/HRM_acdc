@@ -259,7 +259,7 @@ onMounted(() => {
 
                 <p v-if="m.suggestTicket" class="hd-ask-ticket-hint">
                   Still stuck?
-                  <RouterLink to="/tickets/new">Log a new request</RouterLink>
+                  <RouterLink to="/tickets/new">Create a ticket</RouterLink>
                   for an agent.
                 </p>
               </div>
@@ -341,7 +341,7 @@ onMounted(() => {
         <v-card variant="outlined" class="hd-side-card">
           <v-card-title class="hd-side-card-title">Need a person?</v-card-title>
           <v-card-text class="hd-side-card-body">
-            <RouterLink to="/tickets/new">Open a new request</RouterLink>
+            <RouterLink to="/tickets/new">Create a ticket</RouterLink>
             and an agent will follow up during business hours.
           </v-card-text>
         </v-card>

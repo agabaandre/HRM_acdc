@@ -301,7 +301,7 @@ onMounted(async () => {
       <p class="hint">
         Map prioritised staff to ticket priority levels. When someone on the matrix opens a request, their ticket
         priority is set automatically — requesters never choose priority on
-        <RouterLink to="/tickets/new">New request</RouterLink>.
+        <RouterLink to="/tickets/new">Create ticket</RouterLink>.
         Category-specific rules override global ones; otherwise the
         <RouterLink to="/settings/categories">category default</RouterLink> applies.
       </p>

@@ -52,7 +52,7 @@ const homeLede = computed(() => {
   if (isAgentHome.value) {
     return 'Log and track service requests across Africa CDC business units. Triage assigned tickets on your board below, browse FAQs, or open the agent desk for your full workload.'
   }
-  return 'Log and track service requests across Africa CDC business units. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
+  return 'Log and track service requests across Africa CDC business units. Ask our AI assistant for guided troubleshooting, browse FAQs below, or create a ticket for the service desk team.'
 })
 
 const agentShortcuts: HomeShortcut[] = [
@@ -77,7 +77,7 @@ const requesterShortcuts: HomeShortcut[] = [
     passSearchToAsk: true,
   },
   { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'My tickets' },
-  { to: '/tickets/new', icon: HELP_DESK_NAV_ICONS.newRequest, label: 'New request' },
+  { to: '/tickets/new', icon: HELP_DESK_NAV_ICONS.newRequest, label: 'Create ticket' },
   { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
 ]
 
@@ -315,7 +315,7 @@ onMounted(() => {
       <p v-else-if="articles.length === 0" class="kb-empty">
         No articles match <em>“{{ search }}”</em>. Try
         <button type="button" class="hd-inline-link-btn" @click="goToAskWithSearch">Get instant answers</button>
-        or <RouterLink to="/tickets/new">log a new request</RouterLink>.
+        or <RouterLink to="/tickets/new">create a ticket</RouterLink>.
       </p>
 
       <v-expansion-panels

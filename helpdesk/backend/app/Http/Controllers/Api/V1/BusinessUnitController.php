@@ -53,6 +53,7 @@ class BusinessUnitController extends Controller
                 'sort_order' => $u->sort_order,
                 'allows_anonymous' => (bool) $u->allows_anonymous,
                 'allows_asset_link_on_resolve' => (bool) $u->allows_asset_link_on_resolve,
+                'allows_information_system_link_on_resolve' => (bool) $u->allows_information_system_link_on_resolve,
                 'categories' => $u->categories->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,

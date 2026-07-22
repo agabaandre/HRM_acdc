@@ -89,7 +89,7 @@ The platform consists of four integrated modules working seamlessly together:
 <td align="center" width="25%">
 
 ### 🛎️ Helpdesk
-**IT Service Desk & ITSM**
+**Service Desk & ITSM**
 
 **Features:**
 - ✅ Ticketing (web, WhatsApp, Teams sources)
@@ -233,7 +233,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
 | [**🌱 APM Environment Guide**](./apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`apm/.env.example`) |
 | [**💰 Finance Documentation**](./finance/documentation/README.md) | Laravel + Inertia Finance Module |
-| [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | IT Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
+| [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
 | [**👤 Helpdesk User Guide**](./helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
 | [**🧑‍💻 Helpdesk Developer Guide**](./helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
@@ -324,7 +324,7 @@ staff/
 │   ├── public/, server.php, .htaccess   # Apache entry
 │   ├── documentation/                   # Finance documentation
 │   └── setup.sh                         # Install + build
-├── 🛎️ helpdesk/                          # Laravel + Vue IT Service Desk / ITSM
+├── 🛎️ helpdesk/                          # Laravel + Vue Service Desk / ITSM
 │   ├── backend/                         # Laravel 11 JSON API (/api/v1/*)
 │   │   ├── app/Http/Controllers/Api/V1  # Tickets, KB, reports, public screen, admin
 │   │   ├── app/Models/                  # HelpdeskTicket, HelpdeskCategory, HelpdeskProfile, …

@@ -27,6 +27,14 @@ interface LinkableAsset {
   label: string
 }
 
+interface LinkableInformationSystem {
+  id: number
+  name: string
+  status?: string | null
+  version?: string | null
+  label: string
+}
+
 const props = defineProps<{
   ticket: ResolveTicketRef | null
 }>()
@@ -52,6 +60,14 @@ const assetLoading = ref(false)
 const assetPickerOpen = ref(false)
 const selectedAsset = ref<LinkableAsset | null>(null)
 let assetTimer: ReturnType<typeof setTimeout> | null = null
+
+const systemLinkEnabled = ref(false)
+const systemSearch = ref('')
+const systemResults = ref<LinkableInformationSystem[]>([])
+const systemLoading = ref(false)
+const systemPickerOpen = ref(false)
+const selectedSystem = ref<LinkableInformationSystem | null>(null)
+let systemTimer: ReturnType<typeof setTimeout> | null = null
 
 const modalOpen = computed({
   get: () => props.ticket !== null,
@@ -106,6 +122,16 @@ function resetState(): void {
     clearTimeout(assetTimer)
     assetTimer = null
   }
+  systemLinkEnabled.value = false
+  systemSearch.value = ''
+  systemResults.value = []
+  systemLoading.value = false
+  systemPickerOpen.value = false
+  selectedSystem.value = null
+  if (systemTimer) {
+    clearTimeout(systemTimer)
+    systemTimer = null
+  }
 }
 
 function close(): void {
@@ -134,6 +160,27 @@ async function loadLinkableAssets(q = ''): Promise<void> {
   }
 }
 
+async function loadLinkableSystems(q = ''): Promise<void> {
+  const ticket = props.ticket
+  if (!ticket) return
+  systemLoading.value = true
+  try {
+    const { data } = await api.get<{
+      data: LinkableInformationSystem[]
+      meta?: { enabled?: boolean }
+    }>(`/api/v1/tickets/${ticket.id}/linkable-information-systems`, {
+      params: q.trim() ? { q: q.trim() } : undefined,
+    })
+    systemLinkEnabled.value = !!data.meta?.enabled
+    systemResults.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    systemLinkEnabled.value = false
+    systemResults.value = []
+  } finally {
+    systemLoading.value = false
+  }
+}
+
 function pickAsset(row: LinkableAsset): void {
   selectedAsset.value = row
   assetSearch.value = row.label
@@ -146,6 +193,18 @@ function clearAsset(): void {
   void loadLinkableAssets('')
 }
 
+function pickSystem(row: LinkableInformationSystem): void {
+  selectedSystem.value = row
+  systemSearch.value = row.label
+  systemPickerOpen.value = false
+}
+
+function clearSystem(): void {
+  selectedSystem.value = null
+  systemSearch.value = ''
+  void loadLinkableSystems('')
+}
+
 watch(
   () => props.ticket,
   (ticket) => {
@@ -153,6 +212,7 @@ watch(
     if (ticket) {
       kbSubject.value = ticket.subject?.trim() ?? ''
       void loadLinkableAssets('')
+      void loadLinkableSystems('')
     }
   },
   { immediate: true },
@@ -167,8 +227,18 @@ watch(assetSearch, (q) => {
   }, 250)
 })
 
+watch(systemSearch, (q) => {
+  if (!systemLinkEnabled.value || selectedSystem.value) return
+  systemPickerOpen.value = true
+  if (systemTimer) clearTimeout(systemTimer)
+  systemTimer = setTimeout(() => {
+    void loadLinkableSystems(q)
+  }, 250)
+})
+
 onBeforeUnmount(() => {
   if (assetTimer) clearTimeout(assetTimer)
+  if (systemTimer) clearTimeout(systemTimer)
 })
 
 async function submitResolution(): Promise<void> {
@@ -205,6 +275,9 @@ async function submitResolution(): Promise<void> {
     }
     if (assetLinkEnabled.value && selectedAsset.value) {
       payload.linked_it_asset_id = selectedAsset.value.id
+    }
+    if (systemLinkEnabled.value && selectedSystem.value) {
+      payload.linked_information_system_id = selectedSystem.value.id
     }
     await api.post(`/api/v1/tickets/${ticket.id}/submit-resolution`, payload)
     notifySuccess(`${ticket.ticket_number} resolved — requester notified.`)
@@ -295,6 +368,50 @@ async function submitResolution(): Promise<void> {
             <p v-if="selectedAsset" class="asset-selected" role="status">
               <strong>Linked:</strong> {{ selectedAsset.label }}
               <button type="button" class="clear-btn" @click="clearAsset">Clear</button>
+            </p>
+          </div>
+        </UFormField>
+
+        <UFormField
+          v-if="systemLinkEnabled"
+          label="Related information system (optional)"
+          name="linkedInformationSystem"
+          description="Search Africa CDC information systems by name, version, or domain."
+        >
+          <div class="asset-picker">
+            <UInput
+              v-model="systemSearch"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="System name, version…"
+              class="w-full"
+              autocomplete="off"
+              @focus="systemPickerOpen = true"
+            />
+            <ul
+              v-if="systemPickerOpen && !selectedSystem && (systemResults.length || systemLoading || systemSearch.trim())"
+              class="asset-results"
+              role="listbox"
+              aria-label="Information systems"
+            >
+              <li v-if="systemLoading" class="asset-empty">Searching…</li>
+              <li
+                v-for="row in systemResults"
+                :key="row.id"
+                role="option"
+                class="asset-result"
+                @mousedown.prevent="pickSystem(row)"
+              >
+                <strong>{{ row.name }}</strong>
+                <span class="meta">{{ row.label }}</span>
+              </li>
+              <li v-if="!systemLoading && !systemResults.length" class="asset-empty">
+                No information systems match that search.
+              </li>
+            </ul>
+            <p v-if="selectedSystem" class="asset-selected" role="status">
+              <strong>Linked:</strong> {{ selectedSystem.label }}
+              <button type="button" class="clear-btn" @click="clearSystem">Clear</button>
             </p>
           </div>
         </UFormField>

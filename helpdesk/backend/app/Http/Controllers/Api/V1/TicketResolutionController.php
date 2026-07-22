@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Mail\TicketResolutionMail;
+use App\Models\HelpdeskInformationSystem;
 use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskKbArticle;
 use App\Models\HelpdeskTicket;
+use App\Support\InformationSystemStatus;
 use App\Services\HtmlSanitizer;
 use App\Services\RichTextDataUriExternalizer;
 use App\Services\TicketFirstResponseService;
@@ -34,6 +36,7 @@ class TicketResolutionController extends Controller
         ]);
 
         $allowsAssetLink = (bool) ($ticket->businessUnit?->allows_asset_link_on_resolve);
+        $allowsSystemLink = (bool) ($ticket->businessUnit?->allows_information_system_link_on_resolve);
 
         // 65000 chars matches the `description` ceiling and gives ample room for
         // HTML markup (Quill stores formatting + embedded image URLs).
@@ -45,6 +48,11 @@ class TicketResolutionController extends Controller
                 $allowsAssetLink ? 'nullable' : 'prohibited',
                 'integer',
                 'exists:helpdesk_it_assets,id',
+            ],
+            'linked_information_system_id' => [
+                $allowsSystemLink ? 'nullable' : 'prohibited',
+                'integer',
+                'exists:helpdesk_information_systems,id',
             ],
         ]);
 
@@ -70,6 +78,20 @@ class TicketResolutionController extends Controller
             $ticket->linked_it_asset_id = $assetId;
         }
 
+        if ($allowsSystemLink && ! empty($validated['linked_information_system_id'])) {
+            $systemId = (int) $validated['linked_information_system_id'];
+            $systemExists = HelpdeskInformationSystem::query()
+                ->where('id', $systemId)
+                ->where('status', '!=', InformationSystemStatus::DECOMMISSIONED)
+                ->exists();
+            if (! $systemExists) {
+                throw ValidationException::withMessages([
+                    'linked_information_system_id' => 'Choose an active information system.',
+                ]);
+            }
+            $ticket->linked_information_system_id = $systemId;
+        }
+
         $ticket->resolution_summary = $clean;
         $ticket->resolution_submitted_by_user_id = $request->user()->id;
 
@@ -88,6 +110,7 @@ class TicketResolutionController extends Controller
         $logger->log($ticket, 'ticket.resolved', $request->user()->id, [
             'resolution_submitted' => true,
             'linked_it_asset_id' => $ticket->linked_it_asset_id,
+            'linked_information_system_id' => $ticket->linked_information_system_id,
         ]);
 
         $kbArticleId = null;
@@ -141,6 +164,7 @@ class TicketResolutionController extends Controller
                 'status' => $ticket->status,
                 'resolution_summary' => $ticket->resolution_summary,
                 'linked_it_asset_id' => $ticket->linked_it_asset_id,
+                'linked_information_system_id' => $ticket->linked_information_system_id,
                 'kb_article_id' => $kbArticleId,
             ],
         ]);

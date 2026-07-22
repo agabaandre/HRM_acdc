@@ -203,7 +203,8 @@ From the ticket detail page or the agent desk resolve flow:
 1. Write **resolution notes** in the rich text editor (screenshots and formatting supported).
 2. Confirm resolve. Optionally **publish to the knowledge base** if you have permission.
 3. If the ticket’s Business Unit has **Allow Asset** enabled, you may optionally **link an IT asset** assigned to the requester — search by **serial number**, asset tag, name, brand, or model.
-4. The requester is emailed; they can close the ticket when satisfied or reopen if needed.
+4. If the Business Unit has **Allow Information System on resolve** (IT & MIS by default), you may optionally **link an information system** — search by name or version.
+5. The requester is emailed; they can close the ticket when satisfied or reopen if needed.
 
 ---
 
@@ -254,6 +255,7 @@ Staff with the right permissions see **Tools** in navigation:
 |------|----------------|
 | **IT Assets** | Inventory with depreciation: assign staff from the directory, choose brand/category, search by serial/tag/assignee. Brands and categories are managed under **Settings → IT Assets**. |
 | **Licenses** | Software license tracking with responsible person from the directory. |
+| **Information Systems** | Africa CDC systems inventory: status, modules, focals, manuals/profile links. |
 | **Software requests** | Submit/approve software needs (rich text problem / solution / justification). |
 
 ---
@@ -348,6 +350,7 @@ Every settings save writes an entry to the audit log with the actor, IP, user-ag
 | Resolution email never arrives | Check `MAIL_*` / Exchange Graph vars; see [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications). |
 | Email to helpdesk never becomes a ticket | Admin must enable intake on the Business Unit mailbox and Graph Mail.ReadWrite; see [ADMIN_GUIDE → Inbound email intake](./ADMIN_GUIDE.md#inbound-email-intake). |
 | Cannot link an asset on resolve | Business Unit needs **Allow Asset**; asset must be assigned to the ticket requester in IT Assets. |
+| Cannot link an information system on resolve | Business Unit needs **Allow Information System on resolve**; system must not be decommissioned. |
 | Reopen checkbox missing | **Settings → General → Requester follow-up** may be off, or ticket is not closed. |
 | Agent not emailed on comment | Same toggle; ticket must have an assigned agent with a valid email. |
 | The TV screen says "Reconnecting" indefinitely | The browser can't reach `/api/v1/public/screen`. Confirm Apache is up and `throttle:120,1` isn't being hit by another consumer. |

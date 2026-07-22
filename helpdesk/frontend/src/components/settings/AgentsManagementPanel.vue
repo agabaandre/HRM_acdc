@@ -37,6 +37,7 @@ interface AgentRow {
   can_change_ticket_category: boolean
   can_manage_it_assets: boolean
   can_manage_licenses: boolean
+  can_manage_information_systems: boolean
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
@@ -67,6 +68,7 @@ interface StaffPermissionRow {
   can_change_ticket_category: boolean
   can_manage_it_assets: boolean
   can_manage_licenses: boolean
+  can_manage_information_systems: boolean
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
@@ -124,6 +126,7 @@ const STAFF_OVERRIDE_OPTIONS = [
   { key: 'can_change_ticket_category', label: 'Change category' },
   { key: 'can_manage_it_assets', label: 'IT assets' },
   { key: 'can_manage_licenses', label: 'Licenses' },
+  { key: 'can_manage_information_systems', label: 'Information systems' },
   { key: 'can_submit_software_requests', label: 'SW requests (submit)' },
   { key: 'can_approve_software_requests', label: 'SW requests (approve)' },
   { key: 'can_manage_software_requests', label: 'SW requests (manage)' },

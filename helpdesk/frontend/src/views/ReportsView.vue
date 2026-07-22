@@ -8,6 +8,7 @@ import ReportColumnHeader from '../components/reports/ReportColumnHeader.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
+import { formatDateTime } from '../lib/formatDateTime'
 import {
   formatTableCountLabel,
   rowIndex,
@@ -20,7 +21,7 @@ import { useAuthStore } from '../stores/auth'
 type SortItem = { key: string; order: 'asc' | 'desc' }
 
 const auth = useAuthStore()
-const tab = ref<'mine' | 'admin' | 'monthly'>('mine')
+const tab = ref<'mine' | 'admin' | 'monthly' | 'infosystems'>('mine')
 const itemsPerPageOptions = [10, 20, 50, 100] as const
 
 const statusOptions = [
@@ -62,6 +63,7 @@ const reportHeaders: DataTableHeader[] = [
   { title: 'Subject', key: 'subject', sortable: false, minWidth: '200px' },
   { title: 'Assigned to', key: 'assignee_name', sortable: false, minWidth: '150px' },
   { title: 'Status', key: 'status', sortable: false, width: '130px' },
+  { title: 'Created', key: 'created_at', sortable: false, minWidth: '140px' },
 ]
 
 /** Ticket rows from report APIs (aligned with ticket API resource fields). */
@@ -70,6 +72,7 @@ interface ReportTicket {
   ticket_number: string
   subject?: string
   status?: string
+  created_at?: string | null
   assignee?: { name: string; avatar_url?: string | null } | null
 }
 
@@ -175,6 +178,9 @@ const prioritySelectItems = computed((): SelectStringItem[] =>
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
 )
+const canManageInformationSystems = computed(
+  () => isAdmin.value || !!auth.me?.profile?.can_manage_information_systems,
+)
 const isStaff = computed(() => {
   const role = auth.me?.profile?.role
   return ['agent', 'supervisor', 'admin', 'auditor'].includes(role ?? '')
@@ -206,6 +212,29 @@ const monthlyLoading = ref(false)
 const monthlyYear = ref(new Date().getFullYear())
 const monthlyMonth = ref(new Date().getMonth() || 12)
 const monthlyAgentId = ref<number | null>(null)
+
+interface InfoSystemsSummary {
+  systems_total: number
+  systems_by_status: Record<string, number>
+  modules_total: number
+  modules_by_status: Record<string, number>
+  missing_focal: number
+  missing_mis_focal: number
+  by_division: Record<string, number>
+}
+
+interface InfoSystemsTrendRow {
+  date: string
+  to_status: string
+  count: number
+}
+
+const isSummary = ref<InfoSystemsSummary | null>(null)
+const isTrends = ref<InfoSystemsTrendRow[]>([])
+const isLoading = ref(false)
+const isDateFrom = ref('')
+const isDateTo = ref('')
+const isExporting = ref(false)
 const myTableCountLabel = computed(() =>
   formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myItemsPerPage.value),
 )
@@ -351,14 +380,57 @@ async function openMonthlyReport(id: number) {
   }
 }
 
-async function switchTab(next: 'mine' | 'admin' | 'monthly') {
+async function loadInfoSystems() {
+  if (!canManageInformationSystems.value) return
+  isLoading.value = true
+  try {
+    const params: Record<string, string> = {}
+    if (isDateFrom.value) params.date_from = isDateFrom.value
+    if (isDateTo.value) params.date_to = isDateTo.value
+    const [sumRes, trendRes] = await Promise.all([
+      api.get<{ data: InfoSystemsSummary }>('/api/v1/tools/information-systems/summary'),
+      api.get<{ data: InfoSystemsTrendRow[] }>('/api/v1/tools/information-systems/reports/trends', { params }),
+    ])
+    isSummary.value = sumRes.data.data
+    isTrends.value = Array.isArray(trendRes.data.data) ? trendRes.data.data : []
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to load information systems report'))
+    isSummary.value = null
+    isTrends.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function exportInfoSystems() {
+  isExporting.value = true
+  try {
+    const { data } = await api.get('/api/v1/tools/information-systems/export', {
+      responseType: 'blob',
+    })
+    const url = URL.createObjectURL(data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'information-systems.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Export failed'))
+  } finally {
+    isExporting.value = false
+  }
+}
+
+async function switchTab(next: 'mine' | 'admin' | 'monthly' | 'infosystems') {
   tab.value = next
   await load()
 }
 
 async function load() {
   try {
-    if (tab.value === 'monthly' && isStaff.value) {
+    if (tab.value === 'infosystems' && canManageInformationSystems.value) {
+      await loadInfoSystems()
+    } else if (tab.value === 'monthly' && isStaff.value) {
       await loadMonthly()
     } else if (tab.value === 'admin' && isAdmin.value) {
       await loadAdmin()
@@ -370,6 +442,7 @@ async function load() {
     myLoading.value = false
     adminLoading.value = false
     monthlyLoading.value = false
+    isLoading.value = false
   }
 }
 
@@ -509,7 +582,16 @@ onMounted(async () => {
   <div>
     <CbpPageHeading title="Reports" back-to="/" back-label="← Overview" />
     <div class="cbp-card">
-      <div v-if="isAdmin || isStaff" class="report-tabs" :class="{ 'report-tabs--three': isAdmin && isStaff }" role="tablist" aria-label="Report views">
+      <div
+        v-if="isAdmin || isStaff || canManageInformationSystems"
+        class="report-tabs"
+        :class="{
+          'report-tabs--three': (isAdmin && isStaff) || canManageInformationSystems,
+          'report-tabs--four': isAdmin && isStaff && canManageInformationSystems,
+        }"
+        role="tablist"
+        aria-label="Report views"
+      >
         <button
           v-if="isAdmin"
           type="button"
@@ -531,6 +613,17 @@ onMounted(async () => {
           @click="switchTab('monthly')"
         >
           Monthly agent report
+        </button>
+        <button
+          v-if="canManageInformationSystems"
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'infosystems' }"
+          :aria-selected="tab === 'infosystems'"
+          @click="switchTab('infosystems')"
+        >
+          Information systems
         </button>
         <button
           type="button"
@@ -600,10 +693,10 @@ onMounted(async () => {
             <USelect v-model="mySearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
           </UFormField>
           <UFormField label="From date" name="dateFrom">
-            <UDateInput v-model="mySearchState.dateFrom" />
+            <UDateInput v-model="mySearchState.dateFrom" placeholder="Select start date" />
           </UFormField>
           <UFormField label="To date" name="dateTo">
-            <UDateInput v-model="mySearchState.dateTo" />
+            <UDateInput v-model="mySearchState.dateTo" placeholder="Select end date" />
           </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
@@ -735,6 +828,17 @@ onMounted(async () => {
             </span>
             <span v-else class="hd-dt-empty">—</span>
           </template>
+          <template #item.created_at="{ item }">
+            <time
+              v-if="item.created_at"
+              class="hd-dt-created"
+              :datetime="item.created_at"
+              :title="formatDateTime(item.created_at)"
+            >
+              {{ formatDateTime(item.created_at) }}
+            </time>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
           <template #no-data>
             <div class="hd-dt-empty-msg">No matching tickets.</div>
           </template>
@@ -823,10 +927,10 @@ onMounted(async () => {
             <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
           </UFormField>
           <UFormField label="From date" name="dateFrom">
-            <UDateInput v-model="adminSearchState.dateFrom" />
+            <UDateInput v-model="adminSearchState.dateFrom" placeholder="Select start date" />
           </UFormField>
           <UFormField label="To date" name="dateTo">
-            <UDateInput v-model="adminSearchState.dateTo" />
+            <UDateInput v-model="adminSearchState.dateTo" placeholder="Select end date" />
           </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
@@ -983,6 +1087,17 @@ onMounted(async () => {
             </span>
             <span v-else class="hd-dt-empty">—</span>
           </template>
+          <template #item.created_at="{ item }">
+            <time
+              v-if="item.created_at"
+              class="hd-dt-created"
+              :datetime="item.created_at"
+              :title="formatDateTime(item.created_at)"
+            >
+              {{ formatDateTime(item.created_at) }}
+            </time>
+            <span v-else class="hd-dt-empty">—</span>
+          </template>
           <template #no-data>
             <div class="hd-dt-empty-msg">No matching tickets.</div>
           </template>
@@ -1055,7 +1170,65 @@ onMounted(async () => {
       </div>
     </template>
 
-    <p v-else-if="tab !== 'monthly'" class="muted">Loading…</p>
+    <template v-else-if="tab === 'infosystems' && canManageInformationSystems">
+      <div class="is-toolbar">
+        <UFormField label="Trends from" name="isDateFrom">
+          <UInput v-model="isDateFrom" type="date" />
+        </UFormField>
+        <UFormField label="to" name="isDateTo">
+          <UInput v-model="isDateTo" type="date" />
+        </UFormField>
+        <UButton type="button" color="primary" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems">
+          Export Excel
+        </UButton>
+      </div>
+      <div v-if="isLoading" class="muted">Loading information systems…</div>
+      <template v-else-if="isSummary">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Systems</div><div class="kpi-value">{{ isSummary.systems_total }}</div></div>
+          <div class="kpi"><div class="kpi-label">Modules</div><div class="kpi-value">{{ isSummary.modules_total }}</div></div>
+          <div class="kpi"><div class="kpi-label">Missing focal</div><div class="kpi-value">{{ isSummary.missing_focal }}</div></div>
+          <div class="kpi"><div class="kpi-label">Missing MIS focal</div><div class="kpi-value">{{ isSummary.missing_mis_focal }}</div></div>
+        </div>
+        <div class="is-grid">
+          <section>
+            <h3 class="h3">Systems by status</h3>
+            <ul class="is-list">
+              <li v-for="(count, status) in isSummary.systems_by_status" :key="'s-' + status">
+                <span>{{ status }}</span><strong>{{ count }}</strong>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h3 class="h3">By division</h3>
+            <ul class="is-list">
+              <li v-for="(count, div) in isSummary.by_division" :key="'d-' + div">
+                <span>{{ div }}</span><strong>{{ count }}</strong>
+              </li>
+            </ul>
+          </section>
+        </div>
+        <section class="is-trends">
+          <h3 class="h3">Status change trends</h3>
+          <p v-if="!isTrends.length" class="muted">No status changes in this date range.</p>
+          <table v-else class="is-table">
+            <thead>
+              <tr><th>Date</th><th>To status</th><th>Count</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, idx) in isTrends" :key="idx">
+                <td>{{ row.date }}</td>
+                <td>{{ row.to_status }}</td>
+                <td>{{ row.count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </template>
+    </template>
+
+    <p v-else-if="tab !== 'monthly' && tab !== 'infosystems'" class="muted">Loading…</p>
     </div>
   </div>
 </template>
@@ -1069,6 +1242,74 @@ onMounted(async () => {
 }
 .report-tabs--three {
   grid-template-columns: repeat(3, 1fr);
+}
+.report-tabs--four {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 900px) {
+  .report-tabs--four {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.is-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.kpi {
+  border: 1px solid var(--hd-line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: #fff;
+}
+.kpi-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.is-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.is-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.is-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--hd-line);
+}
+.is-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.is-table th,
+.is-table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--hd-line);
+  font-size: 0.9rem;
+}
+.h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
 }
 
 .reports-filters {

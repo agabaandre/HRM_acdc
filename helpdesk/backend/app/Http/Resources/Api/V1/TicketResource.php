@@ -46,6 +46,7 @@ class TicketResource extends JsonResource
             'is_anonymous' => (bool) $this->is_anonymous,
             'business_unit_id' => $this->business_unit_id,
             'linked_it_asset_id' => $this->linked_it_asset_id,
+            'linked_information_system_id' => $this->linked_information_system_id,
             'assigned_user_id' => $this->assigned_user_id,
             'assigned_group_id' => $this->assigned_group_id,
             'directorate_id' => $this->directorate_id,
@@ -67,6 +68,7 @@ class TicketResource extends JsonResource
                     'description' => $this->businessUnit->description,
                     'allows_anonymous' => (bool) $this->businessUnit->allows_anonymous,
                     'allows_asset_link_on_resolve' => (bool) $this->businessUnit->allows_asset_link_on_resolve,
+                    'allows_information_system_link_on_resolve' => (bool) $this->businessUnit->allows_information_system_link_on_resolve,
                 ]
             ),
             'linked_it_asset' => $this->when(
@@ -79,6 +81,15 @@ class TicketResource extends JsonResource
                     'model' => $this->linkedItAsset->model,
                     'serial_number' => $this->linkedItAsset->serial_number,
                     'status' => $this->linkedItAsset->status,
+                ]
+            ),
+            'linked_information_system' => $this->when(
+                $this->relationLoaded('linkedInformationSystem') && $this->linkedInformationSystem !== null,
+                fn () => [
+                    'id' => $this->linkedInformationSystem->id,
+                    'name' => $this->linkedInformationSystem->name,
+                    'status' => $this->linkedInformationSystem->status,
+                    'version' => $this->linkedInformationSystem->version,
                 ]
             ),
             'attachments' => $attachments,

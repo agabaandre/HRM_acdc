@@ -259,7 +259,7 @@ apm/
   - [Session Implementation](../../finance/documentation/SESSION_IMPLEMENTATION.md)
   - [Installation Guide](../../finance/documentation/INSTALLATION.md)
 
-- **Helpdesk Module Documentation**: [`../../helpdesk/documentation/`](../../helpdesk/documentation/) - Laravel + Vue IT Service Desk / ITSM
+- **Helpdesk Module Documentation**: [`../../helpdesk/documentation/`](../../helpdesk/documentation/) - Laravel + Vue Service Desk / ITSM
   - [User Guide](../../helpdesk/documentation/USER_GUIDE.md) — requesters, agents & admins; includes step-by-step **ticket creation**
   - [Developer Guide](../../helpdesk/documentation/DEVELOPER_GUIDE.md) — stack, schema, REST API, extension points, runbooks
   - [Architecture](../../helpdesk/documentation/ARCHITECTURE.md) — one-page overview

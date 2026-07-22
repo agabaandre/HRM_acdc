@@ -9,7 +9,7 @@ The Africa CDC Central Business Platform is a comprehensive staff management sys
 1. **Staff Portal** (CodeIgniter) - Core staff management, authentication, and profile management
 2. **APM** (Laravel) - Approvals Management System for workflows, matrices, and document processing
 3. **Finance** (Node.js/React) - Finance Management System for advances, missions, and budgets
-4. **Helpdesk** (Laravel + Vue) - IT Service Desk / ITSM with ticketing, SLA, knowledge base, and a public TV/lobby dashboard
+4. **Helpdesk** (Laravel + Vue) - Service Desk / ITSM with ticketing, SLA, knowledge base, and a public TV/lobby dashboard
 
 ## 🏗️ System Architecture
 
@@ -69,7 +69,7 @@ Node.js/Express backend with React frontend for finance management.
 
 ### 4. Helpdesk Module
 
-Laravel 11 JSON API + Vue 3.5 SPA delivering an IT Service Desk / ITSM experience: ticketing, SLA tracking, agent routing, knowledge base, an agent workspace, a public TV/lobby dashboard, and ISO 27001 / 27014 audit logging.
+Laravel 11 JSON API + Vue 3.5 SPA delivering an Service Desk / ITSM experience: ticketing, SLA tracking, agent routing, knowledge base, an agent workspace, a public TV/lobby dashboard, and ISO 27001 / 27014 audit logging.
 
 > 📚 **Complete Helpdesk Documentation**: See [helpdesk/documentation/README.md](../helpdesk/documentation/README.md)
 

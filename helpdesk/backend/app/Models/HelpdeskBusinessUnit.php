@@ -17,6 +17,7 @@ class HelpdeskBusinessUnit extends Model
         'is_active',
         'allows_anonymous',
         'allows_asset_link_on_resolve',
+        'allows_information_system_link_on_resolve',
         'support_mailbox',
         'email_intake_enabled',
     ];
@@ -27,6 +28,7 @@ class HelpdeskBusinessUnit extends Model
             'is_active' => 'boolean',
             'allows_anonymous' => 'boolean',
             'allows_asset_link_on_resolve' => 'boolean',
+            'allows_information_system_link_on_resolve' => 'boolean',
             'email_intake_enabled' => 'boolean',
         ];
     }

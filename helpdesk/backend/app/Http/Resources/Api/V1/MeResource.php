@@ -40,6 +40,7 @@ class MeResource extends JsonResource
                 'can_change_ticket_category' => $p->canChangeTicketCategory(),
                 'can_manage_it_assets' => $p->canManageItAssets(),
                 'can_manage_licenses' => $p->canManageLicenses(),
+                'can_manage_information_systems' => $p->canManageInformationSystems(),
                 'can_submit_software_requests' => $p->canSubmitSoftwareRequests(),
                 'can_approve_software_requests' => $p->canApproveSoftwareRequests(),
                 'can_manage_software_requests' => $p->canManageSoftwareRequests(),

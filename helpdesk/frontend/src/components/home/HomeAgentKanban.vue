@@ -328,7 +328,7 @@ onUnmounted(() => {
           Refresh
         </UButton>
         <UButton to="/tickets/new" color="primary" size="sm" icon="i-lucide-plus">
-          New request
+          Create ticket
         </UButton>
       </div>
     </header>

@@ -105,7 +105,7 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
           </RouterLink>
           <RouterLink to="/tickets/new" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.newRequest" class="cbp-nav-link-icon" aria-hidden="true" />
-            <span>New request</span>
+            <span>Create ticket</span>
           </RouterLink>
           <RouterLink v-if="canManageKb" to="/knowledge-base/manage" class="cbp-nav-link" @click="closeAll">
             <i :class="HELP_DESK_NAV_ICONS.knowledgeBase" class="cbp-nav-link-icon" aria-hidden="true" />
@@ -136,7 +136,7 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
               @click.stop="toggleTools"
             >
               <i :class="HELP_DESK_NAV_ICONS.tools" class="cbp-nav-link-icon" aria-hidden="true" />
-              <span>Tools</span>
+              <span>Helpdesk Modules</span>
               <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
             </button>
             <div class="cbp-nav-dd-menu" role="menu">

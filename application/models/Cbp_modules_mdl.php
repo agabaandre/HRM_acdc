@@ -119,7 +119,7 @@ class Cbp_modules_mdl extends CI_Model
 			[
 				'module_keys' => ['helpdesk_itsm', 'helpdesk'],
 				'base_url' => 'helpdesk',
-				'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
+				'description' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as APM).',
 				'rename_legacy_key' => ['helpdesk' => 'helpdesk_itsm'],
 			],
 			[
@@ -158,6 +158,14 @@ class Cbp_modules_mdl extends CI_Model
 				$this->db->where('id', (int) $row->id)->update($this->table, $update);
 			}
 		}
+
+		// Display name: IT Service Desk → Service Desk (multi-BU).
+		$this->db->where_in('module_key', ['helpdesk_itsm', 'helpdesk'])
+			->where_in('system_name', ['IT Service Desk (Helpdesk)', 'IT Service Desk', 'Help Desk', 'Helpdesk'])
+			->update($this->table, [
+				'system_name' => 'Service Desk',
+				'description' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as APM).',
+			]);
 	}
 
 	/**
@@ -224,8 +232,8 @@ class Cbp_modules_mdl extends CI_Model
 			],
 			[
 				'module_key' => 'helpdesk_itsm',
-				'system_name' => 'IT Service Desk (Helpdesk)',
-				'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
+				'system_name' => 'Service Desk',
+				'description' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as APM).',
 				'base_url' => 'helpdesk',
 				'base_url_development' => null,
 				'base_url_production' => null,

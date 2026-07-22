@@ -49,4 +49,48 @@ class AdminCategoriesApiTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('data.is_active', false);
     }
+
+    public function test_admin_can_remap_category_and_move_tickets(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        Sanctum::actingAs($this->adminUser());
+
+        $buId = (int) \App\Models\HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->value('id');
+        $source = HelpdeskCategory::query()->create([
+            'name' => 'Remap Source',
+            'slug' => 'remap-source',
+            'sort_order' => 900,
+            'is_active' => true,
+            'default_priority' => 'medium',
+            'business_unit_id' => $buId,
+        ]);
+        $target = HelpdeskCategory::query()->create([
+            'name' => 'Remap Target',
+            'slug' => 'remap-target',
+            'sort_order' => 901,
+            'is_active' => true,
+            'default_priority' => 'medium',
+            'business_unit_id' => $buId,
+        ]);
+
+        $ticket = \App\Models\HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-REMAP-1',
+            'category_id' => $source->id,
+            'business_unit_id' => $buId,
+            'subject' => 'Remap me',
+            'description' => 'Body',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'portal',
+            'requester_name' => 'Tester',
+            'requester_email' => 'tester@example.org',
+        ]);
+
+        $this->postJson('/api/v1/admin/categories/'.$source->id.'/remap', [
+            'target_category_id' => $target->id,
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('helpdesk_categories', ['id' => $source->id]);
+        $this->assertSame($target->id, (int) $ticket->fresh()->category_id);
+    }
 }

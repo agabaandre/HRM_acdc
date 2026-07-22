@@ -11,7 +11,9 @@ use App\Jobs\CategorizeTicketWithAi;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskItAsset;
+use App\Models\HelpdeskInformationSystem;
 use App\Models\HelpdeskProfile;
+use App\Support\InformationSystemStatus;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
@@ -261,7 +263,16 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['category', 'businessUnit', 'linkedItAsset.category', 'linkedItAsset.brandRelation', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
+        return new TicketResource($ticket->load([
+            'category',
+            'businessUnit',
+            'linkedItAsset.category',
+            'linkedItAsset.brandRelation',
+            'linkedInformationSystem',
+            'assignee.helpdeskProfile',
+            'assignees',
+            'attachments',
+        ]));
     }
 
     /**
@@ -327,6 +338,50 @@ class TicketController extends Controller
                 'enabled' => true,
                 'requester_staff_id' => $staffId,
             ],
+        ]);
+    }
+
+    /**
+     * Information systems that may be linked when resolving this ticket.
+     */
+    public function linkableInformationSystems(Request $request, HelpdeskTicket $ticket): JsonResponse
+    {
+        $this->authorize('submitResolution', $ticket);
+
+        $ticket->loadMissing(['businessUnit']);
+        if (! $ticket->businessUnit?->allows_information_system_link_on_resolve) {
+            return response()->json(['data' => [], 'meta' => ['enabled' => false]]);
+        }
+
+        $query = HelpdeskInformationSystem::query()
+            ->where('status', '!=', InformationSystemStatus::DECOMMISSIONED)
+            ->orderBy('name');
+
+        if ($request->filled('q')) {
+            $q = '%'.trim((string) $request->input('q')).'%';
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', $q)
+                    ->orWhere('description', 'like', $q)
+                    ->orWhere('domain', 'like', $q)
+                    ->orWhere('version', 'like', $q);
+            });
+        }
+
+        $rows = $query->limit(50)->get()->map(fn (HelpdeskInformationSystem $s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'status' => $s->status,
+            'version' => $s->version,
+            'label' => trim(implode(' · ', array_filter([
+                $s->name,
+                $s->version ? 'v'.$s->version : null,
+                $s->status,
+            ]))),
+        ]);
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => ['enabled' => true],
         ]);
     }
 

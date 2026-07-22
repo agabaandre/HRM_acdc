@@ -35,7 +35,7 @@ const businessUnits = ref<Array<{
   slug: string
   description?: string | null
   allows_anonymous: boolean
-  categories: Array<{ id: number; name: string }>
+  categories: Array<{ id: number; name: string; description?: string | null }>
 }>>([])
 const showCategoryField = ref(false)
 const form = reactive({
@@ -162,10 +162,6 @@ const canSubmit = computed(() => {
 
 const businessUnitItems = computed((): SelectNumberItem[] =>
   businessUnits.value.map((u) => ({ label: u.name, value: u.id })),
-)
-
-const categoryItems = computed((): SelectNumberItem[] =>
-  categoriesForUnit.value.map((c) => ({ label: c.name, value: c.id })),
 )
 
 function validateCreateForm(_state: typeof form): FormError[] {
@@ -409,9 +405,9 @@ async function submit() {
 
 <template>
   <div>
-    <CbpPageHeading title="New request" back-to="/tickets" back-label="← Tickets">
+    <CbpPageHeading title="Create ticket" back-to="/tickets" back-label="← Tickets">
       <template #lede>
-        Choose a helpdesk ticket or continue to the software request form under Tools.
+        Choose a helpdesk ticket or continue to the software request form under Helpdesk Modules.
       </template>
     </CbpPageHeading>
 
@@ -442,7 +438,7 @@ async function submit() {
     <div v-show="activeTab === 'software'" class="cbp-card software-gateway" role="tabpanel">
       <h2 class="gateway-title">Software requirement request</h2>
       <p class="gateway-copy">
-        Software requests use a dedicated form under Tools — including drafts, status tracking, and reviewer workflows.
+        Software requests use a dedicated form under Helpdesk Modules — including drafts, status tracking, and reviewer workflows.
       </p>
       <UButton color="primary" @click="goToSoftwareRequests">
         Continue to Software requests
@@ -479,24 +475,50 @@ async function submit() {
         </UFormField>
 
         <UFormField
-          v-if="showCategoryField"
+          v-if="form.business_unit_id && categoriesForUnit.length > 0"
           label="Issue category"
           name="category_id"
-          required
+          :required="showCategoryField"
           class="full"
         >
-          <USelectMenu
-            v-model="form.category_id"
-            :items="categoryItems"
-            searchable
-            :disabled="busy || !form.business_unit_id || categoriesForUnit.length === 0"
-            :placeholder="!form.business_unit_id ? 'Select a business unit first' : categoriesForUnit.length === 0 ? 'No categories in this unit' : 'Search or select category'"
-            class="w-full"
-            value-key="value"
-          />
+          <div
+            class="category-radio-grid"
+            role="radiogroup"
+            :aria-label="'Issue category'"
+            :aria-required="showCategoryField ? 'true' : undefined"
+          >
+            <label
+              v-for="cat in categoriesForUnit"
+              :key="cat.id"
+              class="category-radio"
+              :class="{
+                'is-selected': form.category_id === cat.id,
+                'is-disabled': busy,
+              }"
+            >
+              <input
+                type="radio"
+                name="category_id"
+                class="category-radio-input"
+                :checked="form.category_id === cat.id"
+                :disabled="busy"
+                @change="form.category_id = cat.id"
+              />
+              <span class="category-radio-body">
+                <span class="category-radio-name">{{ cat.name }}</span>
+                <span v-if="cat.description" class="category-radio-desc">{{ cat.description }}</span>
+              </span>
+            </label>
+          </div>
+          <p v-if="!showCategoryField" class="field-hint">
+            Optional — leave unselected to let AI assign a category from your description.
+          </p>
         </UFormField>
-        <p v-else-if="form.business_unit_id" class="ai-cat-hint full">
-          Issue category will be assigned automatically from your description.
+        <p v-else-if="form.business_unit_id && categoriesForUnit.length === 0" class="ai-cat-hint full">
+          No issue categories are available for this business unit yet.
+        </p>
+        <p v-else-if="!form.business_unit_id && showCategoryField" class="ai-cat-hint full">
+          Select a business unit to choose an issue category.
         </p>
 
         <UFormField v-if="allowsAnonymous" name="is_anonymous" class="full">
@@ -583,7 +605,7 @@ async function submit() {
 
         <div class="full hd-form-actions">
           <UButton type="submit" color="primary" :loading="busy" :disabled="!canSubmit">
-            Submit request
+            Create ticket
           </UButton>
         </div>
       </UForm>
@@ -855,6 +877,58 @@ textarea {
 .is-submitting {
   pointer-events: none;
   user-select: none;
+}
+.category-radio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.65rem;
+}
+.category-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.category-radio:hover:not(.is-disabled) {
+  border-color: #86c9a0;
+  background: #f7fcf9;
+}
+.category-radio.is-selected {
+  border-color: #119a48;
+  background: #f0faf4;
+  box-shadow: inset 0 0 0 1px #119a48;
+}
+.category-radio.is-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.category-radio-input {
+  margin-top: 0.2rem;
+  accent-color: #119a48;
+  flex-shrink: 0;
+}
+.category-radio-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.category-radio-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+}
+.category-radio-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.35;
 }
 </style>
 

@@ -2,6 +2,7 @@ import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import { VColorInput } from 'vuetify/labs/VColorInput'
+import { VDateInput } from 'vuetify/labs/VDateInput'
 
 const africaCdcLight = {
   dark: false,
@@ -45,6 +46,7 @@ const africaCdcDark = {
 export default createVuetify({
   components: {
     VColorInput,
+    VDateInput,
   },
   icons: {
     defaultSet: 'mdi',
@@ -89,6 +91,12 @@ export default createVuetify({
       color: 'primary',
       hideDetails: 'auto',
       pipLocation: 'prepend-inner',
+    },
+    VDateInput: {
+      variant: 'outlined',
+      density: 'compact',
+      color: 'primary',
+      hideDetails: 'auto',
     },
     VCheckbox: {
       color: 'primary',

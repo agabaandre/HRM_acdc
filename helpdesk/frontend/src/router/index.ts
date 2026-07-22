@@ -186,6 +186,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/tools/SoftwareRequestsView.vue'),
         meta: { requiresAuth: true, requiresSoftwareRequests: true },
       },
+      {
+        path: 'information-systems',
+        name: 'tools-information-systems',
+        component: () => import('../views/tools/InformationSystemsView.vue'),
+        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_information_systems' as ToolsPermissionKey },
+      },
     ],
   },
 ]

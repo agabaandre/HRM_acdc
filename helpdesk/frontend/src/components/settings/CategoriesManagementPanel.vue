@@ -17,6 +17,7 @@ interface BusinessUnitOption {
   is_active: boolean
   allows_anonymous: boolean
   allows_asset_link_on_resolve: boolean
+  allows_information_system_link_on_resolve: boolean
   support_mailbox?: string | null
   email_intake_enabled?: boolean
   categories_count?: number
@@ -80,6 +81,16 @@ const testReadResult = ref<{
 } | null>(null)
 const testReadError = ref<string | null>(null)
 
+const catRemapOpen = ref(false)
+const catRemapSource = ref<CategoryRow | null>(null)
+const catRemapTargetId = ref<number | undefined>(undefined)
+const catRemapBusy = ref(false)
+
+const buRemapOpen = ref(false)
+const buRemapSource = ref<BusinessUnitOption | null>(null)
+const buRemapTargetId = ref<number | undefined>(undefined)
+const buRemapBusy = ref(false)
+
 const draft = reactive({
   name: '',
   slug: '',
@@ -98,6 +109,7 @@ const buDraft = reactive({
   is_active: true,
   allows_anonymous: false,
   allows_asset_link_on_resolve: false,
+  allows_information_system_link_on_resolve: false,
   support_mailbox: '',
   email_intake_enabled: false,
 })
@@ -106,8 +118,29 @@ const unitItems = computed(() =>
   units.value.map((u) => ({ label: u.name, value: u.id })),
 )
 
+const catRemapTargetItems = computed(() =>
+  rows.value
+    .filter((r) => r.id !== catRemapSource.value?.id)
+    .map((r) => ({
+      label: `${r.name}${r.business_unit?.name ? ` · ${r.business_unit.name}` : ''}`,
+      value: r.id,
+    })),
+)
+
+const buRemapTargetItems = computed(() =>
+  units.value
+    .filter((u) => u.id !== buRemapSource.value?.id)
+    .map((u) => ({ label: u.name, value: u.id })),
+)
+
 const catModalTitle = computed(() => (catEditingId.value ? 'Edit issue category' : 'Add issue category'))
 const buModalTitle = computed(() => (buEditingId.value ? 'Edit business unit' : 'Add business unit'))
+const catRemapTitle = computed(() =>
+  catRemapSource.value ? `Remap “${catRemapSource.value.name}”` : 'Remap category',
+)
+const buRemapTitle = computed(() =>
+  buRemapSource.value ? `Remap “${buRemapSource.value.name}”` : 'Remap business unit',
+)
 
 function validateDraft(state: typeof draft): FormError[] {
   const errors: FormError[] = []
@@ -173,6 +206,7 @@ function resetBuDraft() {
   buDraft.is_active = true
   buDraft.allows_anonymous = false
   buDraft.allows_asset_link_on_resolve = false
+  buDraft.allows_information_system_link_on_resolve = false
   buDraft.support_mailbox = ''
   buDraft.email_intake_enabled = false
 }
@@ -192,6 +226,7 @@ function openEditBuModal(row: BusinessUnitOption) {
   buDraft.is_active = row.is_active
   buDraft.allows_anonymous = row.allows_anonymous
   buDraft.allows_asset_link_on_resolve = row.allows_asset_link_on_resolve
+  buDraft.allows_information_system_link_on_resolve = row.allows_information_system_link_on_resolve
   buDraft.support_mailbox = row.support_mailbox ?? ''
   buDraft.email_intake_enabled = !!row.email_intake_enabled
   buModalOpen.value = true
@@ -263,17 +298,95 @@ async function saveCatModal(_event?: FormSubmitEvent<typeof draft>) {
   }
 }
 
-async function remove(row: CategoryRow) {
-  if (!window.confirm(`Delete category “${row.name}”? This fails if tickets still use it.`)) return
-  busyId.value = row.id
+async function openCatRemap(row: CategoryRow) {
+  catRemapSource.value = row
+  catRemapTargetId.value = undefined
+  catRemapOpen.value = true
+}
+
+function closeCatRemap() {
+  catRemapOpen.value = false
+  catRemapSource.value = null
+  catRemapTargetId.value = undefined
+  catRemapBusy.value = false
+}
+
+async function confirmCatRemap() {
+  const source = catRemapSource.value
+  const targetId = catRemapTargetId.value
+  if (!source || !targetId) {
+    notifyError('Choose the category to merge into.')
+    return
+  }
+  const target = rows.value.find((r) => r.id === targetId)
+  if (
+    !window.confirm(
+      `Remap “${source.name}” into “${target?.name ?? targetId}”? Tickets, KB articles, agent links, and related data will move, then “${source.name}” will be removed.`,
+    )
+  ) {
+    return
+  }
+  catRemapBusy.value = true
+  busyId.value = source.id
   try {
-    await api.delete(`/api/v1/admin/categories/${row.id}`)
-    notifySuccess('Category deleted.')
+    const { data } = await api.post<{ message?: string }>(
+      `/api/v1/admin/categories/${source.id}/remap`,
+      { target_category_id: targetId },
+    )
+    notifySuccess(data.message || 'Category remapped.')
+    closeCatRemap()
     await load()
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Delete failed'))
+    notifyError(apiErrorMessage(e, 'Remap failed'))
   } finally {
+    catRemapBusy.value = false
     busyId.value = null
+  }
+}
+
+async function openBuRemap(row: BusinessUnitOption) {
+  buRemapSource.value = row
+  buRemapTargetId.value = undefined
+  buRemapOpen.value = true
+}
+
+function closeBuRemap() {
+  buRemapOpen.value = false
+  buRemapSource.value = null
+  buRemapTargetId.value = undefined
+  buRemapBusy.value = false
+}
+
+async function confirmBuRemap() {
+  const source = buRemapSource.value
+  const targetId = buRemapTargetId.value
+  if (!source || !targetId) {
+    notifyError('Choose the business unit to merge into.')
+    return
+  }
+  const target = units.value.find((u) => u.id === targetId)
+  if (
+    !window.confirm(
+      `Remap “${source.name}” into “${target?.name ?? targetId}”? Categories, tickets, and mailbox messages will move, then “${source.name}” will be removed.`,
+    )
+  ) {
+    return
+  }
+  buRemapBusy.value = true
+  buBusyId.value = source.id
+  try {
+    const { data } = await api.post<{ message?: string }>(
+      `/api/v1/admin/business-units/${source.id}/remap`,
+      { target_business_unit_id: targetId },
+    )
+    notifySuccess(data.message || 'Business unit remapped.')
+    closeBuRemap()
+    await load()
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Remap failed'))
+  } finally {
+    buRemapBusy.value = false
+    buBusyId.value = null
   }
 }
 
@@ -286,6 +399,7 @@ async function saveBuModal(_event?: FormSubmitEvent<typeof buDraft>) {
     is_active: buDraft.is_active,
     allows_anonymous: buDraft.allows_anonymous,
     allows_asset_link_on_resolve: buDraft.allows_asset_link_on_resolve,
+    allows_information_system_link_on_resolve: buDraft.allows_information_system_link_on_resolve,
     support_mailbox: buDraft.support_mailbox.trim() || null,
     email_intake_enabled: buDraft.email_intake_enabled,
   }
@@ -303,20 +417,6 @@ async function saveBuModal(_event?: FormSubmitEvent<typeof buDraft>) {
     await loadUnits()
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Save failed'))
-  } finally {
-    buBusyId.value = null
-  }
-}
-
-async function removeUnit(row: BusinessUnitOption) {
-  if (!window.confirm(`Delete business unit “${row.name}”?`)) return
-  buBusyId.value = row.id
-  try {
-    await api.delete(`/api/v1/admin/business-units/${row.id}`)
-    notifySuccess('Business unit deleted.')
-    await load()
-  } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Delete failed'))
   } finally {
     buBusyId.value = null
   }
@@ -424,7 +524,7 @@ onMounted(() => {
           <template #item.actions="{ item }">
             <div class="actions">
               <UButton type="button" color="neutral" variant="outlined" size="small" @click="openEditCatModal(item)">Edit</UButton>
-              <UButton type="button" color="error" variant="soft" size="small" :disabled="busyId === item.id" @click="remove(item)">Delete</UButton>
+              <UButton type="button" color="warning" variant="soft" size="small" :disabled="busyId === item.id" @click="openCatRemap(item)">Remap</UButton>
             </div>
           </template>
         </v-data-table>
@@ -530,7 +630,7 @@ onMounted(() => {
               >
                 Test read
               </UButton>
-              <UButton type="button" color="error" variant="soft" size="small" :disabled="buBusyId === item.id" @click="removeUnit(item)">Delete</UButton>
+              <UButton type="button" color="warning" variant="soft" size="small" :disabled="buBusyId === item.id" @click="openBuRemap(item)">Remap</UButton>
             </div>
           </template>
         </v-data-table>
@@ -558,7 +658,7 @@ onMounted(() => {
               name="description"
               class="full"
               stacked-label
-              description="Shown on the new request form to explain which issues this unit handles"
+              description="Shown on the create ticket form to explain which issues this unit handles"
             >
               <UTextarea v-model="buDraft.description" :rows="2" />
             </UFormField>
@@ -584,6 +684,12 @@ onMounted(() => {
             </UFormField>
             <UFormField name="allows_asset_link_on_resolve">
               <UCheckbox v-model="buDraft.allows_asset_link_on_resolve" label="Allow Asset on resolve" />
+            </UFormField>
+            <UFormField name="allows_information_system_link_on_resolve">
+              <UCheckbox
+                v-model="buDraft.allows_information_system_link_on_resolve"
+                label="Allow Information System on resolve"
+              />
             </UFormField>
             <UFormField name="email_intake_enabled" class="full">
               <UCheckbox
@@ -653,6 +759,70 @@ onMounted(() => {
         </template>
       </UModal>
     </div>
+
+    <UModal
+      v-model:open="catRemapOpen"
+      :title="catRemapTitle"
+      :ui="{ content: 'max-w-md' }"
+    >
+      <template #body>
+        <p class="hint">
+          Move all tickets and related data from
+          <strong>{{ catRemapSource?.name }}</strong>
+          into another category, then remove the source.
+        </p>
+        <UFormField label="Merge into" name="catRemapTargetId" required>
+          <USelect
+            v-model="catRemapTargetId"
+            :items="catRemapTargetItems"
+            placeholder="Select target category"
+            icon="mdi-merge"
+          />
+        </UFormField>
+      </template>
+      <template #footer>
+        <UButton color="neutral" variant="outline" :disabled="catRemapBusy" @click="closeCatRemap">Cancel</UButton>
+        <UButton
+          color="warning"
+          :loading="catRemapBusy"
+          :disabled="!catRemapTargetId"
+          label="Remap & remove"
+          @click="confirmCatRemap"
+        />
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="buRemapOpen"
+      :title="buRemapTitle"
+      :ui="{ content: 'max-w-md' }"
+    >
+      <template #body>
+        <p class="hint">
+          Move categories, tickets, and mailbox messages from
+          <strong>{{ buRemapSource?.name }}</strong>
+          into another business unit, then remove the source.
+        </p>
+        <UFormField label="Merge into" name="buRemapTargetId" required>
+          <USelect
+            v-model="buRemapTargetId"
+            :items="buRemapTargetItems"
+            placeholder="Select target business unit"
+            icon="mdi-merge"
+          />
+        </UFormField>
+      </template>
+      <template #footer>
+        <UButton color="neutral" variant="outline" :disabled="buRemapBusy" @click="closeBuRemap">Cancel</UButton>
+        <UButton
+          color="warning"
+          :loading="buRemapBusy"
+          :disabled="!buRemapTargetId"
+          label="Remap & remove"
+          @click="confirmBuRemap"
+        />
+      </template>
+    </UModal>
   </section>
 </template>
 
