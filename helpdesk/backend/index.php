@@ -3,7 +3,7 @@
 /**
  * Mirrors apm/index.php so requests landing on helpdesk/backend/ (when
  * mod_rewrite isn't available) are routed to Laravel's public/index.php
- * without "/public/" in the URL.
+ * without "/public/" in the URL goes to laravel.
  */
 
 $public_path = __DIR__ . '/public';
