@@ -180,13 +180,50 @@ html.helpdesk-theme-dark .hd-btn--outline {
   margin-bottom: 1rem;
 }
 
+.hd-home-hub__intro-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
 .hd-home-hub__eyebrow {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #0d7a3a;
+}
+
+.hd-home-hub__create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(13, 122, 58, 0.28);
+  background: #0d7a3a;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(13, 122, 58, 0.22);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hd-home-hub__create-btn:hover {
+  background: #0a6430;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(13, 122, 58, 0.28);
+  transform: translateY(-1px);
+}
+
+.hd-home-hub__create-btn i {
+  font-size: 1.05rem;
 }
 
 .hd-home-hub__title {
@@ -1141,3 +1178,167 @@ html.helpdesk-theme-dark .hd-ask-input {
 .hd-side-card-body a:hover {
   text-decoration: underline;
 }
+
+/* ── Reports page layout (global so async CSS chunks cannot leave tiles unstyled) ── */
+.report-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.report-tabs--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.report-tabs--four {
+  grid-template-columns: repeat(2, 1fr);
+}
+.report-tabs--many {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  grid-template-columns: none;
+}
+.report-tabs--many .report-tab {
+  flex: 1 1 140px;
+}
+@media (min-width: 900px) {
+  .report-tabs--four {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.report-tab {
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--hd-line);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.report-tab--on {
+  background: #e8f5ee;
+  border-color: #119a48;
+  color: #065f2c;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.85rem;
+  margin: 0 0 1.1rem;
+}
+.tile {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--hd-line);
+  border-radius: 8px;
+  padding: 0.85rem 0.9rem 0.8rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--tile-accent, #334155);
+}
+.tile header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.tile-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--tile-accent, #334155);
+  background: var(--tile-soft, #e2e8f0);
+}
+.tile .n {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  line-height: 1;
+  display: block;
+}
+.tile .l {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  color: #64748b;
+}
+.tile-sub {
+  color: #64748b;
+  margin-top: 0.35rem;
+  font-size: 0.73rem;
+  display: block;
+}
+.tile-total {
+  --tile-accent: #334155;
+  --tile-soft: #e2e8f0;
+}
+.tile-open,
+.tile-pending {
+  --tile-accent: #3b82f6;
+  --tile-soft: #dbeafe;
+}
+.tile-awaiting {
+  --tile-accent: #a855f7;
+  --tile-soft: #f3e8ff;
+}
+.tile-resolved {
+  --tile-accent: #16a34a;
+  --tile-soft: #dcfce7;
+}
+.tile-closed {
+  --tile-accent: #64748b;
+  --tile-soft: #e2e8f0;
+}
+.report-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+@media (min-width: 640px) {
+  .report-tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .report-tools__btn {
+    width: auto;
+    flex: 0 1 auto;
+  }
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.kpi {
+  border: 1px solid var(--hd-line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: #fff;
+}
+.kpi-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+

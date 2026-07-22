@@ -924,7 +924,7 @@ watch(
             <UInput
               v-model="mySearchState.q"
               type="search"
-              icon="i-lucide-search"
+              icon="mdi-magnify"
               placeholder="Ticket #, subject, status, assignee…"
               aria-label="Search my tickets"
               clearable
@@ -983,7 +983,7 @@ watch(
       <div class="tiles">
         <article class="tile tile-total">
           <header>
-            <span class="tile-icon" aria-hidden="true">📥</span>
+            <i class="mdi mdi-inbox-arrow-down tile-icon" aria-hidden="true" />
             <span class="l">Total received</span>
           </header>
           <span class="n">{{ myStats.total_received }}</span>
@@ -991,7 +991,7 @@ watch(
         </article>
         <article class="tile tile-pending">
           <header>
-            <span class="tile-icon" aria-hidden="true">⏳</span>
+            <i class="mdi mdi-clock-outline tile-icon" aria-hidden="true" />
             <span class="l">Pending resolution</span>
           </header>
           <span class="n">{{ myStats.pending }}</span>
@@ -999,7 +999,7 @@ watch(
         </article>
         <article class="tile tile-resolved">
           <header>
-            <span class="tile-icon" aria-hidden="true">✅</span>
+            <i class="mdi mdi-check-circle tile-icon" aria-hidden="true" />
             <span class="l">Resolved</span>
           </header>
           <span class="n">{{ myStats.resolved }}</span>
@@ -1007,10 +1007,10 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('mine')">
+        <UButton type="button" color="primary" class="report-tools__btn" icon="mdi-file-excel" :loading="exportBusy" @click="downloadExcel('mine')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('mine')">
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="mdi-file-pdf-box" :loading="exportBusy" @click="downloadPdf('mine')">
           Preview PDF
         </UButton>
       </div>
@@ -1139,7 +1139,7 @@ watch(
             <UInput
               v-model="adminSearchState.q"
               type="search"
-              icon="i-lucide-search"
+              icon="mdi-magnify"
               placeholder="Ticket #, subject, requester, assignee…"
               aria-label="Search admin recent activity"
               clearable
@@ -1220,7 +1220,7 @@ watch(
       <div class="tiles">
         <article class="tile tile-total">
           <header>
-            <span class="tile-icon" aria-hidden="true">🎫</span>
+            <i class="mdi mdi-ticket-confirmation tile-icon" aria-hidden="true" />
             <span class="l">Total</span>
           </header>
           <span class="n">{{ adminCounts.total ?? 0 }}</span>
@@ -1228,7 +1228,7 @@ watch(
         </article>
         <article class="tile tile-open">
           <header>
-            <span class="tile-icon" aria-hidden="true">🗂</span>
+            <i class="mdi mdi-folder-open tile-icon" aria-hidden="true" />
             <span class="l">Open</span>
           </header>
           <span class="n">{{ adminCounts.open ?? 0 }}</span>
@@ -1236,7 +1236,7 @@ watch(
         </article>
         <article class="tile tile-awaiting">
           <header>
-            <span class="tile-icon" aria-hidden="true">⌛</span>
+            <i class="mdi mdi-timer-sand tile-icon" aria-hidden="true" />
             <span class="l">Awaiting requester</span>
           </header>
           <span class="n">{{ adminCounts.awaiting_requester_confirmation ?? 0 }}</span>
@@ -1244,7 +1244,7 @@ watch(
         </article>
         <article class="tile tile-resolved">
           <header>
-            <span class="tile-icon" aria-hidden="true">✅</span>
+            <i class="mdi mdi-check-circle tile-icon" aria-hidden="true" />
             <span class="l">Resolved</span>
           </header>
           <span class="n">{{ adminCounts.resolved ?? 0 }}</span>
@@ -1252,7 +1252,7 @@ watch(
         </article>
         <article class="tile tile-closed">
           <header>
-            <span class="tile-icon" aria-hidden="true">🔒</span>
+            <i class="mdi mdi-lock tile-icon" aria-hidden="true" />
             <span class="l">Closed</span>
           </header>
           <span class="n">{{ adminCounts.closed ?? 0 }}</span>
@@ -1260,16 +1260,16 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('all')">
+        <UButton type="button" color="primary" class="report-tools__btn" icon="mdi-file-excel" :loading="exportBusy" @click="downloadExcel('all')">
           Export all (Excel)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('all')">
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="mdi-file-pdf-box" :loading="exportBusy" @click="downloadPdf('all')">
           Preview all (PDF)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('assigned')">
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="mdi-file-excel" :loading="exportBusy" @click="downloadExcel('assigned')">
           My assigned (Excel)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('assigned')">
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="mdi-file-pdf-box" :loading="exportBusy" @click="downloadPdf('assigned')">
           Preview assigned (PDF)
         </UButton>
       </div>
@@ -1406,7 +1406,7 @@ watch(
           </UFormField>
         </div>
         <div class="report-tools">
-          <UButton type="button" color="primary" icon="i-lucide-search" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
+          <UButton type="button" color="primary" icon="mdi-magnify" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
         </div>
         <p class="monthly-hint muted">
           Reports are generated automatically at month end and emailed to agents. Adjust retention under Settings → General.
@@ -1441,7 +1441,7 @@ watch(
               <span v-if="monthlyDetail.emailed_at"> · Emailed {{ new Date(monthlyDetail.emailed_at).toLocaleDateString() }}</span>
             </p>
             <div class="report-tools">
-              <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadMonthlyPdf">
+              <UButton type="button" color="neutral" variant="outline" icon="mdi-file-pdf-box" :loading="exportBusy" @click="downloadMonthlyPdf">
                 Preview PDF
               </UButton>
             </div>
@@ -1459,11 +1459,11 @@ watch(
         <UFormField label="to" name="isDateTo">
           <UInput v-model="isDateTo" type="date" />
         </UFormField>
-        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="isExporting" @click="exportInfoSystems('xlsx')">
+        <UButton type="button" color="primary" icon="mdi-refresh" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-excel" :loading="isExporting" @click="exportInfoSystems('xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="isExporting" @click="exportInfoSystems('pdf')">
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-pdf-box" :loading="isExporting" @click="exportInfoSystems('pdf')">
           Preview PDF
         </UButton>
       </div>
@@ -1514,11 +1514,11 @@ watch(
 
     <template v-else-if="tab === 'itassets' && canManageItAssets">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="itLoading" @click="loadItAssets">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('it-assets', 'xlsx')">
+        <UButton type="button" color="primary" icon="mdi-refresh" :loading="itLoading" @click="loadItAssets">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-excel" :loading="exportBusy" @click="exportToolReport('it-assets', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('it-assets', 'pdf')">
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-pdf-box" :loading="exportBusy" @click="exportToolReport('it-assets', 'pdf')">
           Preview PDF
         </UButton>
       </div>
@@ -1555,11 +1555,11 @@ watch(
 
     <template v-else-if="tab === 'licenses' && canManageLicenses">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="licenseLoading" @click="loadLicenses">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('licenses', 'xlsx')">
+        <UButton type="button" color="primary" icon="mdi-refresh" :loading="licenseLoading" @click="loadLicenses">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-excel" :loading="exportBusy" @click="exportToolReport('licenses', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('licenses', 'pdf')">
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-pdf-box" :loading="exportBusy" @click="exportToolReport('licenses', 'pdf')">
           Preview PDF
         </UButton>
       </div>
@@ -1577,11 +1577,11 @@ watch(
 
     <template v-else-if="tab === 'softwarerequests' && canManageSoftwareRequests">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="swLoading" @click="loadSoftwareRequests">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('software-requests', 'xlsx')">
+        <UButton type="button" color="primary" icon="mdi-refresh" :loading="swLoading" @click="loadSoftwareRequests">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-excel" :loading="exportBusy" @click="exportToolReport('software-requests', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('software-requests', 'pdf')">
+        <UButton type="button" color="neutral" variant="outline" icon="mdi-file-pdf-box" :loading="exportBusy" @click="exportToolReport('software-requests', 'pdf')">
           Preview PDF
         </UButton>
       </div>

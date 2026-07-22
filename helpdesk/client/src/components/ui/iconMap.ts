@@ -4,10 +4,14 @@ const LUCIDE_TO_MDI: Record<string, string> = {
   'i-lucide-send': 'mdi-send',
   'i-lucide-refresh-cw': 'mdi-refresh',
   'i-lucide-plus': 'mdi-plus',
+  'i-lucide-file-spreadsheet': 'mdi-file-excel',
+  'i-lucide-file-text': 'mdi-file-pdf-box',
+  'i-lucide-download': 'mdi-download',
 }
 
 export function mapLucideIcon(icon?: string): string | undefined {
   if (!icon) return undefined
   if (icon.startsWith('mdi-')) return icon
-  return LUCIDE_TO_MDI[icon] ?? 'mdi-circle-small'
+  if (icon.startsWith('bx ')) return undefined
+  return LUCIDE_TO_MDI[icon] ?? undefined
 }

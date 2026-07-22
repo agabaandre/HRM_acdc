@@ -77,7 +77,6 @@ const requesterShortcuts: HomeShortcut[] = [
     passSearchToAsk: true,
   },
   { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'My tickets' },
-  { to: '/tickets/new', icon: HELP_DESK_NAV_ICONS.newRequest, label: 'Create ticket' },
   { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
 ]
 
@@ -222,7 +221,13 @@ onMounted(() => {
       <v-card class="hd-home-hub" variant="flat" rounded="lg">
         <v-card-text class="hd-home-hub__body">
           <div class="hd-home-hub__intro">
-            <p class="hd-home-hub__eyebrow">Start here</p>
+            <div class="hd-home-hub__intro-top">
+              <p class="hd-home-hub__eyebrow">Start here</p>
+              <RouterLink to="/tickets/new" class="hd-home-hub__create-btn">
+                <i :class="HELP_DESK_NAV_ICONS.newRequest" aria-hidden="true" />
+                <span>Create ticket</span>
+              </RouterLink>
+            </div>
             <h2 class="hd-home-hub__title">What do you need help with?</h2>
             <p class="hd-home-hub__hint">
               Search common fixes below, or open our AI assistant for guided troubleshooting.

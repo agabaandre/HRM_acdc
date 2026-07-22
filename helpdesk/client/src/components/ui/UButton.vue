@@ -64,7 +64,7 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
     :disabled="disabled"
     :to="to"
     :href="href"
-    :prepend-icon="prependIcon"
+    :prepend-icon="prependIcon || undefined"
     :block="block"
     class="hd-v-btn"
   >
