@@ -100,8 +100,8 @@ class ImportInformationSystemsCommand extends Command
                 'user_manual_users_url' => $this->urlOrNull($row[16] ?? null),
                 'user_manual_managers_url' => $this->urlOrNull($row[17] ?? null),
                 'user_manual_technical_url' => $this->urlOrNull($row[18] ?? null),
-                'faqs' => $this->nullableString($row[19] ?? null),
-                'sops' => $this->nullableString($row[20] ?? null),
+                'faqs_url' => $this->nullableString($row[19] ?? null),
+                'sops_url' => $this->nullableString($row[20] ?? null),
                 'total_users' => $this->nullableInt($row[21] ?? null),
                 'estimated_annual_hosting_cost' => $this->nullableDecimal($row[22] ?? null),
             ];

@@ -74,8 +74,8 @@ return new class extends Migration
                 $table->string('user_manual_users_url', 2048)->nullable();
                 $table->string('user_manual_managers_url', 2048)->nullable();
                 $table->string('user_manual_technical_url', 2048)->nullable();
-                $table->text('faqs')->nullable();
-                $table->text('sops')->nullable();
+                $table->string('faqs_url', 2048)->nullable();
+                $table->string('sops_url', 2048)->nullable();
                 $table->unsignedInteger('total_users')->nullable();
                 $table->decimal('estimated_annual_hosting_cost', 12, 2)->nullable();
                 $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();

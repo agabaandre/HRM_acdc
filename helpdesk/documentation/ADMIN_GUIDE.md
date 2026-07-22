@@ -214,7 +214,7 @@ When a Business Unit has **Allow Asset** enabled, agents resolving a ticket can 
 
 **Path:** Helpdesk Modules → Information Systems (permission `can_manage_information_systems`, or Helpdesk admin / portal role 10)
 
-Inventory of Africa CDC information systems and nested modules (shared lifecycle statuses: To be Developed, In development, Under Testing, In Use, Decommissioned). Division `null` means **All**. Programming languages use a normalised catalogue. Profile and manuals are URL links with in-app preview.
+Inventory of Africa CDC information systems and nested modules (shared lifecycle statuses: To be Developed, In development, Under Testing, In Use, Decommissioned). Division `null` means **All**. Programming languages use a normalised catalogue. Profile, manuals, FAQs, and SOPs are URL links with in-app preview.
 
 Import / refresh from the Excel workbook:
 

@@ -45,8 +45,8 @@ interface InformationSystem {
   user_manual_users_url?: string | null
   user_manual_managers_url?: string | null
   user_manual_technical_url?: string | null
-  faqs?: string | null
-  sops?: string | null
+  faqs_url?: string | null
+  sops_url?: string | null
   total_users?: number | null
   estimated_annual_hosting_cost?: string | number | null
   languages?: Language[]
@@ -120,8 +120,8 @@ const form = reactive({
   user_manual_users_url: '',
   user_manual_managers_url: '',
   user_manual_technical_url: '',
-  faqs: '',
-  sops: '',
+  faqs_url: '',
+  sops_url: '',
 })
 
 const newModule = reactive({
@@ -159,12 +159,16 @@ type DocFieldKey =
   | 'user_manual_users_url'
   | 'user_manual_managers_url'
   | 'user_manual_technical_url'
+  | 'faqs_url'
+  | 'sops_url'
 
 const docFields: { key: DocFieldKey; label: string }[] = [
   { key: 'system_profile_url', label: 'System Profile' },
   { key: 'user_manual_users_url', label: 'User Manual — Users' },
   { key: 'user_manual_managers_url', label: 'User Manual — Managers' },
   { key: 'user_manual_technical_url', label: 'User Manual — Technical' },
+  { key: 'faqs_url', label: 'FAQs' },
+  { key: 'sops_url', label: 'SOPs' },
 ]
 
 function statusLabel(status: string) {
@@ -257,8 +261,8 @@ function resetForm() {
     user_manual_users_url: '',
     user_manual_managers_url: '',
     user_manual_technical_url: '',
-    faqs: '',
-    sops: '',
+    faqs_url: '',
+    sops_url: '',
   })
 }
 
@@ -293,8 +297,8 @@ async function openEdit(row: InformationSystem) {
     user_manual_users_url: row.user_manual_users_url ?? '',
     user_manual_managers_url: row.user_manual_managers_url ?? '',
     user_manual_technical_url: row.user_manual_technical_url ?? '',
-    faqs: row.faqs ?? '',
-    sops: row.sops ?? '',
+    faqs_url: row.faqs_url ?? '',
+    sops_url: row.sops_url ?? '',
   })
   try {
     const { data } = await api.get<{ data: InformationSystem }>(`/api/v1/tools/information-systems/${row.id}`)
@@ -643,9 +647,6 @@ onMounted(async () => {
                 >Preview</UButton>
               </div>
             </UFormField>
-
-            <UFormField label="FAQs" class="span-3"><UTextarea v-model="form.faqs" :rows="2" class="w-full" /></UFormField>
-            <UFormField label="SOPs" class="span-3"><UTextarea v-model="form.sops" :rows="2" class="w-full" /></UFormField>
           </div>
           <div class="form-actions">
             <UButton color="neutral" variant="outline" :disabled="busy" @click="cancelForm">Cancel</UButton>

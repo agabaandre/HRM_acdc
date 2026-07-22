@@ -48,6 +48,8 @@ class InformationSystemsExport implements FromCollection, WithHeadings, WithMapp
             $row->user_manual_users_url,
             $row->user_manual_managers_url,
             $row->user_manual_technical_url,
+            $row->faqs_url,
+            $row->sops_url,
         ];
     }
 
@@ -69,6 +71,8 @@ class InformationSystemsExport implements FromCollection, WithHeadings, WithMapp
             'User Manual (Users)',
             'User Manual (Managers)',
             'User Manual (Technical)',
+            'FAQs URL',
+            'SOPs URL',
         ];
     }
 }
