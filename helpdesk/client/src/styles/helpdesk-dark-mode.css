@@ -417,7 +417,7 @@ html.helpdesk-theme-dark .hd-action-card,
 html.helpdesk-theme-dark .hd-kb-card.v-card {
   background: var(--hd-surface) !important;
   color: var(--hd-text) !important;
-  border-color: rgba(148, 163, 184, 0.22);
+  border-color: rgba(148, 163, 184, 0.22) !important;
 }
 
 html.helpdesk-theme-dark .hd-action-title {
@@ -426,4 +426,79 @@ html.helpdesk-theme-dark .hd-action-title {
 
 html.helpdesk-theme-dark .hd-action-desc {
   color: var(--hd-text-muted) !important;
+}
+
+/* Home knowledge base accordion */
+html.helpdesk-theme-dark .hd-kb-card .panel-title {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-title {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-lede,
+html.helpdesk-theme-dark .hd-kb-card .kb-empty,
+html.helpdesk-theme-dark .hd-kb-foot {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-manage-link {
+  color: #86efac !important;
+  border-color: rgba(74, 222, 128, 0.4) !important;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-manage-link:hover {
+  background: rgba(74, 222, 128, 0.16) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel {
+  background: var(--hd-surface-2) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active {
+  border-color: rgba(74, 222, 128, 0.45) !important;
+  background: #152033 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-question,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title__overlay {
+  color: var(--hd-text) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-icon {
+  color: var(--hd-text-muted) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-text,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-body,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-plain {
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-body a,
+html.helpdesk-theme-dark .hd-kb-more-link {
+  color: var(--hd-link) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-chip.kb-category-chip,
+html.helpdesk-theme-dark .hd-kb-card .kb-category-chip {
+  background: rgba(74, 222, 128, 0.16) !important;
+  color: #86efac !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-divider {
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.helpdesk-theme-dark .hd-inline-link-btn {
+  color: var(--hd-link) !important;
 }

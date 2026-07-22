@@ -388,7 +388,8 @@ onMounted(() => {
 .kb-panels :deep(.v-expansion-panel) {
   border: 1px solid var(--hd-line);
   margin-bottom: 0.45rem;
-  background: #fff;
+  background: var(--cbp-card-bg, #fff);
+  color: var(--cbp-card-text, #1f2933);
 }
 .kb-panels :deep(.v-expansion-panel--active) {
   border-color: rgba(17, 154, 72, 0.4);
@@ -396,12 +397,13 @@ onMounted(() => {
 .kb-panel-title {
   font-weight: 600;
   font-size: 0.95rem;
+  color: inherit;
 }
 .kb-category-chip {
   align-self: flex-start;
 }
 .kb-panel-text {
-  color: #3a4452;
+  color: var(--cbp-card-text, #3a4452);
   font-size: 0.93rem;
   line-height: 1.6;
 }
@@ -452,11 +454,11 @@ onMounted(() => {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2933;
+  color: var(--cbp-card-text, #1f2933);
 }
 .kb-lede {
   margin: 0.35rem 0 0;
-  color: #5c6c7c;
+  color: var(--hd-muted, #5c6c7c);
   font-size: 0.92rem;
   max-width: 40rem;
 }
