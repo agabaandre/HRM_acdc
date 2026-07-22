@@ -72,6 +72,10 @@ html.helpdesk-theme-dark {
   color: #3a4752 !important;
 }
 
+html.helpdesk-theme-dark .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  color: #cbd5e1 !important;
+}
+
 .v-application .v-data-table .v-data-table__th,
 .v-application .v-data-table .v-data-table-header__content {
   font-weight: 600 !important;
@@ -97,7 +101,11 @@ html.helpdesk-theme-dark {
 }
 
 .v-theme--dark .v-card.elevation-10,
-.v-theme--dark .withbg.v-card {
+.v-theme--dark .withbg.v-card,
+html.helpdesk-theme-dark .v-application .v-card.elevation-10,
+html.helpdesk-theme-dark .v-application .withbg.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
   box-shadow:
     rgba(0, 0, 0, 0.28) 0 12px 24px -4px,
     rgba(0, 0, 0, 0.35) 0 0 2px 0 !important;

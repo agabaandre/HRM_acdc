@@ -39,10 +39,17 @@ const africaCdcDark = {
     info: '#60a5fa',
     success: '#34d399',
     warning: '#fbbf24',
+    'on-surface': '#e2e8f0',
+    'on-background': '#e2e8f0',
+    'text-primary': '#e2e8f0',
+    'text-secondary': '#94a3b8',
+    inputBorder: '#475569',
   },
   variables: {
     'border-color': '148, 163, 184',
-    'border-opacity': 0.2,
+    'border-opacity': 0.28,
+    'high-emphasis-opacity': 1,
+    'medium-emphasis-opacity': 0.82,
   },
 }
 

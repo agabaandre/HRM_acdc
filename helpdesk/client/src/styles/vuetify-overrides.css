@@ -3,12 +3,15 @@
   width: 100%;
 }
 
-/* Shared border tokens — match hd-data-table-card / v-data-table dividers */
+/* Shared border tokens — match MaterialPro / data-table dividers */
 :root,
 html.helpdesk-theme-light {
-  --hd-line: rgba(15, 23, 42, 0.08);
-  --hd-line-subtle: rgba(15, 23, 42, 0.05);
+  --hd-line: #dfe5ef;
+  --hd-line-subtle: rgba(223, 229, 239, 0.75);
   --hd-border: var(--hd-line);
+  --hd-shadow-card:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
 }
 
 html.helpdesk-theme-dark {
@@ -65,13 +68,17 @@ html.helpdesk-theme-dark {
 }
 
 .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
-  font-weight: 800 !important;
-  color: #334155 !important;
+  font-weight: 600 !important;
+  color: #3a4752 !important;
+}
+
+html.helpdesk-theme-dark .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  color: #cbd5e1 !important;
 }
 
 .v-application .v-data-table .v-data-table__th,
 .v-application .v-data-table .v-data-table-header__content {
-  font-weight: 800 !important;
+  font-weight: 600 !important;
 }
 
 .v-application .v-data-table .v-data-table-footer {
@@ -79,8 +86,29 @@ html.helpdesk-theme-dark {
 }
 
 .hd-v-card.v-card {
-  border: 1px solid var(--hd-line) !important;
-  box-shadow: none !important;
+  border: none !important;
+  box-shadow: var(--hd-shadow-card) !important;
+  border-radius: 12px !important;
+}
+
+/* Soft MaterialPro elevation for elevated cards */
+.v-application .v-card.elevation-10,
+.v-application .withbg.v-card {
+  background: #fff;
+  box-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0 !important;
+}
+
+.v-theme--dark .v-card.elevation-10,
+.v-theme--dark .withbg.v-card,
+html.helpdesk-theme-dark .v-application .v-card.elevation-10,
+html.helpdesk-theme-dark .v-application .withbg.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    rgba(0, 0, 0, 0.28) 0 12px 24px -4px,
+    rgba(0, 0, 0, 0.35) 0 0 2px 0 !important;
 }
 
 /* Match button anatomy to compact outlined fields — https://vuetifyjs.com/en/components/buttons/#anatomy */

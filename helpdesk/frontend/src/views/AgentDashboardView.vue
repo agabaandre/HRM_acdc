@@ -1161,3 +1161,62 @@ onUnmounted(() => {
   color: #64748b;
 }
 </style>
+
+<style>
+/* Dark mode — unscoped so it beats hard-coded light hex in scoped rules */
+html.helpdesk-theme-dark .agent-dash .recent-head h2 {
+  color: #f1f5f9;
+}
+
+html.helpdesk-theme-dark .agent-dash .recent-sub,
+html.helpdesk-theme-dark .agent-dash .muted {
+  color: #94a3b8;
+}
+
+html.helpdesk-theme-dark .agent-dash .legend-label {
+  color: #cbd5e1;
+}
+
+html.helpdesk-theme-dark .agent-dash .legend-count {
+  color: #f1f5f9;
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-filter-chip-count {
+  background: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-filter-chips .v-chip {
+  color: #e2e8f0;
+  border-color: rgba(226, 232, 240, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-filter-chips .hd-filter-chip--active {
+  background: #0d7a3a !important;
+  color: #fff !important;
+  border-color: #0d7a3a !important;
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-filter-chips .hd-filter-chip--warn {
+  border-color: rgba(248, 113, 113, 0.55) !important;
+  color: #fca5a5 !important;
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-filter-chips .hd-filter-chip--hot {
+  border-color: rgba(251, 146, 60, 0.55) !important;
+  color: #fdba74 !important;
+}
+
+html.helpdesk-theme-dark .agent-dash .kpi-card--alert {
+  background: linear-gradient(135deg, rgb(var(--v-theme-surface)) 0%, rgba(127, 29, 29, 0.35) 100%);
+}
+
+html.helpdesk-theme-dark .agent-dash .kpi-card__label,
+html.helpdesk-theme-dark .agent-dash .kpi-card__sub {
+  color: #94a3b8;
+}
+
+html.helpdesk-theme-dark .agent-dash .kpi-card__value {
+  color: #f1f5f9;
+}
+</style>

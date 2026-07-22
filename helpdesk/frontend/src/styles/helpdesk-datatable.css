@@ -448,3 +448,63 @@ html.helpdesk-theme-dark .cand-table-wrap {
 html.helpdesk-theme-dark .hd-data-table-card .table-count strong {
   color: rgb(var(--v-theme-on-surface));
 }
+
+/* Cell text — light-mode hex colors must lighten in dark theme */
+html.helpdesk-theme-dark .hd-dt-row-num {
+  color: #94a3b8;
+}
+
+html.helpdesk-theme-dark .hd-dt-ticket-link,
+html.helpdesk-theme-dark .hd-dt-ticket-num {
+  color: #4ade80;
+}
+
+html.helpdesk-theme-dark .hd-dt-ticket-link:hover {
+  color: #86efac;
+}
+
+html.helpdesk-theme-dark .hd-dt-subject-link,
+html.helpdesk-theme-dark .hd-dt-subject-text,
+html.helpdesk-theme-dark .hd-dt-person,
+html.helpdesk-theme-dark .hd-dt-person-name,
+html.helpdesk-theme-dark .hd-dt-wrap,
+html.helpdesk-theme-dark .hd-dt-created {
+  color: #e2e8f0;
+  opacity: 1;
+}
+
+html.helpdesk-theme-dark .hd-dt-subject-link:hover {
+  color: #86efac;
+}
+
+html.helpdesk-theme-dark .hd-dt-category {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+html.helpdesk-theme-dark .hd-dt-activity,
+html.helpdesk-theme-dark .hd-dt-truncate--muted,
+html.helpdesk-theme-dark .hd-dt-truncate--updated,
+html.helpdesk-theme-dark .hd-dt-empty,
+html.helpdesk-theme-dark .hd-dt-empty-msg,
+html.helpdesk-theme-dark .hd-dt-loading {
+  color: #94a3b8;
+}
+
+html.helpdesk-theme-dark .hd-dt-activity-sla.is-overdue {
+  color: #f87171;
+}
+
+html.helpdesk-theme-dark .hd-dt-col-head__title {
+  color: #cbd5e1;
+}
+
+html.helpdesk-theme-dark .hd-data-table .v-table > .v-table__wrapper > table > tbody > tr > td,
+html.helpdesk-theme-dark .hd-data-table .v-data-table__td {
+  color: #e2e8f0;
+}
+
+html.helpdesk-theme-dark .hd-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  color: #cbd5e1 !important;
+}
+

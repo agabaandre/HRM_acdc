@@ -221,13 +221,11 @@ onMounted(() => {
       <v-card class="hd-home-hub" variant="flat" rounded="lg">
         <v-card-text class="hd-home-hub__body">
           <div class="hd-home-hub__intro">
-            <div class="hd-home-hub__intro-top">
-              <p class="hd-home-hub__eyebrow">Start here</p>
-              <RouterLink to="/tickets/new" class="hd-home-hub__create-btn">
-                <i :class="HELP_DESK_NAV_ICONS.newRequest" aria-hidden="true" />
-                <span>Create ticket</span>
-              </RouterLink>
-            </div>
+            <p class="hd-home-hub__eyebrow">Start here</p>
+            <RouterLink to="/tickets/new" class="hd-home-hub__create-btn">
+              <i :class="HELP_DESK_NAV_ICONS.newRequest" aria-hidden="true" />
+              <span>Create ticket</span>
+            </RouterLink>
             <h2 class="hd-home-hub__title">What do you need help with?</h2>
             <p class="hd-home-hub__hint">
               Search common fixes below, or open our AI assistant for guided troubleshooting.

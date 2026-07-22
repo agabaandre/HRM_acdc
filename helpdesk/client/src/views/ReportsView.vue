@@ -1763,6 +1763,7 @@ watch(
   border-radius: 6px;
   border: 1px solid var(--hd-line);
   background: #fff;
+  color: #334155;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9rem;
