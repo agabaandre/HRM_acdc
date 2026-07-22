@@ -29,7 +29,7 @@ trait DownloadsPdfReports
             'summary_lines' => $summaryLines,
         ])->render();
 
-        return $pdf->download($html, $filename, [
+        return $pdf->inline($html, $filename, [
             'title' => $title,
             'generated_by' => $request->user()?->name,
             'document_url' => config('app.url').'/reports',

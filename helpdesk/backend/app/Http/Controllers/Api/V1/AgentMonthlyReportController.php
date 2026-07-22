@@ -88,7 +88,7 @@ class AgentMonthlyReportController extends Controller
 
         $filename = 'agent-monthly-'.$report->period_year.'-'.str_pad((string) $report->period_month, 2, '0', STR_PAD_LEFT).'.pdf';
 
-        return $pdf->download($html, $filename, [
+        return $pdf->inline($html, $filename, [
             'title' => 'Agent monthly report — '.$report->periodLabel(),
             'generated_by' => $user->name,
             'document_url' => config('app.url').'/reports',

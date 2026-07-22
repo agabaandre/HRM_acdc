@@ -524,23 +524,51 @@ async function downloadBlob(
   params?: Record<string, unknown>,
   paramsSerializer?: () => string,
 ) {
-  const res = await api.get(path, {
-    params,
-    paramsSerializer,
-    responseType: 'blob',
-  })
-  const contentType = String(res.headers['content-type'] || '')
-  if (contentType.includes('application/json')) {
-    const text = await (res.data as Blob).text()
-    throw new Error(text || 'Export failed')
+  const isPdf = filename.toLowerCase().endsWith('.pdf')
+  // Open the tab during the click gesture so popup blockers allow the preview.
+  const previewTab = isPdf ? window.open('about:blank', '_blank') : null
+
+  try {
+    const res = await api.get(path, {
+      params,
+      paramsSerializer,
+      responseType: 'blob',
+    })
+    const contentType = String(res.headers['content-type'] || '')
+    if (contentType.includes('application/json')) {
+      const text = await (res.data as Blob).text()
+      throw new Error(text || 'Export failed')
+    }
+
+    const blobType = isPdf
+      ? 'application/pdf'
+      : (contentType || 'application/octet-stream')
+    const blob = new Blob([res.data], { type: blobType })
+    const url = URL.createObjectURL(blob)
+
+    if (isPdf && previewTab && !previewTab.closed) {
+      previewTab.location.href = url
+      previewTab.focus()
+      // Revoke later so the preview tab can finish loading the blob URL.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      return
+    }
+
+    if (previewTab && !previewTab.closed) {
+      previewTab.close()
+    }
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    if (previewTab && !previewTab.closed) {
+      previewTab.close()
+    }
+    throw e
   }
-  const blob = new Blob([res.data], { type: contentType || undefined })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 async function exportToolReport(
@@ -979,11 +1007,11 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('mine')">
+        <UButton type="button" color="primary" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('mine')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('mine')">
-          Export PDF
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('mine')">
+          Preview PDF
         </UButton>
       </div>
       <h2>My tickets &amp; assignees</h2>
@@ -1232,17 +1260,17 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('all')">
+        <UButton type="button" color="primary" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('all')">
           Export all (Excel)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('all')">
-          Export all (PDF)
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('all')">
+          Preview all (PDF)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('assigned')">
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="downloadExcel('assigned')">
           My assigned (Excel)
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('assigned')">
-          My assigned (PDF)
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadPdf('assigned')">
+          Preview assigned (PDF)
         </UButton>
       </div>
       <h2>Recent activity</h2>
@@ -1378,7 +1406,7 @@ watch(
           </UFormField>
         </div>
         <div class="report-tools">
-          <UButton type="button" color="primary" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
+          <UButton type="button" color="primary" icon="i-lucide-search" :loading="monthlyLoading" @click="loadMonthly()">Load reports</UButton>
         </div>
         <p class="monthly-hint muted">
           Reports are generated automatically at month end and emailed to agents. Adjust retention under Settings → General.
@@ -1413,8 +1441,8 @@ watch(
               <span v-if="monthlyDetail.emailed_at"> · Emailed {{ new Date(monthlyDetail.emailed_at).toLocaleDateString() }}</span>
             </p>
             <div class="report-tools">
-              <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="downloadMonthlyPdf">
-                Export PDF
+              <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="downloadMonthlyPdf">
+                Preview PDF
               </UButton>
             </div>
           </header>
@@ -1431,12 +1459,12 @@ watch(
         <UFormField label="to" name="isDateTo">
           <UInput v-model="isDateTo" type="date" />
         </UFormField>
-        <UButton type="button" color="primary" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems('xlsx')">
+        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="isExporting" @click="exportInfoSystems('xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems('pdf')">
-          Export PDF
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="isExporting" @click="exportInfoSystems('pdf')">
+          Preview PDF
         </UButton>
       </div>
       <div v-if="isLoading" class="muted">Loading information systems…</div>
@@ -1486,12 +1514,12 @@ watch(
 
     <template v-else-if="tab === 'itassets' && canManageItAssets">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" :loading="itLoading" @click="loadItAssets">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('it-assets', 'xlsx')">
+        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="itLoading" @click="loadItAssets">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('it-assets', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('it-assets', 'pdf')">
-          Export PDF
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('it-assets', 'pdf')">
+          Preview PDF
         </UButton>
       </div>
       <div v-if="itLoading" class="muted">Loading IT assets…</div>
@@ -1527,12 +1555,12 @@ watch(
 
     <template v-else-if="tab === 'licenses' && canManageLicenses">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" :loading="licenseLoading" @click="loadLicenses">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('licenses', 'xlsx')">
+        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="licenseLoading" @click="loadLicenses">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('licenses', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('licenses', 'pdf')">
-          Export PDF
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('licenses', 'pdf')">
+          Preview PDF
         </UButton>
       </div>
       <div v-if="licenseLoading" class="muted">Loading licenses…</div>
@@ -1549,12 +1577,12 @@ watch(
 
     <template v-else-if="tab === 'softwarerequests' && canManageSoftwareRequests">
       <div class="is-toolbar">
-        <UButton type="button" color="primary" :loading="swLoading" @click="loadSoftwareRequests">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('software-requests', 'xlsx')">
+        <UButton type="button" color="primary" icon="i-lucide-refresh-cw" :loading="swLoading" @click="loadSoftwareRequests">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" :loading="exportBusy" @click="exportToolReport('software-requests', 'xlsx')">
           Export Excel
         </UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('software-requests', 'pdf')">
-          Export PDF
+        <UButton type="button" color="neutral" variant="outline" icon="i-lucide-file-text" :loading="exportBusy" @click="exportToolReport('software-requests', 'pdf')">
+          Preview PDF
         </UButton>
       </div>
       <div v-if="swLoading" class="muted">Loading software requests…</div>

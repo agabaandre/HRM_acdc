@@ -46,8 +46,9 @@ class HelpdeskPdfReportService
         ]);
 
         $mpdf->SetMargins(10, 10, 35);
-        $pdfContentFooterGapMm = 4 * 25.4 / 96;
-        $mpdf->SetAutoPageBreak(true, 30 + $pdfContentFooterGapMm);
+        // Keep content clear of the tall branded footer (address + QR + page #).
+        $pdfContentFooterGapMm = 5 * 25.4 / 96; // 5px above footer
+        $mpdf->SetAutoPageBreak(true, 38 + $pdfContentFooterGapMm);
 
         $logoPath = public_path('assets/images/logo.png');
         $logoSrc = is_file($logoPath) ? $logoPath : '';
@@ -75,7 +76,8 @@ class HelpdeskPdfReportService
         $generatedBy = trim((string) ($options['generated_by'] ?? ''));
         $footerMetaAndQrHtml = $this->footerMetaHtml($documentUrl, $generatedBy);
 
-        $footer = ' <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 8pt; color: #911C39; border:none; margin-top: 4px; border-collapse: collapse;">
+        $footer = '<div style="padding-top: 5px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 8pt; color: #911C39; border:none; border-collapse: collapse;">
             <tr>
                 <td align="left" valign="top" style="border: none; width: 50%; padding: 0 18px 0 0;">
                     Africa CDC Headquarters, Ring Road, 16/17,<br>
@@ -85,7 +87,9 @@ class HelpdeskPdfReportService
                 </td>
                 <td align="right" valign="top" style="border: none; padding: 0 0 0 12px;">'.$footerMetaAndQrHtml.'</td>
             </tr>
-        </table><p style="text-align:right; font-size: 8pt;">Page {PAGENO} of {nbpg}</p>';
+        </table>
+        <p style="text-align:right; font-size: 8pt; margin: 4px 0 0 0;">Page {PAGENO} of {nbpg}</p>
+        </div>';
         $mpdf->SetHTMLFooter($footer);
 
         try {

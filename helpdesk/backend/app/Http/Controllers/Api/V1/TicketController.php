@@ -385,8 +385,11 @@ class TicketController extends Controller
         ]);
     }
 
-    public function update(UpdateTicketRequest $request, HelpdeskTicket $ticket): TicketResource
-    {
+    public function update(
+        UpdateTicketRequest $request,
+        HelpdeskTicket $ticket,
+        TicketSubjectGenerator $subjects,
+    ): TicketResource {
         $this->authorize('update', $ticket);
 
         $data = $request->validated();
@@ -425,7 +428,25 @@ class TicketController extends Controller
             $data['description'] = HtmlSanitizer::sanitize($data['description']);
         }
 
+        $oldCategoryId = (int) ($ticket->category_id ?? 0);
+        $oldBusinessUnitId = (int) ($ticket->business_unit_id ?? 0);
+        $classificationTouched = array_key_exists('category_id', $data)
+            || array_key_exists('business_unit_id', $data);
+
         $ticket->fill($data);
+
+        $classificationChanged = $classificationTouched
+            && (
+                (int) ($ticket->category_id ?? 0) !== $oldCategoryId
+                || (int) ($ticket->business_unit_id ?? 0) !== $oldBusinessUnitId
+            );
+
+        if ($classificationChanged && ! array_key_exists('subject', $data)) {
+            $ticket->unsetRelation('category');
+            $ticket->unsetRelation('businessUnit');
+            $ticket->subject = $subjects->regenerateForTicket($ticket);
+        }
+
         $ticket->save();
 
         return new TicketResource($ticket->fresh()->load(['category', 'businessUnit', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
@@ -519,6 +540,7 @@ class TicketController extends Controller
         HelpdeskTicket $ticket,
         TicketHistoryLogger $logger,
         TicketAssigneeService $assignees,
+        TicketSubjectGenerator $subjects,
     ): JsonResponse {
         $this->authorize('view', $ticket);
         $this->ensureReassignAllowed($request, $ticket);
@@ -631,6 +653,11 @@ class TicketController extends Controller
         }
         if ($newBusinessUnitId !== null) {
             $ticket->business_unit_id = $newBusinessUnitId;
+        }
+        if ($categoryChanged || $businessUnitChanged) {
+            $ticket->unsetRelation('category');
+            $ticket->unsetRelation('businessUnit');
+            $ticket->subject = $subjects->regenerateForTicket($ticket);
         }
         $ticket->save();
 

@@ -208,4 +208,65 @@ class TicketPriorityAndSubjectTest extends TestCase
             'priority' => 'critical',
         ])->assertOk()->assertJsonPath('data.priority', 'critical');
     }
+
+    public function test_changing_category_regenerates_subject(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $from = HelpdeskCategory::query()->orderBy('id')->firstOrFail();
+        $to = HelpdeskCategory::query()
+            ->where('business_unit_id', $from->business_unit_id)
+            ->where('id', '!=', $from->id)
+            ->orderBy('id')
+            ->first();
+        if (! $to) {
+            $to = HelpdeskCategory::query()->create([
+                'business_unit_id' => $from->business_unit_id,
+                'name' => 'Alt category for subject test',
+                'slug' => 'alt-category-subject-test',
+                'is_active' => true,
+                'default_priority' => 'medium',
+            ]);
+        }
+
+        $agent = User::factory()->create(['name' => 'Cat Agent', 'email' => 'cat-agent@example.org']);
+        HelpdeskProfile::query()->create([
+            'user_id' => $agent->id,
+            'staff_id' => 710,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'can_change_ticket_category' => true,
+            'synced_at' => now(),
+        ]);
+
+        $requester = $this->user(711);
+        $ticket = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-SUBJ-001',
+            'business_unit_id' => $from->business_unit_id,
+            'category_id' => $from->id,
+            'subject' => $from->name.' — Requester One: Laptop will not boot after update',
+            'description' => 'Laptop will not boot after update',
+            'status' => 'open',
+            'priority' => 'medium',
+            'source' => 'web',
+            'requester_staff_id' => $requester->helpdeskProfile?->staff_id,
+            'requester_name' => 'Requester One',
+            'requester_email' => $requester->email,
+            'created_by_user_id' => $requester->id,
+            'assigned_user_id' => $agent->id,
+        ]);
+
+        $oldSubject = (string) $ticket->subject;
+        $this->assertStringContainsString($from->name, $oldSubject);
+
+        Sanctum::actingAs($agent->fresh(['helpdeskProfile']));
+        $res = $this->patchJson('/api/v1/tickets/'.$ticket->id, [
+            'business_unit_id' => $to->business_unit_id,
+            'category_id' => $to->id,
+        ]);
+
+        $res->assertOk();
+        $newSubject = (string) $res->json('data.subject');
+        $this->assertStringContainsString($to->name, $newSubject);
+        $this->assertStringNotContainsString($from->name.' —', $newSubject);
+        $this->assertNotSame($oldSubject, $newSubject);
+    }
 }

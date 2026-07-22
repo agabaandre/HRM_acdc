@@ -1,7 +1,7 @@
 <div style="font-family: Arial, DejaVu Sans, sans-serif; font-size: 10pt; color: #1e293b;">
     <h2 style="color: #911C39; margin: 0 0 4px 0; font-size: 16pt;">Agent monthly report</h2>
     <p style="color: #64748b; font-size: 9pt; margin: 0 0 12px 0;">
-        {{ $period_label }} — {{ $user_name }} · Generated {{ now()->format('d F Y \a\t H:i') }}
+        {{ $period_label }} — {{ $user_name }}
     </p>
 
     <table cellpadding="6" cellspacing="0" border="1" style="width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 16px; border-color: #cbd5e1;">
