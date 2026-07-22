@@ -9,7 +9,7 @@
 
     <p>
         Your ticket <strong>{{ $ticket->ticket_number }}</strong> —
-        <em>{{ $ticket->subject }}</em> — has been <strong>resolved</strong> by the IT Service Desk team.
+        <em>{{ $ticket->subject }}</em> — has been <strong>resolved</strong> by the Service Desk team.
     </p>
 
     <div class="details">

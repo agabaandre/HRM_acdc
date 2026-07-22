@@ -27,6 +27,9 @@ class AssignEndUserTicket
         if (! $ticket || $ticket->assigned_user_id || $ticket->assigned_group_id) {
             return;
         }
+        if (! $ticket->category_id) {
+            return;
+        }
 
         $result = $assignment->assignAgent($ticket, $this->requesterDutyStation);
         if (! $result['user_id'] && ! $result['group_id']) {

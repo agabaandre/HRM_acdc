@@ -10,7 +10,7 @@ const slides = [
     lede: 'Use your existing Staff portal session — no separate password for Helpdesk.',
     steps: [
       { title: 'Go to the Staff portal', text: 'Sign in at your usual Africa CDC Staff home (same login as Finance and APM).' },
-      { title: 'Open IT Service Desk', text: 'From the home dashboard, choose IT Service Desk (Helpdesk).' },
+      { title: 'Open Service Desk', text: 'From the home dashboard, choose Service Desk.' },
       { title: 'Explore the home page', text: 'Browse FAQs, try Ask Helpdesk (AI assistant), or jump to New request.' },
     ],
     tip: 'If you see “No active session”, return to the Staff portal and open Helpdesk from there.',
@@ -22,10 +22,11 @@ const slides = [
     title: 'Create a new ticket',
     lede: 'Describe the issue clearly so the right team can help quickly.',
     steps: [
-      { title: 'Click New request', text: 'Available from the home hero or the Tickets page.' },
-      { title: 'Choose a category', text: 'Pick the issue type (email, hardware, access, etc.). You must select one.' },
-      { title: 'Describe the problem & add a screenshot', text: 'Explain what happened, when it started, and your device. Paste a screenshot of the error (⌘V / Ctrl+V) or drag it into the description box — up to 10 MB. Click the image to resize.' },
-      { title: 'Submit', text: 'By default the ticket is for you. Use “another staff member” only when logging on someone else’s behalf.' },
+      { title: 'Click New request', text: 'Available from the home hero or the Tickets page. You can also open a Software request tab when you have permission.' },
+      { title: 'Choose a business unit', text: 'Pick the team that should handle the issue (e.g. IT & MIS). Use the unit description to decide. Some units allow anonymous reports.' },
+      { title: 'Category (if shown)', text: 'Admins may require an issue category. Otherwise the system auto-categorizes after you submit.' },
+      { title: 'Describe the problem & add a screenshot', text: 'Explain what happened and when. Paste a screenshot (⌘V / Ctrl+V) or drag an image — up to 10 MB.' },
+      { title: 'Submit', text: 'By default the ticket is for you. Use “another staff member” only when logging on someone else’s behalf. You can also email IT & MIS at helpdesk@africacdc.org when email intake is enabled.' },
     ],
     tip: 'A screenshot saves back-and-forth email. Try Ask Helpdesk first if you only need a quick FAQ answer.',
   },
@@ -50,12 +51,12 @@ const slides = [
     title: 'Agent desk & resolution',
     lede: 'How IT staff pick up, work, and close requests.',
     steps: [
-      { title: 'Agent dashboard', text: 'Open Agent desk to see assigned work, queues, and workload.' },
+      { title: 'Agent dashboard', text: 'Open Agent desk for a greeting with your full name, assigned work, KPIs, and the kanban board.' },
       { title: 'Reply & reassign', text: 'Post public comments for the requester or internal notes for the team. Reassign when another agent should own the ticket.' },
-      { title: 'Submit resolution', text: 'Document what was fixed, then close the ticket. Optionally publish the fix to the knowledge base.' },
-      { title: 'Live screen dashboard', text: 'Open /screen on a TV or lobby display for real-time queue stats (no personal data shown).' },
+      { title: 'Submit resolution', text: 'Document what was fixed. Optionally link a requester IT asset (serial/tag search) when the Business Unit allows it, and publish to the knowledge base if permitted.' },
+      { title: 'Tools & live screen', text: 'Use Tools → IT Assets / Licenses / Software requests when you have permission. Open /screen on a TV for queue stats (no personal data).' },
     ],
-    tip: 'Admins: use Settings for categories, agents, SLA rules, and integrations (WhatsApp / Teams).',
+    tip: 'Admins: Settings cover business units (mailbox intake, Allow Asset), IT Asset brands, agents, SLA, and Exchange mail.',
   },
 ] as const
 </script>

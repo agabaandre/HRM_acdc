@@ -17,11 +17,21 @@ class TicketSubjectGenerator
      */
     public function generate(HelpdeskCategory $category, string $requesterName, ?string $descriptionHtml): string
     {
+        return $this->build($category->name, $requesterName, $descriptionHtml);
+    }
+
+    public function generateForBusinessUnit(string $businessUnitName, string $requesterName, ?string $descriptionHtml): string
+    {
+        return $this->build($businessUnitName, $requesterName, $descriptionHtml);
+    }
+
+    private function build(string $scopeName, string $requesterName, ?string $descriptionHtml): string
+    {
         $plain = trim(preg_replace('/\s+/', ' ', strip_tags((string) $descriptionHtml)));
         $snippet = Str::limit($plain, 56, '');
         $aiBit = trim($this->ai->hint($plain));
 
-        $base = trim($category->name.' — '.$requesterName);
+        $base = trim($scopeName.' — '.$requesterName);
         $subject = $base;
         if ($snippet !== '') {
             $subject .= ': '.$snippet;

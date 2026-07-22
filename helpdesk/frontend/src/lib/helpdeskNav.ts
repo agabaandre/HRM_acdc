@@ -18,9 +18,11 @@ export const SETTINGS_NAV_ICONS: Record<string, string> = {
   ai: 'bx bx-bot',
   agents: 'bx bx-group',
   categories: 'bx bx-category-alt',
+  'it-assets': 'bx bx-laptop',
   'risk-matrix': 'bx bx-shield-quarter',
   jobs: 'bx bx-time-five',
   integrations: 'bx bx-plug',
+  'software-requests': 'bx bx-package',
   logging: 'bx bx-list-check',
 }
 

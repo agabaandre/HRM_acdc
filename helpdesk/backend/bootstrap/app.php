@@ -4,6 +4,8 @@ use App\Jobs\AgentOpenTicketReminderJob;
 use App\Jobs\AutoCloseResolvedTicketsJob;
 use App\Jobs\EmailMonthlyAgentReportsJob;
 use App\Jobs\GenerateMonthlyAgentReportsJob;
+use App\Jobs\LicenseExpiryAlertJob;
+use App\Jobs\PollBusinessUnitMailboxesJob;
 use App\Jobs\PurgeOldAgentReportsJob;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -32,6 +34,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->job(new PurgeOldAgentReportsJob)->dailyAt('03:15');
         $schedule->job(new AutoCloseResolvedTicketsJob)->dailyAt('04:00');
         $schedule->job(new AgentOpenTicketReminderJob)->dailyAt('08:30');
+        $schedule->job(new LicenseExpiryAlertJob)->dailyAt('09:00');
+        $schedule->job(new PollBusinessUnitMailboxesJob)
+            ->everyMinute()
+            ->withoutOverlapping(5);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

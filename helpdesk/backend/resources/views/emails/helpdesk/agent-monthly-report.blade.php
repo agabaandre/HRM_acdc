@@ -7,7 +7,7 @@
 @section('content')
     <p>Hello <strong>{{ $report->user?->name ?? 'colleague' }}</strong>,</p>
 
-    <p>Your monthly IT Service Desk performance report is ready.</p>
+    <p>Your monthly Service Desk performance report is ready.</p>
 
     <div class="resolution-box">
         {!! nl2br(e($report->ai_summary)) !!}

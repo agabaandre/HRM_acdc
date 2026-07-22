@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import type { DataTableHeader } from 'vuetify'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import KbArticleEditModal, { type KbArticleEditForm } from '../components/kb/KbArticleEditModal.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { notifyError, notifySuccess } from "../lib/notify"
 import { apiErrorMessage } from '../lib/apiErrorMessage'
@@ -12,6 +11,10 @@ import { fieldError, type SelectNumberItem } from '../lib/helpdeskForm'
 import { formatTableCountLabel, rowIndex } from '../lib/ticketTableMeta'
 import { hasRichTextContent } from '../lib/richText'
 import { stripHtml } from '../lib/stripHtml'
+
+const CbpRichTextEditor = defineAsyncComponent(
+  () => import('../components/common/CbpRichTextEditor.vue'),
+)
 
 interface Cat {
   id: number

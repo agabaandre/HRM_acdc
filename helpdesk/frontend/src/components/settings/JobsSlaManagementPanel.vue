@@ -226,21 +226,29 @@ onMounted(() => {
 }
 .table-wrap {
   overflow-x: auto;
-  border-radius: 4px;
-  border: 1px solid var(--cdc-line, rgba(12, 26, 18, 0.08));
-  background: var(--cdc-white, #fff);
+  border-radius: 12px;
+  border: none;
+  background: #fff;
+  box-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
 }
 .tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 .tbl th,
 .tbl td {
   text-align: left;
-  padding: 0.45rem 0.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(223, 229, 239, 0.85);
   vertical-align: middle;
+}
+.tbl th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #3a4752;
 }
 .actions {
   white-space: nowrap;

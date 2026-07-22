@@ -21,9 +21,16 @@ class TicketAssignmentService
     public function eligibleAgentUserIds(HelpdeskTicket $ticket): array
     {
         $categoryId = (int) $ticket->category_id;
+        $excludeUserId = (int) ($ticket->created_by_user_id ?? 0);
 
         $agentUserIds = User::query()
             ->actsAsHelpdeskAgent()
+            ->whereHas('helpdeskProfile', function ($q) {
+                $q->where(function ($q) {
+                    $q->where('is_agent_disabled', false)
+                        ->orWhereNull('is_agent_disabled');
+                });
+            })
             ->pluck('id')
             ->all();
 
@@ -33,8 +40,12 @@ class TicketAssignmentService
 
         $eligible = [];
         foreach ($agentUserIds as $uid) {
-            if ($this->routing->agentHandlesCategory((int) $uid, $categoryId)) {
-                $eligible[] = (int) $uid;
+            $uid = (int) $uid;
+            if ($excludeUserId > 0 && $uid === $excludeUserId) {
+                continue;
+            }
+            if ($this->routing->agentHandlesCategory($uid, $categoryId)) {
+                $eligible[] = $uid;
             }
         }
 
@@ -121,6 +132,27 @@ class TicketAssignmentService
             ? $this->routing->eligibleMemberUserIdsForGroup($groupPick, $categoryId)
             : $this->eligibleAgentUserIds($ticket);
 
+        $excludeUserId = (int) ($ticket->created_by_user_id ?? 0);
+        if ($excludeUserId > 0) {
+            $pool = array_values(array_filter($pool, fn (int $uid) => $uid !== $excludeUserId));
+        }
+
+        // Drop disabled agents from group pools as well.
+        if ($pool !== []) {
+            $enabled = User::query()
+                ->whereIn('id', $pool)
+                ->whereHas('helpdeskProfile', function ($q) {
+                    $q->where(function ($q) {
+                        $q->where('is_agent_disabled', false)
+                            ->orWhereNull('is_agent_disabled');
+                    });
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $pool = array_values(array_intersect($pool, $enabled));
+        }
+
         if ($pool === []) {
             return ['user_id' => null, 'group_id' => $groupPick?->id];
         }
@@ -135,6 +167,45 @@ class TicketAssignmentService
         return [
             'user_id' => $ranked[0] ?? null,
             'group_id' => $groupPick?->id,
+        ];
+    }
+
+    /**
+     * Round-robin among helpdesk admins by open workload (AI categorization fallback).
+     *
+     * @return array{user_id: ?int, group_id: ?int}
+     */
+    public function assignAdminRoundRobin(HelpdeskTicket $ticket): array
+    {
+        $excludeUserId = (int) ($ticket->created_by_user_id ?? 0);
+
+        $adminIds = User::query()
+            ->whereHas('helpdeskProfile', function ($q) {
+                $q->where(function ($q) {
+                    $q->where('is_agent_disabled', false)
+                        ->orWhereNull('is_agent_disabled');
+                })->where(function ($q) {
+                    $q->where('role', HelpdeskProfile::ROLE_ADMIN)
+                        ->orWhere('grant_helpdesk_admin', true);
+                });
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($excludeUserId > 0) {
+            $adminIds = array_values(array_filter($adminIds, fn (int $id) => $id !== $excludeUserId));
+        }
+
+        if ($adminIds === []) {
+            return ['user_id' => null, 'group_id' => null];
+        }
+
+        $ranked = $this->rankAgentUserIds($adminIds, $ticket, null);
+
+        return [
+            'user_id' => $ranked[0] ?? null,
+            'group_id' => null,
         ];
     }
 

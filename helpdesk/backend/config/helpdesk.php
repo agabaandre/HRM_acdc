@@ -165,7 +165,7 @@ return [
     | Transactional email branding
     |--------------------------------------------------------------------------
     */
-    'mail_brand_name' => env('HELPDESK_MAIL_BRAND_NAME', 'Africa CDC Helpdesk'),
+    'mail_brand_name' => env('HELPDESK_MAIL_BRAND_NAME', 'Africa CDC Service Desk'),
     'mail_logo_url' => env('HELPDESK_MAIL_LOGO_URL')
         ?: env('APP_LOGO_URL')
         ?: env('STAFF_MAIL_LOGO_URL'),

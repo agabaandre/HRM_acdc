@@ -49,6 +49,12 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS,
             HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS,
             HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED,
+            HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_ENABLED,
+            HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS,
+            HelpdeskSetting::KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS,
+            HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS,
+            HelpdeskSetting::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM,
+            HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED,
         ];
 
         $data = [];
@@ -67,6 +73,12 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] = (int) ($data[HelpdeskSetting::KEY_AGENT_MONTHLY_REPORT_RETENTION_MONTHS] ?? 12);
         $data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] = (int) ($data[HelpdeskSetting::KEY_RESOLVED_AUTO_CLOSE_DAYS] ?? 7);
         $data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] = (($data[HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_ENABLED] = (($data[HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_ENABLED] ?? '1') === '1');
+        $data[HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS] = HelpdeskSetting::licenseExpiryAlertIntervalDays();
+        $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS] = $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS] ?? '';
+        $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS] = $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS] ?? '';
+        $data[HelpdeskSetting::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM] = HelpdeskSetting::showIssueCategoryOnRequestForm();
+        $data[HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED] = HelpdeskSetting::emailTicketIntakeEnabled();
         $data[HelpdeskSetting::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE] = HelpdeskSetting::screenDutyStationItemsPerPage();
         $data[HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE] = HelpdeskSetting::screenCategoryItemsPerPage();
         $data[HelpdeskSetting::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS] = HelpdeskSetting::screenListSliderIntervalSeconds();
@@ -139,6 +151,12 @@ class HelpdeskSettingsController extends Controller
             'agent_monthly_report_retention_months' => ['nullable', 'integer', 'min:1', 'max:120'],
             'resolved_auto_close_days' => ['nullable', 'integer', 'min:0', 'max:90'],
             'agent_open_ticket_reminder_enabled' => ['nullable', 'boolean'],
+            'license_expiry_alert_enabled' => ['nullable', 'boolean'],
+            'license_expiry_alert_interval_days' => ['nullable', 'integer', Rule::in([1, 3, 7])],
+            'software_request_notify_group_ids' => ['nullable', 'string', 'max:512'],
+            'software_request_review_board_user_ids' => ['nullable', 'string', 'max:512'],
+            'show_issue_category_on_request_form' => ['nullable', 'boolean'],
+            'email_ticket_intake_enabled' => ['nullable', 'boolean'],
         ]);
 
         $map = [
@@ -160,6 +178,8 @@ class HelpdeskSettingsController extends Controller
             'screen_category_items_per_page' => HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE,
             'screen_list_slider_interval_seconds' => HelpdeskSetting::KEY_SCREEN_LIST_SLIDER_INTERVAL_SECONDS,
             'screen_support_group_slider_interval_seconds' => HelpdeskSetting::KEY_SCREEN_SUPPORT_GROUP_SLIDER_INTERVAL_SECONDS,
+            'software_request_notify_group_ids' => HelpdeskSetting::KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS,
+            'software_request_review_board_user_ids' => HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS,
         ];
 
         foreach ($map as $reqKey => $dbKey) {
@@ -235,6 +255,34 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::setValue(
                 HelpdeskSetting::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED,
                 $validated['agent_open_ticket_reminder_enabled'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('license_expiry_alert_enabled', $validated) && $validated['license_expiry_alert_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_ENABLED,
+                $validated['license_expiry_alert_enabled'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('license_expiry_alert_interval_days', $validated) && $validated['license_expiry_alert_interval_days'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS,
+                (string) $validated['license_expiry_alert_interval_days']
+            );
+        }
+
+        if (array_key_exists('show_issue_category_on_request_form', $validated) && $validated['show_issue_category_on_request_form'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM,
+                $validated['show_issue_category_on_request_form'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('email_ticket_intake_enabled', $validated) && $validated['email_ticket_intake_enabled'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED,
+                $validated['email_ticket_intake_enabled'] ? '1' : '0'
             );
         }
 

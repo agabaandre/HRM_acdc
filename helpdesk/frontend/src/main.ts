@@ -16,7 +16,6 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
-import { loadLobiboxAssets } from './lib/notify'
 import { getStoredToken } from './lib/api'
 import { dismissBootPreloader, showInitialContentPreloader } from './lib/appPreloader'
 import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
@@ -117,7 +116,7 @@ function renderSsoErrorScreen(failure: SsoFailure): void {
   root.innerHTML = `
     <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f8f9fa;font-family:Arial,Roboto,sans-serif;">
       <section style="max-width:560px;width:100%;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);padding:28px;">
-        <p style="margin:0 0 8px;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;color:#0d7a3a;font-weight:600;">IT Service Desk</p>
+        <p style="margin:0 0 8px;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;color:#0d7a3a;font-weight:600;">Service Desk</p>
         <h1 style="margin:0 0 12px;font-size:1.4rem;color:#1f2933;">We couldn’t open the Helpdesk</h1>
         <p style="margin:0 0 16px;color:#475569;line-height:1.55;">${safeMessage}</p>
         <p style="margin:0 0 20px;color:#64748b;font-size:0.9rem;line-height:1.55;">
@@ -187,10 +186,6 @@ async function bootstrap() {
   app.mount('#app')
   dismissBootPreloader()
   showInitialContentPreloader()
-
-  void loadLobiboxAssets().catch((e) => {
-    console.warn('[helpdesk] Lobibox failed to load — inline errors only', e)
-  })
 }
 
 void bootstrap()

@@ -21,6 +21,14 @@ class CategoryResource extends JsonResource
             'sort_order' => $this->sort_order,
             'is_active' => $this->is_active,
             'default_priority' => $this->default_priority ?? 'medium',
+            'business_unit_id' => $this->business_unit_id,
+            'ai_description' => $this->ai_description,
+            'business_unit' => $this->whenLoaded('businessUnit', fn () => $this->businessUnit ? [
+                'id' => $this->businessUnit->id,
+                'name' => $this->businessUnit->name,
+                'slug' => $this->businessUnit->slug,
+                'allows_anonymous' => (bool) $this->businessUnit->allows_anonymous,
+            ] : null),
         ];
     }
 }

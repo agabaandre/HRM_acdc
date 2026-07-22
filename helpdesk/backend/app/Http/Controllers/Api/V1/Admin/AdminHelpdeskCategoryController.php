@@ -18,6 +18,7 @@ class AdminHelpdeskCategoryController extends Controller
         $this->ensureHelpdeskAdmin($request);
 
         $rows = HelpdeskCategory::query()
+            ->with('businessUnit')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -35,6 +36,8 @@ class AdminHelpdeskCategoryController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:999999'],
             'is_active' => ['sometimes', 'boolean'],
             'default_priority' => ['sometimes', 'string', Rule::in(['low', 'medium', 'high', 'critical'])],
+            'business_unit_id' => ['required', 'integer', 'exists:helpdesk_business_units,id'],
+            'ai_description' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $slug = $validated['slug'] ?? Str::slug($validated['name']);
@@ -48,9 +51,11 @@ class AdminHelpdeskCategoryController extends Controller
             'sort_order' => $validated['sort_order'] ?? 0,
             'is_active' => $validated['is_active'] ?? true,
             'default_priority' => $validated['default_priority'] ?? 'medium',
+            'business_unit_id' => (int) $validated['business_unit_id'],
+            'ai_description' => $validated['ai_description'] ?? null,
         ]);
 
-        return response()->json(['data' => $row], 201);
+        return response()->json(['data' => $row->load('businessUnit')], 201);
     }
 
     public function update(Request $request, HelpdeskCategory $category): JsonResponse
@@ -63,12 +68,14 @@ class AdminHelpdeskCategoryController extends Controller
             'sort_order' => ['sometimes', 'integer', 'min:0', 'max:999999'],
             'is_active' => ['sometimes', 'boolean'],
             'default_priority' => ['sometimes', 'string', Rule::in(['low', 'medium', 'high', 'critical'])],
+            'business_unit_id' => ['sometimes', 'integer', 'exists:helpdesk_business_units,id'],
+            'ai_description' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $category->fill($validated);
         $category->save();
 
-        return response()->json(['data' => $category->fresh()]);
+        return response()->json(['data' => $category->fresh()->load('businessUnit')]);
     }
 
     public function destroy(Request $request, HelpdeskCategory $category): JsonResponse

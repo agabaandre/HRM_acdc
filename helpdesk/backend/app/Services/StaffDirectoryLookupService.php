@@ -60,6 +60,55 @@ class StaffDirectoryLookupService
     }
 
     /**
+     * @return array{staff_id:int,name:string,work_email:string,division_id:?int,directorate_id:?int,duty_station_name:?string}|null
+     */
+    public function resolveByWorkEmail(string $email): ?array
+    {
+        $needle = strtolower(trim($email));
+        if ($needle === '' || ! filter_var($needle, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        $this->ensureStaffCacheWarm();
+
+        $limit = (int) config('helpdesk.staff_api.staff_fetch_limit', 5000);
+        $cacheKey = 'helpdesk_reference_staff_v1_'.$limit;
+        $staffRows = Cache::get($cacheKey);
+        if (! is_array($staffRows)) {
+            return null;
+        }
+
+        $divisions = $this->divisionsKeyedById();
+
+        foreach ($staffRows as $raw) {
+            if (! is_array($raw)) {
+                continue;
+            }
+            $row = StaffShareNormalizer::staff($raw);
+            $workEmail = strtolower(trim((string) ($row['work_email'] ?? '')));
+            if ($workEmail === '' || $workEmail !== $needle) {
+                continue;
+            }
+            $staffId = (int) ($row['id'] ?? 0);
+            if ($staffId < 1) {
+                continue;
+            }
+            $div = $divisions->get((int) ($row['division_id'] ?? 0));
+
+            return [
+                'staff_id' => $staffId,
+                'name' => $row['name'],
+                'work_email' => trim((string) ($row['work_email'] ?? '')),
+                'division_id' => $row['division_id'],
+                'directorate_id' => $div['directorate_id'] ?? null,
+                'duty_station_name' => $row['duty_station_name'],
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Duty station label for routing (Staff directory first, then Helpdesk profile sync field).
      */
     public function dutyStationForStaffId(int $staffId): ?string

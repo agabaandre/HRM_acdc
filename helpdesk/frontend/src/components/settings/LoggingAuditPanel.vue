@@ -274,7 +274,7 @@ void load()
 
     <v-row v-if="stats" class="audit-stats" dense>
       <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="stat-card stat-card--primary">
+        <v-card elevation="10" class="withbg stat-card stat-card--primary">
           <v-card-text class="text-center">
             <v-icon icon="mdi-format-list-bulleted" size="32" color="primary" class="mb-2" />
             <p class="stat-label">Total events</p>
@@ -284,7 +284,7 @@ void load()
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="stat-card stat-card--success">
+        <v-card elevation="10" class="withbg stat-card stat-card--success">
           <v-card-text class="text-center">
             <v-icon icon="mdi-clock-outline" size="32" color="success" class="mb-2" />
             <p class="stat-label">Recent activity</p>
@@ -294,7 +294,7 @@ void load()
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="stat-card stat-card--info">
+        <v-card elevation="10" class="withbg stat-card stat-card--info">
           <v-card-text class="text-center">
             <v-icon icon="mdi-chart-line" size="32" color="info" class="mb-2" />
             <p class="stat-label">Top action</p>
@@ -304,7 +304,7 @@ void load()
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card variant="outlined" class="stat-card stat-card--neutral">
+        <v-card elevation="10" class="withbg stat-card stat-card--neutral">
           <v-card-text class="text-center">
             <v-icon icon="mdi-table-eye" size="32" color="secondary" class="mb-2" />
             <p class="stat-label">Showing</p>
@@ -314,7 +314,7 @@ void load()
       </v-col>
     </v-row>
 
-    <v-card class="hd-data-table-card audit-filters-card" variant="outlined">
+    <v-card class="hd-data-table-card audit-filters-card" elevation="10">
       <v-card-item>
         <v-card-title class="text-subtitle-2 font-weight-bold pa-0">
           <v-icon icon="mdi-filter-outline" size="small" class="me-1" />
@@ -337,18 +337,14 @@ void load()
             <USelect v-model="filters.action" :items="actionFilterItems" icon="mdi-lightning-bolt-outline" />
           </UFormField>
           <UFormField label="From date" name="date_from">
-            <UInput
+            <UDateInput
               v-model="filters.date_from"
-              type="date"
-              icon="mdi-calendar-start"
               placeholder="Select start date"
             />
           </UFormField>
           <UFormField label="To date" name="date_to">
-            <UInput
+            <UDateInput
               v-model="filters.date_to"
-              type="date"
-              icon="mdi-calendar-end"
               placeholder="Select end date"
             />
           </UFormField>
@@ -364,7 +360,7 @@ void load()
       </v-card-text>
     </v-card>
 
-    <v-card class="hd-data-table-card" variant="outlined">
+    <v-card class="hd-data-table-card" elevation="10">
       <v-card-item class="audit-table-head">
         <v-card-title class="text-subtitle-2 font-weight-bold pa-0">
           <v-icon icon="mdi-format-list-bulleted" size="small" class="me-1" />
@@ -557,25 +553,27 @@ void load()
 }
 .stat-card {
   height: 100%;
-  border-left: 4px solid #94a3b8;
+  border: none !important;
+  border-radius: 12px !important;
+  border-left: 4px solid #94a3b8 !important;
 }
-.stat-card--primary { border-left-color: #2563eb; }
-.stat-card--success { border-left-color: #16a34a; }
-.stat-card--info { border-left-color: #0891b2; }
-.stat-card--neutral { border-left-color: #64748b; }
+.stat-card--primary { border-left-color: #2563eb !important; }
+.stat-card--success { border-left-color: #16a34a !important; }
+.stat-card--info { border-left-color: #0891b2 !important; }
+.stat-card--neutral { border-left-color: #64748b !important; }
 .stat-label {
   margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: #768b9e;
 }
 .stat-value {
   margin: 0.25rem 0 0;
   font-size: 1.65rem;
-  font-weight: 800;
-  color: #0f172a;
+  font-weight: 700;
+  color: #3a4752;
   line-height: 1.1;
 }
 .stat-value--sm {

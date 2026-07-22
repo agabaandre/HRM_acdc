@@ -41,6 +41,10 @@ interface AgentRow {
   can_manage_software_requests: boolean
   grant_helpdesk_admin: boolean
   grant_supervisor_access: boolean
+  is_designated_agent?: boolean
+  is_agent_disabled?: boolean
+  routing_eligible?: boolean
+  role?: string | null
   categories: Cat[]
   support_groups: { id: number; name: string; slug: string }[]
   inherited_categories: Cat[]
@@ -127,6 +131,9 @@ const candidateSearch = ref('')
 const onlyUnassigned = ref(true)
 const busyStaffId = ref<number | null>(null)
 const savingGroupId = ref<number | null>(null)
+const configuringAgentId = ref<number | null>(null)
+const busyAgentId = ref<number | null>(null)
+const agentSearch = ref('')
 
 const agentOptions = computed(() =>
   agents.value.map((a) => ({ id: a.id, label: `${a.name} (${a.email})` })),
@@ -478,9 +485,11 @@ async function removeAgent(a: AgentRow) {
   if (!window.confirm(`Remove ${a.name} from agents? Their assigned tickets are kept; they go back to "user" role.`)) {
     return
   }
+  busyAgentId.value = a.id
   try {
     await api.delete(`/api/v1/admin/agents/designate/${a.staff_id}`)
     notifySuccess(`${a.name} removed from agents.`)
+    if (configuringAgentId.value === a.id) configuringAgentId.value = null
     await loadAgents()
     await loadGroups()
     const match = candidates.value.find((c) => c.staff_id === a.staff_id)
@@ -490,7 +499,48 @@ async function removeAgent(a: AgentRow) {
     }
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to remove agent.'))
+  } finally {
+    busyAgentId.value = null
   }
+}
+
+async function toggleAgentDisabled(a: AgentRow) {
+  const next = !a.is_agent_disabled
+  const label = next ? 'disable' : 'enable'
+  if (!window.confirm(`${next ? 'Disable' : 'Enable'} ${a.name} for ticket routing? They remain listed as agents.`)) {
+    return
+  }
+  busyAgentId.value = a.id
+  try {
+    const { data } = await api.put<{ data: { is_agent_disabled: boolean; routing_eligible: boolean } }>(
+      `/api/v1/admin/agents/${a.id}/disabled`,
+      { is_agent_disabled: next },
+    )
+    a.is_agent_disabled = !!data.data?.is_agent_disabled
+    a.routing_eligible = !!data.data?.routing_eligible
+    notifySuccess(`${a.name} ${label}d for routing.`)
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, `Failed to ${label} agent.`))
+  } finally {
+    busyAgentId.value = null
+  }
+}
+
+const filteredAgents = computed(() => {
+  const q = agentSearch.value.trim().toLowerCase()
+  if (!q) return agents.value
+  return agents.value.filter((a) => {
+    const hay = `${a.name} ${a.email} ${a.staff_id ?? ''} ${a.role ?? ''}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const configuringAgent = computed(() =>
+  agents.value.find((a) => a.id === configuringAgentId.value) ?? null,
+)
+
+function toggleConfigureAgent(a: AgentRow) {
+  configuringAgentId.value = configuringAgentId.value === a.id ? null : a.id
 }
 
 function toggleCategoryInDraft(groupId: number, catId: number, value: CheckboxValue) {
@@ -516,7 +566,9 @@ onMounted(() => {
         <p class="lede">
           Organise routing with <strong>support groups</strong> (shared categories and members), then fine-tune
           <strong>per-agent</strong> category access. Tickets can be assigned to a group, an agent, or both.
-          Empty category lists mean <strong>all categories</strong> for that group or agent.
+          Agents need at least one category (direct or via a support group) to receive routed tickets —
+          empty category access means <strong>not eligible</strong>. Onboarding-division staff stay listed,
+          but tickets they create are auto-routed to eligible agents.
         </p>
       </div>
       <UButton v-if="activeTab === 'agents'" type="button" color="primary" @click="openPicker">
@@ -734,15 +786,96 @@ onMounted(() => {
         </template>
       </section>
 
-      <div v-if="agents.length" class="agent-list">
-        <article v-for="a in agents" :key="a.id" class="card agent-card">
+      <div v-if="agents.length" class="agent-table-wrap">
+        <div class="agent-toolbar">
+          <UFormField name="agentSearch" class="search-wrap">
+            <UInput
+              v-model="agentSearch"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search agents…"
+              autocomplete="off"
+              aria-label="Search agents"
+              class="w-full"
+            />
+          </UFormField>
+          <span class="muted">{{ filteredAgents.length }} of {{ agents.length }}</span>
+        </div>
+
+        <table class="agent-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Routes</th>
+              <th>Status</th>
+              <th>Routing</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="a in filteredAgents"
+              :key="a.id"
+              :class="{ 'row-disabled': a.is_agent_disabled, 'row-active-config': configuringAgentId === a.id }"
+            >
+              <td>
+                <div class="agent-name">{{ a.name }}</div>
+                <div class="agent-email">{{ a.email }} · Staff ID {{ a.staff_id ?? '—' }}</div>
+              </td>
+              <td>
+                <span class="routes-cell" :title="effectiveLabel(a.effective_categories)">
+                  {{ effectiveLabel(a.effective_categories) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="a.is_agent_disabled ? 'status-pill--off' : 'status-pill--on'">
+                  {{ a.is_agent_disabled ? 'Disabled' : 'Active' }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="a.routing_eligible ? 'status-pill--on' : 'status-pill--warn'">
+                  {{ a.routing_eligible ? 'Eligible' : 'Not eligible' }}
+                </span>
+              </td>
+              <td class="col-actions">
+                <div class="action-row">
+                  <UButton type="button" color="neutral" variant="outline" size="xs" @click="toggleConfigureAgent(a)">
+                    {{ configuringAgentId === a.id ? 'Close' : 'Configure' }}
+                  </UButton>
+                  <UButton
+                    type="button"
+                    :color="a.is_agent_disabled ? 'success' : 'warning'"
+                    variant="soft"
+                    size="xs"
+                    :loading="busyAgentId === a.id"
+                    @click="toggleAgentDisabled(a)"
+                  >
+                    {{ a.is_agent_disabled ? 'Enable' : 'Disable' }}
+                  </UButton>
+                  <UButton
+                    type="button"
+                    color="error"
+                    variant="soft"
+                    size="xs"
+                    :loading="busyAgentId === a.id"
+                    @click="removeAgent(a)"
+                  >
+                    Remove
+                  </UButton>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <article v-if="configuringAgent" :key="'cfg-' + configuringAgent.id" class="card agent-card config-card">
           <header class="agent-card-head">
             <div>
-              <h3>{{ a.name }}</h3>
-              <p class="agent-email">{{ a.email }} · Staff ID {{ a.staff_id ?? '—' }}</p>
+              <h3>Configure {{ configuringAgent.name }}</h3>
+              <p class="agent-email">{{ configuringAgent.email }} · Staff ID {{ configuringAgent.staff_id ?? '—' }}</p>
             </div>
-            <div class="effective-pill" :title="effectiveLabel(a.effective_categories)">
-              Routes: {{ effectiveLabel(a.effective_categories) }}
+            <div class="effective-pill" :title="effectiveLabel(configuringAgent.effective_categories)">
+              Routes: {{ effectiveLabel(configuringAgent.effective_categories) }}
             </div>
           </header>
 
@@ -750,50 +883,52 @@ onMounted(() => {
             <div class="agent-col">
               <h4>Support groups</h4>
               <USelect
-                v-model="groupSelection[a.id]"
+                v-model="groupSelection[configuringAgent.id]"
                 multiple
                 :items="activeGroupSelectItems"
                 placeholder="Select groups…"
                 class="w-full"
               />
-              <p v-if="a.inherited_categories.length" class="inherited">
+              <p v-if="configuringAgent.inherited_categories.length" class="inherited">
                 Inherited:
-                <span v-for="c in a.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
+                <span v-for="c in configuringAgent.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
               </p>
             </div>
 
             <div class="agent-col">
               <h4>Direct categories</h4>
               <USelect
-                v-model="selection[a.id]"
+                v-model="selection[configuringAgent.id]"
                 multiple
                 :items="categorySelectItems"
                 placeholder="Select categories…"
                 class="w-full"
               />
-              <p v-if="!(selection[a.id] ?? []).length" class="hint">No direct filter — uses group inheritance or all categories.</p>
+              <p v-if="!(selection[configuringAgent.id] ?? []).length" class="hint">
+                No direct categories — agent is only eligible via support-group categories (or a catch-all group).
+              </p>
             </div>
 
             <div class="agent-col">
               <h4>Permissions</h4>
-              <UCheckbox v-model="adminToggle[a.id]" label="Helpdesk admin" class="perm-toggle" />
-              <UCheckbox v-model="supervisorToggle[a.id]" label="Supervisor access" class="perm-toggle" />
-              <UCheckbox v-model="kbToggle[a.id]" label="Manage FAQs" class="perm-toggle" />
-              <UCheckbox v-model="reassignToggle[a.id]" label="Reassign tickets" class="perm-toggle" />
-              <UCheckbox v-model="deleteAttachmentToggle[a.id]" label="Delete request attachments" class="perm-toggle" />
-              <UCheckbox v-model="changeCategoryToggle[a.id]" label="Change ticket category" class="perm-toggle" />
+              <UCheckbox v-model="adminToggle[configuringAgent.id]" label="Helpdesk admin" class="perm-toggle" />
+              <UCheckbox v-model="supervisorToggle[configuringAgent.id]" label="Supervisor access" class="perm-toggle" />
+              <UCheckbox v-model="kbToggle[configuringAgent.id]" label="Manage FAQs" class="perm-toggle" />
+              <UCheckbox v-model="reassignToggle[configuringAgent.id]" label="Reassign tickets" class="perm-toggle" />
+              <UCheckbox v-model="deleteAttachmentToggle[configuringAgent.id]" label="Delete request attachments" class="perm-toggle" />
+              <UCheckbox v-model="changeCategoryToggle[configuringAgent.id]" label="Change ticket category" class="perm-toggle" />
               <p class="perm-group-label">Tools</p>
-              <UCheckbox v-model="itAssetsToggle[a.id]" label="Manage IT assets" class="perm-toggle" />
-              <UCheckbox v-model="licensesToggle[a.id]" label="Manage licenses" class="perm-toggle" />
-              <UCheckbox v-model="swSubmitToggle[a.id]" label="Submit software requests" class="perm-toggle" />
-              <UCheckbox v-model="swApproveToggle[a.id]" label="Approve software requests" class="perm-toggle" />
-              <UCheckbox v-model="swManageToggle[a.id]" label="Manage software requests" class="perm-toggle" />
+              <UCheckbox v-model="itAssetsToggle[configuringAgent.id]" label="Manage IT assets" class="perm-toggle" />
+              <UCheckbox v-model="licensesToggle[configuringAgent.id]" label="Manage licenses" class="perm-toggle" />
+              <UCheckbox v-model="swSubmitToggle[configuringAgent.id]" label="Submit software requests" class="perm-toggle" />
+              <UCheckbox v-model="swApproveToggle[configuringAgent.id]" label="Approve software requests" class="perm-toggle" />
+              <UCheckbox v-model="swManageToggle[configuringAgent.id]" label="Manage software requests" class="perm-toggle" />
             </div>
           </div>
 
           <div class="card-actions">
-            <UButton type="button" color="primary" size="sm" @click="saveAgent(a.id)">Save agent</UButton>
-            <UButton type="button" color="error" variant="link" size="sm" @click="removeAgent(a)">Remove</UButton>
+            <UButton type="button" color="primary" size="sm" @click="saveAgent(configuringAgent.id)">Save agent</UButton>
+            <UButton type="button" color="neutral" variant="outline" size="sm" @click="configuringAgentId = null">Done</UButton>
           </div>
         </article>
       </div>
@@ -871,6 +1006,35 @@ onMounted(() => {
 .card--new { background: #f8fafc; border-style: dashed; }
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 .agent-list { display: flex; flex-direction: column; gap: 1rem; }
+.agent-table-wrap { display: flex; flex-direction: column; gap: 0.85rem; }
+.agent-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.agent-toolbar .search-wrap { flex: 1; min-width: 12rem; max-width: 22rem; }
+.agent-table {
+  width: 100%; border-collapse: collapse; background: #fff;
+  border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden;
+}
+.agent-table th, .agent-table td {
+  text-align: left; padding: 0.7rem 0.85rem; border-bottom: 1px solid #e2e8f0;
+  vertical-align: top; font-size: 0.875rem;
+}
+.agent-table th { background: #f8fafc; color: #475569; font-weight: 600; }
+.agent-table tr:last-child td { border-bottom: 0; }
+.agent-table .row-disabled { background: #f8fafc; opacity: 0.92; }
+.agent-table .row-active-config { background: #f0fdf4; }
+.agent-table .col-actions { width: 1%; white-space: nowrap; }
+.action-row { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+.routes-cell {
+  display: inline-block; max-width: 18rem; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; color: #334155;
+}
+.status-pill {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 0.15rem 0.55rem; font-size: 0.75rem; font-weight: 600;
+}
+.status-pill--on { background: #dcfce7; color: #166534; }
+.status-pill--off { background: #e2e8f0; color: #475569; }
+.status-pill--warn { background: #fef3c7; color: #92400e; }
+.config-card { margin-top: 0.25rem; }
 .group-card-head h3, .agent-card-head h3 { margin: 0; font-size: 1rem; }
 .group-desc, .agent-email { margin: 0.25rem 0 0; font-size: 0.82rem; color: #64748b; }
 .badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }

@@ -40,6 +40,7 @@ class TicketCommentApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $tid = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Slow',
         ])->assertCreated()->json('data.id');
@@ -63,6 +64,7 @@ class TicketCommentApiTest extends TestCase
 
         $ticket = HelpdeskTicket::query()->create([
             'ticket_number' => 'HD-2026-000001',
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'subject' => 'Shared inbox',
             'description' => 'x',
@@ -98,6 +100,7 @@ class TicketCommentApiTest extends TestCase
 
         $ticket = HelpdeskTicket::query()->create([
             'ticket_number' => 'HD-2026-000002',
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'subject' => 'Printer',
             'description' => 'x',

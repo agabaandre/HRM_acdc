@@ -438,7 +438,7 @@ onUnmounted(() => {
       <div class="screen-brand">
         <span class="brand-dot" />
         <div class="screen-brand-text">
-          <p class="brand-title">Africa CDC · IT Service Desk</p>
+          <p class="brand-title">Africa CDC · Service Desk</p>
           <p class="brand-sub">Live operations dashboard</p>
         </div>
       </div>

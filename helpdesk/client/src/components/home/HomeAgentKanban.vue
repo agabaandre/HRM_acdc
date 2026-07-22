@@ -84,6 +84,10 @@ let loadAbort: AbortController | null = null
 const KANBAN_PAGE_SIZE = 50
 const KANBAN_STATUSES = [...ACTIVE_STATUSES, ...RESOLVED_STATUSES].join(',')
 
+const boardTickets = computed(() =>
+  tickets.value.filter((t) => boardColumnId(t.status) !== null),
+)
+
 const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
 const greeting = computed(() => {
@@ -93,10 +97,6 @@ const greeting = computed(() => {
   if (hour < 17) return `Good afternoon, ${name}`
   return `Good evening, ${name}`
 })
-
-const boardTickets = computed(() =>
-  tickets.value.filter((t) => boardColumnId(t.status) !== null),
-)
 
 function ticketAssigneeNames(t: KanbanTicket): string {
   const names = t.assignees?.map((a) => a.name) ?? (t.assignee?.name ? [t.assignee.name] : [])

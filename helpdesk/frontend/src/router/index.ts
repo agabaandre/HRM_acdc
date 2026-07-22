@@ -77,6 +77,12 @@ const routes: RouteRecordRaw[] = [
         meta: { settingsTitle: 'Issue categories' },
       },
       {
+        path: 'it-assets',
+        name: 'settings-it-assets',
+        component: () => import('../components/settings/ItAssetsSettingsPanel.vue'),
+        meta: { settingsTitle: 'IT Assets' },
+      },
+      {
         path: 'risk-matrix',
         name: 'settings-risk-matrix',
         component: () => import('../components/settings/RiskMatrixManagementPanel.vue'),
@@ -93,6 +99,12 @@ const routes: RouteRecordRaw[] = [
         name: 'settings-integrations',
         component: () => import('../components/settings/IntegrationsSettingsPanel.vue'),
         meta: { settingsTitle: 'WhatsApp & Teams' },
+      },
+      {
+        path: 'software-requests',
+        name: 'settings-software-requests',
+        component: () => import('../components/settings/SoftwareRequestsSettingsPanel.vue'),
+        meta: { settingsTitle: 'Software requests' },
       },
       {
         path: 'logging',

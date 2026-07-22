@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskTicket;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateTicketRequest extends FormRequest
 {
@@ -32,8 +33,24 @@ class UpdateTicketRequest extends FormRequest
                 'in:low,medium,high,critical',
             ],
             'status' => ['sometimes', 'string', 'in:open,pending,in_progress,awaiting_requester_confirmation,resolved,closed'],
+            'business_unit_id' => ['sometimes', 'nullable', 'integer', 'exists:helpdesk_business_units,id'],
             'category_id' => ['sometimes', 'integer', 'exists:helpdesk_categories,id'],
             'assigned_user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $categoryId = (int) $this->input('category_id');
+            $businessUnitId = (int) $this->input('business_unit_id');
+            if ($categoryId < 1 || $businessUnitId < 1) {
+                return;
+            }
+            $category = HelpdeskCategory::query()->find($categoryId);
+            if ($category && (int) $category->business_unit_id !== $businessUnitId) {
+                $v->errors()->add('category_id', 'Choose a category that belongs to the selected business unit.');
+            }
+        });
     }
 }

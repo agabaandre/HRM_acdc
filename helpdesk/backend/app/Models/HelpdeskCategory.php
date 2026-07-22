@@ -10,11 +10,13 @@ class HelpdeskCategory extends Model
     protected $table = 'helpdesk_categories';
 
     protected $fillable = [
+        'business_unit_id',
         'name',
         'slug',
         'sort_order',
         'is_active',
         'default_priority',
+        'ai_description',
     ];
 
     protected function casts(): array
@@ -22,6 +24,11 @@ class HelpdeskCategory extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    public function businessUnit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(HelpdeskBusinessUnit::class, 'business_unit_id');
     }
 
     public function tickets(): HasMany

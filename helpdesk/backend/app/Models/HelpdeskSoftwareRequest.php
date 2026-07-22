@@ -15,6 +15,10 @@ class HelpdeskSoftwareRequest extends Model
         'requester_user_id',
         'requester_name',
         'department',
+        'division_id',
+        'directorate_id',
+        'division_name',
+        'directorate_name',
         'email',
         'phone',
         'request_title',
@@ -43,6 +47,8 @@ class HelpdeskSoftwareRequest extends Model
     {
         return [
             'requester_user_id' => 'integer',
+            'division_id' => 'integer',
+            'directorate_id' => 'integer',
             'budget_estimate' => 'decimal:2',
             'received_at' => 'datetime',
             'team_lead_review_at' => 'datetime',

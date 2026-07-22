@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 class AgentCategoryRoutingService
 {
     /**
-     * Category IDs an agent may handle. Empty list means all categories.
+     * Category IDs an agent may handle.
+     * Empty list means no explicit category access (not eligible unless in a catch-all group).
      *
      * @return list<int>
      */
@@ -44,9 +45,44 @@ class AgentCategoryRoutingService
 
     public function agentHandlesCategory(int $userId, int $categoryId): bool
     {
-        $effective = $this->effectiveCategoryIdsForUser($userId);
+        $profile = User::query()->with('helpdeskProfile')->find($userId)?->helpdeskProfile;
+        if ($profile !== null && ! $profile->isEligibleForTicketRouting()) {
+            return false;
+        }
 
-        return $effective === [] || in_array($categoryId, $effective, true);
+        $effective = $this->effectiveCategoryIdsForUser($userId);
+        if ($effective !== []) {
+            return in_array($categoryId, $effective, true);
+        }
+
+        // No direct/group categories: only eligible via an active catch-all support group.
+        return $this->userBelongsToCatchAllGroup($userId);
+    }
+
+    public function userBelongsToCatchAllGroup(int $userId): bool
+    {
+        $groupIds = DB::table('helpdesk_support_group_members')
+            ->join('helpdesk_support_groups', 'helpdesk_support_groups.id', '=', 'helpdesk_support_group_members.group_id')
+            ->where('helpdesk_support_group_members.user_id', $userId)
+            ->where('helpdesk_support_groups.is_active', true)
+            ->pluck('helpdesk_support_groups.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($groupIds === []) {
+            return false;
+        }
+
+        foreach ($groupIds as $groupId) {
+            $hasCategories = DB::table('helpdesk_support_group_categories')
+                ->where('group_id', $groupId)
+                ->exists();
+            if (! $hasCategories) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

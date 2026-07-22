@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
-import CbpRichTextEditor from '../components/common/CbpRichTextEditor.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { type SelectNumberItem } from '../lib/helpdeskForm'
 import { notifyError, notifyWarning } from '../lib/notify'
 import { hasRichTextContent, htmlContainsDataUriImages } from '../lib/richText'
 import { useAuthStore } from '../stores/auth'
+
+const CbpRichTextEditor = defineAsyncComponent(
+  () => import('../components/common/CbpRichTextEditor.vue'),
+)
 
 interface StaffRow {
   id: number
@@ -20,12 +23,26 @@ interface StaffRow {
   duty_station_name?: string | null
 }
 
+type CreateTabId = 'ticket' | 'software'
+
 const router = useRouter()
 const auth = useAuthStore()
-const cats = ref<{ id: number; name: string }[]>([])
+const activeTab = ref<CreateTabId>('ticket')
+const cats = ref<{ id: number; name: string; business_unit_id?: number }[]>([])
+const businessUnits = ref<Array<{
+  id: number
+  name: string
+  slug: string
+  description?: string | null
+  allows_anonymous: boolean
+  categories: Array<{ id: number; name: string }>
+}>>([])
+const showCategoryField = ref(false)
 const form = reactive({
+  business_unit_id: undefined as number | undefined,
   category_id: undefined as number | undefined,
   description: '',
+  is_anonymous: false,
 })
 const catsErr = ref<string | null>(null)
 const catsLoading = ref(true)
@@ -53,6 +70,12 @@ const forSomeoneElse = ref(false)
 const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !== 'user')
 
 const isEndUser = computed(() => auth.me?.profile?.role === 'user')
+
+const canAccessSoftwareRequests = computed(() => Boolean(auth.me))
+
+function goToSoftwareRequests(): void {
+  void router.push({ path: '/tools/software-requests', query: { tab: 'new' } })
+}
 
 const needsDirectoryPicker = computed(() => isStaff.value || (isEndUser.value && forSomeoneElse.value))
 
@@ -111,31 +134,52 @@ const staffRequesterReady = computed(() => {
   return Boolean(selectedStaffId.value) && !refErr.value
 })
 
+const selectedBusinessUnit = computed(() =>
+  businessUnits.value.find((u) => u.id === form.business_unit_id) ?? null,
+)
+
+const allowsAnonymous = computed(() => Boolean(selectedBusinessUnit.value?.allows_anonymous))
+
+const categoriesForUnit = computed(() => selectedBusinessUnit.value?.categories ?? [])
+
 const descriptionReady = computed(() => hasRichTextContent(form.description))
 
-const canSubmit = computed(
-  () =>
-    staffRequesterReady.value
-    && descriptionReady.value
-    && (form.category_id ?? 0) > 0
-    && !catsLoading.value
-    && cats.value.length > 0
-    && !inlineImageBusy.value,
+const canSubmit = computed(() => {
+  if (!descriptionReady.value || catsLoading.value || businessUnits.value.length === 0 || inlineImageBusy.value) {
+    return false
+  }
+  if (!(form.business_unit_id ?? 0)) {
+    return false
+  }
+  if (showCategoryField.value && !(form.category_id ?? 0)) {
+    return false
+  }
+  if (form.is_anonymous && allowsAnonymous.value) {
+    return true
+  }
+  return staffRequesterReady.value
+})
+
+const businessUnitItems = computed((): SelectNumberItem[] =>
+  businessUnits.value.map((u) => ({ label: u.name, value: u.id })),
 )
 
 const categoryItems = computed((): SelectNumberItem[] =>
-  cats.value.map((c) => ({ label: c.name, value: c.id })),
+  categoriesForUnit.value.map((c) => ({ label: c.name, value: c.id })),
 )
 
 function validateCreateForm(_state: typeof form): FormError[] {
   const errors: FormError[] = []
-  if (!_state.category_id || _state.category_id < 1) {
+  if (!_state.business_unit_id || _state.business_unit_id < 1) {
+    errors.push({ name: 'business_unit_id', message: 'Choose a business unit' })
+  }
+  if (showCategoryField.value && (!_state.category_id || _state.category_id < 1)) {
     errors.push({ name: 'category_id', message: 'Choose a category' })
   }
   if (!hasRichTextContent(_state.description)) {
     errors.push({ name: 'description', message: 'Description is required' })
   }
-  if (needsDirectoryPicker.value && !selectedStaffId.value) {
+  if (!(_state.is_anonymous && allowsAnonymous.value) && needsDirectoryPicker.value && !selectedStaffId.value) {
     errors.push({ name: 'requester_staff_id', message: 'Choose a requester from the directory' })
   }
   return errors
@@ -149,21 +193,57 @@ async function loadCats() {
   catsErr.value = null
   catsLoading.value = true
   try {
-    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
-    cats.value = Array.isArray(data.data) ? data.data : []
-    if (cats.value.length === 0) {
+    const { data } = await api.get<{
+      data: Array<{
+        id: number
+        name: string
+        slug: string
+        description?: string | null
+        allows_anonymous: boolean
+        categories: Array<{ id: number; name: string }>
+      }>
+      meta?: { show_issue_category_on_request_form?: boolean }
+    }>('/api/v1/business-units')
+    businessUnits.value = Array.isArray(data.data) ? data.data : []
+    showCategoryField.value = Boolean(data.meta?.show_issue_category_on_request_form)
+    cats.value = businessUnits.value.flatMap((u) =>
+      u.categories.map((c) => ({ ...c, business_unit_id: u.id })),
+    )
+    if (businessUnits.value.length === 0) {
       catsErr.value =
-        'No issue categories are configured yet. An administrator can add them under Settings → Issue categories, or run the database seeder on the API server.'
+        'No business units with issue categories are configured yet. An administrator can add them under Settings → Issue categories.'
       notifyWarning(catsErr.value)
     }
   } catch {
+    businessUnits.value = []
     cats.value = []
-    catsErr.value = 'Could not load issue categories. Check that the Helpdesk API is running, then refresh.'
+    catsErr.value = 'Could not load business units. Check that the Helpdesk API is running, then refresh.'
     notifyWarning(catsErr.value)
   } finally {
     catsLoading.value = false
   }
 }
+
+watch(
+  () => form.business_unit_id,
+  () => {
+    form.category_id = undefined
+    if (!allowsAnonymous.value) {
+      form.is_anonymous = false
+    }
+  },
+)
+
+watch(
+  () => form.is_anonymous,
+  (anon) => {
+    if (anon) {
+      forSomeoneElse.value = false
+      selectedStaffId.value = ''
+      staffSearch.value = ''
+    }
+  },
+)
 
 async function loadReferenceData() {
   refErr.value = null
@@ -305,10 +385,15 @@ async function submit() {
   busy.value = true
   try {
     const body: Record<string, unknown> = {
-      category_id: form.category_id,
+      business_unit_id: form.business_unit_id,
       description: form.description,
     }
-    if (needsDirectoryPicker.value) {
+    if (showCategoryField.value && form.category_id) {
+      body.category_id = form.category_id
+    }
+    if (form.is_anonymous && allowsAnonymous.value) {
+      body.is_anonymous = true
+    } else if (needsDirectoryPicker.value) {
       body.requester_staff_id = Number(selectedStaffId.value)
     }
     await api.post('/api/v1/tickets', body, {
@@ -326,15 +411,51 @@ async function submit() {
   <div>
     <CbpPageHeading title="New request" back-to="/tickets" back-label="← Tickets">
       <template #lede>
-        <template v-if="isStaff">
-          Log a request for a colleague using the staff search. Name, work email, and duty station are taken from the directory when you submit.
-        </template>
-        <template v-else>
-          By default this request is for <strong>you</strong> (from your session). Turn on “another staff member” only if you are opening the ticket on someone else’s behalf.
-        </template>
+        Choose a helpdesk ticket or continue to the software request form under Tools.
       </template>
     </CbpPageHeading>
-    <div class="cbp-card" :class="{ 'is-submitting': busy }">
+
+    <div class="create-tabs" role="tablist" aria-label="Request type">
+      <button
+        type="button"
+        role="tab"
+        class="create-tab"
+        :class="{ active: activeTab === 'ticket' }"
+        :aria-selected="activeTab === 'ticket'"
+        @click="activeTab = 'ticket'"
+      >
+        Helpdesk ticket
+      </button>
+      <button
+        v-if="canAccessSoftwareRequests"
+        type="button"
+        role="tab"
+        class="create-tab"
+        :class="{ active: activeTab === 'software' }"
+        :aria-selected="activeTab === 'software'"
+        @click="activeTab = 'software'"
+      >
+        Software request
+      </button>
+    </div>
+
+    <div v-show="activeTab === 'software'" class="cbp-card software-gateway" role="tabpanel">
+      <h2 class="gateway-title">Software requirement request</h2>
+      <p class="gateway-copy">
+        Software requests use a dedicated form under Tools — including drafts, status tracking, and reviewer workflows.
+      </p>
+      <UButton color="primary" @click="goToSoftwareRequests">
+        Continue to Software requests
+      </UButton>
+    </div>
+
+    <div v-show="activeTab === 'ticket'" class="cbp-card" :class="{ 'is-submitting': busy }" role="tabpanel">
+      <p v-if="isStaff" class="ticket-lede">
+        Log a request for a colleague using the staff search. Name, work email, and duty station are taken from the directory when you submit.
+      </p>
+      <p v-else class="ticket-lede">
+        By default this request is for <strong>you</strong> (from your session). Turn on “another staff member” only if you are opening the ticket on someone else’s behalf.
+      </p>
       <UForm
         :state="form"
         :validate="validateCreateForm"
@@ -342,18 +463,51 @@ async function submit() {
         :disabled="busy"
         @submit="onFormSubmit"
       >
-        <UFormField label="Category" name="category_id" required class="full">
-          <USelect
+        <UFormField label="Business unit" name="business_unit_id" required class="full">
+          <USelectMenu
+            v-model="form.business_unit_id"
+            :items="businessUnitItems"
+            searchable
+            :disabled="busy || catsLoading || businessUnits.length === 0"
+            :placeholder="catsLoading ? 'Loading…' : businessUnits.length === 0 ? 'No business units available' : 'Search or select business unit'"
+            class="w-full"
+            value-key="value"
+          />
+          <p v-if="selectedBusinessUnit?.description" class="field-hint">
+            {{ selectedBusinessUnit.description }}
+          </p>
+        </UFormField>
+
+        <UFormField
+          v-if="showCategoryField"
+          label="Issue category"
+          name="category_id"
+          required
+          class="full"
+        >
+          <USelectMenu
             v-model="form.category_id"
             :items="categoryItems"
-            :disabled="busy || catsLoading || cats.length === 0"
-            :placeholder="catsLoading ? 'Loading categories…' : cats.length === 0 ? 'No categories available' : 'Select category'"
+            searchable
+            :disabled="busy || !form.business_unit_id || categoriesForUnit.length === 0"
+            :placeholder="!form.business_unit_id ? 'Select a business unit first' : categoriesForUnit.length === 0 ? 'No categories in this unit' : 'Search or select category'"
             class="w-full"
             value-key="value"
           />
         </UFormField>
+        <p v-else-if="form.business_unit_id" class="ai-cat-hint full">
+          Issue category will be assigned automatically from your description.
+        </p>
 
-        <template v-if="isEndUser">
+        <UFormField v-if="allowsAnonymous" name="is_anonymous" class="full">
+          <UCheckbox v-model="form.is_anonymous" :disabled="busy">
+            <template #label>
+              Report <strong>anonymously</strong> (your identity will not be submitted)
+            </template>
+          </UCheckbox>
+        </UFormField>
+
+        <template v-if="isEndUser && !form.is_anonymous">
           <UFormField name="for_someone_else" class="full">
             <UCheckbox v-model="forSomeoneElse" :disabled="busy">
               <template #label>
@@ -368,7 +522,7 @@ async function submit() {
           </div>
         </template>
 
-        <template v-if="needsDirectoryPicker">
+        <template v-if="needsDirectoryPicker && !form.is_anonymous">
           <div class="row-actions full">
             <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="busy" @click="retryDirectory">
               Reload directory
@@ -482,6 +636,52 @@ label {
 .row-check input {
   margin-top: 0.2rem;
 }
+.create-tabs {
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 1rem;
+}
+.create-tab {
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.create-tab.active {
+  color: #0d7a3a;
+  border-bottom-color: #0d7a3a;
+}
+.software-gateway {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.25rem 1.35rem;
+}
+.gateway-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.gateway-copy {
+  margin: 0;
+  max-width: 40rem;
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.ticket-lede {
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
 .session-summary {
   padding: 0.65rem 0.85rem;
   border-radius: 4px;
@@ -505,6 +705,17 @@ label {
 .session-summary .subtle {
   margin: 0.35rem 0 0;
   font-size: 0.8rem;
+  color: #64748b;
+}
+.ai-cat-hint {
+  margin: -0.35rem 0 0.5rem;
+  font-size: 0.84rem;
+  color: #64748b;
+}
+.field-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
   color: #64748b;
 }
 .requester-combo {

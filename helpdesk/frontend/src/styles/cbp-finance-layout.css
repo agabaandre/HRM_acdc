@@ -13,10 +13,12 @@ html.helpdesk-theme-light {
   --cbp-footer-bg: #f8f9fa;
   --cbp-footer-border: #e9ecef;
   --cbp-footer-text: #6c757d;
-  --cbp-page-bg: #f4f6f8;
+  --cbp-page-bg: #eef5f9;
   --cbp-card-bg: #ffffff;
-  --cbp-card-text: #1f2937;
-  --cbp-card-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  --cbp-card-text: #3a4752;
+  --cbp-card-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
   --cbp-dd-bg: #ffffff;
   --cbp-dd-border: #e9ecef;
   --cbp-dd-text: #2c3e50;
@@ -689,7 +691,8 @@ html.helpdesk-theme-dark {
 .cbp-card {
   background: var(--cbp-card-bg);
   color: var(--cbp-card-text);
-  border-radius: 4px;
+  border: none;
+  border-radius: 12px;
   box-shadow: var(--cbp-card-shadow);
   padding: 1.5rem 1.35rem;
   margin-bottom: 1.25rem;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch, defineAsyncComponent } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onUnmounted, reactive, ref, watch, defineAsyncComponent } from 'vue'
 import { useRoute } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
@@ -44,6 +44,34 @@ interface TicketCategory {
   name: string
 }
 
+interface TicketBusinessUnit {
+  id: number
+  name: string
+  slug?: string
+  description?: string | null
+  allows_asset_link_on_resolve?: boolean
+}
+
+interface LinkedItAsset {
+  id: number
+  asset_tag: string
+  name: string
+  brand?: string | null
+  model?: string | null
+  serial_number?: string | null
+  status?: string | null
+}
+
+interface LinkableAsset {
+  id: number
+  asset_tag: string
+  name: string
+  brand?: string | null
+  model?: string | null
+  serial_number?: string | null
+  label: string
+}
+
 interface TicketDetail {
   id: number
   ticket_number: string
@@ -52,14 +80,19 @@ interface TicketDetail {
   resolution_summary?: string | null
   status: string
   priority: string
+  created_at?: string | null
   assigned_user_id: number | null
   requester_staff_id?: number | null
   requester_name?: string | null
   requester_email?: string | null
+  business_unit_id?: number | null
+  linked_it_asset_id?: number | null
   assignee?: AssigneeBrief | null
   assignees?: AssigneeBrief[]
   attachments?: TicketAttachment[]
   category?: TicketCategory | null
+  business_unit?: TicketBusinessUnit | null
+  linked_it_asset?: LinkedItAsset | null
   requester_unsatisfied_follow_up_enabled?: boolean
 }
 
@@ -91,7 +124,22 @@ const showResolveModal = ref(false)
 const publishToKb = ref(false)
 const kbSubject = ref('')
 const resolveModalErr = ref<string | null>(null)
+const assetLinkEnabled = ref(false)
+const assetSearch = ref('')
+const assetResults = ref<LinkableAsset[]>([])
+const assetLoading = ref(false)
+const assetPickerOpen = ref(false)
+const selectedAsset = ref<LinkableAsset | null>(null)
+let assetTimer: ReturnType<typeof setTimeout> | null = null
 const cats = ref<{ id: number; name: string }[]>([])
+const businessUnits = ref<Array<{
+  id: number
+  name: string
+  description?: string | null
+  categories: Array<{ id: number; name: string }>
+}>>([])
+const editBusinessUnitId = ref<number | null>(null)
+const editCategoryId = ref<number | null>(null)
 const categoryUpdating = ref(false)
 const deletingAttachmentId = ref<number | null>(null)
 
@@ -111,8 +159,24 @@ const canDeleteAttachments = computed(() => {
   return canDeleteRequestAttachments(auth.me?.profile) && ticketStatusAllowsAttachmentDelete(t.status)
 })
 
-const categoryItems = computed((): SelectNumberItem[] =>
-  cats.value.map((c) => ({ label: c.name, value: c.id })),
+const businessUnitItems = computed((): SelectNumberItem[] =>
+  businessUnits.value.map((u) => ({ label: u.name, value: u.id })),
+)
+
+const selectedEditBusinessUnit = computed(() =>
+  businessUnits.value.find((u) => u.id === editBusinessUnitId.value) ?? null,
+)
+
+const categoryItems = computed((): SelectNumberItem[] => {
+  const unitCats = selectedEditBusinessUnit.value?.categories
+  if (unitCats) {
+    return unitCats.map((c) => ({ label: c.name, value: c.id }))
+  }
+  return cats.value.map((c) => ({ label: c.name, value: c.id }))
+})
+
+const canShowClassification = computed(() =>
+  Boolean(ticket.value?.category || ticket.value?.business_unit || canEditCategory.value),
 )
 
 const isHtmlDescription = computed(() => isHtmlContent(ticket.value?.description))
@@ -247,11 +311,59 @@ const canConfirmResolve = computed(() => {
   return true
 })
 
+function resetAssetPicker(): void {
+  assetLinkEnabled.value = false
+  assetSearch.value = ''
+  assetResults.value = []
+  assetLoading.value = false
+  assetPickerOpen.value = false
+  selectedAsset.value = null
+  if (assetTimer) {
+    clearTimeout(assetTimer)
+    assetTimer = null
+  }
+}
+
+async function loadLinkableAssets(q = ''): Promise<void> {
+  const id = ticketId.value
+  if (!id) return
+  assetLoading.value = true
+  try {
+    const { data } = await api.get<{
+      data: LinkableAsset[]
+      meta?: { enabled?: boolean }
+    }>(`/api/v1/tickets/${id}/linkable-assets`, {
+      params: q.trim() ? { q: q.trim() } : undefined,
+    })
+    assetLinkEnabled.value = !!data.meta?.enabled
+    assetResults.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    assetLinkEnabled.value = false
+    assetResults.value = []
+  } finally {
+    assetLoading.value = false
+  }
+}
+
+function pickAsset(row: LinkableAsset): void {
+  selectedAsset.value = row
+  assetSearch.value = row.label
+  assetPickerOpen.value = false
+}
+
+function clearAsset(): void {
+  selectedAsset.value = null
+  assetSearch.value = ''
+  void loadLinkableAssets('')
+}
+
 function openResolveModal() {
   resolveModalErr.value = null
   publishToKb.value = false
   kbSubject.value = ticket.value?.subject?.trim() ?? ''
+  resetAssetPicker()
   showResolveModal.value = true
+  void loadLinkableAssets('')
   if (!hasRichTextContent(resolutionNotes.value)) {
     resolveModalErr.value =
       'Please describe what was fixed in the resolution editor above before resolving this ticket.'
@@ -261,6 +373,7 @@ function openResolveModal() {
 function closeResolveModal() {
   showResolveModal.value = false
   resolveModalErr.value = null
+  resetAssetPicker()
 }
 
 function onResolveModalKeydown(ev: KeyboardEvent) {
@@ -274,27 +387,88 @@ async function loadCategories() {
     return
   }
   try {
-    const { data } = await api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories')
-    cats.value = Array.isArray(data.data) ? data.data : []
+    const [buRes, catRes] = await Promise.all([
+      api.get<{
+        data: Array<{
+          id: number
+          name: string
+          description?: string | null
+          categories: Array<{ id: number; name: string }>
+        }>
+      }>('/api/v1/business-units'),
+      api.get<{ data: { id: number; name: string }[] }>('/api/v1/categories'),
+    ])
+    businessUnits.value = Array.isArray(buRes.data.data) ? buRes.data.data : []
+    cats.value = Array.isArray(catRes.data.data) ? catRes.data.data : []
+    syncClassificationEditors()
   } catch {
+    businessUnits.value = []
     cats.value = []
   }
 }
 
-async function updateTicketCategory(categoryId: number | undefined) {
+function syncClassificationEditors() {
   const t = ticket.value
-  if (!t || !categoryId || categoryId === t.category?.id || categoryUpdating.value) {
+  if (!t) {
+    editBusinessUnitId.value = null
+    editCategoryId.value = null
+    return
+  }
+  let buId = t.business_unit?.id ?? t.business_unit_id ?? null
+  const catId = t.category?.id ?? null
+  if (!buId && catId) {
+    const match = businessUnits.value.find((u) => u.categories.some((c) => c.id === catId))
+    buId = match?.id ?? null
+  }
+  editBusinessUnitId.value = buId
+  editCategoryId.value = catId
+}
+
+async function updateTicketClassification() {
+  const t = ticket.value
+  if (!t || categoryUpdating.value) {
+    return
+  }
+  if (!editBusinessUnitId.value || !editCategoryId.value) {
+    return
+  }
+  const sameBu = editBusinessUnitId.value === (t.business_unit?.id ?? t.business_unit_id ?? null)
+  const sameCat = editCategoryId.value === (t.category?.id ?? null)
+  if (sameBu && sameCat) {
     return
   }
   categoryUpdating.value = true
   try {
-    const { data } = await api.patch(`/api/v1/tickets/${t.id}`, { category_id: categoryId })
+    const { data } = await api.patch(`/api/v1/tickets/${t.id}`, {
+      business_unit_id: editBusinessUnitId.value,
+      category_id: editCategoryId.value,
+    })
     ticket.value = data.data as TicketDetail
+    syncClassificationEditors()
+    notifySuccess('Business unit and category updated.')
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Could not update category'))
+    syncClassificationEditors()
   } finally {
     categoryUpdating.value = false
   }
+}
+
+function onBusinessUnitChange(value: unknown) {
+  const id = typeof value === 'number' ? value : Number(value)
+  editBusinessUnitId.value = id > 0 ? id : null
+  const allowed = new Set((selectedEditBusinessUnit.value?.categories ?? []).map((c) => c.id))
+  if (editCategoryId.value && !allowed.has(editCategoryId.value)) {
+    editCategoryId.value = null
+    return
+  }
+  void updateTicketClassification()
+}
+
+function onCategoryChange(value: unknown) {
+  const id = typeof value === 'number' ? value : Number(value)
+  editCategoryId.value = id > 0 ? id : null
+  void updateTicketClassification()
 }
 
 async function deleteRequestAttachment(attachment: TicketAttachment) {
@@ -343,6 +517,7 @@ async function loadAll() {
     ])
     ticket.value = tRes.data.data as TicketDetail
     comments.value = cRes.data.data as CommentRow[]
+    syncClassificationEditors()
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to load ticket'))
   }
@@ -421,10 +596,14 @@ async function confirmSubmitResolution() {
       payload.publish_to_kb = true
       payload.kb_question = kbSubject.value.trim()
     }
+    if (assetLinkEnabled.value && selectedAsset.value) {
+      payload.linked_it_asset_id = selectedAsset.value.id
+    }
     await api.post(`/api/v1/tickets/${id}/submit-resolution`, payload)
     resolutionNotes.value = ''
     publishToKb.value = false
     kbSubject.value = ''
+    resetAssetPicker()
     showResolveModal.value = false
     await loadAll()
   } catch (e: unknown) {
@@ -447,7 +626,20 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', onDocumentKeydown)
 })
+onBeforeUnmount(() => {
+  if (assetTimer) clearTimeout(assetTimer)
+})
 watch(ticketId, loadAll)
+watch(assetSearch, (q) => {
+  if (!showResolveModal.value || !assetLinkEnabled.value) return
+  if (selectedAsset.value && q === selectedAsset.value.label) return
+  if (selectedAsset.value) selectedAsset.value = null
+  assetPickerOpen.value = true
+  if (assetTimer) clearTimeout(assetTimer)
+  assetTimer = setTimeout(() => {
+    void loadLinkableAssets(q)
+  }, 250)
+})
 watch(canReopenWithComment, (can) => {
   if (can) {
     commentForm.reopen_with_comment = true
@@ -462,6 +654,13 @@ watch(canReopenWithComment, (can) => {
         <template #lede>
           <span class="pill">{{ statusLabel }}</span>
           <span class="pill low">{{ ticket.priority }}</span>
+          <span
+            v-if="ticket.created_at"
+            class="pill low created-pill"
+            :title="formatDateTimeLong(ticket.created_at)"
+          >
+            Created {{ formatDateTime(ticket.created_at) }}
+          </span>
           <span class="subj-inline">{{ ticket.subject }}</span>
         </template>
       </CbpPageHeading>
@@ -503,20 +702,51 @@ watch(canReopenWithComment, (can) => {
               <span v-if="ticket.assignee?.email" class="pemail">{{ ticket.assignee.email }}</span>
             </div>
           </div>
-          <div v-if="ticket.category || canEditCategory" class="person-card person-card--category">
+          <div v-if="canShowClassification" class="person-card person-card--category">
             <div class="person-meta person-meta--full">
-              <span class="plabel">Category</span>
-              <USelect
-                v-if="canEditCategory"
-                :model-value="ticket.category?.id"
-                :items="categoryItems"
-                :disabled="categoryUpdating || categoryItems.length === 0"
-                placeholder="Select category"
-                class="w-full category-select"
-                value-key="value"
-                @update:model-value="updateTicketCategory($event as number | undefined)"
-              />
-              <strong v-else class="pname">{{ ticket.category?.name || '—' }}</strong>
+              <template v-if="canEditCategory">
+                <span class="plabel">Business unit</span>
+                <USelectMenu
+                  :model-value="editBusinessUnitId"
+                  :items="businessUnitItems"
+                  searchable
+                  :disabled="categoryUpdating || businessUnitItems.length === 0"
+                  placeholder="Search or select business unit"
+                  class="w-full category-select"
+                  value-key="value"
+                  @update:model-value="onBusinessUnitChange"
+                />
+                <p v-if="selectedEditBusinessUnit?.description" class="field-hint">
+                  {{ selectedEditBusinessUnit.description }}
+                </p>
+                <span class="plabel plabel--spaced">Category</span>
+                <USelectMenu
+                  :model-value="editCategoryId"
+                  :items="categoryItems"
+                  searchable
+                  :disabled="categoryUpdating || !editBusinessUnitId || categoryItems.length === 0"
+                  :placeholder="!editBusinessUnitId ? 'Select a business unit first' : categoryItems.length === 0 ? 'No categories in this unit' : 'Search or select category'"
+                  class="w-full category-select"
+                  value-key="value"
+                  @update:model-value="onCategoryChange"
+                />
+              </template>
+              <template v-else>
+                <span class="plabel">Business unit</span>
+                <strong class="pname">{{ ticket.business_unit?.name || '—' }}</strong>
+                <span class="plabel plabel--spaced">Category</span>
+                <strong class="pname">{{ ticket.category?.name || '—' }}</strong>
+              </template>
+            </div>
+          </div>
+          <div v-if="ticket.created_at" class="person-card">
+            <div class="person-meta">
+              <span class="plabel">Created</span>
+              <strong class="pname">
+                <time :datetime="ticket.created_at" :title="formatDateTimeLong(ticket.created_at)">
+                  {{ formatDateTime(ticket.created_at) }}
+                </time>
+              </strong>
             </div>
           </div>
         </section>
@@ -622,6 +852,14 @@ watch(canReopenWithComment, (can) => {
         <h3 class="h3">Latest resolution notes</h3>
         <div v-if="isHtmlResolution" class="res-html rich-text-content" v-html="ticket.resolution_summary" />
         <p v-else class="res">{{ ticket.resolution_summary }}</p>
+        <p v-if="ticket.linked_it_asset" class="linked-asset muted small">
+          Linked asset:
+          <strong>{{ ticket.linked_it_asset.asset_tag }}</strong>
+          — {{ ticket.linked_it_asset.name }}
+          <span v-if="ticket.linked_it_asset.serial_number">
+            · S/N {{ ticket.linked_it_asset.serial_number }}
+          </span>
+        </p>
       </section>
 
       <section v-if="canSubmitResolution" class="resolve">
@@ -666,6 +904,50 @@ watch(canReopenWithComment, (can) => {
                 <strong>{{ ticket.category.name }}</strong>.
               </span>
             </p>
+
+            <UFormField
+              v-if="assetLinkEnabled"
+              label="Related IT asset (optional)"
+              name="linkedAsset"
+              description="Search the requester’s assigned assets by serial, tag, name, brand, or model."
+            >
+              <div class="asset-picker">
+                <UInput
+                  v-model="assetSearch"
+                  type="search"
+                  icon="i-lucide-search"
+                  placeholder="Serial, asset tag, name, brand…"
+                  class="w-full"
+                  autocomplete="off"
+                  @focus="assetPickerOpen = true"
+                />
+                <ul
+                  v-if="assetPickerOpen && !selectedAsset && (assetResults.length || assetLoading || assetSearch.trim())"
+                  class="asset-results"
+                  role="listbox"
+                  aria-label="Requester IT assets"
+                >
+                  <li v-if="assetLoading" class="asset-empty">Searching…</li>
+                  <li
+                    v-for="row in assetResults"
+                    :key="row.id"
+                    role="option"
+                    class="asset-result"
+                    @mousedown.prevent="pickAsset(row)"
+                  >
+                    <strong>{{ row.asset_tag }}</strong>
+                    <span class="meta">{{ row.label }}</span>
+                  </li>
+                  <li v-if="!assetLoading && !assetResults.length" class="asset-empty">
+                    No assets assigned to this requester match that search.
+                  </li>
+                </ul>
+                <p v-if="selectedAsset" class="asset-selected" role="status">
+                  <strong>Linked:</strong> {{ selectedAsset.label }}
+                  <button type="button" class="clear-btn" @click="clearAsset">Clear</button>
+                </p>
+              </div>
+            </UFormField>
 
             <UForm :state="{ publishToKb, kbSubject }" class="hd-form resolve-modal-form">
               <UFormField v-if="canPublishKb" name="publishToKb">
@@ -1034,6 +1316,15 @@ watch(canReopenWithComment, (can) => {
 .person-meta .category-select {
   margin-top: 0.2rem;
 }
+.plabel--spaced {
+  margin-top: 0.65rem;
+}
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #64748b;
+}
 .person-meta {
   display: flex;
   flex-direction: column;
@@ -1302,6 +1593,67 @@ watch(canReopenWithComment, (can) => {
   margin: 0;
   font-size: 0.85rem;
   color: #b91c1c;
+}
+.asset-picker {
+  position: relative;
+  width: 100%;
+}
+.asset-results {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 14rem;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.asset-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+.asset-result:hover {
+  background: #f0fdf4;
+}
+.asset-result .meta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.asset-empty {
+  padding: 0.6rem;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+.asset-selected {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.asset-selected .clear-btn {
+  border: 0;
+  background: transparent;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  padding: 0;
+}
+.linked-asset {
+  margin: 0.75rem 0 0;
 }
 .resolve-kb-check {
   display: flex;

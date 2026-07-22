@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, watch } from 'vue'
 import type { FormError } from '../../types/form'
-import CbpRichTextEditor from '../common/CbpRichTextEditor.vue'
 import { fieldError, type SelectNumberItem } from '../../lib/helpdeskForm'
 import { hasRichTextContent } from '../../lib/richText'
+
+const CbpRichTextEditor = defineAsyncComponent(
+  () => import('../common/CbpRichTextEditor.vue'),
+)
 
 export interface KbCat {
   id: number

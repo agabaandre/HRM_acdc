@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import CbpBadgeStrip from '../components/common/CbpBadgeStrip.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import { cachedGet } from '../lib/apiCache'
@@ -33,57 +33,55 @@ interface KbArticle {
   updated_at?: string | null
 }
 
-interface QuickAction {
+interface HomeShortcut {
   to: string
   icon: string
-  title: string
-  description: string
+  label: string
+  featured?: boolean
+  /** When true, navigates to Ask with the hub search text pre-filled. */
+  passSearchToAsk?: boolean
 }
 
-const quickActions: QuickAction[] = [
-  {
-    to: '/ask',
-    icon: 'bx-bot',
-    title: 'Ask Helpdesk',
-    description: 'AI-guided answers and step-by-step fixes from our knowledge base.',
-  },
-  {
-    to: '/tickets',
-    icon: 'bx-support',
-    title: 'My tickets',
-    description: 'Track open requests, replies, and resolution status.',
-  },
-  {
-    to: '/tickets/new',
-    icon: 'bx-plus-circle',
-    title: 'New request',
-    description: 'Log an incident or service request for an IT agent.',
-  },
-  {
-    to: '/guide',
-    icon: 'bx-book-reader',
-    title: 'User guide',
-    description: 'Four quick slides on signing in, logging tickets, and follow-up.',
-  },
-]
-
 const auth = useAuthStore()
+const router = useRouter()
 const portalHref = computed(() => staffPortalHomeUrl())
 
 const isAgentHome = computed(() => isAgentDeskUser(auth.me?.profile))
 
 const homeLede = computed(() => {
   if (isAgentHome.value) {
-    return 'Log and track incidents and requests for Africa CDC. Triage assigned tickets on your board below, browse FAQs, or open the agent desk for your full workload.'
+    return 'Log and track service requests across Africa CDC business units. Triage assigned tickets on your board below, browse FAQs, or open the agent desk for your full workload.'
   }
-  return 'Log and track incidents and requests for Africa CDC. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
+  return 'Log and track service requests across Africa CDC business units. Ask our AI assistant for guided troubleshooting, browse FAQs below, or log a new request for the service desk team.'
 })
 
-const agentShortcuts = [
+const agentShortcuts: HomeShortcut[] = [
   { to: '/desk/agent', icon: HELP_DESK_NAV_ICONS.agentDesk, label: 'Agent desk' },
   { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'All tickets' },
+  {
+    to: '/ask',
+    icon: HELP_DESK_NAV_ICONS.ask,
+    label: 'Get instant answers',
+    featured: true,
+    passSearchToAsk: true,
+  },
   { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
 ]
+
+const requesterShortcuts: HomeShortcut[] = [
+  {
+    to: '/ask',
+    icon: HELP_DESK_NAV_ICONS.ask,
+    label: 'Get instant answers',
+    featured: true,
+    passSearchToAsk: true,
+  },
+  { to: '/tickets', icon: HELP_DESK_NAV_ICONS.tickets, label: 'My tickets' },
+  { to: '/tickets/new', icon: HELP_DESK_NAV_ICONS.newRequest, label: 'New request' },
+  { to: '/guide', icon: HELP_DESK_NAV_ICONS.guide, label: 'User guide' },
+]
+
+const homeShortcuts = computed(() => (isAgentHome.value ? agentShortcuts : requesterShortcuts))
 
 const canManageKb = computed(() => {
   const role = auth.me?.profile?.role ?? ''
@@ -143,6 +141,37 @@ const faqSummaryLabel = computed(() => {
   return `Showing ${shown} of ${total}`
 })
 
+function goToAskWithSearch(): void {
+  const q = search.value.trim()
+  if (q.length >= 8) {
+    void router.push({ path: '/ask', query: { q } })
+    return
+  }
+  void router.push('/ask')
+}
+
+function onHubShortcut(shortcut: HomeShortcut, event: MouseEvent): void {
+  if (!shortcut.passSearchToAsk) {
+    return
+  }
+  event.preventDefault()
+  goToAskWithSearch()
+}
+
+function onHubSearchEnter(event: KeyboardEvent): void {
+  if (event.shiftKey) {
+    return
+  }
+  event.preventDefault()
+  const q = search.value.trim()
+  if (q.length >= 8) {
+    goToAskWithSearch()
+    return
+  }
+  const kb = document.getElementById('kb-heading')
+  kb?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function isHtml(value: string): boolean {
   return /<[a-z][\s\S]*>/i.test(value)
 }
@@ -171,7 +200,7 @@ onMounted(() => {
     <v-card class="hd-home-hero" variant="flat" rounded="lg">
       <v-card-text class="pa-0">
         <CbpBadgeStrip product="ITSM" />
-        <CbpPageHeading title="IT Service Desk">
+        <CbpPageHeading title="Service Desk">
           <template #lede>
             <span class="hd-home-lede">{{ homeLede }}</span>
           </template>
@@ -183,51 +212,69 @@ onMounted(() => {
       <v-card-text>
         <p class="gate-title">No active session in this app</p>
         <p class="gate-text">
-          Open the Staff portal, sign in there, then choose <strong>IT Service Desk (Helpdesk)</strong> from your home dashboard.
+          Open the Staff portal, sign in there, then choose <strong>Service Desk</strong> from your home dashboard.
         </p>
         <v-btn :href="portalHref" color="primary" variant="flat" size="large">Go to Staff portal home</v-btn>
       </v-card-text>
     </v-card>
 
     <template v-else>
-      <div v-if="isAgentHome" class="hd-shortcut-row" role="navigation" aria-label="Helpdesk shortcuts">
-        <v-btn
-          v-for="s in agentShortcuts"
-          :key="s.to"
-          :to="s.to"
-          variant="outlined"
-          color="primary"
-          size="small"
-          class="hd-shortcut-btn"
-        >
-          <i :class="s.icon" aria-hidden="true" class="me-1" />
-          {{ s.label }}
-        </v-btn>
-      </div>
+      <v-card class="hd-home-hub" variant="flat" rounded="lg">
+        <v-card-text class="hd-home-hub__body">
+          <div class="hd-home-hub__intro">
+            <p class="hd-home-hub__eyebrow">Start here</p>
+            <h2 class="hd-home-hub__title">What do you need help with?</h2>
+            <p class="hd-home-hub__hint">
+              Search common fixes below, or open our AI assistant for guided troubleshooting.
+            </p>
+          </div>
+
+          <div class="hd-home-hub__search-wrap">
+            <v-text-field
+              v-model="search"
+              placeholder="Try “VPN”, “password reset”, “printer offline”…"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              density="comfortable"
+              variant="solo-filled"
+              flat
+              hide-details
+              class="hd-home-hub__search"
+              autocomplete="off"
+              aria-label="Search help topics and knowledge base"
+              @keydown.enter="onHubSearchEnter"
+            />
+            <v-btn
+              color="primary"
+              variant="flat"
+              size="large"
+              class="hd-home-hub__ask-btn"
+              prepend-icon="mdi-robot-outline"
+              @click="goToAskWithSearch"
+            >
+              Get instant answers
+            </v-btn>
+          </div>
+
+          <nav class="hd-home-hub__shortcuts" aria-label="Helpdesk shortcuts">
+            <component
+              :is="shortcut.passSearchToAsk ? 'button' : RouterLink"
+              v-for="shortcut in homeShortcuts"
+              :key="shortcut.to + shortcut.label"
+              :to="shortcut.passSearchToAsk ? undefined : shortcut.to"
+              type="button"
+              class="hd-home-hub__chip"
+              :class="{ 'hd-home-hub__chip--featured': shortcut.featured }"
+              @click="shortcut.passSearchToAsk ? onHubShortcut(shortcut, $event) : undefined"
+            >
+              <i :class="shortcut.icon" aria-hidden="true" />
+              <span>{{ shortcut.label }}</span>
+            </component>
+          </nav>
+        </v-card-text>
+      </v-card>
 
       <HomeAgentKanban v-if="isAgentHome" class="hd-home-kanban" />
-
-      <div v-if="!isAgentHome" class="hd-quick-grid" role="navigation" aria-label="Helpdesk shortcuts">
-        <v-card
-          v-for="action in quickActions"
-          :key="action.to"
-          class="hd-action-card"
-          variant="outlined"
-          rounded="lg"
-          hover
-        >
-          <RouterLink :to="action.to" class="hd-action-link pa-4 pa-sm-5">
-            <span class="hd-action-icon" aria-hidden="true">
-              <i :class="['bx', action.icon]" />
-            </span>
-            <span class="hd-action-body">
-              <strong class="hd-action-title">{{ action.title }}</strong>
-              <span class="hd-action-desc">{{ action.description }}</span>
-            </span>
-            <v-icon icon="mdi-chevron-right" class="hd-action-chevron" size="small" color="primary" />
-          </RouterLink>
-        </v-card>
-      </div>
     </template>
 
     <v-card v-if="auth.isAuthenticated" class="hd-kb-card" variant="outlined" aria-labelledby="kb-heading">
@@ -235,7 +282,7 @@ onMounted(() => {
         <div>
           <p class="panel-title">Knowledge base</p>
           <h2 id="kb-heading" class="kb-title">Top questions</h2>
-          <p class="kb-lede">A short preview of common answers. Search below or use Ask Helpdesk for guided help.</p>
+          <p class="kb-lede">A short preview of common answers. Results update as you search above.</p>
         </div>
         <template #append>
           <RouterLink v-if="canManageKb" class="kb-manage-link" to="/knowledge-base/manage">
@@ -247,20 +294,6 @@ onMounted(() => {
       <v-divider />
 
       <v-card-text>
-      <v-text-field
-        v-model="search"
-        label="Search FAQs"
-        placeholder="Try “password reset”, “VPN”, “printer”…"
-        prepend-inner-icon="mdi-magnify"
-        clearable
-        density="comfortable"
-        variant="outlined"
-        hide-details
-        class="kb-search mb-4"
-        autocomplete="off"
-        aria-label="Search the knowledge base"
-      />
-
       <div v-if="loading" class="kb-skeleton" role="status" aria-busy="true" aria-label="Loading articles">
         <v-skeleton-loader
           v-for="n in 5"
@@ -281,7 +314,7 @@ onMounted(() => {
       </p>
       <p v-else-if="articles.length === 0" class="kb-empty">
         No articles match <em>“{{ search }}”</em>. Try
-        <RouterLink to="/ask">Ask Helpdesk</RouterLink>
+        <button type="button" class="hd-inline-link-btn" @click="goToAskWithSearch">Get instant answers</button>
         or <RouterLink to="/tickets/new">log a new request</RouterLink>.
       </p>
 
@@ -324,7 +357,7 @@ onMounted(() => {
       <footer v-if="previewArticles.length > 0" class="hd-kb-foot">
         <span v-if="faqSummaryLabel">{{ faqSummaryLabel }}</span>
         <RouterLink v-if="hasMoreFaqs || search.trim() !== ''" class="hd-kb-more-link" to="/ask">
-          {{ hasMoreFaqs ? 'Ask Helpdesk for more answers →' : 'Open Ask Helpdesk →' }}
+          {{ hasMoreFaqs ? 'Get instant answers for more help →' : 'Open Get instant answers →' }}
         </RouterLink>
       </footer>
       </v-card-text>
@@ -336,17 +369,15 @@ onMounted(() => {
 .hd-home-kanban {
   margin-bottom: 0.25rem;
 }
-.hd-shortcut-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-.hd-shortcut-btn {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: var(--hd-ui-font-size, 14px) !important;
-  font-weight: var(--hd-ui-font-weight, 500) !important;
+.hd-inline-link-btn {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #0d7a3a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
 }
 .kb-panels {
   background: transparent !important;
@@ -437,10 +468,6 @@ onMounted(() => {
 }
 .kb-manage-link:hover {
   background: rgba(13, 122, 58, 0.08);
-}
-.kb-search {
-  display: block;
-  margin: 0 0 1rem;
 }
 .kb-skeleton {
   display: flex;

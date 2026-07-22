@@ -25,9 +25,11 @@ class HelpdeskLicense extends Model
         'status',
         'notes',
         'created_by_user_id',
+        'responsible_staff_id',
+        'expiry_alert_last_sent_at',
     ];
 
-    protected $appends = ['expiry'];
+    protected $appends = ['expiry', 'responsible_person'];
 
     protected function casts(): array
     {
@@ -41,12 +43,40 @@ class HelpdeskLicense extends Model
             'cost' => 'decimal:2',
             'renewal_cost' => 'decimal:2',
             'created_by_user_id' => 'integer',
+            'responsible_staff_id' => 'integer',
+            'expiry_alert_last_sent_at' => 'datetime',
         ];
     }
 
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    /**
+     * @return array{staff_id:int,name:string,email:string}|null
+     */
+    public function getResponsiblePersonAttribute(): ?array
+    {
+        $staffId = (int) ($this->responsible_staff_id ?? 0);
+        if ($staffId < 1) {
+            return null;
+        }
+
+        $resolved = app(\App\Services\StaffDirectoryLookupService::class)->resolveByStaffId($staffId);
+        if ($resolved === null) {
+            return [
+                'staff_id' => $staffId,
+                'name' => 'Staff #'.$staffId,
+                'email' => '',
+            ];
+        }
+
+        return [
+            'staff_id' => $staffId,
+            'name' => $resolved['name'],
+            'email' => $resolved['work_email'],
+        ];
     }
 
     /**

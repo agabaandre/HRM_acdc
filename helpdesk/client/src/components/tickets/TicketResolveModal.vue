@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 import { api } from '../../lib/api'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { hasRichTextContent, htmlContainsDataUriImages } from '../../lib/richText'
@@ -15,6 +15,16 @@ export interface ResolveTicketRef {
   ticket_number: string
   subject: string
   category?: { id: number; name: string } | null
+}
+
+interface LinkableAsset {
+  id: number
+  asset_tag: string
+  name: string
+  brand?: string | null
+  model?: string | null
+  serial_number?: string | null
+  label: string
 }
 
 const props = defineProps<{
@@ -34,6 +44,14 @@ const resolving = ref(false)
 const resolveErr = ref<string | null>(null)
 const inlineImageBusy = ref(false)
 const resolutionEditorRef = ref<InstanceType<typeof CbpRichTextEditor> | null>(null)
+
+const assetLinkEnabled = ref(false)
+const assetSearch = ref('')
+const assetResults = ref<LinkableAsset[]>([])
+const assetLoading = ref(false)
+const assetPickerOpen = ref(false)
+const selectedAsset = ref<LinkableAsset | null>(null)
+let assetTimer: ReturnType<typeof setTimeout> | null = null
 
 const modalOpen = computed({
   get: () => props.ticket !== null,
@@ -78,11 +96,54 @@ function resetState(): void {
   resolving.value = false
   resolveErr.value = null
   inlineImageBusy.value = false
+  assetLinkEnabled.value = false
+  assetSearch.value = ''
+  assetResults.value = []
+  assetLoading.value = false
+  assetPickerOpen.value = false
+  selectedAsset.value = null
+  if (assetTimer) {
+    clearTimeout(assetTimer)
+    assetTimer = null
+  }
 }
 
 function close(): void {
   resetState()
   emit('close')
+}
+
+async function loadLinkableAssets(q = ''): Promise<void> {
+  const ticket = props.ticket
+  if (!ticket) return
+  assetLoading.value = true
+  try {
+    const { data } = await api.get<{
+      data: LinkableAsset[]
+      meta?: { enabled?: boolean }
+    }>(`/api/v1/tickets/${ticket.id}/linkable-assets`, {
+      params: q.trim() ? { q: q.trim() } : undefined,
+    })
+    assetLinkEnabled.value = !!data.meta?.enabled
+    assetResults.value = Array.isArray(data.data) ? data.data : []
+  } catch {
+    assetLinkEnabled.value = false
+    assetResults.value = []
+  } finally {
+    assetLoading.value = false
+  }
+}
+
+function pickAsset(row: LinkableAsset): void {
+  selectedAsset.value = row
+  assetSearch.value = row.label
+  assetPickerOpen.value = false
+}
+
+function clearAsset(): void {
+  selectedAsset.value = null
+  assetSearch.value = ''
+  void loadLinkableAssets('')
 }
 
 watch(
@@ -91,10 +152,24 @@ watch(
     resetState()
     if (ticket) {
       kbSubject.value = ticket.subject?.trim() ?? ''
+      void loadLinkableAssets('')
     }
   },
   { immediate: true },
 )
+
+watch(assetSearch, (q) => {
+  if (!assetLinkEnabled.value || selectedAsset.value) return
+  assetPickerOpen.value = true
+  if (assetTimer) clearTimeout(assetTimer)
+  assetTimer = setTimeout(() => {
+    void loadLinkableAssets(q)
+  }, 250)
+})
+
+onBeforeUnmount(() => {
+  if (assetTimer) clearTimeout(assetTimer)
+})
 
 async function submitResolution(): Promise<void> {
   const ticket = props.ticket
@@ -127,6 +202,9 @@ async function submitResolution(): Promise<void> {
     if (publishToKb.value && canPublishKb.value) {
       payload.publish_to_kb = true
       payload.kb_question = kbSubject.value.trim()
+    }
+    if (assetLinkEnabled.value && selectedAsset.value) {
+      payload.linked_it_asset_id = selectedAsset.value.id
     }
     await api.post(`/api/v1/tickets/${ticket.id}/submit-resolution`, payload)
     notifySuccess(`${ticket.ticket_number} resolved — requester notified.`)
@@ -175,6 +253,50 @@ async function submitResolution(): Promise<void> {
             placeholder="Describe what was fixed. Supports headings, lists, links, code blocks, screenshots, and video embeds…"
             @uploading="inlineImageBusy = $event"
           />
+        </UFormField>
+
+        <UFormField
+          v-if="assetLinkEnabled"
+          label="Related IT asset (optional)"
+          name="linkedAsset"
+          description="Search the requester’s assigned assets by serial, tag, name, brand, or model."
+        >
+          <div class="asset-picker">
+            <UInput
+              v-model="assetSearch"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Serial, asset tag, name, brand…"
+              class="w-full"
+              autocomplete="off"
+              @focus="assetPickerOpen = true"
+            />
+            <ul
+              v-if="assetPickerOpen && !selectedAsset && (assetResults.length || assetLoading || assetSearch.trim())"
+              class="asset-results"
+              role="listbox"
+              aria-label="Requester IT assets"
+            >
+              <li v-if="assetLoading" class="asset-empty">Searching…</li>
+              <li
+                v-for="row in assetResults"
+                :key="row.id"
+                role="option"
+                class="asset-result"
+                @mousedown.prevent="pickAsset(row)"
+              >
+                <strong>{{ row.asset_tag }}</strong>
+                <span class="meta">{{ row.label }}</span>
+              </li>
+              <li v-if="!assetLoading && !assetResults.length" class="asset-empty">
+                No assets assigned to this requester match that search.
+              </li>
+            </ul>
+            <p v-if="selectedAsset" class="asset-selected" role="status">
+              <strong>Linked:</strong> {{ selectedAsset.label }}
+              <button type="button" class="clear-btn" @click="clearAsset">Clear</button>
+            </p>
+          </div>
         </UFormField>
 
         <UForm :state="{ publishToKb, kbSubject }" class="hd-form resolve-modal-form">
@@ -248,5 +370,63 @@ async function submitResolution(): Promise<void> {
 }
 .w-full {
   width: 100%;
+}
+.asset-picker {
+  position: relative;
+  width: 100%;
+}
+.asset-results {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 14rem;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.asset-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+.asset-result:hover {
+  background: #f0fdf4;
+}
+.asset-result .meta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.asset-empty {
+  padding: 0.6rem;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+.asset-selected {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.clear-btn {
+  border: 0;
+  background: transparent;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  padding: 0;
 }
 </style>

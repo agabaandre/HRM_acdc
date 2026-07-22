@@ -22,7 +22,7 @@ Environment variables (see `backend/.env.example` and `setup.env.example`):
 - `HELPDESK_FRONTEND_URL` — Helpdesk SPA (`http://localhost/staff/helpdesk`)
 - `HELPDESK_BRIDGE_SECRET` — shared **only** with trusted Staff/APM/Finance backends for `POST /api/v1/auth/exchange` (HMAC); never expose to browsers in production.
 - `SANCTUM_STATEFUL_DOMAINS` — include the SPA origin for cookie auth if using Sanctum SPA guard.
-- **Mail:** `MAIL_MAILER=failover`, `MAIL_FAILOVER_MAILERS` (e.g. `smtp,log`), plus `MAIL_*` for SMTP. Optional `EXCHANGE_*` keys mirror APM for Microsoft 365 / Graph when you add a Graph transport (see `apm/documentation/HELPDESK_INTEGRATION.md`).
+- **Mail:** Prefer `MAIL_MAILER=exchange` with `EXCHANGE_*` (tenant, client id/secret, `EXCHANGE_AUTH_METHOD=client_credentials`, `EXCHANGE_SCOPE=https://graph.microsoft.com/.default`) and `MAIL_FROM_ADDRESS`. Outbound uses Graph `sendMail`. **Inbound:** Business Unit support mailboxes are polled every minute (`PollBusinessUnitMailboxesJob`); grant the app **Mail.ReadWrite** (or read+move) on each intake mailbox. See ADMIN_GUIDE mail section.
 - **Security / SSO:** `JWT_SECRET` — **must match** Staff root `.env` for all module SSO accept endpoints and `POST /api/v1/auth/staff-sso`. `HELPDESK_SSO_PERMISSION_CODES` (comma list, default **85,92,93** — APM, Finance, Helpdesk-only) gates which Staff permission IDs may open Helpdesk. JWT payload email is usually **`work_email`**; the API resolves that automatically. `JWT_TTL`, `SESSION_SECRET` optional parity with other services.
 
 Frontend build (Vite):
@@ -119,7 +119,7 @@ Endpoints:
 
 ## Home dashboard card (Staff)
 
-The **IT Service Desk** tile is registered in **`cbp_modules`** as `helpdesk_itsm` (see `application/sql/create_cbp_modules_table.sql` and `Cbp_modules_mdl::default_rows()`). Resolver **`external_microservice`**: local dev → `base_url_development` (`http://localhost/staff/helpdesk`), production → `base_url_production` on the same host.
+The **Service Desk** tile is registered in **`cbp_modules`** as `helpdesk_itsm` (see `application/sql/create_cbp_modules_table.sql` and `Cbp_modules_mdl::default_rows()`). Resolver **`external_microservice`**: local dev → `base_url_development` (`http://localhost/staff/helpdesk`), production → `base_url_production` on the same host.
 
 Launch uses **`home/launch_module`** (POST SSO) when `uses_staff_portal_token = 1`.
 

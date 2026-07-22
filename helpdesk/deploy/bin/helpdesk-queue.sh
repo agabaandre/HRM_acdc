@@ -12,6 +12,7 @@ fi
 
 cd "$HELPDESK_ROOT"
 exec "$PHP_BIN" artisan queue:work database \
+  --queue=default,helpdesk,helpdesk-ai \
   --sleep=3 \
   --tries=3 \
   --max-time=3600 \

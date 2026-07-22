@@ -295,22 +295,25 @@ For canonical request/response schemas see `documentation/openapi.yaml` (expand 
 ### Creation flow (`POST /tickets`)
 
 1. **`StoreTicketRequest`** validates input. Notable rules:
-   - `category_id` required + must exist.
+   - `business_unit_id` required; `category_id` required only when `show_issue_category_on_request_form` is on.
    - `description` ≤ 65 000 chars, may contain Quill-rendered HTML.
    - `priority` *prohibited* for end-users; allowed for staff (`low|medium|high|critical`).
    - `source` optional (`web|whatsapp|teams|email`); defaults to `web`.
+   - `is_anonymous` only when the Business Unit allows anonymous reports.
    - `requester_staff_id` required when actor is **not** an end-user; integer ≥ 1.
-2. **Requester resolution** — `StaffDirectoryLookupService::lookup($staffId)` calls the Staff Share API (cached). The returned name, work email, directorate, and division are stamped onto the ticket.
-3. **Subject derivation** — `TicketSubjectGenerator::generate($category, $requesterName, $description)` builds the subject (clients can't override).
-4. **Ticket number** — `TicketNumberGenerator::next()` locks `helpdesk_ticket_sequences` for the current year inside a transaction, increments `last_seq`, and formats `HD-{year}-{NNNNNN}`.
-5. **Auto-assign** — `TicketAssignmentService::assignAgent($ticket, $dutyStation)` picks an agent from:
-   - the agents handling the ticket's category (`helpdesk_agent_categories`),
-   - then narrows by duty station,
-   - then by least-loaded.
-   When the actor is a staff member filing for themselves, the actor is assigned directly.
-6. **AI signals (async)** — `ScanTicketForAiSignals` is dispatched onto the default queue if `ai_active` is on. The job is allowed to be a no-op (it logs to `helpdesk_ai_logs` and exits).
-7. **History** — `HelpdeskTicket::booted()` writes a `ticket.created` row to `helpdesk_ticket_histories`. Subsequent updates fire `ticket.updated`, `ticket.reassigned`, `ticket.resolved`, etc., via `TicketHistoryLogger`.
-8. **Notifications** — `TicketAssignmentNotifier` is fired on assignment changes (mail today; Teams/WhatsApp wired in follow-ups).
+2. **Requester resolution** — `StaffDirectoryLookupService::resolveByStaffId` (cached Staff Share API).
+3. **Subject derivation** — category path uses `TicketSubjectGenerator::generate`; BU-only uses `generateForBusinessUnit`.
+4. **Ticket number** — `TicketNumberGenerator::next()`.
+5. **Assign or AI categorize** — if `category_id` set → `AssignEndUserTicket`; else → `CategorizeTicketWithAi` (queue `helpdesk-ai`), which on failure calls `TicketAssignmentService::assignAdminRoundRobin` (least open load among helpdesk admins).
+6. **History / notifications** — model boot + `TicketAssignmentNotifier` as before.
+
+### Inbound email (`PollBusinessUnitMailboxesJob`)
+
+Scheduled every minute. `BusinessUnitMailboxIntakeService` + `ExchangeGraphMailReader` create `source=email` tickets per BU mailbox, record `helpdesk_email_messages` for idempotency, dispatch `CategorizeTicketWithAi`, then mark read + move to **Processed**. See `docs/superpowers/specs/2026-07-22-bu-mailbox-intake-design.md`.
+
+### Resolution
+
+`POST /tickets/{id}/submit-resolution` accepts optional `linked_it_asset_id` when the ticket’s Business Unit has `allows_asset_link_on_resolve` and the asset’s `assigned_staff_id` matches the requester.
 
 ### State machine
 
@@ -354,16 +357,14 @@ Reassignment is allowed only on `open`, `pending`, `in_progress` (constant `Tick
 |---|---|
 | `Services\TicketNumberGenerator` | Per-year sequence with row-level lock. |
 | `Services\TicketSubjectGenerator` | Builds the human-readable subject from category + requester + description. |
-| `Services\TicketAssignmentService` | Auto-assigns an agent based on `helpdesk_agent_categories` + duty station + current load. |
-| `Services\TicketAssignmentNotifier` | Sends mail (and channel notifications, when configured) on assignment changes. |
-| `Services\TicketHistoryLogger` | Appends typed events to `helpdesk_ticket_histories`. |
-| `Services\StaffDirectoryLookupService` | Wraps `StaffPortalReferenceClient` with normalisation (matches the APM contract). |
-| `Services\StaffPortalReferenceClient` | HTTP client for the Staff Share API; caches responses (`HELPDESK_REFERENCE_CACHE_TTL`). |
-| `Services\AiAgentPickerService` | Placeholder hook — returns a candidate `assigned_user_id` when `ai_agent_assignment_enabled = 1`. |
-| `Services\AuditLogger` | Writes `helpdesk_audit_logs` rows + optional `iso_json` channel logs. |
-| `Jobs\ScanTicketForAiSignals` | Async job dispatched after ticket create. Currently a stub. |
-
-Queue: default Laravel queue connection (`QUEUE_CONNECTION=redis` in production, `sync` in dev unless overridden). Run with `php artisan queue:work`.
+| `Services\TicketAssignmentService` | Auto-assigns an agent; `assignAdminRoundRobin` = least open load among helpdesk admins. |
+| `Services\TicketAiCategorizationService` | AI/heuristic category pick within a Business Unit. |
+| `Services\BusinessUnitMailboxIntakeService` | Creates tickets from Graph unread mail; idempotent via `helpdesk_email_messages`. |
+| `Services\ExchangeGraphMailReader` | Graph list unread / ensure Processed / mark read + move. |
+| `Services\StaffDirectoryLookupService` | Staff Share cache; `resolveByStaffId`, `resolveByWorkEmail`. |
+| `Jobs\CategorizeTicketWithAi` | Queue `helpdesk-ai`: categorize then assign (or admin fallback). |
+| `Jobs\PollBusinessUnitMailboxesJob` | Queue `helpdesk`: every-minute mailbox poll. |
+| `Jobs\ScanTicketForAiSignals` | Async stub (legacy). |
 
 ---
 

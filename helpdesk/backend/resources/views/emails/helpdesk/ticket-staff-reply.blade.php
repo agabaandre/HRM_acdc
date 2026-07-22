@@ -2,7 +2,7 @@
 
 @section('title', 'Ticket update')
 @section('headline', 'New reply on your ticket')
-@section('subheadline', 'The IT Service Desk team has added an update.')
+@section('subheadline', 'The Service Desk team has added an update.')
 
 @section('content')
     <p>Hello <strong>{{ $ticket->requester_name ?? 'colleague' }}</strong>,</p>

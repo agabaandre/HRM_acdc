@@ -356,7 +356,7 @@ onMounted(async () => {
       </v-card-text>
     </v-card>
 
-    <v-card variant="outlined" class="matrix-table-card">
+    <v-card elevation="10" class="matrix-table-card">
       <v-card-text class="matrix-table-toolbar">
         <UInput
           v-model="listFilter"

@@ -5,15 +5,19 @@
 
 :root,
 html.helpdesk-theme-light {
-  --hd-radius-sm: 4px;
-  --hd-radius-md: 4px;
-  --hd-radius-lg: 4px;
-  --hd-shadow-soft: 0 4px 20px rgba(15, 23, 42, 0.06);
-  --hd-shadow-card: 0 8px 28px rgba(15, 23, 42, 0.08);
-  --hd-line: rgba(15, 23, 42, 0.08);
-  --hd-line-subtle: rgba(15, 23, 42, 0.05);
+  --hd-radius-sm: 8px;
+  --hd-radius-md: 12px;
+  --hd-radius-lg: 12px;
+  --hd-shadow-soft:
+    rgba(145, 158, 171, 0.1) 0 8px 16px -4px,
+    rgba(145, 158, 171, 0.16) 0 0 2px 0;
+  --hd-shadow-card:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
+  --hd-line: #dfe5ef;
+  --hd-line-subtle: rgba(223, 229, 239, 0.75);
   --hd-border: var(--hd-line);
-  --hd-muted: #5c6c7c;
+  --hd-muted: #768b9e;
   --hd-hero-from: #0d7a3a;
   --hd-hero-to: #119a48;
 }
@@ -28,9 +32,9 @@ html.helpdesk-theme-dark {
 }
 
 .cbp-card {
-  border: 1px solid var(--hd-line);
+  border: none;
   border-radius: var(--hd-radius-md);
-  box-shadow: none;
+  box-shadow: var(--hd-shadow-card);
   padding: 1.35rem 1.5rem;
 }
 

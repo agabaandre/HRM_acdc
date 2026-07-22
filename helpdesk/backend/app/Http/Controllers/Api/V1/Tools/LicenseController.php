@@ -49,7 +49,9 @@ class LicenseController extends Controller
         if ($request->filled('q')) {
             $q = '%'.$request->input('q').'%';
             $query->where(function ($sub) use ($q) {
-                $sub->where('name', 'like', $q)->orWhere('vendor', 'like', $q);
+                $sub->where('name', 'like', $q)
+                    ->orWhere('vendor', 'like', $q)
+                    ->orWhere('license_key', 'like', $q);
             });
         }
 
@@ -77,6 +79,7 @@ class LicenseController extends Controller
             'renewal_cost' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string'],
+            'responsible_staff_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         if (empty($validated['expiry_date']) && ! empty($validated['purchase_date']) && ! empty($validated['duration_months'])) {
@@ -110,6 +113,7 @@ class LicenseController extends Controller
             'renewal_cost' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', 'string', 'max:32'],
             'notes' => ['nullable', 'string'],
+            'responsible_staff_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $license->fill($validated);

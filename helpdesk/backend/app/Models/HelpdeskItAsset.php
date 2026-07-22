@@ -23,6 +23,7 @@ class HelpdeskItAsset extends Model
         'category_id',
         'name',
         'brand',
+        'brand_id',
         'model',
         'serial_number',
         'purchase_date',
@@ -44,6 +45,7 @@ class HelpdeskItAsset extends Model
     {
         return [
             'category_id' => 'integer',
+            'brand_id' => 'integer',
             'purchase_date' => 'date',
             'purchase_cost' => 'decimal:2',
             'salvage_value' => 'decimal:2',
@@ -57,6 +59,11 @@ class HelpdeskItAsset extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(HelpdeskItAssetCategory::class, 'category_id');
+    }
+
+    public function brandRelation(): BelongsTo
+    {
+        return $this->belongsTo(HelpdeskItAssetBrand::class, 'brand_id');
     }
 
     public function createdBy(): BelongsTo

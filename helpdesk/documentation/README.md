@@ -1,6 +1,6 @@
 # Helpdesk documentation
 
-The Africa CDC IT Service Desk (Laravel 11 JSON API + Vue 3.5 SPA) is part of the [Central Business Platform](../../README.md). This folder is the home of every helpdesk-specific doc — start with the guide that matches your role.
+The Africa CDC Service Desk (Laravel 11 JSON API + Vue 3.5 SPA) is part of the [Central Business Platform](../../README.md). This folder is the home of every helpdesk-specific doc — start with the guide that matches your role.
 
 ## Pick your starting point
 
@@ -42,10 +42,14 @@ HELPDESK_DOC_TOKEN='<staff-jwt>' HELPDESK_DOC_BASE_URL=https://cbp.africacdc.org
 
 | Feature | User doc | Admin doc |
 |---------|----------|-----------|
+| Business units + AI categorization on create | [USER_GUIDE → Creating a ticket](./USER_GUIDE.md#creating-a-ticket) | [ADMIN_GUIDE → Categories & BUs](./ADMIN_GUIDE.md#issue-categories--business-units) |
+| Inbound Exchange mailbox intake | [USER_GUIDE → Email to the service desk](./USER_GUIDE.md#email-to-the-service-desk) | [ADMIN_GUIDE → Inbound email intake](./ADMIN_GUIDE.md#inbound-email-intake) |
+| Link IT asset on resolve (serial search) | [USER_GUIDE → Resolving](./USER_GUIDE.md#resolving-a-ticket-agents) | [ADMIN_GUIDE → IT Assets](./ADMIN_GUIDE.md#it-assets-settings) |
+| IT Assets / Licenses / Software requests tools | [USER_GUIDE → Tools](./USER_GUIDE.md#tools-it-assets--software) | [ADMIN_GUIDE → IT Assets](./ADMIN_GUIDE.md#it-assets-settings) |
 | Requester reopen via comment + agent email | [USER_GUIDE](./USER_GUIDE.md#comments-reopen--agent-email) | [ADMIN_GUIDE → General](./ADMIN_GUIDE.md#general-settings) |
 | Support groups & group routing | [USER_GUIDE](./USER_GUIDE.md#support-groups) | [ADMIN_GUIDE → Agents](./ADMIN_GUIDE.md#agents--support-groups) |
 | Clickable agent desk KPI filters | [USER_GUIDE](./USER_GUIDE.md#agent-desk-agents--supervisors) | — |
-| Branded transactional email (Africa CDC Helpdesk) | [USER_GUIDE](./USER_GUIDE.md#comments-reopen--agent-email) | [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications) |
+| Branded transactional email (Africa CDC Service Desk) | [USER_GUIDE](./USER_GUIDE.md#comments-reopen--agent-email) | [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications) |
 | Signed attachment URLs | — | [ADMIN_GUIDE → Security](./ADMIN_GUIDE.md#security-checklist) |
 | AI provider & agent assignment | — | [ADMIN_GUIDE → AI](./ADMIN_GUIDE.md#ai-models--provider) |
 | WhatsApp / Teams webhooks | — | [ADMIN_GUIDE → Integrations](./ADMIN_GUIDE.md#whatsapp--teams-integrations) |

@@ -35,6 +35,7 @@ class HelpdeskProfile extends Model
         'sap_no',
         'role',
         'is_designated_agent',
+        'is_agent_disabled',
         'can_manage_kb',
         'can_reassign_tickets',
         'can_delete_request_attachments',
@@ -71,6 +72,7 @@ class HelpdeskProfile extends Model
             'grant_helpdesk_admin' => 'boolean',
             'grant_supervisor_access' => 'boolean',
             'is_designated_agent' => 'boolean',
+            'is_agent_disabled' => 'boolean',
             'staff_portal_permissions' => 'array',
         ];
     }
@@ -87,6 +89,14 @@ class HelpdeskProfile extends Model
     public function actsAsAgent(): bool
     {
         return $this->role === self::ROLE_AGENT || $this->is_designated_agent === true;
+    }
+
+    /**
+     * Agents from onboarding may stay visible, but disabled agents are excluded from auto-routing.
+     */
+    public function isEligibleForTicketRouting(): bool
+    {
+        return $this->actsAsAgent() && $this->is_agent_disabled !== true;
     }
 
     /**
@@ -256,7 +266,16 @@ class HelpdeskProfile extends Model
             return true;
         }
 
-        return (bool) $this->can_approve_software_requests || (bool) $this->can_manage_software_requests;
+        if ((bool) $this->can_manage_software_requests) {
+            return true;
+        }
+
+        $board = HelpdeskSetting::softwareRequestReviewBoardUserIds();
+        if ($board !== []) {
+            return in_array((int) $this->user_id, $board, true);
+        }
+
+        return (bool) $this->can_approve_software_requests;
     }
 
     public function canManageSoftwareRequests(): bool

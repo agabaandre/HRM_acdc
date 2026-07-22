@@ -91,7 +91,7 @@ const boardTickets = computed(() =>
 const canConfigure = computed(() => canReassignTickets(auth.me?.profile))
 
 const greeting = computed(() => {
-  const name = auth.me?.name?.split(' ')[0] ?? 'there'
+  const name = auth.me?.name?.trim() || 'there'
   const hour = new Date().getHours()
   if (hour < 12) return `Good morning, ${name}`
   if (hour < 17) return `Good afternoon, ${name}`

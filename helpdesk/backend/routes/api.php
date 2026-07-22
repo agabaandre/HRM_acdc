@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskCategoryController;
+use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskBusinessUnitController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskRiskMatrixController;
 use App\Http\Controllers\Api\V1\Admin\AdminHelpdeskSupportGroupController;
 use App\Http\Controllers\Api\V1\Admin\AdminKbArticleController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\V1\Auth\StaffSsoController;
 use App\Http\Controllers\Api\V1\AvatarController;
 use App\Http\Controllers\Api\V1\CbpModulesController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\BusinessUnitController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\HelpdeskAskController;
 use App\Http\Controllers\Api\V1\KbArticleController;
@@ -55,6 +57,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/public/screen', PublicScreenController::class)->middleware('throttle:120,1');
     Route::get('/avatar/{user}', [AvatarController::class, 'show'])->middleware('throttle:300,1');
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/business-units', [BusinessUnitController::class, 'index']);
     Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify']);
     Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'handle']);
     Route::post('/webhooks/teams/activities', [TeamsWebhookController::class, 'activities']);
@@ -82,6 +85,7 @@ Route::prefix('v1')->group(function () {
 
         // Ticket reassignment (open status only; reason required; logged).
         Route::get('/tickets/{ticket}/eligible-agents', [TicketController::class, 'eligibleAgents']);
+        Route::get('/tickets/{ticket}/linkable-assets', [TicketController::class, 'linkableAssets']);
         Route::post('/tickets/{ticket}/reassign', [TicketController::class, 'reassign']);
 
         Route::apiResource('tickets', TicketController::class);
@@ -108,6 +112,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/faq-ingest', [AdminFaqIngestController::class, 'store']);
         Route::get('/admin/agents', [AdminHelpdeskAgentController::class, 'index']);
         Route::put('/admin/agents/{user}', [AdminHelpdeskAgentController::class, 'update']);
+        Route::put('/admin/agents/{user}/disabled', [AdminHelpdeskAgentController::class, 'setDisabled']);
         Route::get('/admin/support-groups', [AdminHelpdeskSupportGroupController::class, 'index']);
         Route::post('/admin/support-groups', [AdminHelpdeskSupportGroupController::class, 'store']);
         Route::put('/admin/support-groups/{group}', [AdminHelpdeskSupportGroupController::class, 'update']);
@@ -124,6 +129,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/categories', [AdminHelpdeskCategoryController::class, 'store']);
         Route::put('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'update']);
         Route::delete('/admin/categories/{category}', [AdminHelpdeskCategoryController::class, 'destroy']);
+        Route::get('/admin/business-units', [AdminHelpdeskBusinessUnitController::class, 'index']);
+        Route::post('/admin/business-units', [AdminHelpdeskBusinessUnitController::class, 'store']);
+        Route::put('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'update']);
+        Route::post('/admin/business-units/{businessUnit}/test-email-read', [AdminHelpdeskBusinessUnitController::class, 'testEmailRead']);
+        Route::delete('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'destroy']);
         Route::get('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'index']);
         Route::post('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'store']);
         Route::post('/admin/risk-matrix/bulk', [AdminHelpdeskRiskMatrixController::class, 'bulkStore']);
@@ -140,6 +150,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/tools/it-assets/summary', [ItAssetController::class, 'summary']);
         Route::get('/tools/it-assets/categories', [ItAssetController::class, 'categories']);
         Route::post('/tools/it-assets/categories', [ItAssetController::class, 'storeCategory']);
+        Route::put('/tools/it-assets/categories/{category}', [ItAssetController::class, 'updateCategory']);
+        Route::delete('/tools/it-assets/categories/{category}', [ItAssetController::class, 'destroyCategory']);
+        Route::get('/tools/it-assets/brands', [ItAssetController::class, 'brands']);
+        Route::post('/tools/it-assets/brands', [ItAssetController::class, 'storeBrand']);
+        Route::put('/tools/it-assets/brands/{brand}', [ItAssetController::class, 'updateBrand']);
+        Route::delete('/tools/it-assets/brands/{brand}', [ItAssetController::class, 'destroyBrand']);
         Route::get('/tools/it-assets', [ItAssetController::class, 'index']);
         Route::post('/tools/it-assets', [ItAssetController::class, 'store']);
         Route::put('/tools/it-assets/{asset}', [ItAssetController::class, 'update']);

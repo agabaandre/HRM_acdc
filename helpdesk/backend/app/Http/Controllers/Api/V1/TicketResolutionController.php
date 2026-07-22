@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Mail\TicketResolutionMail;
+use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskKbArticle;
 use App\Models\HelpdeskTicket;
 use App\Services\HtmlSanitizer;
@@ -21,6 +22,8 @@ class TicketResolutionController extends Controller
     {
         $this->authorize('submitResolution', $ticket);
 
+        $ticket->loadMissing(['businessUnit']);
+
         // Externalize pasted base64 images before the 65k HTML ceiling is applied.
         $request->merge([
             'resolution_summary' => RichTextDataUriExternalizer::externalize(
@@ -30,12 +33,19 @@ class TicketResolutionController extends Controller
             ),
         ]);
 
+        $allowsAssetLink = (bool) ($ticket->businessUnit?->allows_asset_link_on_resolve);
+
         // 65000 chars matches the `description` ceiling and gives ample room for
         // HTML markup (Quill stores formatting + embedded image URLs).
         $validated = $request->validate([
             'resolution_summary' => ['required', 'string', 'max:65000'],
             'publish_to_kb' => ['sometimes', 'boolean'],
             'kb_question' => ['required_if:publish_to_kb,true', 'nullable', 'string', 'max:255'],
+            'linked_it_asset_id' => [
+                $allowsAssetLink ? 'nullable' : 'prohibited',
+                'integer',
+                'exists:helpdesk_it_assets,id',
+            ],
         ]);
 
         $clean = HtmlSanitizer::sanitize($validated['resolution_summary']);
@@ -43,6 +53,21 @@ class TicketResolutionController extends Controller
             throw ValidationException::withMessages([
                 'resolution_summary' => 'Resolution notes are empty after sanitisation.',
             ]);
+        }
+
+        if ($allowsAssetLink && ! empty($validated['linked_it_asset_id'])) {
+            $assetId = (int) $validated['linked_it_asset_id'];
+            $staffId = (int) ($ticket->requester_staff_id ?? 0);
+            $assetQuery = HelpdeskItAsset::query()->where('id', $assetId);
+            if ($staffId > 0) {
+                $assetQuery->where('assigned_staff_id', $staffId);
+            }
+            if (! $assetQuery->exists()) {
+                throw ValidationException::withMessages([
+                    'linked_it_asset_id' => 'Choose an IT asset assigned to the ticket requester.',
+                ]);
+            }
+            $ticket->linked_it_asset_id = $assetId;
         }
 
         $ticket->resolution_summary = $clean;
@@ -62,6 +87,7 @@ class TicketResolutionController extends Controller
 
         $logger->log($ticket, 'ticket.resolved', $request->user()->id, [
             'resolution_submitted' => true,
+            'linked_it_asset_id' => $ticket->linked_it_asset_id,
         ]);
 
         $kbArticleId = null;
@@ -114,6 +140,7 @@ class TicketResolutionController extends Controller
                 'id' => $ticket->id,
                 'status' => $ticket->status,
                 'resolution_summary' => $ticket->resolution_summary,
+                'linked_it_asset_id' => $ticket->linked_it_asset_id,
                 'kb_article_id' => $kbArticleId,
             ],
         ]);

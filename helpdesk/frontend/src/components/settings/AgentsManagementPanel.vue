@@ -41,6 +41,10 @@ interface AgentRow {
   can_manage_software_requests: boolean
   grant_helpdesk_admin: boolean
   grant_supervisor_access: boolean
+  is_designated_agent?: boolean
+  is_agent_disabled?: boolean
+  routing_eligible?: boolean
+  role?: string | null
   categories: Cat[]
   support_groups: { id: number; name: string; slug: string }[]
   inherited_categories: Cat[]
@@ -95,29 +99,68 @@ const newGroupForm = reactive({
 })
 const selection = ref<Record<number, number[]>>({})
 const groupSelection = ref<Record<number, number[]>>({})
-const kbToggle = ref<Record<number, boolean>>({})
-const reassignToggle = ref<Record<number, boolean>>({})
-const deleteAttachmentToggle = ref<Record<number, boolean>>({})
-const changeCategoryToggle = ref<Record<number, boolean>>({})
-const itAssetsToggle = ref<Record<number, boolean>>({})
-const licensesToggle = ref<Record<number, boolean>>({})
-const swSubmitToggle = ref<Record<number, boolean>>({})
-const swApproveToggle = ref<Record<number, boolean>>({})
-const swManageToggle = ref<Record<number, boolean>>({})
-const adminToggle = ref<Record<number, boolean>>({})
-const supervisorToggle = ref<Record<number, boolean>>({})
+const agentPermSelection = ref<Record<number, string[]>>({})
 const staffPermissions = ref<StaffPermissionRow[]>([])
-const staffPermAdmin = ref<Record<number, boolean>>({})
-const staffPermSupervisor = ref<Record<number, boolean>>({})
-const staffPermKb = ref<Record<number, boolean>>({})
-const staffPermReassign = ref<Record<number, boolean>>({})
-const staffPermDeleteAttachment = ref<Record<number, boolean>>({})
-const staffPermChangeCategory = ref<Record<number, boolean>>({})
-const staffPermItAssets = ref<Record<number, boolean>>({})
-const staffPermLicenses = ref<Record<number, boolean>>({})
-const staffPermSwSubmit = ref<Record<number, boolean>>({})
-const staffPermSwApprove = ref<Record<number, boolean>>({})
-const staffPermSwManage = ref<Record<number, boolean>>({})
+const staffPermSelection = ref<Record<number, string[]>>({})
+
+const STAFF_OVERRIDE_OPTIONS = [
+  { key: 'grant_helpdesk_admin', label: 'Helpdesk admin' },
+  { key: 'grant_supervisor_access', label: 'Supervisor' },
+  { key: 'can_manage_kb', label: 'Manage FAQs' },
+  { key: 'can_reassign_tickets', label: 'Reassign tickets' },
+  { key: 'can_delete_request_attachments', label: 'Delete attachments' },
+  { key: 'can_change_ticket_category', label: 'Change category' },
+  { key: 'can_manage_it_assets', label: 'IT assets' },
+  { key: 'can_manage_licenses', label: 'Licenses' },
+  { key: 'can_submit_software_requests', label: 'SW requests (submit)' },
+  { key: 'can_approve_software_requests', label: 'SW requests (approve)' },
+  { key: 'can_manage_software_requests', label: 'SW requests (manage)' },
+] as const
+
+const staffOverrideSelectItems = STAFF_OVERRIDE_OPTIONS.map((o) => ({
+  label: o.label,
+  value: o.key,
+}))
+
+type StaffOverrideKey = (typeof STAFF_OVERRIDE_OPTIONS)[number]['key']
+
+function agentOverrideKeysFromAgent(a: AgentRow): string[] {
+  const keys: string[] = []
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    if ((a as unknown as Record<string, unknown>)[opt.key]) {
+      keys.push(opt.key)
+    }
+  }
+  return keys
+}
+
+function staffOverrideKeysFromRow(row: StaffPermissionRow): string[] {
+  const keys: string[] = []
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    if (row[opt.key as keyof StaffPermissionRow]) {
+      keys.push(opt.key)
+    }
+  }
+  return keys
+}
+
+function overridePayloadFromKeys(selectedKeys: string[]): Record<StaffOverrideKey, boolean> {
+  const selected = new Set(selectedKeys)
+  const payload = {} as Record<StaffOverrideKey, boolean>
+  for (const opt of STAFF_OVERRIDE_OPTIONS) {
+    payload[opt.key] = selected.has(opt.key)
+  }
+  return payload
+}
+
+function staffOverridePayload(userId: number): Record<StaffOverrideKey, boolean> {
+  return overridePayloadFromKeys(staffPermSelection.value[userId] ?? [])
+}
+
+function agentOverridePayload(userId: number): Record<StaffOverrideKey, boolean> {
+  return overridePayloadFromKeys(agentPermSelection.value[userId] ?? [])
+}
+
 const pickerOpen = ref(false)
 const candidates = ref<CandidateRow[]>([])
 const candidatesLoading = ref(false)
@@ -127,6 +170,9 @@ const candidateSearch = ref('')
 const onlyUnassigned = ref(true)
 const busyStaffId = ref<number | null>(null)
 const savingGroupId = ref<number | null>(null)
+const configuringAgentId = ref<number | null>(null)
+const busyAgentId = ref<number | null>(null)
+const agentSearch = ref('')
 
 const agentOptions = computed(() =>
   agents.value.map((a) => ({ id: a.id, label: `${a.name} (${a.email})` })),
@@ -186,66 +232,26 @@ async function loadAgents() {
   agents.value = list
   const map: Record<number, number[]> = {}
   const grp: Record<number, number[]> = {}
-  const kb: Record<number, boolean> = {}
-  const reassign: Record<number, boolean> = {}
-  const deleteAttachment: Record<number, boolean> = {}
-  const changeCategory: Record<number, boolean> = {}
-  const admin: Record<number, boolean> = {}
-  const supervisor: Record<number, boolean> = {}
+  const perms: Record<number, string[]> = {}
   for (const a of list) {
     map[a.id] = (a.categories ?? []).map((c) => c.id)
     grp[a.id] = (a.support_groups ?? []).map((g) => g.id)
-    kb[a.id] = !!a.can_manage_kb
-    reassign[a.id] = !!a.can_reassign_tickets
-    deleteAttachment[a.id] = !!a.can_delete_request_attachments
-    changeCategory[a.id] = !!a.can_change_ticket_category
-    itAssetsToggle.value[a.id] = !!a.can_manage_it_assets
-    licensesToggle.value[a.id] = !!a.can_manage_licenses
-    swSubmitToggle.value[a.id] = !!a.can_submit_software_requests
-    swApproveToggle.value[a.id] = !!a.can_approve_software_requests
-    swManageToggle.value[a.id] = !!a.can_manage_software_requests
-    admin[a.id] = !!a.grant_helpdesk_admin
-    supervisor[a.id] = !!a.grant_supervisor_access
+    perms[a.id] = agentOverrideKeysFromAgent(a)
   }
   selection.value = map
   groupSelection.value = grp
-  kbToggle.value = kb
-  reassignToggle.value = reassign
-  deleteAttachmentToggle.value = deleteAttachment
-  changeCategoryToggle.value = changeCategory
-  adminToggle.value = admin
-  supervisorToggle.value = supervisor
+  agentPermSelection.value = perms
 }
 
 async function loadStaffPermissions() {
   const { data } = await api.get<{ data: StaffPermissionRow[] }>('/api/v1/admin/staff-permissions')
   const list = Array.isArray(data.data) ? data.data : []
   staffPermissions.value = list
-  const admin: Record<number, boolean> = {}
-  const supervisor: Record<number, boolean> = {}
-  const kb: Record<number, boolean> = {}
-  const reassign: Record<number, boolean> = {}
-  const deleteAttachment: Record<number, boolean> = {}
-  const changeCategory: Record<number, boolean> = {}
+  const map: Record<number, string[]> = {}
   for (const row of list) {
-    admin[row.id] = !!row.grant_helpdesk_admin
-    supervisor[row.id] = !!row.grant_supervisor_access
-    kb[row.id] = !!row.can_manage_kb
-    reassign[row.id] = !!row.can_reassign_tickets
-    deleteAttachment[row.id] = !!row.can_delete_request_attachments
-    changeCategory[row.id] = !!row.can_change_ticket_category
-    staffPermItAssets.value[row.id] = !!row.can_manage_it_assets
-    staffPermLicenses.value[row.id] = !!row.can_manage_licenses
-    staffPermSwSubmit.value[row.id] = !!row.can_submit_software_requests
-    staffPermSwApprove.value[row.id] = !!row.can_approve_software_requests
-    staffPermSwManage.value[row.id] = !!row.can_manage_software_requests
+    map[row.id] = staffOverrideKeysFromRow(row)
   }
-  staffPermAdmin.value = admin
-  staffPermSupervisor.value = supervisor
-  staffPermKb.value = kb
-  staffPermReassign.value = reassign
-  staffPermDeleteAttachment.value = deleteAttachment
-  staffPermChangeCategory.value = changeCategory
+  staffPermSelection.value = map
 }
 
 async function loadAll() {
@@ -349,19 +355,7 @@ async function deleteGroup(group: SupportGroupRow) {
 
 async function saveStaffPermissions(userId: number) {
   try {
-    await api.put(`/api/v1/admin/staff-permissions/${userId}`, {
-      grant_helpdesk_admin: !!staffPermAdmin.value[userId],
-      grant_supervisor_access: !!staffPermSupervisor.value[userId],
-      can_manage_kb: !!staffPermKb.value[userId],
-      can_reassign_tickets: !!staffPermReassign.value[userId],
-      can_delete_request_attachments: !!staffPermDeleteAttachment.value[userId],
-      can_change_ticket_category: !!staffPermChangeCategory.value[userId],
-      can_manage_it_assets: !!staffPermItAssets.value[userId],
-      can_manage_licenses: !!staffPermLicenses.value[userId],
-      can_submit_software_requests: !!staffPermSwSubmit.value[userId],
-      can_approve_software_requests: !!staffPermSwApprove.value[userId],
-      can_manage_software_requests: !!staffPermSwManage.value[userId],
-    })
+    await api.put(`/api/v1/admin/staff-permissions/${userId}`, staffOverridePayload(userId))
     notifySuccess(`Saved permission overrides for user #${userId}`)
     await loadStaffPermissions()
     await loadAgents()
@@ -386,19 +380,10 @@ async function saveAgent(userId: number) {
     await api.put(`/api/v1/admin/agents/${userId}`, {
       category_ids: (selection.value[userId] ?? []).map((id) => Number(id)),
       support_group_ids: (groupSelection.value[userId] ?? []).map((id) => Number(id)),
-      can_manage_kb: !!kbToggle.value[userId],
-      can_reassign_tickets: !!reassignToggle.value[userId],
-      can_delete_request_attachments: !!deleteAttachmentToggle.value[userId],
-      can_change_ticket_category: !!changeCategoryToggle.value[userId],
-      can_manage_it_assets: !!itAssetsToggle.value[userId],
-      can_manage_licenses: !!licensesToggle.value[userId],
-      can_submit_software_requests: !!swSubmitToggle.value[userId],
-      can_approve_software_requests: !!swApproveToggle.value[userId],
-      can_manage_software_requests: !!swManageToggle.value[userId],
-      grant_helpdesk_admin: !!adminToggle.value[userId],
-      grant_supervisor_access: !!supervisorToggle.value[userId],
+      ...agentOverridePayload(userId),
     })
     notifySuccess(`Saved settings for agent #${userId}`)
+    configuringAgentId.value = null
     await loadAgents()
     await loadGroups()
     await loadStaffPermissions()
@@ -478,9 +463,11 @@ async function removeAgent(a: AgentRow) {
   if (!window.confirm(`Remove ${a.name} from agents? Their assigned tickets are kept; they go back to "user" role.`)) {
     return
   }
+  busyAgentId.value = a.id
   try {
     await api.delete(`/api/v1/admin/agents/designate/${a.staff_id}`)
     notifySuccess(`${a.name} removed from agents.`)
+    if (configuringAgentId.value === a.id) configuringAgentId.value = null
     await loadAgents()
     await loadGroups()
     const match = candidates.value.find((c) => c.staff_id === a.staff_id)
@@ -490,7 +477,55 @@ async function removeAgent(a: AgentRow) {
     }
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Failed to remove agent.'))
+  } finally {
+    busyAgentId.value = null
   }
+}
+
+async function toggleAgentDisabled(a: AgentRow) {
+  const next = !a.is_agent_disabled
+  const label = next ? 'disable' : 'enable'
+  if (!window.confirm(`${next ? 'Disable' : 'Enable'} ${a.name} for ticket routing? They remain listed as agents.`)) {
+    return
+  }
+  busyAgentId.value = a.id
+  try {
+    const { data } = await api.put<{ data: { is_agent_disabled: boolean; routing_eligible: boolean } }>(
+      `/api/v1/admin/agents/${a.id}/disabled`,
+      { is_agent_disabled: next },
+    )
+    a.is_agent_disabled = !!data.data?.is_agent_disabled
+    a.routing_eligible = !!data.data?.routing_eligible
+    notifySuccess(`${a.name} ${label}d for routing.`)
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, `Failed to ${label} agent.`))
+  } finally {
+    busyAgentId.value = null
+  }
+}
+
+const filteredAgents = computed(() => {
+  const q = agentSearch.value.trim().toLowerCase()
+  if (!q) return agents.value
+  return agents.value.filter((a) => {
+    const hay = `${a.name} ${a.email} ${a.staff_id ?? ''} ${a.role ?? ''}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const configuringAgent = computed(() =>
+  agents.value.find((a) => a.id === configuringAgentId.value) ?? null,
+)
+
+const configureModalOpen = computed({
+  get: () => configuringAgentId.value != null,
+  set: (open: boolean) => {
+    if (!open) configuringAgentId.value = null
+  },
+})
+
+function toggleConfigureAgent(a: AgentRow) {
+  configuringAgentId.value = configuringAgentId.value === a.id ? null : a.id
 }
 
 function toggleCategoryInDraft(groupId: number, catId: number, value: CheckboxValue) {
@@ -516,7 +551,9 @@ onMounted(() => {
         <p class="lede">
           Organise routing with <strong>support groups</strong> (shared categories and members), then fine-tune
           <strong>per-agent</strong> category access. Tickets can be assigned to a group, an agent, or both.
-          Empty category lists mean <strong>all categories</strong> for that group or agent.
+          Agents need at least one category (direct or via a support group) to receive routed tickets —
+          empty category access means <strong>not eligible</strong>. Onboarding-division staff stay listed,
+          but tickets they create are auto-routed to eligible agents.
         </p>
       </div>
       <UButton v-if="activeTab === 'agents'" type="button" color="primary" @click="openPicker">
@@ -734,68 +771,87 @@ onMounted(() => {
         </template>
       </section>
 
-      <div v-if="agents.length" class="agent-list">
-        <article v-for="a in agents" :key="a.id" class="card agent-card">
-          <header class="agent-card-head">
-            <div>
-              <h3>{{ a.name }}</h3>
-              <p class="agent-email">{{ a.email }} · Staff ID {{ a.staff_id ?? '—' }}</p>
-            </div>
-            <div class="effective-pill" :title="effectiveLabel(a.effective_categories)">
-              Routes: {{ effectiveLabel(a.effective_categories) }}
-            </div>
-          </header>
+      <div v-if="agents.length" class="agent-table-wrap">
+        <div class="agent-toolbar">
+          <UFormField name="agentSearch" class="search-wrap">
+            <UInput
+              v-model="agentSearch"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Search agents…"
+              autocomplete="off"
+              aria-label="Search agents"
+              class="w-full"
+            />
+          </UFormField>
+          <span class="muted">{{ filteredAgents.length }} of {{ agents.length }}</span>
+        </div>
 
-          <div class="agent-cols">
-            <div class="agent-col">
-              <h4>Support groups</h4>
-              <USelect
-                v-model="groupSelection[a.id]"
-                multiple
-                :items="activeGroupSelectItems"
-                placeholder="Select groups…"
-                class="w-full"
-              />
-              <p v-if="a.inherited_categories.length" class="inherited">
-                Inherited:
-                <span v-for="c in a.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
-              </p>
-            </div>
-
-            <div class="agent-col">
-              <h4>Direct categories</h4>
-              <USelect
-                v-model="selection[a.id]"
-                multiple
-                :items="categorySelectItems"
-                placeholder="Select categories…"
-                class="w-full"
-              />
-              <p v-if="!(selection[a.id] ?? []).length" class="hint">No direct filter — uses group inheritance or all categories.</p>
-            </div>
-
-            <div class="agent-col">
-              <h4>Permissions</h4>
-              <UCheckbox v-model="adminToggle[a.id]" label="Helpdesk admin" class="perm-toggle" />
-              <UCheckbox v-model="supervisorToggle[a.id]" label="Supervisor access" class="perm-toggle" />
-              <UCheckbox v-model="kbToggle[a.id]" label="Manage FAQs" class="perm-toggle" />
-              <UCheckbox v-model="reassignToggle[a.id]" label="Reassign tickets" class="perm-toggle" />
-              <UCheckbox v-model="deleteAttachmentToggle[a.id]" label="Delete request attachments" class="perm-toggle" />
-              <UCheckbox v-model="changeCategoryToggle[a.id]" label="Change ticket category" class="perm-toggle" />
-              <p class="perm-group-label">Tools</p>
-              <UCheckbox v-model="itAssetsToggle[a.id]" label="Manage IT assets" class="perm-toggle" />
-              <UCheckbox v-model="licensesToggle[a.id]" label="Manage licenses" class="perm-toggle" />
-              <UCheckbox v-model="swSubmitToggle[a.id]" label="Submit software requests" class="perm-toggle" />
-              <UCheckbox v-model="swApproveToggle[a.id]" label="Approve software requests" class="perm-toggle" />
-              <UCheckbox v-model="swManageToggle[a.id]" label="Manage software requests" class="perm-toggle" />
-            </div>
-          </div>
-
-          <div class="card-actions">
-            <UButton type="button" color="primary" size="sm" @click="saveAgent(a.id)">Save agent</UButton>
-            <UButton type="button" color="error" variant="link" size="sm" @click="removeAgent(a)">Remove</UButton>
-          </div>
-        </article>
+        <table class="agent-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Routes</th>
+              <th>Status</th>
+              <th>Routing</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="a in filteredAgents"
+              :key="a.id"
+              :class="{ 'row-disabled': a.is_agent_disabled, 'row-active-config': configuringAgentId === a.id }"
+            >
+              <td>
+                <div class="agent-name">{{ a.name }}</div>
+                <div class="agent-email">{{ a.email }} · Staff ID {{ a.staff_id ?? '—' }}</div>
+              </td>
+              <td>
+                <span class="routes-cell" :title="effectiveLabel(a.effective_categories)">
+                  {{ effectiveLabel(a.effective_categories) }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="a.is_agent_disabled ? 'status-pill--off' : 'status-pill--on'">
+                  {{ a.is_agent_disabled ? 'Disabled' : 'Active' }}
+                </span>
+              </td>
+              <td>
+                <span class="status-pill" :class="a.routing_eligible ? 'status-pill--on' : 'status-pill--warn'">
+                  {{ a.routing_eligible ? 'Eligible' : 'Not eligible' }}
+                </span>
+              </td>
+              <td class="col-actions">
+                <div class="action-row">
+                  <UButton type="button" color="neutral" variant="outline" size="xs" @click="toggleConfigureAgent(a)">
+                    Configure
+                  </UButton>
+                  <UButton
+                    type="button"
+                    :color="a.is_agent_disabled ? 'success' : 'warning'"
+                    variant="soft"
+                    size="xs"
+                    :loading="busyAgentId === a.id"
+                    @click="toggleAgentDisabled(a)"
+                  >
+                    {{ a.is_agent_disabled ? 'Enable' : 'Disable' }}
+                  </UButton>
+                  <UButton
+                    type="button"
+                    color="error"
+                    variant="soft"
+                    size="xs"
+                    :loading="busyAgentId === a.id"
+                    @click="removeAgent(a)"
+                  >
+                    Remove
+                  </UButton>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div v-else class="empty-state">
         <p class="empty-title">No agents yet</p>
@@ -803,6 +859,62 @@ onMounted(() => {
         <UButton type="button" color="primary" @click="openPicker">+ Add agent</UButton>
       </div>
     </div>
+
+    <UModal
+      v-model:open="configureModalOpen"
+      :title="configuringAgent ? `Configure ${configuringAgent.name}` : 'Configure agent'"
+      :description="configuringAgent ? `${configuringAgent.email} · Staff ID ${configuringAgent.staff_id ?? '—'}` : undefined"
+      :ui="{ content: 'max-w-2xl' }"
+    >
+      <template v-if="configuringAgent" #body>
+        <div class="config-modal-body">
+          <div class="effective-pill" :title="effectiveLabel(configuringAgent.effective_categories)">
+            Routes: {{ effectiveLabel(configuringAgent.effective_categories) }}
+          </div>
+
+          <UFormField label="Support groups">
+            <USelect
+              v-model="groupSelection[configuringAgent.id]"
+              multiple
+              :items="activeGroupSelectItems"
+              placeholder="Select groups…"
+              class="w-full"
+            />
+            <p v-if="configuringAgent.inherited_categories.length" class="inherited">
+              Inherited:
+              <span v-for="c in configuringAgent.inherited_categories" :key="c.id" class="chip chip--inherited">{{ c.name }}</span>
+            </p>
+          </UFormField>
+
+          <UFormField label="Direct categories">
+            <USelect
+              v-model="selection[configuringAgent.id]"
+              multiple
+              :items="categorySelectItems"
+              placeholder="Select categories…"
+              class="w-full"
+            />
+            <p v-if="!(selection[configuringAgent.id] ?? []).length" class="hint">
+              No direct categories — agent is only eligible via support-group categories (or a catch-all group).
+            </p>
+          </UFormField>
+
+          <UFormField label="Permissions">
+            <USelect
+              v-model="agentPermSelection[configuringAgent.id]"
+              multiple
+              :items="staffOverrideSelectItems"
+              placeholder="Select permissions…"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
+      </template>
+      <template v-if="configuringAgent" #footer>
+        <UButton type="button" color="neutral" variant="outline" @click="configureModalOpen = false">Cancel</UButton>
+        <UButton type="button" color="primary" @click="saveAgent(configuringAgent.id)">Save agent</UButton>
+      </template>
+    </UModal>
 
     <!-- Permissions -->
     <div v-show="activeTab === 'permissions'" class="tab-panel">
@@ -819,18 +931,14 @@ onMounted(() => {
             </td>
             <td>{{ portalRoleLabel(row.staff_portal_role) }}</td>
             <td>{{ row.role ?? '—' }}</td>
-            <td>
-              <UCheckbox v-model="staffPermAdmin[row.id]" label="Helpdesk admin" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSupervisor[row.id]" label="Supervisor" class="perm-toggle" />
-              <UCheckbox v-model="staffPermKb[row.id]" label="Manage FAQs" class="perm-toggle" />
-              <UCheckbox v-model="staffPermReassign[row.id]" label="Reassign" class="perm-toggle" />
-              <UCheckbox v-model="staffPermDeleteAttachment[row.id]" label="Delete attachments" class="perm-toggle" />
-              <UCheckbox v-model="staffPermChangeCategory[row.id]" label="Change category" class="perm-toggle" />
-              <UCheckbox v-model="staffPermItAssets[row.id]" label="IT assets" class="perm-toggle" />
-              <UCheckbox v-model="staffPermLicenses[row.id]" label="Licenses" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwSubmit[row.id]" label="SW requests (submit)" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwApprove[row.id]" label="SW requests (approve)" class="perm-toggle" />
-              <UCheckbox v-model="staffPermSwManage[row.id]" label="SW requests (manage)" class="perm-toggle" />
+            <td class="overrides-cell">
+              <USelect
+                v-model="staffPermSelection[row.id]"
+                multiple
+                :items="staffOverrideSelectItems"
+                placeholder="Select overrides…"
+                class="w-full overrides-select"
+              />
             </td>
             <td><UButton type="button" color="primary" size="xs" @click="saveStaffPermissions(row.id)">Save</UButton></td>
           </tr>
@@ -865,12 +973,54 @@ onMounted(() => {
 .hub-tab.active .tab-count { background: #e8f5ee; color: #0d7a3a; }
 .tab-panel { display: flex; flex-direction: column; gap: 1rem; }
 .card {
-  border: 1px solid #e2e8f0; border-radius: 4px; background: #fff;
-  padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;
+  border: none; border-radius: 12px; background: #fff;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+  padding: 1.1rem 1.15rem; display: flex; flex-direction: column; gap: 0.75rem;
 }
-.card--new { background: #f8fafc; border-style: dashed; }
+.card--new { background: #f8fafc; border: 1px dashed #dfe5ef; box-shadow: none; }
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
 .agent-list { display: flex; flex-direction: column; gap: 1rem; }
+.agent-table-wrap {
+  display: flex; flex-direction: column; gap: 0.85rem;
+  border: none; border-radius: 12px; background: #fff; overflow: hidden;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+  padding: 0.85rem;
+}
+.agent-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.agent-toolbar .search-wrap { flex: 1; min-width: 12rem; max-width: 22rem; }
+.agent-table {
+  width: 100%; border-collapse: collapse; background: transparent;
+  border: none; border-radius: 0; overflow: hidden;
+}
+.agent-table th, .agent-table td {
+  text-align: left; padding: 0.75rem 1rem; border-bottom: 1px solid rgba(223, 229, 239, 0.85);
+  vertical-align: top; font-size: 0.875rem;
+}
+.agent-table th { background: #f8fafc; color: #3a4752; font-weight: 600; }
+.agent-table tr:last-child td { border-bottom: 0; }
+.agent-table .row-disabled { background: #f8fafc; opacity: 0.92; }
+.agent-table .row-active-config { background: #f0fdf4; }
+.agent-table .col-actions { width: 1%; white-space: nowrap; }
+.action-row { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+.routes-cell {
+  display: inline-block; max-width: 18rem; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; color: #334155;
+}
+.status-pill {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 0.15rem 0.55rem; font-size: 0.75rem; font-weight: 600;
+}
+.status-pill--on { background: #dcfce7; color: #166534; }
+.status-pill--off { background: #e2e8f0; color: #475569; }
+.status-pill--warn { background: #fef3c7; color: #92400e; }
+.config-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.config-modal-body .effective-pill {
+  align-self: flex-start;
+}
 .group-card-head h3, .agent-card-head h3 { margin: 0; font-size: 1rem; }
 .group-desc, .agent-email { margin: 0.25rem 0 0; font-size: 0.82rem; color: #64748b; }
 .badges { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.45rem; }
@@ -924,22 +1074,30 @@ onMounted(() => {
 .perm-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #3a4452; margin-bottom: 0.3rem; cursor: pointer; }
 .perm-group-label { margin: 0.5rem 0 0.15rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 0.88rem; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
-.tbl th, .tbl td { text-align: left; padding: 0.6rem 0.55rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.tbl th, .tbl td { text-align: left; padding: 0.6rem 0.55rem; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
 .tbl th { background: #f8fafc; font-size: 0.74rem; text-transform: uppercase; color: #475569; }
+.overrides-cell { min-width: 16rem; max-width: 28rem; }
+.overrides-select { min-width: 14rem; }
 .agent-name { font-weight: 600; }
 .empty-state { text-align: center; padding: 2rem 1rem; border: 2px dashed #cbd5e1; border-radius: 4px; background: #f8fafc; }
 .empty-title { margin: 0 0 0.5rem; font-weight: 700; }
 .empty-text { margin: 0 0 1rem; color: #475569; font-size: 0.9rem; }
-.picker { padding: 0.85rem 1rem; border-radius: 4px; border: 1px solid #e2e8f0; background: #f8fafc; }
+.picker {
+  padding: 1rem 1.1rem; border-radius: 12px; border: none; background: #fff;
+  box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;
+}
 .picker-head { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.65rem; }
-.picker-hint { margin: 0; font-size: 0.85rem; color: #64748b; }
+.picker-hint { margin: 0; font-size: 0.85rem; color: #768b9e; }
 .picker-toolbar { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; margin-bottom: 0.5rem; }
 .search-wrap { flex: 1 1 16rem; }
-.search-input { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 4px; }
-.picker-table-wrap { border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; overflow: auto; max-height: 16rem; }
-.picker-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-.picker-table th { background: #f1f5f9; text-align: left; padding: 0.5rem 0.7rem; font-size: 0.74rem; }
-.picker-table td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; }
+.search-input { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #dfe5ef; border-radius: 8px; }
+.picker-table-wrap {
+  border: none; border-radius: 10px; background: #fff; overflow: auto; max-height: 16rem;
+  box-shadow: rgba(145, 158, 171, 0.08) 0 4px 12px -2px, rgba(145, 158, 171, 0.14) 0 0 1px 0;
+}
+.picker-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.picker-table th { background: #f8fafc; text-align: left; padding: 0.65rem 0.85rem; font-size: 0.8125rem; font-weight: 600; color: #3a4752; }
+.picker-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid rgba(223, 229, 239, 0.85); }
 .cand-name { font-weight: 600; }
 .cand-sub { font-size: 0.78rem; color: #64748b; }
 .btn-add { padding: 0.32rem 0.7rem; border-radius: 4px; border: none; background: #0d7a3a; color: #fff; font-weight: 600; cursor: pointer; }

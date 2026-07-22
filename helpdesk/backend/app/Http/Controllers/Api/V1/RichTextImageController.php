@@ -22,13 +22,28 @@ class RichTextImageController extends Controller
         abort_unless($user !== null, 401);
 
         $validated = $request->validate([
-            'image' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp'],
+            'image' => ['required', 'file', 'max:10240', 'mimetypes:image/jpeg,image/png,image/gif,image/webp'],
         ]);
 
         $file = $validated['image'];
-        $ext = $file->guessExtension() ?: 'png';
+        $ext = $file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'png';
         $name = Str::uuid()->toString().'.'.$ext;
-        $path = $file->storeAs('helpdesk/rich-text/'.$user->id, $name, 'public');
+
+        try {
+            $path = $file->storeAs('helpdesk/rich-text/'.$user->id, $name, 'public');
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not save the image on the server. Check storage permissions.',
+            ], 500);
+        }
+
+        if (! $path) {
+            return response()->json([
+                'message' => 'Could not save the image on the server. Check storage permissions.',
+            ], 500);
+        }
 
         return response()->json([
             'data' => [

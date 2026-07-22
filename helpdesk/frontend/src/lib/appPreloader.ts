@@ -2,8 +2,8 @@ import { ref } from 'vue'
 
 export const routePreloaderVisible = ref(false)
 
-/** Minimum time the preloader stays visible, even on fast loads. */
-export const PRELOADER_MIN_MS = 2000
+/** Brief floor so the spinner does not flash; keep low so nav feels instant. */
+export const PRELOADER_MIN_MS = 200
 
 const bootShownAt = Date.now()
 let routePending = 0

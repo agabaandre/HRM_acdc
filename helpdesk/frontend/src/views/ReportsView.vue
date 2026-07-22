@@ -600,10 +600,10 @@ onMounted(async () => {
             <USelect v-model="mySearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
           </UFormField>
           <UFormField label="From date" name="dateFrom">
-            <UInput v-model="mySearchState.dateFrom" type="date" icon="mdi-calendar-start" />
+            <UDateInput v-model="mySearchState.dateFrom" />
           </UFormField>
           <UFormField label="To date" name="dateTo">
-            <UInput v-model="mySearchState.dateTo" type="date" icon="mdi-calendar-end" />
+            <UDateInput v-model="mySearchState.dateTo" />
           </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
@@ -646,7 +646,7 @@ onMounted(async () => {
         </UButton>
       </div>
       <h2>My tickets &amp; assignees</h2>
-      <v-card class="hd-data-table-card" variant="outlined">
+      <v-card class="hd-data-table-card" elevation="10">
         <v-card-text class="hd-data-table-card__head">
           <p class="table-count" role="status">
             Showing <strong>{{ myTableCountLabel }}</strong>
@@ -823,10 +823,10 @@ onMounted(async () => {
             <USelect v-model="adminSearchState.dateField" :items="[...dateFieldOptions]" icon="mdi-calendar-clock" />
           </UFormField>
           <UFormField label="From date" name="dateFrom">
-            <UInput v-model="adminSearchState.dateFrom" type="date" icon="mdi-calendar-start" />
+            <UDateInput v-model="adminSearchState.dateFrom" />
           </UFormField>
           <UFormField label="To date" name="dateTo">
-            <UInput v-model="adminSearchState.dateTo" type="date" icon="mdi-calendar-end" />
+            <UDateInput v-model="adminSearchState.dateTo" />
           </UFormField>
           <div class="hd-form-actions full">
             <UButton type="submit" color="primary">Apply filters</UButton>
@@ -894,7 +894,7 @@ onMounted(async () => {
         </UButton>
       </div>
       <h2>Recent activity</h2>
-      <v-card class="hd-data-table-card" variant="outlined">
+      <v-card class="hd-data-table-card" elevation="10">
         <v-card-text class="hd-data-table-card__head">
           <p class="table-count" role="status">
             Showing <strong>{{ adminTableCountLabel }}</strong>

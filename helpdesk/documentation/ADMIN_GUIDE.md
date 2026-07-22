@@ -1,6 +1,6 @@
 # Helpdesk — Administrator Guide
 
-Configuration reference for **Africa CDC IT Service Desk** administrators. Pair with the [User Guide](./USER_GUIDE.md) for end-user flows and the [Developer Guide](./DEVELOPER_GUIDE.md) for deployment and API details.
+Configuration reference for **Africa CDC Service Desk** administrators. Pair with the [User Guide](./USER_GUIDE.md) for end-user flows and the [Developer Guide](./DEVELOPER_GUIDE.md) for deployment and API details.
 
 Screenshots for each settings area live in [`screenshots/`](./screenshots/) (regenerate with `npm run docs:screenshots` from the `helpdesk/` folder).
 
@@ -13,14 +13,16 @@ Screenshots for each settings area live in [`screenshots/`](./screenshots/) (reg
 3. [General settings](#general-settings)
 4. [AI models & provider](#ai-models--provider)
 5. [Agents & support groups](#agents--support-groups)
-6. [Issue categories](#issue-categories)
-7. [Jobs (SLA & directory sync)](#jobs-sla--directory-sync)
-8. [WhatsApp & Teams integrations](#whatsapp--teams-integrations)
-9. [Audit & ISO logging](#audit--iso-logging)
-10. [Environment variables (server)](#environment-variables-server)
-11. [Mail & branded notifications](#mail--branded-notifications)
-12. [Security checklist](#security-checklist)
-13. [Troubleshooting](#troubleshooting)
+6. [Issue categories & business units](#issue-categories--business-units)
+7. [IT Assets settings](#it-assets-settings)
+8. [Jobs (SLA & directory sync)](#jobs-sla--directory-sync)
+9. [WhatsApp & Teams integrations](#whatsapp--teams-integrations)
+10. [Audit & ISO logging](#audit--iso-logging)
+11. [Environment variables (server)](#environment-variables-server)
+12. [Mail & branded notifications](#mail--branded-notifications)
+13. [Inbound email intake](#inbound-email-intake)
+14. [Security checklist](#security-checklist)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -42,12 +44,14 @@ Grant Helpdesk access via Staff permissions **85** (APM), **92** (Finance), or *
 
 | Menu item | Path | Purpose |
 |-----------|------|---------|
-| **General** | `/settings/general` | Branding, requester follow-up, agent divisions |
+| **General** | `/settings/general` | Branding, requester follow-up, agent divisions, request-form category toggle, **email ticket intake** master switch |
 | **AI models & provider** | `/settings/ai` | OpenAI / Gemini / custom LLM, agent routing |
-| **Agents & support groups** | `/settings/agents` | Roster, support groups, category routing, permissions |
-| **Issue categories** | `/settings/categories` | Requester-facing categories + SLA linkage |
+| **Agents & support groups** | `/settings/agents` | Roster, support groups, category routing, permissions, agent disable |
+| **Issue categories** | `/settings/categories` | Business units + issue categories |
+| **IT Assets** | `/settings/it-assets` | Hardware brands and asset categories (SIM cards, laptops, etc.) |
 | **Jobs** | `/settings/jobs` | SLA rules, Staff directory sync, FAQ ingest |
 | **WhatsApp & Teams** | `/settings/integrations` | Channel webhooks & credentials |
+| **Software requests** | `/settings/software-requests` | Notify groups and review board |
 | **Audit & ISO logging** | `/settings/logging` | Audit log viewer, ISO JSON channel status |
 
 Every save writes to `helpdesk_audit_logs` with actor, IP, and change payload.
@@ -156,17 +160,53 @@ Rate-limited endpoint `POST /api/v1/ai/ask` (24 req/min per user) uses the same 
 
 Auto-assignment picks a **support group** (when category matches), then a member agent by workload and duty station. Supervisors may **reassign** with a mandatory reason (10+ characters).
 
+Agents can be marked **disabled for routing** so they keep access but are skipped for new auto-assignments (useful for leave or training).
+
 ---
 
-## Issue categories
+## Issue categories & business units
 
 **Path:** Settings → Issue categories
 
 ![Categories](./screenshots/11-settings-categories.png)
 
-- CRUD categories shown on the create-ticket form.
+Two tabs:
+
+### Issue categories
+
+- CRUD categories shown when the request form is configured to show categories (see General → show issue category on request form).
+- Each category belongs to a **Business Unit** and may include an **AI description** used when email/web tickets are auto-categorized.
 - Tie each category to SLA rules under **Jobs**.
-- Categories in use cannot be deleted (API returns 409).
+- Categories in use cannot be deleted (API returns an error).
+
+### Business units
+
+Business units group categories (IT & MIS, Knowledge Management, HR, Finance, Internal Oversight, …). The table is intentionally lean (name, mailbox, categories, active). Use **Add** / **Edit** to open a **modal** with:
+
+| Field | Purpose |
+|-------|---------|
+| **Name / slug / description / order / active** | Identity and request-form copy |
+| **Allow anonymous reports** | e.g. Internal Oversight |
+| **Allow Asset** | Optional IT asset link when resolving tickets for this unit |
+| **Support mailbox** | Exchange mailbox for this unit (IT & MIS defaults to `helpdesk@africacdc.org`) |
+| **Enable email intake** | Poll that mailbox every minute (see [Inbound email intake](#inbound-email-intake)) |
+
+---
+
+## IT Assets settings
+
+**Path:** Settings → IT Assets
+
+Manage the catalogues used by **Tools → IT Assets**:
+
+| Tab | Purpose |
+|-----|---------|
+| **Brands** | Dell, Apple, HP, Safaricom, … — shown as a dropdown on the asset form |
+| **Categories** | Laptops, SIM cards, printers, accessories, etc., plus default useful life for depreciation |
+
+Staff with IT Assets permission (or Helpdesk admins) maintain inventory under **Tools → IT Assets**: assignee from the **Staff directory**, brand dropdown, filters (category / brand / status / search including serial).
+
+When a Business Unit has **Allow Asset** enabled, agents resolving a ticket can optionally link an asset **assigned to the requester** (search by serial, tag, name, brand, model).
 
 ---
 
@@ -314,8 +354,12 @@ Edit `helpdesk/backend/.env` (or `setup.env` → `configure-env.sh`). Key groups
 |----------|---------|
 | `MAIL_MAILER` | `exchange` for Graph (same pattern as APM) |
 | `MAIL_FROM_ADDRESS` | Sender mailbox |
-| `MAIL_FROM_NAME` / `HELPDESK_MAIL_BRAND_NAME` | `Africa CDC Helpdesk` |
+| `MAIL_FROM_NAME` / `HELPDESK_MAIL_BRAND_NAME` | `Africa CDC Service Desk` |
 | `EXCHANGE_TENANT_ID`, `EXCHANGE_CLIENT_ID`, `EXCHANGE_CLIENT_SECRET` | Azure app credentials |
+| `EXCHANGE_AUTH_METHOD` | Prefer `client_credentials` |
+| `EXCHANGE_SCOPE` | Prefer `https://graph.microsoft.com/.default` |
+
+**Inbound mailbox intake:** See [Inbound email intake](#inbound-email-intake). Requires Graph **Mail.ReadWrite** (or read+move) on each Business Unit mailbox, plus queue workers on `default,helpdesk,helpdesk-ai`.
 
 ### Cache / performance
 
@@ -340,7 +384,7 @@ Full template: [`backend/.env.example`](../backend/.env.example)
 
 ## Mail & branded notifications
 
-Transactional emails use the **Africa CDC Helpdesk** HTML template with logo from `APP_LOGO_URL` / `{staff_portal}/assets/images/AU_CDC_Logo-800.png`.
+Transactional emails use the **Africa CDC Service Desk** HTML template with logo from `APP_LOGO_URL` / `{staff_portal}/assets/images/AU_CDC_Logo-800.png`.
 
 | Email | Trigger |
 |-------|---------|
@@ -349,6 +393,29 @@ Transactional emails use the **Africa CDC Helpdesk** HTML template with logo fro
 | Requester comment (+ reopen) | Requester comments; reopen alert in same email when enabled |
 
 Configure brand name via `HELPDESK_MAIL_BRAND_NAME` or Settings (general branding colours affect SPA only; mail brand is env-driven).
+
+---
+
+## Inbound email intake
+
+### How it works
+
+1. Scheduler runs **every minute** (`PollBusinessUnitMailboxesJob` on the `helpdesk` queue).
+2. For each active Business Unit with **email intake** on and a valid **support mailbox**, Graph lists **unread** Inbox messages (up to 25 per run).
+3. For each new message (deduped by Graph message id in `helpdesk_email_messages`):
+   - Create a ticket with `source=email`, that Business Unit, subject/body from the mail, requester resolved from Staff directory by From: address when possible.
+   - Dispatch `CategorizeTicketWithAi` (queue `helpdesk-ai`) to pick a category under the BU and assign an eligible agent.
+   - If categorization fails → assign a **helpdesk admin** using least open-ticket workload.
+   - Mark the message **read** and **move** it to a mailbox folder named **Processed** (created if missing).
+
+### Admin checklist
+
+1. Grant Graph **Mail.ReadWrite** (application) on each intake mailbox.
+2. Confirm `EXCHANGE_*` and `MAIL_FROM_ADDRESS` in `backend/.env`.
+3. In **Settings → General**, turn on **Allow email submission of tickets** (master switch; off by default).
+4. In Settings → Issue categories → Business units → Edit: set mailbox + enable intake (IT & MIS defaults to `helpdesk@africacdc.org`). Use **Test read** to list unread mail without creating tickets.
+5. Ensure `helpdesk-scheduler.timer` and queue worker run (`default,helpdesk,helpdesk-ai` — see [SYSTEMD.md](./SYSTEMD.md)).
+6. Watch logs for `helpdesk.email_intake.*` if mail is not turning into tickets.
 
 ---
 
@@ -373,6 +440,7 @@ Run security tests: `php artisan test tests/Feature/SecurityApiTest.php` (requir
 
 | Symptom | Fix |
 |---------|-----|
+| Email tickets never appear | [Inbound email intake](#inbound-email-intake): Graph permissions, intake toggle, scheduler, queues `helpdesk` / `helpdesk-ai` |
 | Directory picker empty | **Settings → Jobs → Sync now**; verify `STAFF_API_*` credentials |
 | AI assignment never runs | Enable **AI active** + **AI-assisted agent assignment**; confirm API key on file |
 | WhatsApp verify fails | Match verify token in Meta console and Settings; check GET URL |

@@ -27,11 +27,25 @@ class TicketInlineImageController extends Controller
 
         $validated = $request->validate([
             // 10 MB matches the regular attachment limit; image mimes only.
-            'image' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp'],
+            'image' => ['required', 'file', 'max:10240', 'mimetypes:image/jpeg,image/png,image/gif,image/webp'],
         ]);
 
         $file = $validated['image'];
-        $path = $file->store('helpdesk/'.$ticket->id.'/inline', 'public');
+        try {
+            $path = $file->store('helpdesk/'.$ticket->id.'/inline', 'public');
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not save the image on the server. Check storage permissions.',
+            ], 500);
+        }
+
+        if (! $path) {
+            return response()->json([
+                'message' => 'Could not save the image on the server. Check storage permissions.',
+            ], 500);
+        }
 
         $row = HelpdeskTicketAttachment::query()->create([
             'ticket_id' => $ticket->id,

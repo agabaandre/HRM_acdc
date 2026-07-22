@@ -28,6 +28,12 @@ export interface HelpdeskSettingsPayload {
   agent_monthly_report_retention_months: number
   resolved_auto_close_days?: number
   agent_open_ticket_reminder_enabled?: boolean
+  license_expiry_alert_enabled?: boolean
+  license_expiry_alert_interval_days?: number
+  software_request_notify_group_ids?: string | null
+  software_request_review_board_user_ids?: string | null
+  show_issue_category_on_request_form?: boolean
+  email_ticket_intake_enabled?: boolean
   ai_api_key: string
   ai_api_key_configured: boolean
 }
@@ -55,6 +61,12 @@ export interface HelpdeskAdminSettingsForm {
   agent_monthly_report_retention_months: number
   resolved_auto_close_days: number
   agent_open_ticket_reminder_enabled: boolean
+  license_expiry_alert_enabled: boolean
+  license_expiry_alert_interval_days: number
+  software_request_notify_group_ids: string
+  software_request_review_board_user_ids: string
+  show_issue_category_on_request_form: boolean
+  email_ticket_intake_enabled: boolean
   ai_api_key: string
 }
 
@@ -95,6 +107,12 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     agent_monthly_report_retention_months: 12,
     resolved_auto_close_days: 7,
     agent_open_ticket_reminder_enabled: true,
+    license_expiry_alert_enabled: true,
+    license_expiry_alert_interval_days: 7,
+    software_request_notify_group_ids: '',
+    software_request_review_board_user_ids: '',
+    show_issue_category_on_request_form: false,
+    email_ticket_intake_enabled: false,
     ai_api_key: '',
   })
 
@@ -124,6 +142,13 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.agent_monthly_report_retention_months = Number(d.agent_monthly_report_retention_months ?? 12)
       form.resolved_auto_close_days = Number(d.resolved_auto_close_days ?? 7)
       form.agent_open_ticket_reminder_enabled = d.agent_open_ticket_reminder_enabled !== false
+      form.license_expiry_alert_enabled = d.license_expiry_alert_enabled !== false
+      const interval = Number(d.license_expiry_alert_interval_days ?? 7)
+      form.license_expiry_alert_interval_days = [1, 3, 7].includes(interval) ? interval : 7
+      form.software_request_notify_group_ids = d.software_request_notify_group_ids ?? ''
+      form.software_request_review_board_user_ids = d.software_request_review_board_user_ids ?? ''
+      form.show_issue_category_on_request_form = Boolean(d.show_issue_category_on_request_form)
+      form.email_ticket_intake_enabled = Boolean(d.email_ticket_intake_enabled)
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)
     } catch (e: unknown) {

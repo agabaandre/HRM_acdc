@@ -1,4 +1,4 @@
-# Africa CDC Helpdesk & ITSM
+# Africa CDC Service Desk & ITSM
 
 Enterprise helpdesk platform (**Laravel 11** JSON API + **Vue 3.5** SPA), structured like the [`finance/`](../finance) module: separate `backend/` and `frontend/` trees plus `documentation/` and optional `docker/`.
 
@@ -158,7 +158,7 @@ OpenAPI 3 outline lives in `documentation/openapi.yaml`. For generated Swagger U
 | Support groups & category routing | Live |
 | Agent desk KPI filters, reports, Excel export | Live |
 | Knowledge base + APM FAQ ingest | Live |
-| Branded email (Africa CDC Helpdesk template) | Live |
+| Branded email (Africa CDC Service Desk template) | Live |
 | Signed attachment downloads | Live |
 | AI provider (OpenAI / Gemini / custom) + optional agent assignment | Live |
 | WhatsApp & Teams webhook registration | Credentials + verify; ticket creation phased |

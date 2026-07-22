@@ -43,6 +43,9 @@ class TicketResource extends JsonResource
             'requester_staff_id' => $this->requester_staff_id,
             'requester_name' => $this->requester_name,
             'requester_email' => $this->requester_email,
+            'is_anonymous' => (bool) $this->is_anonymous,
+            'business_unit_id' => $this->business_unit_id,
+            'linked_it_asset_id' => $this->linked_it_asset_id,
             'assigned_user_id' => $this->assigned_user_id,
             'assigned_group_id' => $this->assigned_group_id,
             'directorate_id' => $this->directorate_id,
@@ -55,6 +58,29 @@ class TicketResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'category' => new CategoryResource($this->whenLoaded('category')),
+            'business_unit' => $this->when(
+                $this->relationLoaded('businessUnit') && $this->businessUnit !== null,
+                fn () => [
+                    'id' => $this->businessUnit->id,
+                    'name' => $this->businessUnit->name,
+                    'slug' => $this->businessUnit->slug,
+                    'description' => $this->businessUnit->description,
+                    'allows_anonymous' => (bool) $this->businessUnit->allows_anonymous,
+                    'allows_asset_link_on_resolve' => (bool) $this->businessUnit->allows_asset_link_on_resolve,
+                ]
+            ),
+            'linked_it_asset' => $this->when(
+                $this->relationLoaded('linkedItAsset') && $this->linkedItAsset !== null,
+                fn () => [
+                    'id' => $this->linkedItAsset->id,
+                    'asset_tag' => $this->linkedItAsset->asset_tag,
+                    'name' => $this->linkedItAsset->name,
+                    'brand' => $this->linkedItAsset->brandRelation?->name ?? $this->linkedItAsset->brand,
+                    'model' => $this->linkedItAsset->model,
+                    'serial_number' => $this->linkedItAsset->serial_number,
+                    'status' => $this->linkedItAsset->status,
+                ]
+            ),
             'attachments' => $attachments,
             'assignee' => $this->when(
                 $this->relationLoaded('assignee') && $this->assignee !== null,

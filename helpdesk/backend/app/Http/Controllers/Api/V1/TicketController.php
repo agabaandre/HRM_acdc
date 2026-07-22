@@ -7,8 +7,10 @@ use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Requests\Api\V1\UpdateTicketRequest;
 use App\Http\Resources\Api\V1\TicketResource;
 use App\Jobs\AssignEndUserTicket;
-use App\Jobs\ScanTicketForAiSignals;
+use App\Jobs\CategorizeTicketWithAi;
+use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskCategory;
+use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
@@ -111,14 +113,28 @@ class TicketController extends Controller
             }
         }
 
-        $category = HelpdeskCategory::query()->findOrFail((int) $request->validated('category_id'));
+        $businessUnit = HelpdeskBusinessUnit::query()->findOrFail((int) $request->validated('business_unit_id'));
+        $categoryId = $request->filled('category_id') ? (int) $request->validated('category_id') : null;
+        $category = $categoryId
+            ? HelpdeskCategory::query()->findOrFail($categoryId)
+            : null;
         $description = HtmlSanitizer::sanitize($request->validated('description'));
         if ($description === null) {
             abort(422, 'A description is required. Add text or images in the editor.');
         }
 
+        $isAnonymous = $request->boolean('is_anonymous') && $businessUnit->allows_anonymous;
+
         $isEndUser = $profile->role === HelpdeskProfile::ROLE_USER;
-        if ($isEndUser) {
+        if ($isAnonymous) {
+            $requesterStaffId = null;
+            $requesterName = 'Anonymous';
+            $requesterEmail = null;
+            $agentLogged = false;
+            $ticketDirectorateId = null;
+            $ticketDivisionId = null;
+            $requesterDutyStation = null;
+        } elseif ($isEndUser) {
             $selfStaffId = (int) $profile->staff_id;
             $forOther = $request->filled('requester_staff_id')
                 && (int) $request->input('requester_staff_id') !== $selfStaffId;
@@ -151,6 +167,7 @@ class TicketController extends Controller
                 $ticketDirectorateId = $profile->directorate_id;
                 $ticketDivisionId = $profile->division_id;
             }
+            $requesterDutyStation = $directoryLookup->dutyStationForStaffId((int) $requesterStaffId);
         } else {
             $requesterStaffId = (int) $request->validated('requester_staff_id');
             $resolved = $directoryLookup->resolveByStaffId($requesterStaffId);
@@ -165,22 +182,31 @@ class TicketController extends Controller
             $agentLogged = true;
             $ticketDirectorateId = $resolved['directorate_id'] ?? $profile->directorate_id;
             $ticketDivisionId = $resolved['division_id'] ?? $profile->division_id;
+            $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
         }
 
-        $subjectName = $requesterName;
-        $subject = $subjects->generate($category, $subjectName, $description);
+        $subjectName = $isAnonymous ? 'Anonymous' : $requesterName;
+        if ($category) {
+            $subject = $subjects->generate($category, $subjectName, $description);
+            $priority = $priorityResolver->resolveForCreate($category, (int) ($requesterStaffId ?? 0));
+        } else {
+            $subject = $subjects->generateForBusinessUnit($businessUnit->name, $subjectName, $description);
+            $priority = 'medium';
+        }
 
-        $priority = $priorityResolver->resolveForCreate($category, $requesterStaffId);
-
-        $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
-        $ticketMeta = $requesterDutyStation !== null && $requesterDutyStation !== ''
-            ? ['requester_duty_station' => $requesterDutyStation]
-            : null;
+        $ticketMeta = [];
+        if ($requesterDutyStation !== null && $requesterDutyStation !== '') {
+            $ticketMeta['requester_duty_station'] = $requesterDutyStation;
+        }
+        if ($isAnonymous) {
+            $ticketMeta['anonymous'] = true;
+        }
 
         $ticket = HelpdeskTicket::query()->create([
             'created_by_user_id' => $user->id,
             'ticket_number' => $numbers->next(),
-            'category_id' => (int) $request->validated('category_id'),
+            'category_id' => $category?->id,
+            'business_unit_id' => $businessUnit->id,
             'subject' => $subject,
             'description' => $description,
             'priority' => $priority,
@@ -190,32 +216,31 @@ class TicketController extends Controller
             'requester_staff_id' => $requesterStaffId,
             'requester_name' => $requesterName,
             'requester_email' => $requesterEmail,
+            'is_anonymous' => $isAnonymous,
             'directorate_id' => $ticketDirectorateId,
             'division_id' => $ticketDivisionId,
-            'meta' => $ticketMeta,
+            'meta' => $ticketMeta !== [] ? $ticketMeta : null,
         ]);
 
-        if ($isEndUser) {
+        if ($category) {
             AssignEndUserTicket::dispatchAfterResponse($ticket->id, $requesterDutyStation);
         } else {
-            $ticket->assigned_user_id = $user->id;
-            $ticket->save();
+            // Business unit only — AI categorizes then assigns (or admins on failure).
+            try {
+                CategorizeTicketWithAi::dispatchAfterResponse($ticket->id, $requesterDutyStation);
+            } catch (Throwable $e) {
+                Log::warning('helpdesk.ticket.ai_categorize_dispatch_failed', [
+                    'ticket_id' => $ticket->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         if ($idempotencyKey !== null) {
             TicketCreateIdempotency::remember((int) $user->id, $idempotencyKey, (int) $ticket->id);
         }
 
-        try {
-            ScanTicketForAiSignals::dispatchAfterResponse($ticket->id);
-        } catch (Throwable $e) {
-            Log::warning('helpdesk.ticket.ai_scan_dispatch_failed', [
-                'ticket_id' => $ticket->id,
-                'message' => $e->getMessage(),
-            ]);
-        }
-
-        return (new TicketResource($ticket->load(['category', 'assignee.helpdeskProfile', 'attachments'])))
+        return (new TicketResource($ticket->load(['category', 'businessUnit', 'assignee.helpdeskProfile', 'attachments'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -224,7 +249,73 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['category', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
+        return new TicketResource($ticket->load(['category', 'businessUnit', 'linkedItAsset.category', 'linkedItAsset.brandRelation', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
+    }
+
+    /**
+     * Assets that may be linked when resolving this ticket (requester's assigned inventory).
+     * Search matches tag, serial, name, brand, model, location, assignee.
+     */
+    public function linkableAssets(Request $request, HelpdeskTicket $ticket): JsonResponse
+    {
+        $this->authorize('submitResolution', $ticket);
+
+        $ticket->loadMissing(['businessUnit']);
+        if (! $ticket->businessUnit?->allows_asset_link_on_resolve) {
+            return response()->json(['data' => [], 'meta' => ['enabled' => false]]);
+        }
+
+        $staffId = (int) ($ticket->requester_staff_id ?? 0);
+        $query = HelpdeskItAsset::query()
+            ->with(['category:id,name', 'brandRelation:id,name'])
+            ->orderBy('asset_tag');
+
+        if ($staffId > 0) {
+            $query->where('assigned_staff_id', $staffId);
+        } else {
+            // Anonymous / missing requester — nothing assignable by staff id.
+            return response()->json(['data' => [], 'meta' => ['enabled' => true, 'requester_staff_id' => null]]);
+        }
+
+        if ($request->filled('q')) {
+            $q = '%'.trim((string) $request->input('q')).'%';
+            $query->where(function ($sub) use ($q) {
+                $sub->where('asset_tag', 'like', $q)
+                    ->orWhere('name', 'like', $q)
+                    ->orWhere('brand', 'like', $q)
+                    ->orWhere('model', 'like', $q)
+                    ->orWhere('serial_number', 'like', $q)
+                    ->orWhere('assigned_name', 'like', $q)
+                    ->orWhere('location', 'like', $q);
+            });
+        }
+
+        $rows = $query->limit(50)->get()->map(fn (HelpdeskItAsset $a) => [
+            'id' => $a->id,
+            'asset_tag' => $a->asset_tag,
+            'name' => $a->name,
+            'brand' => $a->brandRelation?->name ?? $a->brand,
+            'model' => $a->model,
+            'serial_number' => $a->serial_number,
+            'status' => $a->status,
+            'location' => $a->location,
+            'category' => $a->category ? ['id' => $a->category->id, 'name' => $a->category->name] : null,
+            'label' => trim(implode(' · ', array_filter([
+                $a->asset_tag,
+                $a->name,
+                $a->brandRelation?->name ?? $a->brand,
+                $a->model,
+                $a->serial_number ? 'S/N '.$a->serial_number : null,
+            ]))),
+        ]);
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'enabled' => true,
+                'requester_staff_id' => $staffId,
+            ],
+        ]);
     }
 
     public function update(UpdateTicketRequest $request, HelpdeskTicket $ticket): TicketResource
@@ -235,13 +326,32 @@ class TicketController extends Controller
         $profile = $request->user()->helpdeskProfile;
 
         if ($profile && $profile->role === HelpdeskProfile::ROLE_USER) {
-            unset($data['status'], $data['assigned_user_id'], $data['category_id'], $data['priority']);
+            unset(
+                $data['status'],
+                $data['assigned_user_id'],
+                $data['category_id'],
+                $data['business_unit_id'],
+                $data['priority']
+            );
         } elseif (array_key_exists('priority', $data) && ! $profile?->canReassignTickets()) {
             unset($data['priority']);
         }
 
-        if (array_key_exists('category_id', $data)) {
+        if (array_key_exists('category_id', $data) || array_key_exists('business_unit_id', $data)) {
             $this->authorize('changeCategory', $ticket);
+        }
+
+        if (array_key_exists('category_id', $data) && ! empty($data['category_id'])) {
+            $category = HelpdeskCategory::query()->find((int) $data['category_id']);
+            if ($category) {
+                $requestedBu = isset($data['business_unit_id']) ? (int) $data['business_unit_id'] : null;
+                if ($requestedBu && (int) $category->business_unit_id !== $requestedBu) {
+                    abort(422, 'Choose a category that belongs to the selected business unit.');
+                }
+                if (! isset($data['business_unit_id']) && $category->business_unit_id) {
+                    $data['business_unit_id'] = (int) $category->business_unit_id;
+                }
+            }
         }
 
         if (array_key_exists('description', $data)) {
@@ -251,7 +361,7 @@ class TicketController extends Controller
         $ticket->fill($data);
         $ticket->save();
 
-        return new TicketResource($ticket->fresh()->load(['category', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
+        return new TicketResource($ticket->fresh()->load(['category', 'businessUnit', 'assignee.helpdeskProfile', 'assignees', 'attachments']));
     }
 
     public function destroy(Request $request, HelpdeskTicket $ticket): Response
@@ -305,6 +415,7 @@ class TicketController extends Controller
                     'assignee_user_ids' => $assigneeUserIds,
                     'assigned_group_id' => $ticket->assigned_group_id,
                     'priority' => $ticket->priority,
+                    'business_unit_id' => $ticket->business_unit_id,
                     'category_id' => $ticket->category_id,
                 ],
                 'agents' => $agents->map(fn (User $u) => [
@@ -355,6 +466,7 @@ class TicketController extends Controller
             'assignee_user_ids.*' => ['integer', 'exists:users,id'],
             'assignee_group_id' => ['nullable', 'integer', 'exists:helpdesk_support_groups,id'],
             'priority' => ['nullable', 'string', 'in:low,medium,high,critical'],
+            'business_unit_id' => ['nullable', 'integer', 'exists:helpdesk_business_units,id'],
             'category_id' => ['nullable', 'integer', 'exists:helpdesk_categories,id'],
             'reason' => ['required', 'string', 'min:5', 'max:2000'],
         ]);
@@ -377,6 +489,20 @@ class TicketController extends Controller
 
         $newPriority = $validated['priority'] ?? null;
         $newCategoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : null;
+        $newBusinessUnitId = isset($validated['business_unit_id']) ? (int) $validated['business_unit_id'] : null;
+
+        if ($newCategoryId) {
+            $categoryForBu = HelpdeskCategory::query()->find($newCategoryId);
+            if (! $categoryForBu) {
+                abort(422, 'Selected category was not found.');
+            }
+            if ($newBusinessUnitId && (int) $categoryForBu->business_unit_id !== $newBusinessUnitId) {
+                abort(422, 'Choose a category that belongs to the selected business unit.');
+            }
+            if (! $newBusinessUnitId && $categoryForBu->business_unit_id) {
+                $newBusinessUnitId = (int) $categoryForBu->business_unit_id;
+            }
+        }
 
         $oldAssigneeIds = $assignees->assigneeUserIds($ticket);
         if ($oldAssigneeIds === [] && $ticket->assigned_user_id) {
@@ -384,15 +510,17 @@ class TicketController extends Controller
         }
         $oldGroupId = (int) ($ticket->assigned_group_id ?? 0);
         $oldPriority = $ticket->priority;
-        $oldCategoryId = (int) $ticket->category_id;
+        $oldCategoryId = (int) ($ticket->category_id ?? 0);
+        $oldBusinessUnitId = (int) ($ticket->business_unit_id ?? 0);
 
         $assigneesChanged = $oldAssigneeIds !== $newAssigneeIds;
         $groupChanged = $newGroupId !== ($oldGroupId > 0 ? $oldGroupId : null);
         $priorityChanged = $newPriority !== null && $newPriority !== $oldPriority;
         $categoryChanged = $newCategoryId !== null && $newCategoryId !== $oldCategoryId;
+        $businessUnitChanged = $newBusinessUnitId !== null && $newBusinessUnitId !== $oldBusinessUnitId;
 
-        if (! $assigneesChanged && ! $groupChanged && ! $priorityChanged && ! $categoryChanged) {
-            abort(422, 'Nothing changed — pick different agents, group, priority, or category.');
+        if (! $assigneesChanged && ! $groupChanged && ! $priorityChanged && ! $categoryChanged && ! $businessUnitChanged) {
+            abort(422, 'Nothing changed — pick different agents, group, priority, business unit, or category.');
         }
 
         $newPrimaryId = $newAssigneeIds[0] ?? null;
@@ -416,9 +544,13 @@ class TicketController extends Controller
             ? HelpdeskSupportGroup::query()->find($oldGroupId)
             : null;
         $oldCategory = HelpdeskCategory::query()->find($oldCategoryId);
+        $oldBusinessUnit = $oldBusinessUnitId > 0
+            ? HelpdeskBusinessUnit::query()->find($oldBusinessUnitId)
+            : null;
 
         $newAssignee = $newPrimaryId ? User::query()->find($newPrimaryId) : null;
         $newCategory = $newCategoryId ? HelpdeskCategory::query()->find($newCategoryId) : null;
+        $newBusinessUnit = $newBusinessUnitId ? HelpdeskBusinessUnit::query()->find($newBusinessUnitId) : null;
 
         $reason = trim((string) $validated['reason']);
 
@@ -429,6 +561,9 @@ class TicketController extends Controller
         }
         if ($newCategoryId !== null) {
             $ticket->category_id = $newCategoryId;
+        }
+        if ($newBusinessUnitId !== null) {
+            $ticket->business_unit_id = $newBusinessUnitId;
         }
         $ticket->save();
 
@@ -449,6 +584,8 @@ class TicketController extends Controller
             'from_group_id' => $oldGroupId > 0 ? $oldGroupId : null,
             'from_group_name' => $oldGroup?->name,
             'from_priority' => $priorityChanged ? $oldPriority : null,
+            'from_business_unit_id' => $businessUnitChanged ? $oldBusinessUnitId : null,
+            'from_business_unit_name' => $businessUnitChanged ? $oldBusinessUnit?->name : null,
             'from_category_id' => $categoryChanged ? $oldCategoryId : null,
             'from_category_name' => $categoryChanged ? $oldCategory?->name : null,
             'to_user_ids' => $newAssigneeIds !== [] ? $newAssigneeIds : null,
@@ -456,6 +593,8 @@ class TicketController extends Controller
             'to_group_id' => $newGroupId,
             'to_group_name' => $newGroup?->name,
             'to_priority' => $priorityChanged ? $newPriority : null,
+            'to_business_unit_id' => $businessUnitChanged ? $newBusinessUnitId : null,
+            'to_business_unit_name' => $businessUnitChanged ? $newBusinessUnit?->name : null,
             'to_category_id' => $categoryChanged ? $newCategoryId : null,
             'to_category_name' => $categoryChanged ? $newCategory?->name : null,
             'reason' => $reason,
@@ -474,6 +613,11 @@ class TicketController extends Controller
         }
         if ($priorityChanged) {
             $changeLines[] = "Priority: {$oldPriority} → {$newPriority}";
+        }
+        if ($businessUnitChanged) {
+            $fromBu = $oldBusinessUnit?->name ?? 'Unknown';
+            $toBu = $newBusinessUnit?->name ?? 'Unknown';
+            $changeLines[] = "Business unit: {$fromBu} → {$toBu}";
         }
         if ($categoryChanged) {
             $fromCat = $oldCategory?->name ?? 'Unknown';

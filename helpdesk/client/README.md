@@ -1,6 +1,6 @@
 # Helpdesk Client (MaterialPro shell)
 
-MaterialPro-inspired UI for Africa CDC Helpdesk. Runs alongside the original SPA at `helpdesk/frontend/` without replacing it.
+MaterialPro-inspired UI for Africa CDC Service Desk. Runs alongside the original SPA at `helpdesk/frontend/` without replacing it.
 
 ## URLs
 

@@ -59,7 +59,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Categories this agent is configured to handle (empty = all categories for routing).
+     * Categories this agent is configured to handle (empty = not eligible unless in a catch-all group).
      */
     public function helpdeskAgentCategories(): BelongsToMany
     {

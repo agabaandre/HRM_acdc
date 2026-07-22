@@ -73,12 +73,22 @@ const canReassign = computed(() => canReassignTickets(auth.me?.profile))
 
 const currentWorkMode = computed(() => auth.me?.profile?.work_mode ?? null)
 
+const workModeLabel = computed(() => {
+  if (currentWorkMode.value === 'remote') return 'Working from Home'
+  if (currentWorkMode.value === 'onsite') return 'Working from Office'
+  return 'Working from'
+})
+
 async function setWorkMode(mode: 'remote' | 'onsite' | null): Promise<void> {
   workModeSaving.value = mode ?? 'clear'
   try {
     await auth.updateWorkMode(mode)
     notifySuccess(
-      mode ? `You're now marked as working ${mode}.` : 'Work-mode cleared.',
+      mode === 'remote'
+        ? "You're now marked as working from home."
+        : mode === 'onsite'
+          ? "You're now marked as working from the office."
+          : 'Work-mode cleared.',
     )
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Could not update work mode.'))
@@ -105,7 +115,7 @@ async function load(): Promise<void> {
 }
 
 const greeting = computed(() => {
-  const name = auth.me?.name?.split(' ')[0] ?? 'there'
+  const name = auth.me?.name?.trim() || 'there'
   const hour = new Date().getHours()
   if (hour < 12) return `Good morning, ${name}`
   if (hour < 17) return `Good afternoon, ${name}`
@@ -463,33 +473,36 @@ onUnmounted(() => {
           <v-col cols="12" md="auto">
             <div class="dash-tools">
               <div class="work-mode" role="group" aria-label="Set your current location">
-                <span class="work-mode-label">Working from</span>
+                <span class="work-mode-label">{{ workModeLabel }}</span>
                 <v-btn-toggle
                   class="work-mode-toggle"
                   divided
                   rounded="pill"
                   density="compact"
-                  variant="flat"
+                  variant="outlined"
+                  color="white"
                   :model-value="currentWorkMode"
                   :disabled="workModeSaving !== null"
                 >
                   <v-btn
                     value="remote"
                     size="small"
-                    :active="currentWorkMode === 'remote'"
+                    class="work-mode-btn"
+                    :class="{ 'is-active': currentWorkMode === 'remote' }"
                     @click="toggleWorkMode('remote')"
                   >
                     <span class="seg-dot remote" aria-hidden="true" />
-                    {{ workModeSaving === 'remote' ? 'Saving…' : 'Remote' }}
+                    <span class="seg-text">{{ workModeSaving === 'remote' ? 'Saving…' : 'Home' }}</span>
                   </v-btn>
                   <v-btn
                     value="onsite"
                     size="small"
-                    :active="currentWorkMode === 'onsite'"
+                    class="work-mode-btn"
+                    :class="{ 'is-active': currentWorkMode === 'onsite' }"
                     @click="toggleWorkMode('onsite')"
                   >
                     <span class="seg-dot onsite" aria-hidden="true" />
-                    {{ workModeSaving === 'onsite' ? 'Saving…' : 'Onsite' }}
+                    <span class="seg-text">{{ workModeSaving === 'onsite' ? 'Saving…' : 'Office' }}</span>
                   </v-btn>
                 </v-btn-toggle>
               </div>
@@ -552,7 +565,7 @@ onUnmounted(() => {
 
       <v-row v-if="breakdown" class="charts" aria-label="Workload breakdown">
         <v-col cols="12" md="6">
-          <v-card variant="outlined" class="chart-card">
+          <v-card elevation="10" class="chart-card withbg">
             <v-card-item>
               <v-card-title class="chart-card__title">By status</v-card-title>
               <template #append>
@@ -586,7 +599,7 @@ onUnmounted(() => {
         </v-col>
 
         <v-col cols="12" md="6">
-          <v-card variant="outlined" class="chart-card">
+          <v-card elevation="10" class="chart-card withbg">
             <v-card-item>
               <v-card-title class="chart-card__title">By priority</v-card-title>
               <template #append>
@@ -621,7 +634,7 @@ onUnmounted(() => {
       </v-row>
 
       <section ref="recentSectionRef" aria-labelledby="recent-heading">
-        <v-card class="hd-data-table-card" variant="outlined">
+        <v-card class="hd-data-table-card" elevation="10">
           <v-card-text class="hd-data-table-card__head hd-desk-recent-head">
             <header class="recent-head">
               <div>
@@ -856,17 +869,31 @@ onUnmounted(() => {
 }
 
 .work-mode-toggle {
-  background: rgba(15, 23, 42, 0.32) !important;
+  background: rgba(15, 23, 42, 0.28) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
 }
 
 .work-mode-toggle :deep(.v-btn) {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: #fff !important;
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.82rem;
+  min-width: 4.75rem;
+  opacity: 1 !important;
 }
 
+.work-mode-toggle :deep(.v-btn .v-btn__content) {
+  opacity: 1 !important;
+  color: inherit !important;
+}
+
+.work-mode-btn .seg-text {
+  display: inline;
+  color: inherit;
+}
+
+.work-mode-toggle :deep(.v-btn.is-active),
 .work-mode-toggle :deep(.v-btn--active) {
   background: #fff !important;
   color: #0f172a !important;
@@ -877,7 +904,8 @@ onUnmounted(() => {
   height: 7px;
   border-radius: 999px;
   display: inline-block;
-  margin-right: 0.15rem;
+  margin-right: 0.35rem;
+  flex-shrink: 0;
 }
 
 .seg-dot.remote {

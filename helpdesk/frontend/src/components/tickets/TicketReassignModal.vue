@@ -28,16 +28,20 @@ interface SupportGroupOption {
   open_workload: number
 }
 
-interface CategoryOption {
+interface BusinessUnitOption {
   id: number
   name: string
+  slug: string
+  description?: string | null
+  categories: Array<{ id: number; name: string }>
 }
 
 interface AssignmentCurrent {
   assignee_user_ids: number[]
   assigned_group_id: number | null
   priority: TicketPriority
-  category_id: number
+  business_unit_id: number | null
+  category_id: number | null
 }
 
 const props = defineProps<{
@@ -51,17 +55,19 @@ const emit = defineEmits<{
 
 const agents = ref<EligibleAgent[]>([])
 const groups = ref<SupportGroupOption[]>([])
-const categories = ref<CategoryOption[]>([])
+const businessUnits = ref<BusinessUnitOption[]>([])
 const candidatesLoading = ref(false)
 const selectedAgentIds = ref<number[]>([])
 const selectedGroupId = ref<number | null>(null)
 const selectedPriority = ref<TicketPriority>('medium')
+const selectedBusinessUnitId = ref<number | null>(null)
 const selectedCategoryId = ref<number | null>(null)
 const reassignForm = reactive({ reason: '' })
 const submitting = ref(false)
 const submitError = ref('')
 const reassignFormEl = ref<{ submit: () => void } | null>(null)
 let loadSeq = 0
+let skipBuWatch = false
 
 const modalOpen = computed({
   get: () => props.ticket !== null,
@@ -92,8 +98,19 @@ const groupSelectItems = computed(() =>
   })),
 )
 
+const businessUnitSelectItems = computed(() =>
+  businessUnits.value.map((u) => ({
+    label: u.name,
+    value: u.id,
+  })),
+)
+
+const selectedBusinessUnit = computed(() =>
+  businessUnits.value.find((u) => u.id === selectedBusinessUnitId.value) ?? null,
+)
+
 const categorySelectItems = computed(() =>
-  categories.value.map((c) => ({
+  (selectedBusinessUnit.value?.categories ?? []).map((c) => ({
     label: c.name,
     value: c.id,
   })),
@@ -152,10 +169,11 @@ const agentIdsModel = computed({
 function resetState(): void {
   agents.value = []
   groups.value = []
-  categories.value = []
+  businessUnits.value = []
   selectedAgentIds.value = []
   selectedGroupId.value = null
   selectedPriority.value = 'medium'
+  selectedBusinessUnitId.value = null
   selectedCategoryId.value = null
   reassignForm.reason = ''
   submitting.value = false
@@ -172,12 +190,12 @@ function makePrimary(agentId: number): void {
   selectedAgentIds.value = [agentId, ...rest]
 }
 
-async function loadCategories(): Promise<void> {
+async function loadBusinessUnits(): Promise<void> {
   try {
-    const { data } = await api.get<{ data: CategoryOption[] }>('/api/v1/categories')
-    categories.value = Array.isArray(data.data) ? data.data : []
+    const { data } = await api.get<{ data: BusinessUnitOption[] }>('/api/v1/business-units')
+    businessUnits.value = Array.isArray(data.data) ? data.data : []
   } catch {
-    categories.value = []
+    businessUnits.value = []
   }
 }
 
@@ -185,7 +203,7 @@ async function loadCandidates(ticketId: number): Promise<void> {
   const seq = ++loadSeq
   candidatesLoading.value = true
   try {
-    const [{ data }, _] = await Promise.all([
+    const [{ data }] = await Promise.all([
       api.get<{
         data: {
           current?: AssignmentCurrent
@@ -193,7 +211,7 @@ async function loadCandidates(ticketId: number): Promise<void> {
           groups: SupportGroupOption[]
         }
       }>(`/api/v1/tickets/${ticketId}/eligible-agents`),
-      loadCategories(),
+      loadBusinessUnits(),
     ])
 
     if (seq !== loadSeq) {
@@ -207,7 +225,19 @@ async function loadCandidates(ticketId: number): Promise<void> {
     selectedAgentIds.value = normalizeAgentIds(current?.assignee_user_ids ?? [])
     selectedGroupId.value = current?.assigned_group_id ?? null
     selectedPriority.value = current?.priority ?? 'medium'
-    selectedCategoryId.value = current?.category_id ?? null
+
+    skipBuWatch = true
+    let buId = current?.business_unit_id ?? null
+    const catId = current?.category_id ?? null
+    if (!buId && catId) {
+      const match = businessUnits.value.find((u) => u.categories.some((c) => c.id === catId))
+      buId = match?.id ?? null
+    }
+    selectedBusinessUnitId.value = buId
+    selectedCategoryId.value = catId
+    queueMicrotask(() => {
+      skipBuWatch = false
+    })
   } catch (e: unknown) {
     if (seq !== loadSeq) {
       return
@@ -234,10 +264,21 @@ watch(
   { immediate: true },
 )
 
+watch(selectedBusinessUnitId, () => {
+  if (skipBuWatch) return
+  const allowed = new Set((selectedBusinessUnit.value?.categories ?? []).map((c) => c.id))
+  if (selectedCategoryId.value && !allowed.has(selectedCategoryId.value)) {
+    selectedCategoryId.value = null
+  }
+})
+
 function validateReassign(state: typeof reassignForm): FormError[] {
   const errors: FormError[] = []
   if (selectedAgentIds.value.length === 0 && !selectedGroupId.value) {
     errors.push({ name: 'assignee', message: 'Select at least one agent or a support group.' })
+  }
+  if (!selectedBusinessUnitId.value) {
+    errors.push({ name: 'business_unit', message: 'Select a business unit.' })
   }
   if (!selectedCategoryId.value) {
     errors.push({ name: 'category', message: 'Select a category.' })
@@ -265,6 +306,12 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
     notifyError(message)
     return
   }
+  if (!selectedBusinessUnitId.value) {
+    const message = 'Select a business unit.'
+    submitError.value = message
+    notifyError(message)
+    return
+  }
   if (!selectedCategoryId.value) {
     const message = 'Select a category.'
     submitError.value = message
@@ -278,6 +325,7 @@ async function onReassignSubmit(_event: FormSubmitEvent<typeof reassignForm>): P
       assignee_user_ids: selectedAgentIds.value,
       assignee_group_id: selectedGroupId.value,
       priority: selectedPriority.value,
+      business_unit_id: selectedBusinessUnitId.value,
       category_id: selectedCategoryId.value,
       reason: reassignForm.reason.trim(),
     })
@@ -317,7 +365,7 @@ function submitReassign(): void {
     v-model:open="modalOpen"
     :title="modalTitle"
     :description="modalDescription"
-    :ui="{ content: 'max-w-lg' }"
+    :ui="{ content: 'max-w-xl' }"
   >
     <template #body>
       <UForm
@@ -393,15 +441,30 @@ function submitReassign(): void {
             />
           </UFormField>
 
+          <UFormField label="Business unit" name="business_unit" required>
+            <USelectMenu
+              v-model="selectedBusinessUnitId"
+              :items="businessUnitSelectItems"
+              value-key="value"
+              searchable
+              icon="mdi-office-building-outline"
+              placeholder="Search or select business unit"
+              :disabled="businessUnits.length === 0"
+            />
+            <p v-if="selectedBusinessUnit?.description" class="field-hint">
+              {{ selectedBusinessUnit.description }}
+            </p>
+          </UFormField>
+
           <UFormField label="Category" name="category" required>
-            <USelect
+            <USelectMenu
               v-model="selectedCategoryId"
               :items="categorySelectItems"
               value-key="value"
               searchable
               icon="mdi-shape-outline"
-              placeholder="Select category"
-              :disabled="categories.length === 0"
+              :placeholder="!selectedBusinessUnitId ? 'Select a business unit first' : categorySelectItems.length === 0 ? 'No categories in this unit' : 'Search or select category'"
+              :disabled="!selectedBusinessUnitId || categorySelectItems.length === 0"
             />
           </UFormField>
         </template>
@@ -433,6 +496,7 @@ function submitReassign(): void {
         :disabled="
           candidatesLoading ||
           (selectedAgentIds.length === 0 && !selectedGroupId) ||
+          !selectedBusinessUnitId ||
           !selectedCategoryId ||
           reassignForm.reason.trim().length < 5
         "
@@ -505,6 +569,12 @@ function submitReassign(): void {
 }
 .reason-field {
   margin-top: 0.25rem;
+}
+.field-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #64748b;
 }
 .muted {
   color: #64748b;

@@ -124,7 +124,7 @@ export function fallbackCbpNavPayload(): CbpNavPayload {
       label: link.label,
       description: link.description ?? '',
       href: link.href,
-      icon: link.id === 'apm' ? 'fa fa-sitemap' : 'fa fa-wallet',
+      icon: link.id === 'apm' ? 'bx bx-sitemap' : 'bx bx-wallet',
       opens_in_new_tab: false,
       is_active: false,
       sso_launch: true,

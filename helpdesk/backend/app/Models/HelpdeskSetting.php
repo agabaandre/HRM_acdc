@@ -101,11 +101,47 @@ class HelpdeskSetting extends Model
     /** Daily email to agents who still have open / in-progress tickets assigned. */
     public const KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED = 'agent_open_ticket_reminder_enabled';
 
+    /** Email responsible person + helpdesk admins when licenses enter their warning window. */
+    public const KEY_LICENSE_EXPIRY_ALERT_ENABLED = 'license_expiry_alert_enabled';
+
+    /** Days between repeated license expiry alert emails (1, 3, or 7). */
+    public const KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS = 'license_expiry_alert_interval_days';
+
+    /** Comma-separated support group IDs notified on new software requests. */
+    public const KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS = 'software_request_notify_group_ids';
+
+    /** Comma-separated agent user IDs on the software request review board. */
+    public const KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS = 'software_request_review_board_user_ids';
+
+    /**
+     * When "1", request form shows issue category (chained under business unit).
+     * When "0" (default), only business unit is shown and AI categorizes asynchronously.
+     */
+    public const KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM = 'show_issue_category_on_request_form';
+
+    /** Master switch: poll Business Unit mailboxes and create tickets from email. */
+    public const KEY_EMAIL_TICKET_INTAKE_ENABLED = 'email_ticket_intake_enabled';
+
     public static function getValue(string $key, ?string $default = null): ?string
     {
         $row = static::query()->where('key', $key)->first();
 
         return $row?->value ?? $default;
+    }
+
+    public static function showIssueCategoryOnRequestForm(): bool
+    {
+        $v = static::getValue(self::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM, '0');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    /** Global gate for Exchange mailbox → ticket intake (per-BU flags still apply). */
+    public static function emailTicketIntakeEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_EMAIL_TICKET_INTAKE_ENABLED, '0');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
     }
 
     /** @deprecated Confirmation step removed; tickets close on agent resolution. */
@@ -226,6 +262,62 @@ class HelpdeskSetting extends Model
         $v = static::getValue(self::KEY_AGENT_OPEN_TICKET_REMINDER_ENABLED, '1');
 
         return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function licenseExpiryAlertEnabled(): bool
+    {
+        $v = static::getValue(self::KEY_LICENSE_EXPIRY_ALERT_ENABLED, '1');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function licenseExpiryAlertIntervalDays(): int
+    {
+        $v = (int) static::getValue(self::KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS, '7');
+        if (! in_array($v, [1, 3, 7], true)) {
+            return 7;
+        }
+
+        return $v;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function softwareRequestNotifyGroupIds(): array
+    {
+        return self::parseIdList(static::getValue(self::KEY_SOFTWARE_REQUEST_NOTIFY_GROUP_IDS, ''));
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function softwareRequestReviewBoardUserIds(): array
+    {
+        return self::parseIdList(static::getValue(self::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS, ''));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function parseIdList(?string $raw): array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+
+        $ids = [];
+        foreach (preg_split('/\s*,\s*/', trim($raw)) ?: [] as $part) {
+            if ($part === '' || ! ctype_digit($part)) {
+                continue;
+            }
+            $id = (int) $part;
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     public static function setValue(string $key, ?string $value): void

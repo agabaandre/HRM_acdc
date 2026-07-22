@@ -8,7 +8,7 @@ final class HelpdeskMailBranding
     {
         $name = config('helpdesk.mail_brand_name');
 
-        return is_string($name) && $name !== '' ? $name : 'Africa CDC Helpdesk';
+        return is_string($name) && $name !== '' ? $name : 'Africa CDC Service Desk';
     }
 
     public static function logoUrl(): string

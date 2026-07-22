@@ -5,8 +5,8 @@ Helpdesk is served over **Apache** (`/staff/helpdesk/` SPA + `/staff/helpdesk/ba
 | Unit | Purpose |
 |------|---------|
 | `helpdesk.target` | Enable the whole stack on boot |
-| `helpdesk-queue.service` | `php artisan queue:work` (mail, notifications; `QUEUE_CONNECTION=database`) |
-| `helpdesk-scheduler.timer` | Runs `php artisan schedule:run` every minute |
+| `helpdesk-queue.service` | `php artisan queue:work` on `default,helpdesk,helpdesk-ai` (`QUEUE_CONNECTION=database`) |
+| `helpdesk-scheduler.timer` | Runs `php artisan schedule:run` every minute (includes BU mailbox intake) |
 | `helpdesk-health.timer` | Optional `curl` to `/api/v1/health` every 5 minutes |
 
 On **server reboot**, systemd starts `helpdesk.target` → queue worker + timers.  

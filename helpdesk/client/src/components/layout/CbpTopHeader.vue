@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
 import { fetchCbpModules, type CbpNavPayload } from '../../lib/cbpModules'
+import { launchCbpModule, moduleLaunchKey } from '../../lib/cbpLaunch'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import { staffPortalBaseUrl, staffPortalProfileUrl } from '../../lib/sso'
 import { useAuthStore } from '../../stores/auth'
@@ -85,12 +86,30 @@ function onLogout() {
   auth.logout()
 }
 
-function moduleTarget(mod: { opens_in_new_tab?: boolean }): string | undefined {
+function moduleTarget(mod: { opens_in_new_tab?: boolean; sso_launch?: boolean }): string | undefined {
+  if (mod.sso_launch) {
+    return undefined
+  }
   return mod.opens_in_new_tab ? '_blank' : undefined
 }
 
-function moduleRel(mod: { opens_in_new_tab?: boolean }): string | undefined {
+function moduleRel(mod: { opens_in_new_tab?: boolean; sso_launch?: boolean }): string | undefined {
+  if (mod.sso_launch) {
+    return undefined
+  }
   return mod.opens_in_new_tab ? 'noopener noreferrer' : undefined
+}
+
+function onModuleNav(mod: { sso_launch?: boolean; module_key?: string; id?: string; opens_in_new_tab?: boolean; href?: string }, e: Event) {
+  closeMenus()
+  if (mod.sso_launch) {
+    e.preventDefault()
+    const key = moduleLaunchKey(mod)
+    if (key) {
+      void launchCbpModule(key, !!mod.opens_in_new_tab)
+    }
+    return
+  }
 }
 
 onMounted(() => {
@@ -124,7 +143,7 @@ function onLogoError(e: Event) {
 <template>
   <header class="cbp-topbar">
     <div class="cbp-topbar-inner">
-      <RouterLink to="/" class="cbp-topbar-logo" title="IT Service Desk — Overview">
+      <RouterLink to="/" class="cbp-topbar-logo" title="Service Desk — Overview">
         <img
           :src="`${base}/assets/images/AU_CDC_Logo-800.png`"
           width="200"
@@ -174,13 +193,13 @@ function onLogoError(e: Event) {
               <a
                 v-for="sys in systems"
                 :key="sys.id"
-                :href="sys.href"
+                :href="sys.sso_launch ? '#' : sys.href"
                 class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon"
                 :class="{ 'is-active': sys.is_active }"
                 role="menuitem"
                 :target="moduleTarget(sys)"
                 :rel="moduleRel(sys)"
-                @click="closeMenus"
+                @click="onModuleNav(sys, $event)"
               >
                 <i
                   v-if="sys.icon"

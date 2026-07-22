@@ -175,6 +175,10 @@ async function saveGeneral() {
       agent_monthly_report_retention_months: ctx.form.agent_monthly_report_retention_months,
       resolved_auto_close_days: ctx.form.resolved_auto_close_days,
       agent_open_ticket_reminder_enabled: ctx.form.agent_open_ticket_reminder_enabled,
+      license_expiry_alert_enabled: ctx.form.license_expiry_alert_enabled,
+      license_expiry_alert_interval_days: ctx.form.license_expiry_alert_interval_days,
+      show_issue_category_on_request_form: ctx.form.show_issue_category_on_request_form,
+      email_ticket_intake_enabled: ctx.form.email_ticket_intake_enabled,
     },
     "General settings saved.",
   )
@@ -300,7 +304,7 @@ function roleLabel(c: CandidateRow): string {
           <span class="card-icon" aria-hidden="true">🎨</span>
           <div>
             <h3>Branding</h3>
-            <p class="card-lede">Colours used across the IT Service Desk portal.</p>
+            <p class="card-lede">Colours used across the Service Desk portal.</p>
           </div>
         </header>
         <div class="color-grid">
@@ -334,6 +338,50 @@ function roleLabel(c: CandidateRow): string {
             <span class="toggle-hint">
               Enabled by default. Requesters see a “reopen this ticket” option when posting a comment on closed or resolved tickets;
               agents receive the comment in their inbox.
+            </span>
+          </span>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">🗂️</span>
+          <div>
+            <h3>Request form categories</h3>
+            <p class="card-lede">
+              Control whether requesters pick an issue category, or only a business unit (AI categorizes asynchronously).
+            </p>
+          </div>
+        </header>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.show_issue_category_on_request_form" />
+          <span class="toggle-copy">
+            <strong>Show issue category on new request form</strong>
+            <span class="toggle-hint">
+              Off by default: requesters select a business unit only; AI assigns the issue category (and routes by category).
+              On: requesters pick business unit, then category under it; AI categorization is skipped.
+            </span>
+          </span>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">✉️</span>
+          <div>
+            <h3>Email ticket intake</h3>
+            <p class="card-lede">
+              Master switch for creating tickets from Business Unit support mailboxes (Exchange). Per-unit mailbox and intake must also be enabled under Issue categories → Business units.
+            </p>
+          </div>
+        </header>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.email_ticket_intake_enabled" />
+          <span class="toggle-copy">
+            <strong>Allow email submission of tickets</strong>
+            <span class="toggle-hint">
+              Off by default. When on, the scheduler polls each unit with intake enabled (e.g. helpdesk@africacdc.org for IT &amp; MIS), creates tickets, categorizes, and assigns.
+              Use <strong>Test read</strong> on a Business Unit to verify Graph access without creating tickets.
             </span>
           </span>
         </div>
@@ -500,6 +548,40 @@ function roleLabel(c: CandidateRow): string {
           />
         </UFormField>
         <p class="hint-tight">Archived HTML copies are purged after this period (default 12 months).</p>
+      </article>
+
+      <article class="settings-card settings-card--license-alerts">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">🔑</span>
+          <div>
+            <h3>License expiry alerts</h3>
+            <p class="card-lede">
+              Email the responsible person and all Helpdesk admins when a license is inside its per-license warning window.
+            </p>
+          </div>
+        </header>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.license_expiry_alert_enabled" />
+          <span class="toggle-copy">
+            <strong>Enable license expiry alerts</strong>
+            <span class="toggle-hint">Runs daily; each license uses its own “warning days before” value.</span>
+          </span>
+        </div>
+        <UFormField
+          label="Reminder interval (days)"
+          name="license_expiry_alert_interval_days"
+          description="How often to re-send while the license remains in the warning/expired window."
+        >
+          <USelect
+            v-model="ctx.form.license_expiry_alert_interval_days"
+            :items="[
+              { label: 'Every day', value: 1 },
+              { label: 'Every 3 days', value: 3 },
+              { label: 'Every 7 days', value: 7 },
+            ]"
+            class="w-full"
+          />
+        </UFormField>
       </article>
     </div>
 
@@ -723,16 +805,28 @@ function roleLabel(c: CandidateRow): string {
   max-width: 42rem;
 }
 .settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-  gap: 1rem;
+  column-count: 3;
+  column-gap: 0.75rem;
 }
 .settings-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 0.75rem;
+  width: 100%;
+  display: inline-block;
+  vertical-align: top;
   border: 1px solid var(--hd-line);
   border-radius: 4px;
   background: #fff;
   padding: 1rem 1.1rem 1.1rem;
   box-shadow: none;
+  box-sizing: border-box;
+}
+@media (max-width: 1100px) {
+  .settings-grid { column-count: 2; }
+}
+@media (max-width: 720px) {
+  .settings-grid { column-count: 1; }
 }
 .settings-card--agents {
   padding-bottom: 0.5rem;
@@ -1067,33 +1161,36 @@ code {
   font-size: 0.78rem;
 }
 .cand-table-wrap {
-  border: 1px solid var(--hd-line);
-  border-radius: 4px;
+  border: none;
+  border-radius: 12px;
   overflow: auto;
   max-height: 22rem;
   background: #fff;
+  box-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
 }
 .cand-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 0.875rem;
 }
 .cand-table th {
   position: sticky;
   top: 0;
   background: #f8fafc;
   text-align: left;
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
-  padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid var(--hd-line);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: #3a4752;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid #dfe5ef;
 }
 .cand-table td {
-  padding: 0.55rem 0.7rem;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba(223, 229, 239, 0.85);
   vertical-align: middle;
 }
 .cand-table tr.marked {

@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\HelpdeskSoftwareRequest;
 use App\Models\HelpdeskSoftwareRequestApproval;
 use App\Models\HelpdeskSoftwareRequestTeamMember;
+use App\Services\HtmlSanitizer;
+use App\Services\SoftwareRequestNotifyService;
+use App\Services\StaffDirectoryLookupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class SoftwareRequestController extends Controller
@@ -18,7 +22,7 @@ class SoftwareRequestController extends Controller
     {
         $user = $request->user();
         $profile = $user?->helpdeskProfile;
-        $canManage = $profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests() || $profile->isHelpdeskAdmin());
+        $canManage = $profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests());
 
         $query = HelpdeskSoftwareRequest::query()
             ->with(['teamMembers', 'approvals'])
@@ -27,16 +31,26 @@ class SoftwareRequestController extends Controller
         if (! $canManage) {
             $this->ensureSoftwareRequestSubmit($request);
             $query->where('requester_user_id', $user?->id);
-        } elseif ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->input('priority'));
+        }
+        if ($request->filled('division_id')) {
+            $query->where('division_id', (int) $request->input('division_id'));
+        }
         if ($request->filled('q')) {
             $q = '%'.$request->input('q').'%';
             $query->where(function ($sub) use ($q) {
                 $sub->where('request_number', 'like', $q)
                     ->orWhere('request_title', 'like', $q)
-                    ->orWhere('requester_name', 'like', $q);
+                    ->orWhere('requester_name', 'like', $q)
+                    ->orWhere('division_name', 'like', $q)
+                    ->orWhere('directorate_name', 'like', $q)
+                    ->orWhere('department', 'like', $q);
             });
         }
 
@@ -53,40 +67,52 @@ class SoftwareRequestController extends Controller
         return response()->json(['data' => $softwareRequest]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, StaffDirectoryLookupService $directory, SoftwareRequestNotifyService $notifier): JsonResponse
     {
         $this->ensureSoftwareRequestSubmit($request);
         $user = $request->user();
+        $profile = $user->helpdeskProfile;
 
         $validated = $this->validatedPayload($request);
+        $org = $this->resolveOrgFields($user->id, $profile?->staff_id, $directory, $profile?->division_id, $profile?->directorate_id);
         $submit = $request->boolean('submit');
 
-        $row = HelpdeskSoftwareRequest::query()->create(array_merge($validated, [
+        $row = HelpdeskSoftwareRequest::query()->create(array_merge($validated, $org, [
             'request_number' => HelpdeskSoftwareRequest::generateRequestNumber(),
             'requester_user_id' => $user->id,
             'requester_name' => $validated['requester_name'] ?? $user->name,
             'email' => $validated['email'] ?? $user->email,
+            'department' => $org['division_name'] ?? ($validated['department'] ?? null),
             'status' => $submit ? 'submitted' : 'draft',
             'received_at' => $submit ? now() : null,
         ]));
 
+        if ($submit) {
+            $notifier->notifyNewSubmission($row);
+        }
+
         return response()->json(['data' => $row->fresh(['teamMembers', 'approvals'])], 201);
     }
 
-    public function update(Request $request, HelpdeskSoftwareRequest $softwareRequest): JsonResponse
+    public function update(Request $request, HelpdeskSoftwareRequest $softwareRequest, SoftwareRequestNotifyService $notifier): JsonResponse
     {
         $this->assertCanEdit($request, $softwareRequest);
 
         $validated = $this->validatedPayload($request, true);
         $submit = $request->boolean('submit');
+        $wasDraft = in_array($softwareRequest->status, ['draft', 'returned'], true);
 
-        if ($submit && in_array($softwareRequest->status, ['draft', 'returned'], true)) {
+        if ($submit && $wasDraft) {
             $validated['status'] = 'submitted';
             $validated['received_at'] = $softwareRequest->received_at ?? now();
         }
 
         $softwareRequest->fill($validated);
         $softwareRequest->save();
+
+        if ($submit && $wasDraft) {
+            $notifier->notifyNewSubmission($softwareRequest->fresh());
+        }
 
         return response()->json(['data' => $softwareRequest->fresh(['teamMembers', 'approvals'])]);
     }
@@ -97,7 +123,7 @@ class SoftwareRequestController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'approval_role' => ['required', 'string', Rule::in(['team_lead', 'business_analyst', 'project_lead'])],
+            'approval_role' => ['required', 'string', Rule::in(['team_lead', 'business_analyst', 'project_lead', 'review_board'])],
             'decision' => ['required', 'string', Rule::in(['approved', 'deferred', 'rejected'])],
             'notes' => ['nullable', 'string'],
             'assigned_ba_staff_id' => ['nullable', 'integer', 'min:1'],
@@ -119,7 +145,7 @@ class SoftwareRequestController extends Controller
             ]
         );
 
-        if ($validated['approval_role'] === 'team_lead') {
+        if (in_array($validated['approval_role'], ['team_lead', 'review_board'], true)) {
             $softwareRequest->team_lead_review_at = now();
             $softwareRequest->team_lead_user_id = $user->id;
         }
@@ -188,9 +214,9 @@ class SoftwareRequestController extends Controller
             'email' => ['nullable', 'email', 'max:191'],
             'phone' => ['nullable', 'string', 'max:64'],
             'request_title' => [$partial ? 'sometimes' : 'required', 'string', 'max:191'],
-            'problem_statement' => ['nullable', 'string'],
-            'proposed_solution' => ['nullable', 'string'],
-            'business_justification' => ['nullable', 'string'],
+            'problem_statement' => ['nullable', 'string', 'max:65000'],
+            'proposed_solution' => ['nullable', 'string', 'max:65000'],
+            'business_justification' => ['nullable', 'string', 'max:65000'],
             'affected_stakeholders' => ['nullable', 'string'],
             'mandate_alignment' => ['nullable', 'string', 'max:191'],
             'priority' => ['nullable', 'string', Rule::in(['critical', 'high', 'medium', 'low'])],
@@ -200,13 +226,103 @@ class SoftwareRequestController extends Controller
             'additional_comments' => ['nullable', 'string'],
         ];
 
-        return $request->validate($rules);
+        $validated = $request->validate($rules);
+
+        foreach (['problem_statement', 'proposed_solution', 'business_justification'] as $richKey) {
+            if (! array_key_exists($richKey, $validated) || ! is_string($validated[$richKey])) {
+                continue;
+            }
+            $sanitized = HtmlSanitizer::sanitize($validated[$richKey]);
+            $validated[$richKey] = $sanitized;
+        }
+
+        return $validated;
+    }
+
+    /**
+     * @return array{division_id:?int,directorate_id:?int,division_name:?string,directorate_name:?string}
+     */
+    private function resolveOrgFields(
+        int $userId,
+        ?int $staffId,
+        StaffDirectoryLookupService $directory,
+        ?int $profileDivisionId,
+        ?int $profileDirectorateId,
+    ): array {
+        $divisionId = $profileDivisionId ? (int) $profileDivisionId : null;
+        $directorateId = $profileDirectorateId ? (int) $profileDirectorateId : null;
+        $divisionName = null;
+        $directorateName = null;
+
+        if ($staffId && $staffId > 0) {
+            $resolved = $directory->resolveByStaffId((int) $staffId);
+            if ($resolved !== null) {
+                // Profile (SSO) wins when set; directory fills gaps only.
+                $divisionId = $divisionId ?: ($resolved['division_id'] ?? null);
+                $directorateId = $directorateId ?: ($resolved['directorate_id'] ?? null);
+            }
+        }
+
+        [$divisionName, $directorateName, $directorateId] = $this->lookupOrgNames($divisionId, $directorateId);
+
+        return [
+            'division_id' => $divisionId,
+            'directorate_id' => $directorateId,
+            'division_name' => $divisionName,
+            'directorate_name' => $directorateName,
+        ];
+    }
+
+    /**
+     * @return array{0:?string,1:?string,2:?int}
+     */
+    private function lookupOrgNames(?int $divisionId, ?int $directorateId): array
+    {
+        $bundle = Cache::get('helpdesk_reference_bundle_v1');
+        $divisions = is_array($bundle['divisions'] ?? null) ? $bundle['divisions'] : [];
+        $directorates = is_array($bundle['directorates'] ?? null) ? $bundle['directorates'] : [];
+
+        $divisionName = null;
+        $directorateName = null;
+
+        if ($divisionId) {
+            foreach ($divisions as $d) {
+                if (! is_array($d)) {
+                    continue;
+                }
+                if ((int) ($d['id'] ?? 0) === $divisionId) {
+                    $divisionName = (string) ($d['name'] ?? '');
+                    if (! $directorateId && isset($d['directorate_id'])) {
+                        $directorateId = (int) $d['directorate_id'] ?: null;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if ($directorateId) {
+            foreach ($directorates as $d) {
+                if (! is_array($d)) {
+                    continue;
+                }
+                if ((int) ($d['id'] ?? 0) === $directorateId) {
+                    $directorateName = (string) ($d['name'] ?? '');
+                    break;
+                }
+            }
+        }
+
+        return [
+            $divisionName !== '' ? $divisionName : null,
+            $directorateName !== '' ? $directorateName : null,
+            $directorateId,
+        ];
     }
 
     private function assertCanView(Request $request, HelpdeskSoftwareRequest $row): void
     {
         $profile = $request->user()?->helpdeskProfile;
-        if ($profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests() || $profile->isHelpdeskAdmin())) {
+        if ($profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests())) {
             return;
         }
         abort_unless((int) $row->requester_user_id === (int) $request->user()?->id, 403);

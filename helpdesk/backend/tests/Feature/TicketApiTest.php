@@ -39,6 +39,7 @@ class TicketApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $create = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => '<p>Outlook error</p>',
         ]);
@@ -62,6 +63,7 @@ class TicketApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $payload = [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => '<p>Network issue</p>',
         ];
@@ -88,6 +90,7 @@ class TicketApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $res = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'On behalf test',
             'requester_staff_id' => 77702,
@@ -107,11 +110,13 @@ class TicketApiTest extends TestCase
         Sanctum::actingAs($user);
 
         $firstId = (int) $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'First ticket',
         ])->json('data.id');
 
         $secondId = (int) $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Second ticket',
         ])->json('data.id');
@@ -138,6 +143,7 @@ class TicketApiTest extends TestCase
         $this->seedHelpdeskStaffDirectoryCache(888021, 'other.staff@example.org', 'Other', 'Staff');
 
         $tid = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'x',
             'requester_staff_id' => 888021,
@@ -157,6 +163,7 @@ class TicketApiTest extends TestCase
 
         $mine = HelpdeskTicket::query()->create([
             'ticket_number' => 'HD-MINE-1',
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'subject' => 'Assigned to agent A',
             'description' => 'x',
@@ -171,6 +178,7 @@ class TicketApiTest extends TestCase
 
         HelpdeskTicket::query()->create([
             'ticket_number' => 'HD-OTHER-1',
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'subject' => 'Assigned to agent B',
             'description' => 'x',

@@ -1,4 +1,4 @@
-# Africa CDC Helpdesk — Laravel API
+# Africa CDC Service Desk — Laravel API
 
 This Laravel 11 app is served by **Apache** at:
 

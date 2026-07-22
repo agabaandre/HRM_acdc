@@ -50,6 +50,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         Sanctum::actingAs($this->user(601));
 
         $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'VPN down',
             'priority' => 'critical',
@@ -64,6 +65,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         Sanctum::actingAs($this->user(602));
 
         $res = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Cannot access email from laptop',
         ]);
@@ -85,6 +87,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         $this->seedHelpdeskStaffDirectoryCache(999001, 'affected@example.org', 'Affected', 'User');
 
         $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Urgent outage',
             'priority' => 'high',
@@ -109,6 +112,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         Sanctum::actingAs($this->user(999003));
 
         $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Need access restored',
         ])->assertCreated()->assertJsonPath('data.priority', 'critical');
@@ -124,6 +128,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         $this->seedHelpdeskStaffDirectoryCache(999002, 'affected2@example.org', 'Affected', 'Two');
 
         $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Routine request',
             'priority' => 'critical',
@@ -131,6 +136,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         ])->assertStatus(422);
 
         $res = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Routine request',
             'requester_staff_id' => 999002,
@@ -147,6 +153,7 @@ class TicketPriorityAndSubjectTest extends TestCase
         Sanctum::actingAs($user);
 
         $tid = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'x',
         ])->json('data.id');
@@ -165,6 +172,7 @@ class TicketPriorityAndSubjectTest extends TestCase
 
         Sanctum::actingAs($requester);
         $tid = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Need help',
         ])->json('data.id');
@@ -187,6 +195,7 @@ class TicketPriorityAndSubjectTest extends TestCase
 
         Sanctum::actingAs($requester);
         $tid = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Need help',
         ])->json('data.id');

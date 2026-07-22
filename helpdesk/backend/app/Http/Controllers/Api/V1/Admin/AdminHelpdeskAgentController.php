@@ -50,6 +50,14 @@ class AdminHelpdeskAgentController extends Controller
             'grant_supervisor_access' => (bool) ($u->helpdeskProfile?->grant_supervisor_access),
             'role' => $u->helpdeskProfile?->role,
             'is_designated_agent' => (bool) ($u->helpdeskProfile?->is_designated_agent),
+            'is_agent_disabled' => (bool) ($u->helpdeskProfile?->is_agent_disabled),
+            'routing_eligible' => $u->helpdeskProfile
+                ? $u->helpdeskProfile->isEligibleForTicketRouting()
+                    && (
+                        $this->routing->effectiveCategoryIdsForUser($u->id) !== []
+                        || $this->routing->userBelongsToCatchAllGroup($u->id)
+                    )
+                : false,
             'categories' => $u->helpdeskAgentCategories->map(fn ($c) => [
                 'id' => $c->id,
                 'name' => $c->name,
@@ -139,6 +147,7 @@ class AdminHelpdeskAgentController extends Controller
                 'grant_supervisor_access' => (bool) ($user->helpdeskProfile?->grant_supervisor_access),
                 'role' => $user->helpdeskProfile?->role,
                 'is_designated_agent' => (bool) ($user->helpdeskProfile?->is_designated_agent),
+                'is_agent_disabled' => (bool) ($user->helpdeskProfile?->is_agent_disabled),
                 'categories' => $user->helpdeskAgentCategories->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,
@@ -150,6 +159,40 @@ class AdminHelpdeskAgentController extends Controller
                 ]),
                 'inherited_categories' => $this->routing->inheritedCategoriesForUser($user->id),
                 'effective_categories' => $this->routing->inheritedCategoriesForUser($user->id),
+            ],
+        ]);
+    }
+
+    public function setDisabled(Request $request, User $user): JsonResponse
+    {
+        $this->ensureHelpdeskAdmin($request);
+
+        $validated = $request->validate([
+            'is_agent_disabled' => ['required', 'boolean'],
+        ]);
+
+        $profile = $user->helpdeskProfile;
+        if (! $profile) {
+            abort(422, 'User has no Helpdesk profile (must sign in via Staff SSO at least once).');
+        }
+
+        if (! $profile->actsAsAgent()) {
+            abort(422, 'Only Helpdesk agents can be disabled for routing.');
+        }
+
+        $profile->is_agent_disabled = (bool) $validated['is_agent_disabled'];
+        $profile->save();
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'staff_id' => $profile->staff_id,
+                'is_agent_disabled' => (bool) $profile->is_agent_disabled,
+                'routing_eligible' => $profile->isEligibleForTicketRouting()
+                    && (
+                        $this->routing->effectiveCategoryIdsForUser($user->id) !== []
+                        || $this->routing->userBelongsToCatchAllGroup($user->id)
+                    ),
             ],
         ]);
     }

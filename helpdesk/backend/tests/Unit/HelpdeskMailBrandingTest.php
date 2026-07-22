@@ -7,11 +7,11 @@ use Tests\TestCase;
 
 class HelpdeskMailBrandingTest extends TestCase
 {
-    public function test_default_brand_name_is_africa_cdc_helpdesk(): void
+    public function test_default_brand_name_is_africa_cdc_service_desk(): void
     {
-        config(['helpdesk.mail_brand_name' => 'Africa CDC Helpdesk']);
+        config(['helpdesk.mail_brand_name' => 'Africa CDC Service Desk']);
 
-        $this->assertSame('Africa CDC Helpdesk', HelpdeskMailBranding::brandName());
+        $this->assertSame('Africa CDC Service Desk', HelpdeskMailBranding::brandName());
     }
 
     public function test_logo_url_prefers_app_logo_url_env(): void

@@ -3,6 +3,7 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import {
   buildQuillOptions,
   collectDataUriImagesFromHtml,
@@ -178,12 +179,11 @@ async function uploadInlineImage(file: File, options: { trackBusy?: boolean } = 
     const url = props.ticketId
       ? `/api/v1/tickets/${props.ticketId}/inline-images`
       : '/api/v1/rich-text-images'
-    const { data } = await api.post(url, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post(url, fd)
     return data.data.url as string
-  } catch {
-    imageHint.value = 'Image upload failed. Try a smaller file or a different format.'
+  } catch (err: unknown) {
+    const msg = apiErrorMessage(err, 'Image upload failed. Try a smaller file or a different format.')
+    imageHint.value = msg
     return null
   } finally {
     if (trackBusy) {

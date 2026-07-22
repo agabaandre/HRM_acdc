@@ -1,8 +1,8 @@
 # Helpdesk — User Guide
 
-Welcome to the **Africa CDC IT Service Desk**. This guide walks every audience through what they can do in the helpdesk SPA, including step-by-step **creating a ticket**, **reopening closed tickets**, and **agent desk** workflows.
+Welcome to the **Africa CDC Service Desk**. This guide walks every audience through what they can do in the helpdesk SPA, including step-by-step **creating a ticket**, **reopening closed tickets**, and **agent desk** workflows.
 
-> The helpdesk is reached from the Staff portal home page (the **IT Service Desk** tile). You will be signed in automatically — there is no separate password.
+> The helpdesk is reached from the Staff portal home page (the **Service Desk** tile). You will be signed in automatically — there is no separate password.
 
 ![Helpdesk home — knowledge base search](./screenshots/01-home-knowledge-base.png)
 
@@ -15,13 +15,15 @@ Welcome to the **Africa CDC IT Service Desk**. This guide walks every audience t
 5. [Tracking your tickets (requesters)](#tracking-your-tickets-requesters)
 6. [Comments, reopen & agent email](#comments-reopen--agent-email)
 7. [Agent desk](#agent-desk-agents--supervisors)
-8. [Support groups](#support-groups)
-9. [Reassigning a ticket](#reassigning-a-ticket-permission-required)
-10. [Knowledge base](#knowledge-base)
-11. [Reports](#reports)
-12. [TV / lobby dashboard](#tv--lobby-dashboard)
-13. [Admin settings](#admin-settings-administrators)
-14. [Troubleshooting](#troubleshooting)
+8. [Resolving a ticket (agents)](#resolving-a-ticket-agents)
+9. [Support groups](#support-groups)
+10. [Reassigning a ticket](#reassigning-a-ticket-permission-required)
+11. [Tools (IT Assets & software)](#tools-it-assets--software)
+12. [Knowledge base](#knowledge-base)
+13. [Reports](#reports)
+14. [TV / lobby dashboard](#tv--lobby-dashboard)
+15. [Admin settings](#admin-settings-administrators)
+16. [Troubleshooting](#troubleshooting)
 
 > **Administrators:** see the dedicated [Administrator Guide](./ADMIN_GUIDE.md) for AI, WhatsApp, Teams, mail, env vars, and security configuration.
 
@@ -51,7 +53,7 @@ Agents may belong to **support groups** (e.g. Software Development, Infrastructu
 ## Getting in
 
 1. Sign in to the **Staff portal** (`/staff/`) as usual.
-2. On the home page, look for the **IT Service Desk** tile and click it.
+2. On the home page, look for the **Service Desk** tile and click it.
 3. You'll land on the helpdesk SPA at `/staff/helpdesk/` already signed in. Your name and role appear in the top bar.
 
 If you ever see _"helpdesk_error=sso"_ on the portal home, your account does not currently have the helpdesk permission. Ask an administrator to grant Staff permission **85**, **92**, or **93** (the codes recognised by `HELPDESK_SSO_PERMISSION_CODES`).
@@ -65,7 +67,7 @@ The helpdesk home page combines two things:
 - **A searchable knowledge base** browser, grouped by category. Type a question — the matching FAQs filter live.
 - **Quick links** — depending on your role, you'll see shortcuts to *Create ticket*, *My tickets*, *Agent desk*, *Knowledge base management*, *Reports*, and *Settings*.
 
-You can return to the home page any time by clicking the **IT Service Desk** logo in the top-left.
+You can return to the home page any time by clicking the **Service Desk** logo in the top-left.
 
 ---
 
@@ -86,44 +88,46 @@ You can open this flow from:
 
 ![Create ticket form](./screenshots/02-create-ticket.png)
 
-1. **Open the form** at `/tickets/new`. You'll see four sections: *Requester*, *Issue details*, *Description*, and *Attachments*.
+1. **Open the form** at `/tickets/new`. You'll see tabs for a **Helpdesk ticket** (default) and a gateway to **Software request** when you have permission.
 
 2. **Requester** *(agents only)*
    - Start typing a name or work email. The directory dropdown filters as you type (debounced).
    - Click the matching person. Their directorate, division, and duty station load read-only beneath the picker so you know who you're filing for.
    - Requesters skip this step — you are the requester by default. If you want to log on behalf of someone else, expand the **"Log this on behalf of someone else"** toggle and pick them.
 
-3. **Category** *(required)*
-   - Pick the category that best matches the issue (Email, Computer troubleshooting, Network, Access requests, Printing, etc.).
-   - Categories are configured by admins under **Settings → Categories**; SLA targets are tied to category.
+3. **Business unit** *(required)*
+   - Choose the unit that should handle the issue (e.g. **IT & MIS**, Knowledge Management, HR, Finance, Internal Oversight). Each unit shows a short description to help you pick.
+   - **Internal Oversight** may allow **anonymous** reporting (no personal details stored) when that option is enabled for the unit.
 
-4. **Priority** *(agents only — requesters cannot set priority)*
+4. **Category** *(only if admins turned on “show issue category on request form”)*
+   - When that setting is **off** (default), you pick a Business Unit only; the system **AI-categorizes** the ticket in the background and assigns an agent.
+   - When that setting is **on**, pick Business Unit first, then the matching issue category (Email, Computer troubleshooting, Network, Access, Printing, etc.).
+
+5. **Priority** *(agents only — requesters cannot set priority)*
    - `low` / `medium` / `high` / `critical`.
-   - Requester-submitted tickets default to **medium**; an agent reviews and adjusts after triage.
+   - Requester-submitted tickets default to **medium** (or the category/matrix rule) after triage.
 
-5. **Description** *(strongly recommended)*
+6. **Description** *(strongly recommended)*
    - The description field is a **rich text editor** (Quill). You can paste screenshots from your clipboard, format bullet lists, add links, and use code blocks.
-   - There is no separate "subject" field — the system writes the subject for you using your category + name + the first line of your description (so descriptions like _"Outlook won't open since this morning"_ become useful subjects automatically).
-   - You can leave it empty in a pinch (e.g. when phoning in a ticket), but agents will likely contact you for more detail.
+   - There is no separate "subject" field — the system writes the subject for you using your category or business unit + name + the first line of your description.
 
-6. **Attachments** *(optional)*
+7. **Attachments** *(optional)*
    - Drag files into the upload zone or click to pick. One file at a time, up to **10 MB**.
    - Allowed types: **JPG, JPEG, PNG, GIF, WEBP, PDF, DOC, DOCX**.
-   - Files are uploaded the moment you drop them; you'll see a list of attached items below the editor. You can remove a file before saving by clicking the trash icon on the row.
 
-7. **Submit**
-   - Click **"Create ticket"**. The page shows a confirmation toast and routes you to the new ticket's detail view.
-   - The ticket gets a number like **`HD-2026-000123`** (`HD-{year}-{sequence}` — the counter resets every January 1).
-   - The system picks an initial assignee automatically:
-     - If you are an agent and filed the ticket, you're assigned by default.
-     - Otherwise the auto-router picks an available agent from your duty station + the routing rules under **Settings → Agents** (and from the optional AI assistant when `ai_agent_assignment_enabled` is on).
+8. **Submit**
+   - Click **"Create ticket"**. You get a number like **`HD-2026-000123`**.
+   - Assignment: category routing when a category is known; otherwise AI categorize then assign (or helpdesk admins by workload if categorization fails).
+
+### Email to the service desk
+
+If your Business Unit has **email intake** enabled (IT & MIS uses `helpdesk@africacdc.org`), messages sent to that mailbox become tickets automatically (`source=email`), are categorized, and assigned like web tickets. You do not need to use the form for those requests.
 
 ### What happens next
 
 - An entry is written to the ticket's **audit history** (always visible in the timeline).
 - If the assignee has notifications enabled (mail / Teams), they're alerted immediately.
-- If the AI scanner is enabled, the new ticket is queued for tagging/triage signals.
-- You'll receive an **email** with the ticket number and a tracking link.
+- You'll receive an **email** with the ticket number and a tracking link when configured.
 
 ### Tips
 
@@ -153,13 +157,11 @@ Open any ticket to see:
 
 You cannot change priority, category, status, or the assignee yourself — those belong to the agent.
 
-You cannot change priority, category, status, or the assignee yourself — those belong to the agent.
-
 ---
 
 ## Comments, reopen & agent email
 
-When an agent **closes** your ticket, you receive a branded email from **Africa CDC Helpdesk** with resolution notes and a link back to the ticket.
+When an agent **closes** your ticket, you receive a branded email from **Africa CDC Service Desk** with resolution notes and a link back to the ticket.
 
 On a **closed**, **resolved**, or **awaiting confirmation** ticket:
 
@@ -184,14 +186,24 @@ The **Agent desk** at `/desk/agent` is the daily workspace for everyone with a s
 
 What you see:
 
-- A greeting + the current time, with a pulse on whether you're "in service hours".
+- A greeting with your **full name** and the current date.
 - **KPI tiles** (clickable — filter the recent-tickets table and scroll to it): *Pending*, *Due today*, *Overdue*, *Awaiting confirmation*, *High-priority*, *Resolved*, and more.
-- **Status bar chart** showing your queue by status.
-- **Priority bar chart** showing your queue by urgency.
-- A live **recent tickets** table (the 25 most recent assigned to you) with quick filters (status, priority, due-soon).
-- **Action buttons** per ticket: *Open* (full detail view), and *Reassign* (only if you have the permission — see next section).
+- **Status / priority charts** and a live **recent tickets** table with quick filters.
+- An embedded **kanban** board for drag-and-drop status moves (including resolve).
+- **Action buttons** per ticket: *Open*, *Reassign* (if permitted).
 
 The data refreshes when you switch tabs and on each visit; click any KPI tile to filter the list below.
+
+---
+
+## Resolving a ticket (agents)
+
+From the ticket detail page or the agent desk resolve flow:
+
+1. Write **resolution notes** in the rich text editor (screenshots and formatting supported).
+2. Confirm resolve. Optionally **publish to the knowledge base** if you have permission.
+3. If the ticket’s Business Unit has **Allow Asset** enabled, you may optionally **link an IT asset** assigned to the requester — search by **serial number**, asset tag, name, brand, or model.
+4. The requester is emailed; they can close the ticket when satisfied or reopen if needed.
 
 ---
 
@@ -231,6 +243,18 @@ What happens:
 - The new assignee receives a notification.
 
 Reassignment is **only** allowed on `open`, `pending`, or `in_progress` tickets — the API rejects attempts on `awaiting_requester_confirmation`, `resolved`, or `closed` tickets with a clear 422 error.
+
+---
+
+## Tools (IT Assets & software)
+
+Staff with the right permissions see **Tools** in navigation:
+
+| Tool | What it does |
+|------|----------------|
+| **IT Assets** | Inventory with depreciation: assign staff from the directory, choose brand/category, search by serial/tag/assignee. Brands and categories are managed under **Settings → IT Assets**. |
+| **Licenses** | Software license tracking with responsible person from the directory. |
+| **Software requests** | Submit/approve software needs (rich text problem / solution / justification). |
 
 ---
 
@@ -295,12 +319,14 @@ The **Settings** area (`/settings`) is gated to `role = admin`. Use the **[Admin
 
 | Panel | Path | Summary |
 |-------|------|---------|
-| **General** | `/settings/general` | Branding, **requester follow-up** (reopen + email), agent divisions |
+| **General** | `/settings/general` | Branding, requester follow-up, request-form category toggle, agent divisions |
 | **AI models & provider** | `/settings/ai` | OpenAI / Gemini / custom, encrypted API key, AI assignment |
-| **Agents & support groups** | `/settings/agents` | Groups, roster, categories, permissions |
-| **Issue categories** | `/settings/categories` | Requester categories |
+| **Agents & support groups** | `/settings/agents` | Groups, roster, categories, permissions, routing disable |
+| **Issue categories** | `/settings/categories` | Business units (mailbox, Allow Asset, email intake) + categories |
+| **IT Assets** | `/settings/it-assets` | Brands and hardware categories |
 | **Jobs** | `/settings/jobs` | SLA rules, directory sync, FAQ ingest |
 | **WhatsApp & Teams** | `/settings/integrations` | Webhook URLs and encrypted credentials |
+| **Software requests** | `/settings/software-requests` | Notify groups and review board |
 | **Audit & ISO logging** | `/settings/logging` | Audit viewer, ISO JSON log status |
 
 ![General settings](./screenshots/08-settings-general.png)
@@ -320,6 +346,8 @@ Every settings save writes an entry to the audit log with the actor, IP, user-ag
 | Attachment upload fails | Check the file is under 10 MB and is a supported MIME (`jpg/jpeg/png/gif/webp/pdf/doc/docx`). Network firewalls also block some MIMEs — try a PDF. |
 | You can't see the **Reassign** button | Either the ticket isn't in `open` / `pending` / `in_progress`, or you don't have `can_reassign_tickets`. Admins set this on **Settings → Agents**. |
 | Resolution email never arrives | Check `MAIL_*` / Exchange Graph vars; see [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications). |
+| Email to helpdesk never becomes a ticket | Admin must enable intake on the Business Unit mailbox and Graph Mail.ReadWrite; see [ADMIN_GUIDE → Inbound email intake](./ADMIN_GUIDE.md#inbound-email-intake). |
+| Cannot link an asset on resolve | Business Unit needs **Allow Asset**; asset must be assigned to the ticket requester in IT Assets. |
 | Reopen checkbox missing | **Settings → General → Requester follow-up** may be off, or ticket is not closed. |
 | Agent not emailed on comment | Same toggle; ticket must have an assigned agent with a valid email. |
 | The TV screen says "Reconnecting" indefinitely | The browser can't reach `/api/v1/public/screen`. Confirm Apache is up and `throttle:120,1` isn't being hit by another consumer. |

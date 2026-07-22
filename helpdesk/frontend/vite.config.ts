@@ -17,12 +17,23 @@ export default defineConfig(({ mode }) => {
     base,
     build: {
       outDir: 'dist-build',
+      // Keep false until root-owned stale files under dist-build/assets are removed
+      // (`sudo rm -rf dist-build`), then flip to true for clean builds.
       emptyOutDir: false,
       target: 'es2020',
       cssCodeSplit: true,
       sourcemap: false,
       modulePreload: {
         polyfill: true,
+        resolveDependencies(_filename, deps) {
+          // Quill / editor chunk is route-specific — never preload on boot.
+          return deps.filter(
+            (dep) =>
+              !/(^|\/)editor[-.]/.test(dep) &&
+              !dep.includes('vue-quill') &&
+              !/\/quill/.test(dep),
+          )
+        },
       },
       rollupOptions: {
         output: {
@@ -30,23 +41,20 @@ export default defineConfig(({ mode }) => {
             if (!id.includes('node_modules')) {
               return undefined
             }
-            if (id.includes('@vueup/vue-quill') || id.includes('quill')) {
-              return 'editor'
-            }
-            if (id.includes('vuetify')) {
-              return 'vuetify'
-            }
+            // Keep Vue runtime out of any feature chunk (esp. Quill).
             if (
-              id.includes('/vue/') ||
-              id.includes('vue-router') ||
-              id.includes('pinia') ||
+              /[/\\](?:vue|vue-router|pinia)[/\\]/.test(id) ||
               id.includes('@vue/')
             ) {
               return 'vue-vendor'
             }
+            if (id.includes('vuetify')) {
+              return 'vuetify'
+            }
             if (id.includes('axios')) {
               return 'http'
             }
+            // Do NOT force Quill into a shared chunk — dynamic import only.
             return undefined
           },
         },

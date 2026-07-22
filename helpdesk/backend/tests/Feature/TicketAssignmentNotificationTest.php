@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\TicketAssignedToAgentMail;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSupportGroup;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
 use Database\Seeders\HelpdeskCategorySeeder;
@@ -62,14 +63,24 @@ class TicketAssignmentNotificationTest extends TestCase
         $this->seed(HelpdeskCategorySeeder::class);
         $cat = HelpdeskCategory::query()->firstOrFail();
 
-        $this->agent(501, 'pickme@example.org');
+        $agent = $this->agent(501, 'pickme@example.org');
+        $agent->helpdeskAgentCategories()->sync([$cat->id]);
+        $group = HelpdeskSupportGroup::query()
+            ->whereHas('categories', fn ($q) => $q->where('helpdesk_categories.id', $cat->id))
+            ->orderBy('sort_order')
+            ->first();
+        if ($group) {
+            $agent->helpdeskSupportGroups()->syncWithoutDetaching([$group->id]);
+        }
 
         Sanctum::actingAs($this->requester(601));
         $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'description' => 'Need VPN',
         ])->assertCreated();
 
+        // dispatchAfterResponse runs on kernel terminate (covered by HTTP test call).
         Mail::assertSent(TicketAssignedToAgentMail::class, 1);
         Mail::assertSent(TicketAssignedToAgentMail::class, function (TicketAssignedToAgentMail $mail) {
             return $mail->hasTo('pickme@example.org')
@@ -89,6 +100,7 @@ class TicketAssignmentNotificationTest extends TestCase
 
         $ticket = HelpdeskTicket::query()->create([
             'ticket_number' => 'HD-TEST-R1',
+            'business_unit_id' => $cat->business_unit_id,
             'category_id' => $cat->id,
             'subject' => 'Handoff',
             'description' => 'x',

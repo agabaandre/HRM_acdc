@@ -20,6 +20,8 @@ declare global {
   }
 }
 
+let lobiboxLoadPromise: Promise<void> | null = null
+
 function iconFor(type: NotifyType): string {
   switch (type) {
     case 'success':
@@ -48,15 +50,10 @@ function showFallbackToast(message: string, type: NotifyType): void {
   }, 6000)
 }
 
-export function notify(message: string, type: NotifyType = 'info'): void {
-  const text = message.trim()
-  if (!text) {
-    return
-  }
+function showLobibox(message: string, type: NotifyType): void {
   const lobibox = window.Lobibox
   if (!lobibox?.notify) {
-    console.warn('[helpdesk] Lobibox not loaded:', text)
-    showFallbackToast(text, type)
+    showFallbackToast(message, type)
     return
   }
   lobibox.notify(type === 'default' ? 'default' : type, {
@@ -65,7 +62,25 @@ export function notify(message: string, type: NotifyType = 'info'): void {
     position: 'center top',
     icon: iconFor(type),
     sound: false,
-    msg: text,
+    msg: message,
+  })
+}
+
+export function notify(message: string, type: NotifyType = 'info'): void {
+  const text = message.trim()
+  if (!text) {
+    return
+  }
+  if (window.Lobibox?.notify) {
+    showLobibox(text, type)
+    return
+  }
+  // Show immediately; upgrade to Lobibox once scripts finish (first toast only).
+  showFallbackToast(text, type)
+  void loadLobiboxAssets().then(() => {
+    // Already shown via fallback — do not duplicate.
+  }).catch(() => {
+    /* fallback already shown */
   })
 }
 
@@ -85,23 +100,34 @@ export function notifyInfo(message: string): void {
   notify(message, 'info')
 }
 
+/** Load Lobibox + jQuery on demand (not during app boot). */
 export async function loadLobiboxAssets(): Promise<void> {
   if (window.Lobibox?.notify) {
     return
   }
-
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
-
-  if (!document.querySelector('link[data-helpdesk-lobibox]')) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = `${base}/vendor/lobibox/lobibox.min.css`
-    link.setAttribute('data-helpdesk-lobibox', '1')
-    document.head.appendChild(link)
+  if (lobiboxLoadPromise) {
+    return lobiboxLoadPromise
   }
 
-  await loadScript('https://code.jquery.com/jquery-3.6.0.min.js')
-  await loadScript(`${base}/vendor/lobibox/lobibox.min.js`)
+  lobiboxLoadPromise = (async () => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+
+    if (!document.querySelector('link[data-helpdesk-lobibox]')) {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = `${base}/vendor/lobibox/lobibox.min.css`
+      link.setAttribute('data-helpdesk-lobibox', '1')
+      document.head.appendChild(link)
+    }
+
+    await loadScript('https://code.jquery.com/jquery-3.6.0.min.js')
+    await loadScript(`${base}/vendor/lobibox/lobibox.min.js`)
+  })().catch((err) => {
+    lobiboxLoadPromise = null
+    throw err
+  })
+
+  return lobiboxLoadPromise
 }
 
 function loadScript(src: string): Promise<void> {

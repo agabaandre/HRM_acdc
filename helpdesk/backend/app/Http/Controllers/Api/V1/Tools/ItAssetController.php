@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1\Tools;
 
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskItAsset;
+use App\Models\HelpdeskItAssetBrand;
 use App\Models\HelpdeskItAssetCategory;
+use App\Services\StaffDirectoryLookupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -41,6 +43,10 @@ class ItAssetController extends Controller
                 'total_current_value' => $totalCurrent,
                 'total_depreciation' => round(max(0, $totalPurchase - $totalCurrent), 2),
                 'by_category' => $byCategory,
+                'deployed' => $assets->where('status', HelpdeskItAsset::STATUS_DEPLOYED)->count(),
+                'in_stock' => $assets->where('status', HelpdeskItAsset::STATUS_IN_STOCK)->count(),
+                'repair' => $assets->where('status', HelpdeskItAsset::STATUS_REPAIR)->count(),
+                'retired' => $assets->where('status', HelpdeskItAsset::STATUS_RETIRED)->count(),
             ],
         ]);
     }
@@ -84,25 +90,150 @@ class ItAssetController extends Controller
         return response()->json(['data' => $row], 201);
     }
 
+    public function updateCategory(Request $request, HelpdeskItAssetCategory $category): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:191'],
+            'slug' => ['sometimes', 'string', 'max:191', Rule::unique('helpdesk_it_asset_categories', 'slug')->ignore($category->id)],
+            'icon' => ['nullable', 'string', 'max:64'],
+            'default_useful_life_years' => ['sometimes', 'integer', 'min:1', 'max:30'],
+            'sort_order' => ['sometimes', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $category->fill($validated);
+        $category->save();
+
+        return response()->json(['data' => $category->fresh()->loadCount('assets')]);
+    }
+
+    public function destroyCategory(Request $request, HelpdeskItAssetCategory $category): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        if ($category->assets()->exists()) {
+            abort(422, 'Cannot delete a category that still has assets. Move or retire them first.');
+        }
+
+        $category->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function brands(Request $request): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        $rows = HelpdeskItAssetBrand::query()
+            ->withCount('assets')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json(['data' => $rows]);
+    }
+
+    public function storeBrand(Request $request): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:191'],
+            'slug' => ['nullable', 'string', 'max:191', Rule::unique('helpdesk_it_asset_brands', 'slug')],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $slug = $validated['slug'] ?? Str::slug($validated['name']);
+        if (HelpdeskItAssetBrand::query()->where('slug', $slug)->exists()) {
+            $slug .= '-'.Str::lower(Str::random(4));
+        }
+
+        $row = HelpdeskItAssetBrand::query()->create([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'sort_order' => $validated['sort_order'] ?? 0,
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        return response()->json(['data' => $row], 201);
+    }
+
+    public function updateBrand(Request $request, HelpdeskItAssetBrand $brand): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:191'],
+            'slug' => ['sometimes', 'string', 'max:191', Rule::unique('helpdesk_it_asset_brands', 'slug')->ignore($brand->id)],
+            'sort_order' => ['sometimes', 'integer', 'min:0', 'max:9999'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+
+        $brand->fill($validated);
+        $brand->save();
+
+        if (array_key_exists('name', $validated)) {
+            HelpdeskItAsset::query()
+                ->where('brand_id', $brand->id)
+                ->update(['brand' => $brand->name, 'updated_at' => now()]);
+        }
+
+        return response()->json(['data' => $brand->fresh()->loadCount('assets')]);
+    }
+
+    public function destroyBrand(Request $request, HelpdeskItAssetBrand $brand): JsonResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        if ($brand->assets()->exists()) {
+            abort(422, 'Cannot delete a brand that is still used by assets. Reassign them first.');
+        }
+
+        $brand->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $this->ensureItAssetManager($request);
 
-        $query = HelpdeskItAsset::query()->with('category:id,name,slug,icon,default_useful_life_years');
+        $query = HelpdeskItAsset::query()->with([
+            'category:id,name,slug,icon,default_useful_life_years',
+            'brandRelation:id,name,slug',
+        ]);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', (int) $request->input('category_id'));
         }
+        if ($request->filled('brand_id')) {
+            $query->where('brand_id', (int) $request->input('brand_id'));
+        }
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
+        if ($request->filled('assigned_staff_id')) {
+            $query->where('assigned_staff_id', (int) $request->input('assigned_staff_id'));
+        }
+        if ($request->boolean('unassigned')) {
+            $query->where(function ($q) {
+                $q->whereNull('assigned_staff_id')->orWhere('assigned_staff_id', 0);
+            });
+        }
         if ($request->filled('q')) {
-            $q = '%'.$request->input('q').'%';
+            $q = '%'.trim((string) $request->input('q')).'%';
             $query->where(function ($sub) use ($q) {
                 $sub->where('asset_tag', 'like', $q)
                     ->orWhere('name', 'like', $q)
+                    ->orWhere('brand', 'like', $q)
+                    ->orWhere('model', 'like', $q)
                     ->orWhere('serial_number', 'like', $q)
-                    ->orWhere('assigned_name', 'like', $q);
+                    ->orWhere('assigned_name', 'like', $q)
+                    ->orWhere('location', 'like', $q)
+                    ->orWhere('notes', 'like', $q);
             });
         }
 
@@ -111,61 +242,31 @@ class ItAssetController extends Controller
         return response()->json($rows);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, StaffDirectoryLookupService $directory): JsonResponse
     {
         $this->ensureItAssetManager($request);
 
-        $validated = $request->validate([
-            'asset_tag' => ['required', 'string', 'max:64', Rule::unique('helpdesk_it_assets', 'asset_tag')],
-            'category_id' => ['required', 'integer', 'exists:helpdesk_it_asset_categories,id'],
-            'name' => ['required', 'string', 'max:191'],
-            'brand' => ['nullable', 'string', 'max:191'],
-            'model' => ['nullable', 'string', 'max:191'],
-            'serial_number' => ['nullable', 'string', 'max:191'],
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_cost' => ['nullable', 'numeric', 'min:0'],
-            'salvage_value' => ['nullable', 'numeric', 'min:0'],
-            'useful_life_years' => ['nullable', 'integer', 'min:1', 'max:30'],
-            'assigned_staff_id' => ['nullable', 'integer', 'min:1'],
-            'assigned_name' => ['nullable', 'string', 'max:191'],
-            'status' => ['nullable', 'string', Rule::in(['in_stock', 'deployed', 'repair', 'retired'])],
-            'location' => ['nullable', 'string', 'max:191'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $this->validatedAssetPayload($request);
+        $validated = $this->applyBrandAndAssignee($validated, $directory);
 
         $row = HelpdeskItAsset::query()->create(array_merge($validated, [
             'created_by_user_id' => $request->user()?->id,
         ]));
-        $row->load('category:id,name,slug,icon,default_useful_life_years');
+        $row->load(['category:id,name,slug,icon,default_useful_life_years', 'brandRelation:id,name,slug']);
 
         return response()->json(['data' => $row], 201);
     }
 
-    public function update(Request $request, HelpdeskItAsset $asset): JsonResponse
+    public function update(Request $request, HelpdeskItAsset $asset, StaffDirectoryLookupService $directory): JsonResponse
     {
         $this->ensureItAssetManager($request);
 
-        $validated = $request->validate([
-            'asset_tag' => ['sometimes', 'string', 'max:64', Rule::unique('helpdesk_it_assets', 'asset_tag')->ignore($asset->id)],
-            'category_id' => ['sometimes', 'integer', 'exists:helpdesk_it_asset_categories,id'],
-            'name' => ['sometimes', 'string', 'max:191'],
-            'brand' => ['nullable', 'string', 'max:191'],
-            'model' => ['nullable', 'string', 'max:191'],
-            'serial_number' => ['nullable', 'string', 'max:191'],
-            'purchase_date' => ['nullable', 'date'],
-            'purchase_cost' => ['nullable', 'numeric', 'min:0'],
-            'salvage_value' => ['nullable', 'numeric', 'min:0'],
-            'useful_life_years' => ['nullable', 'integer', 'min:1', 'max:30'],
-            'assigned_staff_id' => ['nullable', 'integer', 'min:1'],
-            'assigned_name' => ['nullable', 'string', 'max:191'],
-            'status' => ['sometimes', 'string', Rule::in(['in_stock', 'deployed', 'repair', 'retired'])],
-            'location' => ['nullable', 'string', 'max:191'],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $this->validatedAssetPayload($request, $asset);
+        $validated = $this->applyBrandAndAssignee($validated, $directory, $asset);
 
         $asset->fill($validated);
         $asset->save();
-        $asset->load('category:id,name,slug,icon,default_useful_life_years');
+        $asset->load(['category:id,name,slug,icon,default_useful_life_years', 'brandRelation:id,name,slug']);
 
         return response()->json(['data' => $asset]);
     }
@@ -176,5 +277,74 @@ class ItAssetController extends Controller
         $asset->delete();
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedAssetPayload(Request $request, ?HelpdeskItAsset $asset = null): array
+    {
+        $uniqueTag = Rule::unique('helpdesk_it_assets', 'asset_tag');
+        if ($asset) {
+            $uniqueTag = $uniqueTag->ignore($asset->id);
+        }
+
+        return $request->validate([
+            'asset_tag' => [$asset ? 'sometimes' : 'required', 'string', 'max:64', $uniqueTag],
+            'category_id' => [$asset ? 'sometimes' : 'required', 'integer', 'exists:helpdesk_it_asset_categories,id'],
+            'name' => [$asset ? 'sometimes' : 'required', 'string', 'max:191'],
+            'brand_id' => ['nullable', 'integer', 'exists:helpdesk_it_asset_brands,id'],
+            'brand' => ['nullable', 'string', 'max:191'],
+            'model' => ['nullable', 'string', 'max:191'],
+            'serial_number' => ['nullable', 'string', 'max:191'],
+            'purchase_date' => ['nullable', 'date'],
+            'purchase_cost' => ['nullable', 'numeric', 'min:0'],
+            'salvage_value' => ['nullable', 'numeric', 'min:0'],
+            'useful_life_years' => ['nullable', 'integer', 'min:1', 'max:30'],
+            'assigned_staff_id' => ['nullable', 'integer', 'min:1'],
+            'assigned_name' => ['nullable', 'string', 'max:191'],
+            'status' => [$asset ? 'sometimes' : 'nullable', 'string', Rule::in(['in_stock', 'deployed', 'repair', 'retired'])],
+            'location' => ['nullable', 'string', 'max:191'],
+            'notes' => ['nullable', 'string'],
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function applyBrandAndAssignee(
+        array $validated,
+        StaffDirectoryLookupService $directory,
+        ?HelpdeskItAsset $existing = null,
+    ): array {
+        if (array_key_exists('brand_id', $validated)) {
+            $brandId = $validated['brand_id'] ? (int) $validated['brand_id'] : null;
+            if ($brandId) {
+                $brand = HelpdeskItAssetBrand::query()->find($brandId);
+                $validated['brand'] = $brand?->name;
+            } else {
+                $validated['brand'] = null;
+            }
+        }
+
+        if (array_key_exists('assigned_staff_id', $validated)) {
+            $staffId = $validated['assigned_staff_id'] ? (int) $validated['assigned_staff_id'] : null;
+            if ($staffId) {
+                $resolved = $directory->resolveByStaffId($staffId);
+                if ($resolved === null) {
+                    abort(422, 'Assigned staff not found in the Staff directory. Run directory sync under Settings → Jobs.');
+                }
+                $validated['assigned_name'] = $resolved['name'];
+                if (($validated['status'] ?? $existing?->status) === HelpdeskItAsset::STATUS_IN_STOCK
+                    || (! array_key_exists('status', $validated) && $existing === null && $staffId)) {
+                    $validated['status'] = HelpdeskItAsset::STATUS_DEPLOYED;
+                }
+            } else {
+                $validated['assigned_name'] = null;
+            }
+        }
+
+        return $validated;
     }
 }

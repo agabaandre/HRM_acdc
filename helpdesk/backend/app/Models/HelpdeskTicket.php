@@ -54,6 +54,8 @@ class HelpdeskTicket extends Model
         'created_by_user_id',
         'ticket_number',
         'category_id',
+        'business_unit_id',
+        'linked_it_asset_id',
         'subject',
         'description',
         'resolution_summary',
@@ -68,6 +70,7 @@ class HelpdeskTicket extends Model
         'requester_staff_id',
         'requester_name',
         'requester_email',
+        'is_anonymous',
         'assigned_user_id',
         'assigned_group_id',
         'directorate_id',
@@ -86,6 +89,7 @@ class HelpdeskTicket extends Model
         return [
             'meta' => 'array',
             'agent_logged_for_requester' => 'boolean',
+            'is_anonymous' => 'boolean',
             'first_response_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
@@ -98,6 +102,16 @@ class HelpdeskTicket extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(HelpdeskCategory::class, 'category_id');
+    }
+
+    public function businessUnit(): BelongsTo
+    {
+        return $this->belongsTo(HelpdeskBusinessUnit::class, 'business_unit_id');
+    }
+
+    public function linkedItAsset(): BelongsTo
+    {
+        return $this->belongsTo(HelpdeskItAsset::class, 'linked_it_asset_id');
     }
 
     public function assignee(): BelongsTo
