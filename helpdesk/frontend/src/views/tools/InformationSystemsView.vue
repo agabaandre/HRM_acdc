@@ -528,6 +528,7 @@ onMounted(async () => {
           <table v-else class="data-table">
             <thead>
               <tr>
+                <th class="num">#</th>
                 <th>Name</th>
                 <th>Status</th>
                 <th>Version</th>
@@ -540,7 +541,8 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in systems" :key="row.id">
+              <tr v-for="(row, idx) in systems" :key="row.id">
+                <td class="num">{{ idx + 1 }}</td>
                 <td><strong>{{ row.name }}</strong></td>
                 <td><span :class="statusBadgeClass(row.status)">{{ row.status_label ?? statusLabel(row.status) }}</span></td>
                 <td>{{ row.version || '—' }}</td>
