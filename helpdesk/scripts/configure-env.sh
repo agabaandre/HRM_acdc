@@ -158,3 +158,28 @@ if [[ "$ENV_PREEXISTED" == "1" ]]; then
 else
     echo "Configured $BACKEND_ENV from $SETUP_ENV"
 fi
+
+# Rename legacy IT Service Desk branding on production deploys (idempotent).
+if [[ "${HELPDESK_PRODUCTION_SETUP:-}" == "1" || "${APP_ENV:-}" == "production" ]]; then
+    brand="$(dotenv_get "$BACKEND_ENV" HELPDESK_MAIL_BRAND_NAME 2>/dev/null || true)"
+    case "$brand" in
+        *'IT Service Desk'*|*'Africa CDC Helpdesk'*|'')
+            dotenv_set "$BACKEND_ENV" HELPDESK_MAIL_BRAND_NAME "Africa CDC Service Desk"
+            echo "Set HELPDESK_MAIL_BRAND_NAME=Africa CDC Service Desk"
+            ;;
+    esac
+    app_name="$(dotenv_get "$BACKEND_ENV" APP_NAME 2>/dev/null || true)"
+    case "$app_name" in
+        *'IT Service Desk'*|*'Africa CDC Helpdesk'*)
+            dotenv_set "$BACKEND_ENV" APP_NAME "Africa CDC Service Desk"
+            echo "Set APP_NAME=Africa CDC Service Desk"
+            ;;
+    esac
+    mail_from="$(dotenv_get "$BACKEND_ENV" MAIL_FROM_NAME 2>/dev/null || true)"
+    case "$mail_from" in
+        *'IT Service Desk'*|*'Africa CDC Helpdesk'*)
+            dotenv_set "$BACKEND_ENV" MAIL_FROM_NAME "Africa CDC Service Desk"
+            echo "Set MAIL_FROM_NAME=Africa CDC Service Desk"
+            ;;
+    esac
+fi

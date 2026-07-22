@@ -273,10 +273,15 @@ if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
     elif command -v sudo >/dev/null 2>&1; then
         sudo HELPDESK_SETUP_ENV="$SETUP_ENV" "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed"
     else
-        warn "Skipping systemd (no root/sudo). Run queue manually: cd backend && php artisan queue:work database"
+        warn "Skipping systemd (no root/sudo). Run queue manually: cd backend && php artisan queue:work database --queue=default,helpdesk,helpdesk-ai"
     fi
 else
     log "Skipping systemd (--skip-systemd)"
+fi
+
+log "Verifying production readiness (schema, Protocol, schedule, queues)"
+if ! (cd "$BACKEND" && "$PHP_BIN" artisan helpdesk:verify-production --no-interaction); then
+    die "Production readiness checks failed — fix migrations/env above, then re-run ./setup-production.sh"
 fi
 
 dotenv_load_file "$BACKEND_ENV"
@@ -308,6 +313,12 @@ echo "Helpdesk production setup complete."
 echo "  SPA:     ${HELPDESK_FRONTEND_URL:-/staff/helpdesk}"
 echo "  API:     ${APP_URL:-}/api/v1/health"
 echo "  Staff:   ${HELPDESK_STAFF_PORTAL_URL:-/staff} (open Service Desk tile; permissions 85, 92, 93)"
+echo ""
+echo "Post-deploy:"
+echo "  1. systemctl status helpdesk-queue.service helpdesk-scheduler.timer"
+echo "  2. cd backend && php artisan helpdesk:verify-production"
+echo "  3. Settings → General: enable email ticket intake when Graph Mail.ReadWrite is ready"
+echo "  4. Confirm Staff tile label is Service Desk (cbp_modules.helpdesk_itsm)"
 echo ""
 echo "Re-deploy after git pull:  ./setup-production.sh"
 echo "Skip slow steps:           ./setup-production.sh --skip-seed"

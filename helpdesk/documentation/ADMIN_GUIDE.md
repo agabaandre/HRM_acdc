@@ -436,6 +436,40 @@ Run security tests: `php artisan test tests/Feature/SecurityApiTest.php` (requir
 
 ---
 
+## Production go-live (new features)
+
+After `git pull`, run from `helpdesk/`:
+
+```bash
+./setup-production.sh
+```
+
+That script migrates (agent disable, BU mailbox intake, IT assets, Protocol BU), seeds categories (including Protocol), builds the SPA, caches config, restarts systemd workers, and runs:
+
+```bash
+php artisan helpdesk:verify-production
+```
+
+| Feature | What must be true in production |
+|---------|----------------------------------|
+| Agent disable / routing | Migration `is_agent_disabled` applied; queue worker running |
+| Multi-BU + Protocol | Protocol BU + categories present (seeded); SPA rebuilt |
+| IT assets on resolve | Brands/assets migrations applied; IT & MIS `allows_asset_link_on_resolve` |
+| Inbound email tickets | Scheduler timer active; queue listens `default,helpdesk,helpdesk-ai`; Graph **Mail.ReadWrite**; Settings → General **Allow email submission** ON; per-BU mailbox + intake |
+| Branding | Tile/SPA/mail say **Service Desk**; `HELPDESK_MAIL_BRAND_NAME=Africa CDC Service Desk` |
+| Staff portal tile | `cbp_modules.system_name = Service Desk` for `helpdesk_itsm` (auto-repaired on portal load when legacy names remain) |
+
+Manual ops check:
+
+```bash
+systemctl is-active helpdesk-queue.service helpdesk-scheduler.timer
+journalctl -u helpdesk-queue.service -n 50 --no-pager
+cd /var/www/staff/helpdesk/backend && php artisan schedule:list | grep PollBusinessUnit
+cd /var/www/staff/helpdesk/backend && php artisan helpdesk:verify-production
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |

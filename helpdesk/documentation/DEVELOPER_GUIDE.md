@@ -506,7 +506,7 @@ Response shape:
 ```bash
 php artisan config:cache
 php artisan route:cache
-php artisan queue:work --queue=default,helpdesk
+php artisan queue:work --queue=default,helpdesk,helpdesk-ai
 ```
 
 `php artisan helpdesk:reference-sync` *(if/when wrapped as an Artisan command)* — the same effect as `POST /admin/reference-sync`.

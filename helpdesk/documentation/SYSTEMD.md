@@ -92,6 +92,8 @@ After code deploy:
 cd /var/www/staff/helpdesk/backend && php artisan migrate --force
 cd /var/www/staff/helpdesk/frontend && npm run build
 sudo systemctl restart helpdesk-queue.service
+# Preferred one-shot: from helpdesk/ run ./setup-production.sh
+cd /var/www/staff/helpdesk/backend && php artisan helpdesk:verify-production
 ```
 
 ---
@@ -109,6 +111,12 @@ Homebrew Apache (`brew services start httpd`) is enough for HTTP. You do **not**
 ```bash
 cd helpdesk/backend
 php artisan queue:work database
+```
+
+For local parity with production (AI categorize + mailbox intake), listen to all three queues:
+
+```bash
+php artisan queue:work database --queue=default,helpdesk,helpdesk-ai
 ```
 
 ---
