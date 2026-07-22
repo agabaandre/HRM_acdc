@@ -69,19 +69,12 @@
   min-height: 100vh;
 }
 
-/* Keep mounting route views out of layout flow while the loader is visible */
+/* Dim content while loading — never clip it out of the layout.
+   (Clipping caused "half-loaded until refresh" when the loader flag stuck.) */
 .hd-content-loading .hd-content-frame__body {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-  visibility: hidden;
+  opacity: 0.35;
   pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
 /* Fixed to viewport band below chrome — spinner stays centered, never shifts */

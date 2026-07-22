@@ -3,19 +3,25 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Exports\TicketsExport;
+use App\Http\Controllers\Concerns\DownloadsPdfReports;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TicketResource;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
+use App\Services\HelpdeskPdfReportService;
+use App\Services\HtmlSanitizer;
 use App\Services\TicketReadCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
 {
+    use DownloadsPdfReports;
+
     private function isStaff(HelpdeskProfile $p): bool
     {
         return in_array($p->role, [
@@ -233,6 +239,53 @@ class ReportController extends Controller
         $filename = 'helpdesk-tickets-'.now()->format('Y-m-d-His').'.xlsx';
 
         return Excel::download(new TicketsExport($rows), $filename);
+    }
+
+    public function exportPdf(Request $request, HelpdeskPdfReportService $pdf): Response
+    {
+        $user = $request->user();
+        $p = $user->helpdeskProfile;
+        abort_unless($p && $this->isStaff($p), 403);
+
+        $scope = $request->query('scope', 'assigned');
+        $q = HelpdeskTicket::query()->with(['category', 'assignee']);
+
+        if ($scope === 'all' && $p->isHelpdeskAdmin()) {
+            // all tickets
+        } elseif ($scope === 'mine' && $p->staff_id) {
+            $q->where('requester_staff_id', $p->staff_id);
+        } else {
+            $q->where('assigned_user_id', $user->id);
+            $scope = 'assigned';
+        }
+
+        $qTerm = trim((string) $request->query('q', ''));
+        $this->applyTicketSearch($q, $qTerm);
+        $this->applyReportFilters($q, $request);
+        $this->applyColumnFilters($q, $request);
+
+        $tickets = $q->orderByDesc('id')->limit(2000)->get();
+        $rows = $tickets->map(fn (HelpdeskTicket $t) => [
+            $t->ticket_number,
+            $t->subject,
+            $t->category?->name,
+            $t->status,
+            $t->priority,
+            $t->requester_name,
+            $t->assignee?->name,
+            optional($t->created_at)?->format('Y-m-d H:i'),
+            HtmlSanitizer::toPlainText($t->resolution_summary),
+        ])->all();
+
+        return $this->pdfTableDownload(
+            $request,
+            $pdf,
+            'Service Desk tickets ('.$scope.')',
+            ['Ticket #', 'Subject', 'Category', 'Status', 'Priority', 'Requester', 'Assignee', 'Created', 'Resolution'],
+            $rows,
+            'helpdesk-tickets-'.now()->format('Y-m-d-His').'.pdf',
+            ['Scope: '.$scope, 'Rows: '.count($rows)],
+        );
     }
 
     private function applyTicketSearch(Builder $query, string $term): void

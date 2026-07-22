@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Tools;
 
 use App\Exports\InformationSystemsExport;
+use App\Http\Controllers\Concerns\DownloadsPdfReports;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskInformationSystem;
 use App\Models\HelpdeskInformationSystemLanguage;
 use App\Models\HelpdeskInformationSystemModule;
 use App\Models\HelpdeskInformationSystemStatusEvent;
+use App\Services\HelpdeskPdfReportService;
 use App\Services\InformationSystemStatusRecorder;
 use App\Services\StaffDirectoryLookupService;
 use App\Support\InformationSystemLanguageNormalizer;
@@ -17,10 +19,12 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class InformationSystemController extends Controller
 {
     use AuthorizesHelpdeskTools;
+    use DownloadsPdfReports;
 
     public function __construct(
         private readonly InformationSystemStatusRecorder $recorder,
@@ -109,7 +113,7 @@ class InformationSystemController extends Controller
         $dateTo = trim((string) $request->query('date_to', ''));
         $bucket = $request->query('bucket', 'day') === 'week' ? 'week' : 'day';
 
-        $q = HelpdeskInformationSystemStatusEvent::query()->orderBy('changed_at');
+        $q = HelpdeskInformationSystemStatusEvent::query();
         if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
             $q->where('changed_at', '>=', $dateFrom.' 00:00:00');
         }
@@ -122,7 +126,9 @@ class InformationSystemController extends Controller
             : 'DATE(changed_at)';
 
         $rows = $q->selectRaw("{$expr} as bucket, to_status, COUNT(*) as c")
-            ->groupBy('bucket', 'to_status')
+            ->groupByRaw("{$expr}, to_status")
+            ->orderByRaw("{$expr}")
+            ->orderBy('to_status')
             ->get()
             ->map(fn ($r) => [
                 'date' => (string) $r->bucket,
@@ -146,6 +152,52 @@ class InformationSystemController extends Controller
         return Excel::download(
             new InformationSystemsExport($rows, $this->divisionNameMap()),
             'information-systems-'.now()->format('Y-m-d').'.xlsx',
+        );
+    }
+
+    public function exportPdf(Request $request, HelpdeskPdfReportService $pdf): Response
+    {
+        $this->ensureInformationSystemsManager($request);
+
+        $divNames = $this->divisionNameMap();
+        $systems = HelpdeskInformationSystem::query()
+            ->with('languages')
+            ->withCount('modules')
+            ->orderBy('name')
+            ->limit(2000)
+            ->get();
+
+        $rows = $systems->map(function (HelpdeskInformationSystem $row) use ($divNames) {
+            $divId = (int) ($row->division_id ?? 0);
+
+            return [
+                $row->name,
+                InformationSystemStatus::label((string) $row->status),
+                $row->version,
+                $divId > 0 ? ($divNames[$divId] ?? ('#'.$divId)) : 'All',
+                $row->languages->pluck('name')->implode(', '),
+                (string) ($row->modules_count ?? 0),
+                $row->focal_name_raw,
+                $row->mis_focal_name_raw,
+                $row->host,
+                $row->domain,
+            ];
+        })->all();
+
+        $summary = HelpdeskInformationSystem::query()->selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
+        $summaryLines = ['Total systems: '.$systems->count()];
+        foreach ($summary as $status => $count) {
+            $summaryLines[] = InformationSystemStatus::label((string) $status).': '.$count;
+        }
+
+        return $this->pdfTableDownload(
+            $request,
+            $pdf,
+            'Information systems inventory',
+            ['Name', 'Status', 'Version', 'Division', 'Languages', 'Modules', 'Focal', 'MIS focal', 'Host', 'Domain'],
+            $rows,
+            'information-systems-'.now()->format('Y-m-d').'.pdf',
+            $summaryLines,
         );
     }
 

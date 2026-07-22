@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Api\V1\Tools;
 
+use App\Exports\LicensesExport;
+use App\Http\Controllers\Concerns\DownloadsPdfReports;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskLicense;
+use App\Services\HelpdeskPdfReportService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class LicenseController extends Controller
 {
     use AuthorizesHelpdeskTools;
+    use DownloadsPdfReports;
 
     public function summary(Request $request): JsonResponse
     {
@@ -30,6 +37,53 @@ class LicenseController extends Controller
                 'annual_cost' => round($licenses->sum('cost'), 2),
             ],
         ]);
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->ensureLicenseManager($request);
+
+        $rows = HelpdeskLicense::query()->orderBy('name')->limit(5000)->get();
+
+        return Excel::download(
+            new LicensesExport($rows),
+            'licenses-'.now()->format('Y-m-d').'.xlsx',
+        );
+    }
+
+    public function exportPdf(Request $request, HelpdeskPdfReportService $pdf): Response
+    {
+        $this->ensureLicenseManager($request);
+
+        $licenses = HelpdeskLicense::query()->orderBy('expiry_date')->orderBy('name')->limit(2000)->get();
+        $rows = $licenses->map(fn (HelpdeskLicense $l) => [
+            $l->name,
+            $l->vendor,
+            $l->seats_used.'/'.$l->seats_total,
+            optional($l->expiry_date)?->format('Y-m-d'),
+            $l->expiry['days_remaining'] ?? null,
+            ! empty($l->expiry['is_expired']) ? 'Expired' : (! empty($l->expiry['is_expiring_soon']) ? 'Expiring soon' : 'OK'),
+            $l->cost,
+            $l->status,
+            $l->responsible_person['name'] ?? null,
+        ])->all();
+
+        $summaryLines = [
+            'Licenses: '.$licenses->count(),
+            'Expiring soon: '.$licenses->filter(fn ($l) => $l->expiry['is_expiring_soon'] ?? false)->count(),
+            'Expired: '.$licenses->filter(fn ($l) => $l->expiry['is_expired'] ?? false)->count(),
+            'Annual cost: '.round($licenses->sum('cost'), 2),
+        ];
+
+        return $this->pdfTableDownload(
+            $request,
+            $pdf,
+            'Software licenses',
+            ['Name', 'Vendor', 'Seats', 'Expiry', 'Days left', 'Health', 'Cost', 'Status', 'Responsible'],
+            $rows,
+            'licenses-'.now()->format('Y-m-d').'.pdf',
+            $summaryLines,
+        );
     }
 
     public function index(Request $request): JsonResponse

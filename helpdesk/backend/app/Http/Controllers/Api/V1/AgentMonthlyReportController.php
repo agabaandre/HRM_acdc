@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskAgentMonthlyReport;
 use App\Models\HelpdeskProfile;
+use App\Services\HelpdeskPdfReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class AgentMonthlyReportController extends Controller
 {
@@ -64,6 +66,33 @@ class AgentMonthlyReportController extends Controller
         $report->load('user:id,name,email');
 
         return response()->json(['data' => $this->serializeDetail($report)]);
+    }
+
+    public function exportPdf(Request $request, HelpdeskAgentMonthlyReport $report, HelpdeskPdfReportService $pdf): Response
+    {
+        $user = $request->user();
+        $p = $user->helpdeskProfile;
+        abort_unless($p && $this->isStaff($p), 403);
+        abort_unless($p->isHelpdeskAdmin() || $report->user_id === $user->id, 403);
+
+        $report->load('user:id,name,email');
+        $html = view('pdf.agent-monthly', [
+            'period_label' => $report->periodLabel(),
+            'user_name' => $report->user?->name ?? 'Agent',
+            'tickets_worked' => $report->metrics_json['tickets_worked'] ?? null,
+            'tickets_resolved' => $report->metrics_json['tickets_resolved'] ?? null,
+            'avg_first_response_minutes' => $report->metrics_json['avg_first_response_minutes'] ?? null,
+            'ai_model' => $report->ai_model,
+            'ai_summary' => $report->ai_summary,
+        ])->render();
+
+        $filename = 'agent-monthly-'.$report->period_year.'-'.str_pad((string) $report->period_month, 2, '0', STR_PAD_LEFT).'.pdf';
+
+        return $pdf->download($html, $filename, [
+            'title' => 'Agent monthly report — '.$report->periodLabel(),
+            'generated_by' => $user->name,
+            'document_url' => config('app.url').'/reports',
+        ]);
     }
 
     /**

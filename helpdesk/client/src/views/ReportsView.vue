@@ -21,8 +21,10 @@ import { useAuthStore } from '../stores/auth'
 type SortItem = { key: string; order: 'asc' | 'desc' }
 
 const auth = useAuthStore()
-const tab = ref<'mine' | 'admin' | 'monthly' | 'infosystems'>('mine')
+type ReportTab = 'mine' | 'admin' | 'monthly' | 'infosystems' | 'itassets' | 'licenses' | 'softwarerequests'
+const tab = ref<ReportTab>('mine')
 const itemsPerPageOptions = [10, 20, 50, 100] as const
+const exportBusy = ref(false)
 
 const statusOptions = [
   { label: 'Open', value: 'open' },
@@ -181,9 +183,31 @@ const isAdmin = computed(
 const canManageInformationSystems = computed(
   () => isAdmin.value || !!auth.me?.profile?.can_manage_information_systems,
 )
+const canManageItAssets = computed(
+  () => isAdmin.value || !!auth.me?.profile?.can_manage_it_assets,
+)
+const canManageLicenses = computed(
+  () => isAdmin.value || !!auth.me?.profile?.can_manage_licenses,
+)
+const canManageSoftwareRequests = computed(
+  () =>
+    isAdmin.value
+    || !!auth.me?.profile?.can_manage_software_requests
+    || !!auth.me?.profile?.can_approve_software_requests,
+)
 const isStaff = computed(() => {
   const role = auth.me?.profile?.role
   return ['agent', 'supervisor', 'admin', 'auditor'].includes(role ?? '')
+})
+const reportTabCount = computed(() => {
+  let n = 1 // mine
+  if (isAdmin.value) n += 1
+  if (isStaff.value) n += 1
+  if (canManageInformationSystems.value) n += 1
+  if (canManageItAssets.value) n += 1
+  if (canManageLicenses.value) n += 1
+  if (canManageSoftwareRequests.value) n += 1
+  return n
 })
 
 interface MonthlyReportRow {
@@ -235,6 +259,42 @@ const isLoading = ref(false)
 const isDateFrom = ref('')
 const isDateTo = ref('')
 const isExporting = ref(false)
+
+interface ItAssetsSummary {
+  asset_count: number
+  total_purchase_cost: number
+  total_current_value: number
+  total_depreciation: number
+  deployed: number
+  in_stock: number
+  repair: number
+  retired: number
+  by_category: { category_id: number; category_name: string; count: number; purchase_total: number; current_value_total: number }[]
+}
+
+interface LicensesSummary {
+  license_count: number
+  expiring_soon: number
+  expired: number
+  total_seats: number
+  seats_used: number
+  annual_cost: number
+}
+
+interface SoftwareRequestsSummary {
+  total: number
+  by_status: Record<string, number>
+  by_priority: Record<string, number>
+  by_decision: Record<string, number>
+  budget_total: number
+}
+
+const itSummary = ref<ItAssetsSummary | null>(null)
+const itLoading = ref(false)
+const licenseSummary = ref<LicensesSummary | null>(null)
+const licenseLoading = ref(false)
+const swSummary = ref<SoftwareRequestsSummary | null>(null)
+const swLoading = ref(false)
 const myTableCountLabel = computed(() =>
   formatTableCountLabel(myTickets.value.length, myTotal.value, myPage.value, myItemsPerPage.value),
 )
@@ -402,18 +462,13 @@ async function loadInfoSystems() {
   }
 }
 
-async function exportInfoSystems() {
+async function exportInfoSystems(format: 'xlsx' | 'pdf' = 'xlsx') {
   isExporting.value = true
   try {
-    const { data } = await api.get('/api/v1/tools/information-systems/export', {
-      responseType: 'blob',
-    })
-    const url = URL.createObjectURL(data as Blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'information-systems.xlsx'
-    a.click()
-    URL.revokeObjectURL(url)
+    const path = format === 'pdf'
+      ? '/api/v1/tools/information-systems/export-pdf'
+      : '/api/v1/tools/information-systems/export'
+    await downloadBlob(path, `information-systems.${format === 'pdf' ? 'pdf' : 'xlsx'}`)
   } catch (e: unknown) {
     notifyError(apiErrorMessage(e, 'Export failed'))
   } finally {
@@ -421,7 +476,91 @@ async function exportInfoSystems() {
   }
 }
 
-async function switchTab(next: 'mine' | 'admin' | 'monthly' | 'infosystems') {
+async function loadItAssets() {
+  if (!canManageItAssets.value) return
+  itLoading.value = true
+  try {
+    const { data } = await api.get<{ data: ItAssetsSummary }>('/api/v1/tools/it-assets/summary')
+    itSummary.value = data.data
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to load IT assets report'))
+    itSummary.value = null
+  } finally {
+    itLoading.value = false
+  }
+}
+
+async function loadLicenses() {
+  if (!canManageLicenses.value) return
+  licenseLoading.value = true
+  try {
+    const { data } = await api.get<{ data: LicensesSummary }>('/api/v1/tools/licenses/summary')
+    licenseSummary.value = data.data
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to load licenses report'))
+    licenseSummary.value = null
+  } finally {
+    licenseLoading.value = false
+  }
+}
+
+async function loadSoftwareRequests() {
+  if (!canManageSoftwareRequests.value) return
+  swLoading.value = true
+  try {
+    const { data } = await api.get<{ data: SoftwareRequestsSummary }>('/api/v1/tools/software-requests/summary')
+    swSummary.value = data.data
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Failed to load software requests report'))
+    swSummary.value = null
+  } finally {
+    swLoading.value = false
+  }
+}
+
+async function downloadBlob(
+  path: string,
+  filename: string,
+  params?: Record<string, unknown>,
+  paramsSerializer?: () => string,
+) {
+  const res = await api.get(path, {
+    params,
+    paramsSerializer,
+    responseType: 'blob',
+  })
+  const contentType = String(res.headers['content-type'] || '')
+  if (contentType.includes('application/json')) {
+    const text = await (res.data as Blob).text()
+    throw new Error(text || 'Export failed')
+  }
+  const blob = new Blob([res.data], { type: contentType || undefined })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function exportToolReport(
+  kind: 'it-assets' | 'licenses' | 'software-requests',
+  format: 'xlsx' | 'pdf',
+) {
+  exportBusy.value = true
+  try {
+    const path = format === 'pdf'
+      ? `/api/v1/tools/${kind}/export-pdf`
+      : `/api/v1/tools/${kind}/export`
+    await downloadBlob(path, `${kind}.${format === 'pdf' ? 'pdf' : 'xlsx'}`)
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Export failed'))
+  } finally {
+    exportBusy.value = false
+  }
+}
+
+async function switchTab(next: ReportTab) {
   tab.value = next
   await load()
 }
@@ -430,6 +569,12 @@ async function load() {
   try {
     if (tab.value === 'infosystems' && canManageInformationSystems.value) {
       await loadInfoSystems()
+    } else if (tab.value === 'itassets' && canManageItAssets.value) {
+      await loadItAssets()
+    } else if (tab.value === 'licenses' && canManageLicenses.value) {
+      await loadLicenses()
+    } else if (tab.value === 'softwarerequests' && canManageSoftwareRequests.value) {
+      await loadSoftwareRequests()
     } else if (tab.value === 'monthly' && isStaff.value) {
       await loadMonthly()
     } else if (tab.value === 'admin' && isAdmin.value) {
@@ -443,6 +588,9 @@ async function load() {
     adminLoading.value = false
     monthlyLoading.value = false
     isLoading.value = false
+    itLoading.value = false
+    licenseLoading.value = false
+    swLoading.value = false
   }
 }
 
@@ -506,6 +654,7 @@ function onAdminUpdateOptions(options: { page: number; itemsPerPage: number; sor
 }
 
 async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
+  exportBusy.value = true
   try {
     const params: Record<string, unknown> = { scope }
     if (scope === 'all' && tab.value === 'admin') {
@@ -521,22 +670,61 @@ async function downloadExcel(scope: 'assigned' | 'all' | 'mine') {
         ...columnFilterParams(myColumnFilters),
       })
     }
-    const res = await api.get('/api/v1/reports/export', {
+    await downloadBlob(
+      '/api/v1/reports/export',
+      `helpdesk-export-${scope}.xlsx`,
       params,
-      paramsSerializer: () => serializeReportQueryParams(params),
-      responseType: 'blob',
-    })
-    const blob = new Blob([res.data], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `helpdesk-export-${scope}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
+      () => serializeReportQueryParams(params),
+    )
   } catch {
     notifyError('Export failed (check you are signed in as staff).')
+  } finally {
+    exportBusy.value = false
+  }
+}
+
+async function downloadPdf(scope: 'assigned' | 'all' | 'mine') {
+  exportBusy.value = true
+  try {
+    const params: Record<string, unknown> = { scope }
+    if (scope === 'all' && tab.value === 'admin') {
+      Object.assign(params, {
+        q: adminSearchState.q.trim() || undefined,
+        ...reportFilterParams(adminSearchState),
+        ...columnFilterParams(adminColumnFilters),
+      })
+    } else if (scope === 'mine') {
+      Object.assign(params, {
+        q: mySearchState.q.trim() || undefined,
+        ...reportFilterParams(mySearchState),
+        ...columnFilterParams(myColumnFilters),
+      })
+    }
+    await downloadBlob(
+      '/api/v1/reports/export-pdf',
+      `helpdesk-export-${scope}.pdf`,
+      params,
+      () => serializeReportQueryParams(params),
+    )
+  } catch {
+    notifyError('PDF export failed (check you are signed in as staff).')
+  } finally {
+    exportBusy.value = false
+  }
+}
+
+async function downloadMonthlyPdf() {
+  if (!monthlyDetail.value?.id) return
+  exportBusy.value = true
+  try {
+    await downloadBlob(
+      `/api/v1/reports/agent-monthly/${monthlyDetail.value.id}/export-pdf`,
+      `agent-monthly-${monthlyDetail.value.period_year}-${String(monthlyDetail.value.period_month).padStart(2, '0')}.pdf`,
+    )
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'PDF export failed'))
+  } finally {
+    exportBusy.value = false
   }
 }
 
@@ -606,11 +794,12 @@ watch(
     <CbpPageHeading title="Reports" back-to="/" back-label="← Overview" />
     <div class="cbp-card">
       <div
-        v-if="isAdmin || isStaff || canManageInformationSystems"
+        v-if="isAdmin || isStaff || canManageInformationSystems || canManageItAssets || canManageLicenses || canManageSoftwareRequests"
         class="report-tabs"
         :class="{
-          'report-tabs--three': (isAdmin && isStaff) || canManageInformationSystems,
-          'report-tabs--four': isAdmin && isStaff && canManageInformationSystems,
+          'report-tabs--many': reportTabCount >= 5,
+          'report-tabs--four': reportTabCount === 4,
+          'report-tabs--three': reportTabCount === 3,
         }"
         role="tablist"
         aria-label="Report views"
@@ -647,6 +836,39 @@ watch(
           @click="switchTab('infosystems')"
         >
           Information systems
+        </button>
+        <button
+          v-if="canManageItAssets"
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'itassets' }"
+          :aria-selected="tab === 'itassets'"
+          @click="switchTab('itassets')"
+        >
+          IT assets
+        </button>
+        <button
+          v-if="canManageLicenses"
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'licenses' }"
+          :aria-selected="tab === 'licenses'"
+          @click="switchTab('licenses')"
+        >
+          Licenses
+        </button>
+        <button
+          v-if="canManageSoftwareRequests"
+          type="button"
+          role="tab"
+          class="report-tab"
+          :class="{ 'report-tab--on': tab === 'softwarerequests' }"
+          :aria-selected="tab === 'softwarerequests'"
+          @click="switchTab('softwarerequests')"
+        >
+          Software requests
         </button>
         <button
           type="button"
@@ -757,8 +979,11 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" @click="downloadExcel('mine')">
-          Export my issues (Excel)
+        <UButton type="button" color="primary" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('mine')">
+          Export Excel
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('mine')">
+          Export PDF
         </UButton>
       </div>
       <h2>My tickets &amp; assignees</h2>
@@ -1007,17 +1232,17 @@ watch(
         </article>
       </div>
       <div class="report-tools">
-        <UButton type="button" color="primary" class="report-tools__btn" @click="downloadExcel('all')">
-          Export all tickets (Excel)
+        <UButton type="button" color="primary" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('all')">
+          Export all (Excel)
         </UButton>
-        <UButton
-          type="button"
-          color="neutral"
-          variant="outline"
-          class="report-tools__btn"
-          @click="downloadExcel('assigned')"
-        >
-          Export my assigned (Excel)
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('all')">
+          Export all (PDF)
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadExcel('assigned')">
+          My assigned (Excel)
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" class="report-tools__btn" :loading="exportBusy" @click="downloadPdf('assigned')">
+          My assigned (PDF)
         </UButton>
       </div>
       <h2>Recent activity</h2>
@@ -1187,6 +1412,11 @@ watch(
               Avg response: {{ monthlyDetail.avg_first_response_minutes ?? 'n/a' }} min
               <span v-if="monthlyDetail.emailed_at"> · Emailed {{ new Date(monthlyDetail.emailed_at).toLocaleDateString() }}</span>
             </p>
+            <div class="report-tools">
+              <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="downloadMonthlyPdf">
+                Export PDF
+              </UButton>
+            </div>
           </header>
           <div class="monthly-summary">{{ monthlyDetail.ai_summary }}</div>
         </article>
@@ -1202,8 +1432,11 @@ watch(
           <UInput v-model="isDateTo" type="date" />
         </UFormField>
         <UButton type="button" color="primary" :loading="isLoading" @click="loadInfoSystems">Refresh</UButton>
-        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems">
+        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems('xlsx')">
           Export Excel
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="isExporting" @click="exportInfoSystems('pdf')">
+          Export PDF
         </UButton>
       </div>
       <div v-if="isLoading" class="muted">Loading information systems…</div>
@@ -1251,9 +1484,117 @@ watch(
       </template>
     </template>
 
+    <template v-else-if="tab === 'itassets' && canManageItAssets">
+      <div class="is-toolbar">
+        <UButton type="button" color="primary" :loading="itLoading" @click="loadItAssets">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('it-assets', 'xlsx')">
+          Export Excel
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('it-assets', 'pdf')">
+          Export PDF
+        </UButton>
+      </div>
+      <div v-if="itLoading" class="muted">Loading IT assets…</div>
+      <template v-else-if="itSummary">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Assets</div><div class="kpi-value">{{ itSummary.asset_count }}</div></div>
+          <div class="kpi"><div class="kpi-label">Deployed</div><div class="kpi-value">{{ itSummary.deployed }}</div></div>
+          <div class="kpi"><div class="kpi-label">In stock</div><div class="kpi-value">{{ itSummary.in_stock }}</div></div>
+          <div class="kpi"><div class="kpi-label">Repair</div><div class="kpi-value">{{ itSummary.repair }}</div></div>
+          <div class="kpi"><div class="kpi-label">Retired</div><div class="kpi-value">{{ itSummary.retired }}</div></div>
+          <div class="kpi"><div class="kpi-label">Purchase cost</div><div class="kpi-value">{{ itSummary.total_purchase_cost }}</div></div>
+          <div class="kpi"><div class="kpi-label">Current value</div><div class="kpi-value">{{ itSummary.total_current_value }}</div></div>
+          <div class="kpi"><div class="kpi-label">Depreciation</div><div class="kpi-value">{{ itSummary.total_depreciation }}</div></div>
+        </div>
+        <section>
+          <h3 class="h3">By category</h3>
+          <table class="is-table">
+            <thead>
+              <tr><th>Category</th><th>Count</th><th>Purchase total</th><th>Current value</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in itSummary.by_category" :key="row.category_id">
+                <td>{{ row.category_name }}</td>
+                <td>{{ row.count }}</td>
+                <td>{{ row.purchase_total }}</td>
+                <td>{{ row.current_value_total }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </template>
+    </template>
+
+    <template v-else-if="tab === 'licenses' && canManageLicenses">
+      <div class="is-toolbar">
+        <UButton type="button" color="primary" :loading="licenseLoading" @click="loadLicenses">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('licenses', 'xlsx')">
+          Export Excel
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('licenses', 'pdf')">
+          Export PDF
+        </UButton>
+      </div>
+      <div v-if="licenseLoading" class="muted">Loading licenses…</div>
+      <template v-else-if="licenseSummary">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Licenses</div><div class="kpi-value">{{ licenseSummary.license_count }}</div></div>
+          <div class="kpi"><div class="kpi-label">Expiring soon</div><div class="kpi-value">{{ licenseSummary.expiring_soon }}</div></div>
+          <div class="kpi"><div class="kpi-label">Expired</div><div class="kpi-value">{{ licenseSummary.expired }}</div></div>
+          <div class="kpi"><div class="kpi-label">Seats used</div><div class="kpi-value">{{ licenseSummary.seats_used }} / {{ licenseSummary.total_seats }}</div></div>
+          <div class="kpi"><div class="kpi-label">Annual cost</div><div class="kpi-value">{{ licenseSummary.annual_cost }}</div></div>
+        </div>
+      </template>
+    </template>
+
+    <template v-else-if="tab === 'softwarerequests' && canManageSoftwareRequests">
+      <div class="is-toolbar">
+        <UButton type="button" color="primary" :loading="swLoading" @click="loadSoftwareRequests">Refresh</UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('software-requests', 'xlsx')">
+          Export Excel
+        </UButton>
+        <UButton type="button" color="neutral" variant="outline" :loading="exportBusy" @click="exportToolReport('software-requests', 'pdf')">
+          Export PDF
+        </UButton>
+      </div>
+      <div v-if="swLoading" class="muted">Loading software requests…</div>
+      <template v-else-if="swSummary">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-value">{{ swSummary.total }}</div></div>
+          <div class="kpi"><div class="kpi-label">Budget total</div><div class="kpi-value">{{ swSummary.budget_total }}</div></div>
+        </div>
+        <div class="is-grid">
+          <section>
+            <h3 class="h3">By status</h3>
+            <ul class="is-list">
+              <li v-for="(count, status) in swSummary.by_status" :key="'sw-s-' + status">
+                <span>{{ status }}</span><strong>{{ count }}</strong>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h3 class="h3">By priority</h3>
+            <ul class="is-list">
+              <li v-for="(count, priority) in swSummary.by_priority" :key="'sw-p-' + priority">
+                <span>{{ priority }}</span><strong>{{ count }}</strong>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h3 class="h3">By decision</h3>
+            <ul class="is-list">
+              <li v-for="(count, decision) in swSummary.by_decision" :key="'sw-d-' + decision">
+                <span>{{ decision }}</span><strong>{{ count }}</strong>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </template>
+    </template>
+
     <p v-else-if="tab === 'admin' && adminLoading" class="muted">Loading admin overview…</p>
     <p v-else-if="tab === 'mine' && myLoading" class="muted">Loading your issues…</p>
-    <p v-else-if="tab !== 'monthly' && tab !== 'infosystems'" class="muted">Loading…</p>
+    <p v-else-if="!['monthly', 'infosystems', 'itassets', 'licenses', 'softwarerequests'].includes(tab)" class="muted">Loading…</p>
     </div>
   </div>
 </template>
@@ -1270,6 +1611,14 @@ watch(
 }
 .report-tabs--four {
   grid-template-columns: repeat(2, 1fr);
+}
+.report-tabs--many {
+  display: flex;
+  flex-wrap: wrap;
+  grid-template-columns: none;
+}
+.report-tabs--many .report-tab {
+  flex: 1 1 140px;
 }
 @media (min-width: 900px) {
   .report-tabs--four {

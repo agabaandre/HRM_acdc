@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1\Tools;
 
+use App\Exports\SoftwareRequestsExport;
+use App\Http\Controllers\Concerns\DownloadsPdfReports;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskSoftwareRequest;
 use App\Models\HelpdeskSoftwareRequestApproval;
 use App\Models\HelpdeskSoftwareRequestTeamMember;
+use App\Services\HelpdeskPdfReportService;
 use App\Services\HtmlSanitizer;
 use App\Services\SoftwareRequestNotifyService;
 use App\Services\StaffDirectoryLookupService;
@@ -13,10 +16,88 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SoftwareRequestController extends Controller
 {
     use AuthorizesHelpdeskTools;
+    use DownloadsPdfReports;
+
+    public function summary(Request $request): JsonResponse
+    {
+        $this->ensureSoftwareRequestManage($request);
+
+        $rows = HelpdeskSoftwareRequest::query()->get(['id', 'status', 'decision', 'priority', 'budget_estimate']);
+        $byStatus = [];
+        $byPriority = [];
+        $byDecision = [];
+        foreach ($rows as $row) {
+            $st = (string) ($row->status ?: 'unknown');
+            $pr = (string) ($row->priority ?: 'unset');
+            $dec = (string) ($row->decision ?: 'pending');
+            $byStatus[$st] = ($byStatus[$st] ?? 0) + 1;
+            $byPriority[$pr] = ($byPriority[$pr] ?? 0) + 1;
+            $byDecision[$dec] = ($byDecision[$dec] ?? 0) + 1;
+        }
+
+        return response()->json([
+            'data' => [
+                'total' => $rows->count(),
+                'by_status' => $byStatus,
+                'by_priority' => $byPriority,
+                'by_decision' => $byDecision,
+                'budget_total' => round((float) $rows->sum('budget_estimate'), 2),
+            ],
+        ]);
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->ensureSoftwareRequestManage($request);
+
+        $rows = HelpdeskSoftwareRequest::query()->orderByDesc('id')->limit(5000)->get();
+
+        return Excel::download(
+            new SoftwareRequestsExport($rows),
+            'software-requests-'.now()->format('Y-m-d').'.xlsx',
+        );
+    }
+
+    public function exportPdf(Request $request, HelpdeskPdfReportService $pdf): Response
+    {
+        $this->ensureSoftwareRequestManage($request);
+
+        $requests = HelpdeskSoftwareRequest::query()->orderByDesc('id')->limit(2000)->get();
+        $rows = $requests->map(fn (HelpdeskSoftwareRequest $r) => [
+            $r->request_number,
+            $r->request_title,
+            $r->status,
+            $r->decision,
+            $r->priority,
+            $r->requester_name,
+            $r->division_name,
+            $r->desired_timeline,
+            $r->budget_estimate,
+            optional($r->received_at)?->format('Y-m-d'),
+        ])->all();
+
+        $summaryLines = [
+            'Requests: '.$requests->count(),
+            'Budget total: '.round((float) $requests->sum('budget_estimate'), 2),
+        ];
+
+        return $this->pdfTableDownload(
+            $request,
+            $pdf,
+            'Software requests',
+            ['Request #', 'Title', 'Status', 'Decision', 'Priority', 'Requester', 'Division', 'Timeline', 'Budget', 'Received'],
+            $rows,
+            'software-requests-'.now()->format('Y-m-d').'.pdf',
+            $summaryLines,
+        );
+    }
 
     public function index(Request $request): JsonResponse
     {

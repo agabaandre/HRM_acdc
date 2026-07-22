@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers\Api\V1\Tools;
 
+use App\Exports\ItAssetsExport;
+use App\Http\Controllers\Concerns\DownloadsPdfReports;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskItAssetBrand;
 use App\Models\HelpdeskItAssetCategory;
+use App\Services\HelpdeskPdfReportService;
 use App\Services\StaffDirectoryLookupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ItAssetController extends Controller
 {
     use AuthorizesHelpdeskTools;
+    use DownloadsPdfReports;
 
     public function summary(Request $request): JsonResponse
     {
@@ -49,6 +56,65 @@ class ItAssetController extends Controller
                 'retired' => $assets->where('status', HelpdeskItAsset::STATUS_RETIRED)->count(),
             ],
         ]);
+    }
+
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->ensureItAssetManager($request);
+
+        $rows = HelpdeskItAsset::query()
+            ->with(['category', 'brandRelation'])
+            ->orderBy('asset_tag')
+            ->limit(5000)
+            ->get();
+
+        return Excel::download(
+            new ItAssetsExport($rows),
+            'it-assets-'.now()->format('Y-m-d').'.xlsx',
+        );
+    }
+
+    public function exportPdf(Request $request, HelpdeskPdfReportService $pdf): Response
+    {
+        $this->ensureItAssetManager($request);
+
+        $assets = HelpdeskItAsset::query()
+            ->with(['category', 'brandRelation'])
+            ->orderBy('asset_tag')
+            ->limit(2000)
+            ->get();
+
+        $rows = $assets->map(fn (HelpdeskItAsset $a) => [
+            $a->asset_tag,
+            $a->name,
+            $a->category?->name,
+            $a->brandRelation?->name ?? $a->brand,
+            $a->model,
+            $a->status,
+            $a->assigned_name,
+            $a->location,
+            optional($a->purchase_date)?->format('Y-m-d'),
+            $a->purchase_cost,
+            $a->valuation['current_value'] ?? null,
+        ])->all();
+
+        $summaryLines = [
+            'Assets: '.$assets->count(),
+            'Deployed: '.$assets->where('status', HelpdeskItAsset::STATUS_DEPLOYED)->count(),
+            'In stock: '.$assets->where('status', HelpdeskItAsset::STATUS_IN_STOCK)->count(),
+            'Repair: '.$assets->where('status', HelpdeskItAsset::STATUS_REPAIR)->count(),
+            'Retired: '.$assets->where('status', HelpdeskItAsset::STATUS_RETIRED)->count(),
+        ];
+
+        return $this->pdfTableDownload(
+            $request,
+            $pdf,
+            'IT assets inventory',
+            ['Tag', 'Name', 'Category', 'Brand', 'Model', 'Status', 'Assigned', 'Location', 'Purchased', 'Cost', 'Current value'],
+            $rows,
+            'it-assets-'.now()->format('Y-m-d').'.pdf',
+            $summaryLines,
+        );
     }
 
     public function categories(Request $request): JsonResponse

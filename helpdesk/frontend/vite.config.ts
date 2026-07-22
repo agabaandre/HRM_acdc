@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
     base,
     build: {
       outDir: 'dist-build',
-      // Keep false until root-owned stale files under dist-build/assets are removed
-      // (`sudo rm -rf dist-build`), then flip to true for clean builds.
+      // Keep false while some dist-build/assets files remain root-owned
+      // (`sudo rm -rf dist-build/assets`, then flip to true for clean builds).
       emptyOutDir: false,
       target: 'es2020',
       cssCodeSplit: true,

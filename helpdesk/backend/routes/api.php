@@ -106,7 +106,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/reports/my-requester', [ReportController::class, 'myRequesterReport']);
         Route::get('/reports/admin-summary', [ReportController::class, 'adminSummary']);
         Route::get('/reports/export', [ReportController::class, 'exportExcel']);
+        Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf']);
         Route::get('/reports/agent-monthly', [AgentMonthlyReportController::class, 'index']);
+        Route::get('/reports/agent-monthly/{report}/export-pdf', [AgentMonthlyReportController::class, 'exportPdf']);
         Route::get('/reports/agent-monthly/{report}', [AgentMonthlyReportController::class, 'show']);
 
         Route::get('/admin/settings', [HelpdeskSettingsController::class, 'show']);
@@ -155,6 +157,8 @@ Route::prefix('v1')->group(function () {
 
         // Tools — IT Assets, Licenses, Software requests
         Route::get('/tools/it-assets/summary', [ItAssetController::class, 'summary']);
+        Route::get('/tools/it-assets/export', [ItAssetController::class, 'export']);
+        Route::get('/tools/it-assets/export-pdf', [ItAssetController::class, 'exportPdf']);
         Route::get('/tools/it-assets/categories', [ItAssetController::class, 'categories']);
         Route::post('/tools/it-assets/categories', [ItAssetController::class, 'storeCategory']);
         Route::put('/tools/it-assets/categories/{category}', [ItAssetController::class, 'updateCategory']);
@@ -169,6 +173,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('/tools/it-assets/{asset}', [ItAssetController::class, 'destroy']);
 
         Route::get('/tools/licenses/summary', [LicenseController::class, 'summary']);
+        Route::get('/tools/licenses/export', [LicenseController::class, 'export']);
+        Route::get('/tools/licenses/export-pdf', [LicenseController::class, 'exportPdf']);
         Route::get('/tools/licenses', [LicenseController::class, 'index']);
         Route::post('/tools/licenses', [LicenseController::class, 'store']);
         Route::put('/tools/licenses/{license}', [LicenseController::class, 'update']);
@@ -178,6 +184,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/tools/information-systems/languages', [InformationSystemController::class, 'storeLanguage']);
         Route::get('/tools/information-systems/summary', [InformationSystemController::class, 'summary']);
         Route::get('/tools/information-systems/export', [InformationSystemController::class, 'export']);
+        Route::get('/tools/information-systems/export-pdf', [InformationSystemController::class, 'exportPdf']);
         Route::get('/tools/information-systems/reports/trends', [InformationSystemController::class, 'trends']);
         Route::get('/tools/information-systems', [InformationSystemController::class, 'index']);
         Route::post('/tools/information-systems', [InformationSystemController::class, 'store']);
@@ -188,6 +195,9 @@ Route::prefix('v1')->group(function () {
         Route::put('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'updateModule']);
         Route::delete('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'destroyModule']);
 
+        Route::get('/tools/software-requests/summary', [SoftwareRequestController::class, 'summary']);
+        Route::get('/tools/software-requests/export', [SoftwareRequestController::class, 'export']);
+        Route::get('/tools/software-requests/export-pdf', [SoftwareRequestController::class, 'exportPdf']);
         Route::get('/tools/software-requests', [SoftwareRequestController::class, 'index']);
         Route::post('/tools/software-requests', [SoftwareRequestController::class, 'store']);
         Route::get('/tools/software-requests/{softwareRequest}', [SoftwareRequestController::class, 'show']);
