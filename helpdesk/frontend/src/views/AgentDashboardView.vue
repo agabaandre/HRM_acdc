@@ -1219,4 +1219,28 @@ html.helpdesk-theme-dark .agent-dash .kpi-card__sub {
 html.helpdesk-theme-dark .agent-dash .kpi-card__value {
   color: #f1f5f9;
 }
+
+html.helpdesk-theme-dark .agent-dash .dash-hero {
+  background: linear-gradient(135deg, #0b1220 0%, #111827 55%, #0a2e1c 100%) !important;
+  color: #e2e8f0;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.4);
+}
+
+html.helpdesk-theme-dark .agent-dash .dash-refresh-btn {
+  border-color: rgba(148, 163, 184, 0.4) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .agent-dash .work-mode {
+  background: rgba(15, 23, 42, 0.55);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+html.helpdesk-theme-dark .agent-dash .hd-kanban .v-btn.bg-primary,
+html.helpdesk-theme-dark .agent-dash .hd-kanban a.v-btn.bg-primary {
+  background: rgba(74, 222, 128, 0.18) !important;
+  color: #bbf7d0 !important;
+  box-shadow: none !important;
+}
 </style>

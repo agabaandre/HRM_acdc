@@ -6,6 +6,8 @@ import { mapLucideIcon } from './iconMap'
 type SelectItem = { label: string; value: string | number }
 
 const model = defineModel<string | number | (string | number)[] | null>({ default: null })
+/** Search text for searchable menus (supports API-backed filtering via parent watchers). */
+const search = defineModel<string>('search', { default: '' })
 
 const props = withDefaults(
   defineProps<{
@@ -19,6 +21,8 @@ const props = withDefaults(
     size?: string
     valueKey?: string
     clearable?: boolean
+    /** Prefer stacked UFormField label; hide floating Vuetify label. */
+    hideDetailsLabel?: boolean
   }>(),
   {
     items: () => [],
@@ -27,13 +31,17 @@ const props = withDefaults(
     disabled: false,
     valueKey: 'value',
     clearable: true,
+    hideDetailsLabel: false,
   },
 )
 
 const injectedLabel = inject(fieldLabelKey, undefined)
 const injectedRequired = inject(fieldRequiredKey, undefined)
 
-const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
+const fieldLabel = computed(() => {
+  if (props.hideDetailsLabel) return undefined
+  return props.label ?? injectedLabel?.value
+})
 const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const prependIcon = computed(() => mapLucideIcon(props.icon))
 </script>
@@ -42,6 +50,7 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
   <v-autocomplete
     v-if="searchable"
     v-model="model"
+    v-model:search="search"
     :items="items"
     item-title="label"
     :item-value="valueKey"
@@ -55,6 +64,7 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
     :chips="multiple"
     closable-chips
     density="compact"
+    no-filter
     class="hd-v-select-menu w-full"
     v-bind="$attrs"
   />

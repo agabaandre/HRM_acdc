@@ -35,3 +35,17 @@ defineProps<{
   border-color: rgba(201, 162, 39, 0.35);
 }
 </style>
+
+<style>
+html.helpdesk-theme-dark .cbp-badge {
+  background: rgba(74, 222, 128, 0.14);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+html.helpdesk-theme-dark .cbp-badge-gold {
+  background: rgba(201, 162, 39, 0.16);
+  color: #fcd34d;
+  border-color: rgba(201, 162, 39, 0.4);
+}
+</style>

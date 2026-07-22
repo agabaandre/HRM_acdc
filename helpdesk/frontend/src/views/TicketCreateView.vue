@@ -58,9 +58,8 @@ const ticketCreateIdempotencyKey = ref(
 )
 
 const staffRows = ref<StaffRow[]>([])
-const selectedStaffId = ref('')
+const selectedStaffId = ref<number | null>(null)
 const staffSearch = ref('')
-const staffResultsOpen = ref(false)
 let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
 let skipStaffSearchWatch = false
 
@@ -96,25 +95,15 @@ const selectedStaffRow = computed(() => {
   if (!selectedStaffId.value) {
     return null
   }
-  const id = Number(selectedStaffId.value)
-  return staffRows.value.find((s) => s.id === id) ?? null
+  return staffRows.value.find((s) => s.id === selectedStaffId.value) ?? null
 })
 
-const filteredStaffRows = computed(() => {
-  const q = staffSearch.value.trim().toLowerCase()
-  if (!q) {
-    return staffRows.value.slice(0, 20)
-  }
-  return staffRows.value
-    .filter((s) => {
-      const duty = (s.duty_station_name ?? '').toLowerCase()
-      return s.name.toLowerCase().includes(q)
-        || (s.work_email ?? '').toLowerCase().includes(q)
-        || duty.includes(q)
-        || String(s.id).includes(q)
-    })
-    .slice(0, 25)
-})
+const staffSelectItems = computed((): SelectNumberItem[] =>
+  staffRows.value.slice(0, 40).map((s) => ({
+    label: staffOptionLabel(s),
+    value: s.id,
+  })),
+)
 
 const selectedRequesterPreview = computed(() => {
   const row = selectedStaffRow.value
@@ -235,7 +224,7 @@ watch(
   (anon) => {
     if (anon) {
       forSomeoneElse.value = false
-      selectedStaffId.value = ''
+      selectedStaffId.value = null
       staffSearch.value = ''
     }
   },
@@ -264,7 +253,7 @@ async function fetchStaffList() {
     }
     const { data } = await api.get('/api/v1/reference-data/staff', { params })
     const incoming = data.data.staff as StaffRow[]
-    const keepId = selectedStaffId.value ? Number(selectedStaffId.value) : null
+    const keepId = selectedStaffId.value
     const kept = keepId ? staffRows.value.find((s) => s.id === keepId) ?? null : null
     staffRows.value = incoming
     if (kept && !staffRows.value.some((s) => s.id === keepId)) {
@@ -274,18 +263,13 @@ async function fetchStaffList() {
     refErr.value = 'Could not load staff from the directory. Retry or ask an admin to sync reference data.'
     notifyWarning(refErr.value)
     staffRows.value = []
-    selectedStaffId.value = ''
+    selectedStaffId.value = null
   }
 }
 
-watch(staffSearch, (q) => {
+watch(staffSearch, () => {
   if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
     return
-  }
-  staffResultsOpen.value = true
-  const selected = selectedStaffRow.value
-  if (!selected || q.trim() !== selected.name) {
-    selectedStaffId.value = ''
   }
   if (staffSearchTimer) clearTimeout(staffSearchTimer)
   staffSearchTimer = setTimeout(() => {
@@ -299,7 +283,7 @@ watch(needsDirectoryPicker, async (need) => {
     await fetchStaffList()
   } else {
     refErr.value = null
-    selectedStaffId.value = ''
+    selectedStaffId.value = null
     staffRows.value = []
     staffSearch.value = ''
   }
@@ -307,7 +291,7 @@ watch(needsDirectoryPicker, async (need) => {
 
 watch(forSomeoneElse, (v) => {
   if (!v) {
-    selectedStaffId.value = ''
+    selectedStaffId.value = null
     staffSearch.value = ''
   }
 })
@@ -324,7 +308,7 @@ onMounted(async () => {
     await fetchStaffList()
     if (isStaff.value && auth.me?.profile?.staff_id) {
       const myId = auth.me.profile.staff_id
-      selectedStaffId.value = String(myId)
+      selectedStaffId.value = myId
       if (!staffRows.value.some((s) => s.id === myId)) {
         staffRows.value.unshift({
           id: myId,
@@ -335,6 +319,11 @@ onMounted(async () => {
           duty_station_name: auth.me.profile.duty_station ?? null,
         })
       }
+      skipStaffSearchWatch = true
+      staffSearch.value = staffOptionLabel(staffRows.value.find((s) => s.id === myId)!)
+      queueMicrotask(() => {
+        skipStaffSearchWatch = false
+      })
     }
   }
 })
@@ -344,25 +333,6 @@ function staffOptionLabel(s: StaffRow): string {
   const duty = (s.duty_station_name ?? '').trim()
   const dutyPart = duty ? ` · ${duty}` : ''
   return `${s.name} · ${email}${dutyPart}`
-}
-
-function pickRequester(s: StaffRow) {
-  skipStaffSearchWatch = true
-  selectedStaffId.value = String(s.id)
-  if (!staffRows.value.some((r) => r.id === s.id)) {
-    staffRows.value = [s, ...staffRows.value]
-  }
-  staffSearch.value = s.name
-  staffResultsOpen.value = false
-  queueMicrotask(() => {
-    skipStaffSearchWatch = false
-  })
-}
-
-function onStaffSearchFocus() {
-  if (!refErr.value) {
-    staffResultsOpen.value = true
-  }
 }
 
 async function submit() {
@@ -390,7 +360,7 @@ async function submit() {
     if (form.is_anonymous && allowsAnonymous.value) {
       body.is_anonymous = true
     } else if (needsDirectoryPicker.value) {
-      body.requester_staff_id = Number(selectedStaffId.value)
+      body.requester_staff_id = selectedStaffId.value
     }
     await api.post('/api/v1/tickets', body, {
       headers: { 'Idempotency-Key': ticketCreateIdempotencyKey.value },
@@ -459,11 +429,12 @@ async function submit() {
         :disabled="busy"
         @submit="onFormSubmit"
       >
-        <UFormField label="Business unit" name="business_unit_id" required class="full">
+        <UFormField label="Business unit" name="business_unit_id" required stacked-label class="full">
           <USelectMenu
             v-model="form.business_unit_id"
             :items="businessUnitItems"
             searchable
+            hide-details-label
             :disabled="busy || catsLoading || businessUnits.length === 0"
             :placeholder="catsLoading ? 'Loading…' : businessUnits.length === 0 ? 'No business units available' : 'Search or select business unit'"
             class="w-full"
@@ -479,6 +450,7 @@ async function submit() {
           label="Issue category"
           name="category_id"
           :required="showCategoryField"
+          stacked-label
           class="full"
         >
           <div
@@ -551,46 +523,26 @@ async function submit() {
             </UButton>
           </div>
 
-          <UFormField label="Find requester" name="requester_staff_id" required class="full requester-combo">
-            <UInput
-              v-model="staffSearch"
-              type="search"
-              icon="i-lucide-search"
-              placeholder="Type name, email, or duty station…"
-              autocomplete="off"
-              class="w-full"
+          <UFormField label="Find requester" name="requester_staff_id" required stacked-label class="full">
+            <USelectMenu
+              v-model="selectedStaffId"
+              v-model:search="staffSearch"
+              :items="staffSelectItems"
+              searchable
+              hide-details-label
               :disabled="busy || !!refErr"
-              @focus="onStaffSearchFocus"
+              placeholder="Search name, email, or duty station…"
+              class="w-full"
+              value-key="value"
             />
-            <ul
-              v-if="staffResultsOpen && filteredStaffRows.length"
-              class="combo-results"
-              :class="{ 'combo-results--searching': staffSearch.trim() }"
-              role="listbox"
-              aria-label="Requester results"
-            >
-              <li
-                v-for="s in filteredStaffRows"
-                :key="s.id"
-                role="option"
-                class="combo-result"
-                :class="{ selected: selectedStaffId === String(s.id) }"
-                :aria-selected="selectedStaffId === String(s.id)"
-                @mousedown.prevent
-                @click="pickRequester(s)"
-              >
-                <span class="combo-result-name">{{ s.name }}</span>
-                <span class="combo-result-meta">{{ staffOptionLabel(s) }}</span>
-              </li>
-            </ul>
-            <p v-else-if="staffResultsOpen && staffSearch.trim()" class="combo-empty">No staff found. Try another name/email.</p>
-            <p v-if="selectedRequesterPreview" class="preview" role="status">
+            <p v-if="selectedRequesterPreview" class="requester-preview" role="status">
               <strong>Selected:</strong> {{ selectedRequesterPreview }}
             </p>
+            <p v-if="refErr" class="field-hint warn-inline">{{ refErr }}</p>
           </UFormField>
         </template>
 
-        <UFormField label="Description" name="description" required class="full hd-rich-field">
+        <UFormField label="Description" name="description" required stacked-label class="full hd-rich-field">
           <CbpRichTextEditor
             ref="descriptionEditorRef"
             v-model="form.description"
@@ -929,6 +881,85 @@ textarea {
   font-size: 0.8rem;
   color: #64748b;
   line-height: 1.35;
+}
+.requester-preview {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.45;
+  padding: 0.45rem 0.55rem;
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.warn-inline {
+  color: #b45309 !important;
+}
+</style>
+
+<style>
+html.helpdesk-theme-dark .create-tabs {
+  border-bottom-color: rgba(148, 163, 184, 0.25);
+}
+html.helpdesk-theme-dark .create-tab {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .create-tab.active {
+  color: #86efac;
+  border-bottom-color: #4ade80;
+}
+html.helpdesk-theme-dark .ticket-lede,
+html.helpdesk-theme-dark .gateway-copy,
+html.helpdesk-theme-dark .field-hint,
+html.helpdesk-theme-dark .ai-cat-hint,
+html.helpdesk-theme-dark .muted {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .gateway-title {
+  color: #f1f5f9;
+}
+html.helpdesk-theme-dark .session-summary {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+html.helpdesk-theme-dark .session-summary .label,
+html.helpdesk-theme-dark .session-summary .subtle {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .session-summary .line {
+  color: #f1f5f9;
+}
+html.helpdesk-theme-dark .requester-preview {
+  background: rgba(30, 41, 59, 0.9);
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .category-radio {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .category-radio.is-selected {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(74, 222, 128, 0.1);
+}
+html.helpdesk-theme-dark .category-radio-name {
+  color: #f1f5f9;
+}
+html.helpdesk-theme-dark .category-radio-desc {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .submit-overlay-card {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .submit-overlay-title {
+  color: #f1f5f9;
+}
+html.helpdesk-theme-dark .submit-overlay-text {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .submit-spinner {
+  border-color: rgba(148, 163, 184, 0.25);
+  border-top-color: #4ade80;
 }
 </style>
 

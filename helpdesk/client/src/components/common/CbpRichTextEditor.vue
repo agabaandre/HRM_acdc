@@ -3,6 +3,7 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiErrorMessage'
 import {
   buildQuillOptions,
   collectDataUriImagesFromHtml,
@@ -178,12 +179,11 @@ async function uploadInlineImage(file: File, options: { trackBusy?: boolean } = 
     const url = props.ticketId
       ? `/api/v1/tickets/${props.ticketId}/inline-images`
       : '/api/v1/rich-text-images'
-    const { data } = await api.post(url, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post(url, fd)
     return data.data.url as string
-  } catch {
-    imageHint.value = 'Image upload failed. Try a smaller file or a different format.'
+  } catch (err: unknown) {
+    const msg = apiErrorMessage(err, 'Image upload failed. Try a smaller file or a different format.')
+    imageHint.value = msg
     return null
   } finally {
     if (trackBusy) {
@@ -497,5 +497,54 @@ defineExpose({
 .cbp-rich-text__tip strong {
   color: #0d7a3a;
   font-weight: 600;
+}
+</style>
+
+<style>
+html.helpdesk-theme-dark .cbp-rich-text__editor {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor--loading {
+  background: #0f172a !important;
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar {
+  background: #152033 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar .ql-stroke {
+  stroke: #cbd5e1 !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar .ql-fill {
+  fill: #cbd5e1 !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar .ql-picker {
+  color: #e2e8f0 !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar button:hover .ql-stroke,
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #86efac !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar button:hover .ql-fill,
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-toolbar button.ql-active .ql-fill {
+  fill: #86efac !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-container {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-editor {
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .cbp-rich-text__editor .ql-editor.ql-blank::before {
+  color: #94a3b8 !important;
+}
+html.helpdesk-theme-dark .cbp-rich-text__tip.muted {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .cbp-rich-text__tip strong {
+  color: #86efac;
 }
 </style>

@@ -250,7 +250,7 @@ onMounted(() => {
             <v-btn
               color="primary"
               variant="flat"
-              size="large"
+              size="default"
               class="hd-home-hub__ask-btn"
               prepend-icon="mdi-robot-outline"
               @click="goToAskWithSearch"
@@ -388,8 +388,8 @@ onMounted(() => {
 .kb-panels :deep(.v-expansion-panel) {
   border: 1px solid var(--hd-line);
   margin-bottom: 0.45rem;
-  background: var(--cbp-card-bg, #fff);
-  color: var(--cbp-card-text, #1f2933);
+  background: #fff;
+  color: #1f2933;
 }
 .kb-panels :deep(.v-expansion-panel--active) {
   border-color: rgba(17, 154, 72, 0.4);
@@ -509,5 +509,61 @@ onMounted(() => {
 .kb-answer-plain {
   margin: 0.75rem 0 0;
   white-space: pre-wrap;
+}
+</style>
+
+<style>
+/* Dark mode KB panels — unscoped + hex so stale/chunk CSS cannot leave white rows */
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel--active,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active {
+  background: #152033 !important;
+  background-color: #152033 !important;
+  border-color: rgba(74, 222, 128, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title__overlay,
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-question,
+html.helpdesk-theme-dark .hd-kb-card .kb-question-wrap {
+  color: #f1f5f9 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text__wrapper,
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-text,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-body,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-plain {
+  background: transparent !important;
+  color: #cbd5e1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-icon {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-category-chip.v-chip,
+html.helpdesk-theme-dark .hd-kb-card .v-chip.kb-category-chip {
+  background: rgba(74, 222, 128, 0.2) !important;
+  color: #bbf7d0 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-title {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-lede,
+html.helpdesk-theme-dark .hd-kb-card .panel-title {
+  color: #94a3b8 !important;
 }
 </style>
