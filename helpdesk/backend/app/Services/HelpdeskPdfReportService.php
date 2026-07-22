@@ -28,7 +28,7 @@ class HelpdeskPdfReportService
 
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
-            'format' => 'A4',
+            'format' => 'A4-L',
             'tempDir' => storage_path('app/mpdf_tmp'),
             'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
             'fontdata' => $haveArial
