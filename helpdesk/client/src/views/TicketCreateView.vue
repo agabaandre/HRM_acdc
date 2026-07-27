@@ -305,11 +305,6 @@ watch(forSomeoneElse, (v) => {
   }
 })
 
-async function retryDirectory() {
-  await loadReferenceData()
-  await fetchStaffList()
-}
-
 onMounted(async () => {
   // Staff/agents log for a colleague by default; end users log for themselves.
   if (isStaff.value) {
@@ -511,12 +506,6 @@ async function submit() {
         </template>
 
         <template v-if="needsDirectoryPicker && !form.is_anonymous">
-          <div class="row-actions full">
-            <UButton type="button" color="neutral" variant="outline" size="sm" :disabled="busy" @click="retryDirectory">
-              Reload directory
-            </UButton>
-          </div>
-
           <UFormField label="Find requester" name="requester_staff_id" required stacked-label class="full">
             <USelectMenu
               v-model="selectedStaffId"
@@ -775,11 +764,6 @@ label {
   padding: 0.5rem 0.65rem;
   border-radius: 4px;
   border: 1px solid #fcd34d;
-}
-.row-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
 }
 .ghost {
   padding: 0.35rem 0.75rem;
