@@ -44,6 +44,9 @@ const fieldLabel = computed(() => {
 })
 const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const prependIcon = computed(() => mapLucideIcon(props.icon))
+const persistFloatLabel = computed(
+  () => Boolean(props.placeholder?.trim()) && !props.hideDetailsLabel && Boolean(fieldLabel.value),
+)
 </script>
 
 <template>
@@ -65,7 +68,10 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
     closable-chips
     density="compact"
     no-filter
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     class="hd-v-select-menu w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
   <v-select
@@ -84,7 +90,10 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
     :chips="multiple"
     closable-chips
     density="compact"
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     class="hd-v-select-menu w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
 </template>

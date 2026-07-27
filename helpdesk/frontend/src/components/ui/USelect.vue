@@ -35,6 +35,7 @@ const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
 const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const prependIcon = computed(() => mapLucideIcon(props.icon))
 const vItems = computed(() => props.items ?? [])
+const persistFloatLabel = computed(() => Boolean(props.placeholder?.trim()))
 
 const density = computed(() => (props.size === 'lg' ? 'default' : 'compact'))
 </script>
@@ -55,7 +56,10 @@ const density = computed(() => (props.size === 'lg' ? 'default' : 'compact'))
     :prepend-inner-icon="prependIcon"
     :chips="multiple"
     closable-chips
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     class="hd-v-select w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
 </template>

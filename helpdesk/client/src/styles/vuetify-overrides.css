@@ -148,6 +148,23 @@ html.helpdesk-theme-dark .v-application .withbg.v-card {
   border-radius: 4px;
 }
 
+/*
+ * Fields with placeholders keep the outline label floated on the notch
+ * so it never sits inside the control on top of the placeholder text.
+ */
+.hd-v-input--persist-label .v-field .v-field-label--floating,
+.hd-v-input--persist-label.v-input .v-label.v-field-label--floating {
+  visibility: visible;
+  opacity: 1;
+}
+
+.hd-v-input--persist-label .v-field:not(.v-field--focused):not(.v-field--dirty) .v-field-label:not(.v-field-label--floating) {
+  /* Hide the in-field resting label; the floated notch label remains via :active */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .hd-v-form-field {
   width: 100%;
 }

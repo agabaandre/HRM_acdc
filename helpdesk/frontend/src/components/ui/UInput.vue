@@ -33,6 +33,9 @@ const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
 const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const prependIcon = computed(() => mapLucideIcon(props.icon))
 
+/** Keep the floating label on the outline notch whenever a placeholder is shown. */
+const persistFloatLabel = computed(() => Boolean(props.placeholder?.trim()))
+
 const inputType = computed(() => {
   if (props.type === 'search') return 'text'
   return props.type
@@ -55,8 +58,11 @@ const density = computed(() => (props.size === 'lg' ? 'default' : 'compact'))
     :density="density"
     :required="fieldRequired"
     :clearable="clearable"
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     :aria-label="ariaLabel ?? fieldLabel ?? ($attrs['aria-label'] as string | undefined)"
     class="hd-v-input w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
 </template>

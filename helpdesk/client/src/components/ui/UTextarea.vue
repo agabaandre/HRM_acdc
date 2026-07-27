@@ -26,6 +26,7 @@ const injectedRequired = inject(fieldRequiredKey, undefined)
 const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
 const fieldRequired = computed(() => injectedRequired?.value ?? false)
 const maxRowsValue = computed(() => props.maxRows ?? props.rows + 2)
+const persistFloatLabel = computed(() => Boolean(props.placeholder?.trim()))
 </script>
 
 <template>
@@ -38,9 +39,12 @@ const maxRowsValue = computed(() => props.maxRows ?? props.rows + 2)
     :auto-grow="autoGrow"
     :max-rows="autoGrow ? maxRowsValue : undefined"
     :required="fieldRequired"
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     density="compact"
     hide-details="auto"
     class="hd-v-textarea w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
 </template>
