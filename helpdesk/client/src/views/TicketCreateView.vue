@@ -377,7 +377,7 @@ async function submit() {
   <div>
     <CbpPageHeading title="Create ticket" back-to="/tickets" back-label="← Tickets">
       <template #lede>
-        Choose a helpdesk ticket or continue to the software request form under Helpdesk Modules.
+        Choose a service desk
       </template>
     </CbpPageHeading>
 
@@ -390,7 +390,7 @@ async function submit() {
         :aria-selected="activeTab === 'ticket'"
         @click="activeTab = 'ticket'"
       >
-        Helpdesk ticket
+        Help desk
       </button>
       <button
         v-if="canAccessSoftwareRequests"
@@ -401,17 +401,17 @@ async function submit() {
         :aria-selected="activeTab === 'software'"
         @click="activeTab = 'software'"
       >
-        Software request
+        Information System Request
       </button>
     </div>
 
     <div v-show="activeTab === 'software'" class="cbp-card software-gateway" role="tabpanel">
-      <h2 class="gateway-title">Software requirement request</h2>
+      <h2 class="gateway-title">Information System Request</h2>
       <p class="gateway-copy">
-        Software requests use a dedicated form under Helpdesk Modules — including drafts, status tracking, and reviewer workflows.
+        Information System requests use a dedicated form under Helpdesk Modules — including drafts, status tracking, and reviewer workflows.
       </p>
       <UButton color="primary" @click="goToSoftwareRequests">
-        Continue to Software requests
+        Continue to Information System Request
       </UButton>
     </div>
 

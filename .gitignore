@@ -22,5 +22,8 @@ compser.lock
 package-lock.json
 !helpdesk/frontend/package-lock.json
 
+# Local data files (not for version control)
+Africa CDC Funding Portfolio.xlsx
+
 /apm/vendor/
 
