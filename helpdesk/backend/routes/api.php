@@ -59,6 +59,7 @@ Route::prefix('v1')->group(function () {
 
     // Read-only TV / lobby dashboard — aggregate stats only, NEVER PII.
     Route::get('/public/screen', PublicScreenController::class)->middleware('throttle:120,1');
+    Route::get('/public/screen/units', [PublicScreenController::class, 'units'])->middleware('throttle:60,1');
     Route::get('/avatar/{user}', [AvatarController::class, 'show'])->middleware('throttle:300,1');
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/business-units', [BusinessUnitController::class, 'index']);

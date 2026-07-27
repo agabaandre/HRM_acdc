@@ -1,17 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { api } from '../../lib/api'
 import { HELP_DESK_NAV_ICONS, settingsNavIcon } from '../../lib/helpdeskNav'
 import { toolsNavIcon } from '../../lib/toolsNav'
 import { hasAnyToolsNavAccess, visibleToolsNavItems } from '../../lib/toolsPermissions'
 import { useAuthStore } from '../../stores/auth'
 import { SETTINGS_NAV_DROPDOWN_ITEMS } from '../../settings/settingsSections'
 
+interface ScreenUnitNavItem {
+  id: number
+  name: string
+  slug: string
+  screen_label: string
+}
+
 const auth = useAuthStore()
 const route = useRoute()
 const navOpen = ref(false)
 const settingsOpen = ref(false)
 const toolsOpen = ref(false)
+const screenOpen = ref(false)
+const screenUnits = ref<ScreenUnitNavItem[]>([])
 
 const isAdmin = computed(
   () => !!auth.me?.profile?.is_helpdesk_admin || auth.me?.profile?.role === 'admin',
@@ -29,6 +39,7 @@ function closeAll() {
   navOpen.value = false
   settingsOpen.value = false
   toolsOpen.value = false
+  screenOpen.value = false
 }
 
 function toggleNav() {
@@ -36,6 +47,7 @@ function toggleNav() {
   if (navOpen.value) {
     settingsOpen.value = false
     toolsOpen.value = false
+    screenOpen.value = false
   }
 }
 
@@ -43,6 +55,7 @@ function toggleSettings() {
   settingsOpen.value = !settingsOpen.value
   if (settingsOpen.value) {
     toolsOpen.value = false
+    screenOpen.value = false
   }
 }
 
@@ -50,6 +63,15 @@ function toggleTools() {
   toolsOpen.value = !toolsOpen.value
   if (toolsOpen.value) {
     settingsOpen.value = false
+    screenOpen.value = false
+  }
+}
+
+function toggleScreen() {
+  screenOpen.value = !screenOpen.value
+  if (screenOpen.value) {
+    settingsOpen.value = false
+    toolsOpen.value = false
   }
 }
 
@@ -71,8 +93,18 @@ function onDocClick(e: MouseEvent) {
   }
 }
 
+async function loadScreenUnits(): Promise<void> {
+  try {
+    const { data } = await api.get<{ data: ScreenUnitNavItem[] }>('/api/v1/public/screen/units')
+    screenUnits.value = data.data ?? []
+  } catch {
+    screenUnits.value = []
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', onDocClick)
+  void loadScreenUnits()
 })
 
 onUnmounted(() => {
@@ -81,6 +113,7 @@ onUnmounted(() => {
 
 const settingsAreaActive = computed(() => route.path.startsWith('/settings'))
 const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
+const screenAreaActive = computed(() => route.path === '/screen' || route.path.startsWith('/screen/'))
 </script>
 
 <template>
@@ -115,16 +148,47 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
             <i :class="HELP_DESK_NAV_ICONS.reports" class="cbp-nav-link-icon" aria-hidden="true" />
             <span>Reports</span>
           </RouterLink>
-          <RouterLink
-            to="/screen"
-            class="cbp-nav-link"
-            target="_blank"
-            rel="noopener noreferrer"
-            @click="closeAll"
-          >
-            <i :class="HELP_DESK_NAV_ICONS.screen" class="cbp-nav-link-icon" aria-hidden="true" />
-            <span>Live screen</span>
-          </RouterLink>
+
+          <div class="cbp-nav-item-dropdown" :class="{ 'is-open': screenOpen }">
+            <button
+              type="button"
+              class="cbp-nav-link cbp-nav-dd-toggle"
+              :class="{ 'router-link-active': screenAreaActive }"
+              aria-haspopup="true"
+              :aria-expanded="screenOpen"
+              @click.stop="toggleScreen"
+            >
+              <i :class="HELP_DESK_NAV_ICONS.screen" class="cbp-nav-link-icon" aria-hidden="true" />
+              <span>Live screen</span>
+              <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
+            </button>
+            <div class="cbp-nav-dd-menu" role="menu">
+              <RouterLink
+                to="/screen"
+                class="cbp-nav-dd-item"
+                role="menuitem"
+                target="_blank"
+                rel="noopener noreferrer"
+                @click="closeAll"
+              >
+                <i :class="HELP_DESK_NAV_ICONS.screen" class="cbp-nav-dd-item-icon" aria-hidden="true" />
+                <span>All business units</span>
+              </RouterLink>
+              <RouterLink
+                v-for="unit in screenUnits"
+                :key="unit.id"
+                :to="{ name: 'screen-bu', params: { unitSlug: unit.slug } }"
+                class="cbp-nav-dd-item"
+                role="menuitem"
+                target="_blank"
+                rel="noopener noreferrer"
+                @click="closeAll"
+              >
+                <i :class="HELP_DESK_NAV_ICONS.screen" class="cbp-nav-dd-item-icon" aria-hidden="true" />
+                <span>{{ unit.screen_label }}</span>
+              </RouterLink>
+            </div>
+          </div>
 
           <div v-if="showTools" class="cbp-nav-item-dropdown" :class="{ 'is-open': toolsOpen }">
             <button

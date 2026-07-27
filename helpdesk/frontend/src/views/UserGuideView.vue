@@ -54,7 +54,7 @@ const slides = [
       { title: 'Agent dashboard', text: 'Open Agent desk for a greeting with your full name, assigned work, KPIs, and the kanban board.' },
       { title: 'Reply & reassign', text: 'Post public comments for the requester or internal notes for the team. Reassign when another agent should own the ticket.' },
       { title: 'Submit resolution', text: 'Document what was fixed. Optionally link a requester IT asset (serial/tag search) when the Business Unit allows it, and publish to the knowledge base if permitted.' },
-      { title: 'Service Desk Modules & live screen', text: 'Use Service Desk Modules → IT Assets / Licenses / Software / Hosting / Innovations when you have access. Open /screen on a TV for queue stats (no personal data).' },
+      { title: 'Service Desk Modules & live screen', text: 'Use Service Desk Modules → IT Assets / Licenses / Software / Hosting / Innovations when you have access. Open Live screen → All business units for a unified TV board, or pick a unit (e.g. IT Service Desk) so queues stay separate.' },
     ],
     tip: 'Admins: Settings cover business units (mailbox intake, Allow Asset), IT Asset brands, agents, SLA, and Exchange mail.',
   },

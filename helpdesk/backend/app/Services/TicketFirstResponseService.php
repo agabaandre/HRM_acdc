@@ -40,11 +40,12 @@ class TicketFirstResponseService
      * Uses stored first_response_at when present, otherwise derives from comment history
      * or staff resolution time.
      */
-    public function averageFirstResponseMinutesSince(DateTimeInterface $since): ?int
+    public function averageFirstResponseMinutesSince(DateTimeInterface $since, ?int $businessUnitId = null): ?int
     {
         $sinceStr = $since->format('Y-m-d H:i:s');
 
         $avg = HelpdeskTicket::query()
+            ->when($businessUnitId !== null, fn ($q) => $q->where('helpdesk_tickets.business_unit_id', $businessUnitId))
             ->leftJoinSub($this->firstStaffCommentSubquery(), 'fr', function ($join) {
                 $join->on('helpdesk_tickets.id', '=', 'fr.ticket_id');
             })

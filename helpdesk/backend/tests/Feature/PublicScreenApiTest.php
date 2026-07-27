@@ -50,19 +50,23 @@ class PublicScreenApiTest extends TestCase
             'requester_staff_id' => 99001,
             'requester_name' => $requester->name,
             'requester_email' => $requester->email,
+        ]);
+        $ticket->forceFill([
             'created_at' => now()->subMinutes(30),
             'updated_at' => now()->subMinutes(30),
-        ]);
+        ])->saveQuietly();
 
-        HelpdeskTicketComment::query()->create([
+        $comment = HelpdeskTicketComment::query()->create([
             'ticket_id' => $ticket->id,
             'user_id' => $agent->id,
             'author_staff_id' => 99002,
             'is_internal' => false,
             'body' => 'We are looking into this.',
+        ]);
+        $comment->forceFill([
             'created_at' => now()->subMinutes(10),
             'updated_at' => now()->subMinutes(10),
-        ]);
+        ])->saveQuietly();
 
         $response = $this->getJson('/api/v1/public/screen');
 
@@ -570,5 +574,97 @@ class PublicScreenApiTest extends TestCase
         $this->assertSame(1, $infraRow['by_priority']['high']);
         $this->assertSame($infraAgent->name, $infraRow['agent_of_week']['agent']['name']);
         $this->assertSame($appsAgent->name, $appsRow['agent_of_week']['agent']['name']);
+    }
+
+    public function test_screen_can_scope_volumes_to_a_business_unit(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        $it = \App\Models\HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $hr = \App\Models\HelpdeskBusinessUnit::query()->where('slug', 'human-resource')->firstOrFail();
+        $itCat = HelpdeskCategory::query()->where('business_unit_id', $it->id)->firstOrFail();
+        $hrCat = HelpdeskCategory::query()->firstOrCreate(
+            ['slug' => 'hr-screen-test'],
+            [
+                'name' => 'HR Screen Test',
+                'business_unit_id' => $hr->id,
+                'is_active' => true,
+                'sort_order' => 900,
+                'default_priority' => 'medium',
+            ],
+        );
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009940',
+            'category_id' => $itCat->id,
+            'business_unit_id' => $it->id,
+            'subject' => 'IT open ticket',
+            'description' => 'Laptop',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 99701,
+            'requester_name' => 'IT Requester',
+            'requester_email' => 'it@example.org',
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009941',
+            'category_id' => $itCat->id,
+            'business_unit_id' => $it->id,
+            'subject' => 'IT in progress',
+            'description' => 'VPN',
+            'priority' => 'high',
+            'status' => 'in_progress',
+            'source' => 'web',
+            'requester_staff_id' => 99702,
+            'requester_name' => 'IT Requester 2',
+            'requester_email' => 'it2@example.org',
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-2026-009942',
+            'category_id' => $hrCat->id,
+            'business_unit_id' => $hr->id,
+            'subject' => 'HR open ticket',
+            'description' => 'Leave',
+            'priority' => 'low',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 99703,
+            'requester_name' => 'HR Requester',
+            'requester_email' => 'hr@example.org',
+        ]);
+
+        $all = $this->getJson('/api/v1/public/screen');
+        $all->assertOk();
+        $all->assertJsonPath('data.scope.mode', 'all');
+        $all->assertJsonPath('data.scope.label', 'All business units');
+        $all->assertJsonPath('data.volumes.open', 2);
+        $all->assertJsonPath('data.volumes.in_progress', 1);
+        $all->assertJsonPath('data.volumes.total_active', 3);
+
+        $itScreen = $this->getJson('/api/v1/public/screen?business_unit=it-mis');
+        $itScreen->assertOk();
+        $itScreen->assertJsonPath('data.scope.mode', 'unit');
+        $itScreen->assertJsonPath('data.scope.label', 'IT Service Desk');
+        $itScreen->assertJsonPath('data.scope.business_unit.slug', 'it-mis');
+        $itScreen->assertJsonPath('data.volumes.open', 1);
+        $itScreen->assertJsonPath('data.volumes.in_progress', 1);
+        $itScreen->assertJsonPath('data.volumes.total_active', 2);
+
+        $hrScreen = $this->getJson('/api/v1/public/screen?business_unit=human-resource');
+        $hrScreen->assertOk();
+        $hrScreen->assertJsonPath('data.scope.mode', 'unit');
+        $hrScreen->assertJsonPath('data.scope.label', 'Human Resource · Service Desk');
+        $hrScreen->assertJsonPath('data.volumes.open', 1);
+        $hrScreen->assertJsonPath('data.volumes.in_progress', 0);
+        $hrScreen->assertJsonPath('data.volumes.total_active', 1);
+
+        $units = $this->getJson('/api/v1/public/screen/units');
+        $units->assertOk();
+        $labels = collect($units->json('data'))->pluck('screen_label', 'slug');
+        $this->assertSame('IT Service Desk', $labels->get('it-mis'));
+        $this->assertSame('Human Resource · Service Desk', $labels->get('human-resource'));
     }
 }

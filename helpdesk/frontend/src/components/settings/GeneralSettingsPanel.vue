@@ -540,7 +540,8 @@ function roleLabel(c: CandidateRow): string {
             <h3>Lobby screen — agent recognition</h3>
             <p class="card-lede">
               Weights for <strong>Agent of the week</strong> and <strong>Agent of the month</strong> on the
-              <a href="/staff/helpdesk/screen" target="_blank" rel="noopener">TV / lobby dashboard</a>.
+              <a href="/staff/helpdesk/screen" target="_blank" rel="noopener">unified TV / lobby dashboard</a>
+              (also available per business unit under Live screen).
               Scoring blends tickets worked (first response or resolution in the period) with average first-response time.
             </p>
           </div>

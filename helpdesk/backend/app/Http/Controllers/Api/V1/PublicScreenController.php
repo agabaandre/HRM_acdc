@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskCategory;
 use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
@@ -12,7 +13,9 @@ use App\Services\AgentLeaderboardService;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketFirstResponseService;
 use App\Support\StaffPhotoUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Read-only public dashboard for office TVs / lobby screens.
@@ -30,11 +33,17 @@ class PublicScreenController extends Controller
     /** Inclusive set including the "waiting on requester" hand-off state. */
     private const PENDING_STATUSES = ['open', 'pending', 'in_progress', 'awaiting_requester_confirmation'];
 
+    private ?int $businessUnitId = null;
+
     public function __invoke(
+        Request $request,
         TicketFirstResponseService $firstResponse,
         StaffDirectoryLookupService $directory,
         AgentLeaderboardService $leaderboard,
     ): JsonResponse {
+        $scopeUnit = $this->resolveBusinessUnit($request);
+        $this->businessUnitId = $scopeUnit?->id;
+
         $now = now();
         $startOfToday = $now->copy()->startOfDay();
         $endOfToday = $now->copy()->endOfDay();
@@ -46,19 +55,21 @@ class PublicScreenController extends Controller
         return response()->json([
             'data' => [
                 'generated_at' => $now->toIso8601String(),
+                'scope' => $this->scopePayload($scopeUnit),
+                'business_units' => $this->businessUnitsForPicker(),
                 'volumes' => $this->volumes($now, $startOfToday, $endOfToday),
                 'wait' => $this->waitMetrics($now, $firstResponse),
                 'sla' => $this->slaMetrics($sevenDaysAgo, $now),
                 'by_priority' => $this->byPriority(),
-                'priority_matrix_by_group' => $leaderboard->priorityMatrixBySupportGroup($now),
+                'priority_matrix_by_group' => $leaderboard->priorityMatrixBySupportGroup($now, $this->businessUnitId),
                 'by_category' => $this->byCategory(),
                 'by_duty_station' => $this->byDutyStation($now, $startOfWeek, $directory),
                 'closures_by_agent_month' => $this->closuresByAgentThisMonth($startOfMonth, $now),
                 'workload' => $this->workload(),
                 'in_progress_workload' => $this->inProgressWorkload(),
                 'trend' => $this->trend30Days($thirtyDaysAgo, $now),
-                'agent_of_week' => $leaderboard->agentOfWeek($now),
-                'agent_of_month' => $leaderboard->agentOfMonth($now),
+                'agent_of_week' => $leaderboard->agentOfWeek($now, $this->businessUnitId),
+                'agent_of_month' => $leaderboard->agentOfMonth($now, $this->businessUnitId),
                 'screen' => HelpdeskSetting::screenDisplayConfig(),
                 'csat' => [
                     'avg_score' => null,
@@ -70,11 +81,102 @@ class PublicScreenController extends Controller
     }
 
     /**
+     * Lightweight list of active business units for live-screen pickers / nav.
+     */
+    public function units(): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->businessUnitsForPicker(),
+        ]);
+    }
+
+    private function resolveBusinessUnit(Request $request): ?HelpdeskBusinessUnit
+    {
+        $id = $request->integer('business_unit_id');
+        if ($id > 0) {
+            return HelpdeskBusinessUnit::query()->where('is_active', true)->find($id);
+        }
+
+        $slug = trim((string) $request->query('business_unit', ''));
+        if ($slug === '' || $slug === 'all') {
+            return null;
+        }
+
+        return HelpdeskBusinessUnit::query()
+            ->where('is_active', true)
+            ->where('slug', $slug)
+            ->first();
+    }
+
+    /**
+     * @return array{mode: string, label: string, business_unit: ?array{id: int, name: string, slug: string}}
+     */
+    private function scopePayload(?HelpdeskBusinessUnit $unit): array
+    {
+        if (! $unit) {
+            return [
+                'mode' => 'all',
+                'label' => 'All business units',
+                'business_unit' => null,
+            ];
+        }
+
+        $label = $unit->slug === 'it-mis'
+            ? 'IT Service Desk'
+            : trim($unit->name).' · Service Desk';
+
+        return [
+            'mode' => 'unit',
+            'label' => $label,
+            'business_unit' => [
+                'id' => $unit->id,
+                'name' => $unit->name,
+                'slug' => $unit->slug,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, name: string, slug: string, screen_label: string}>
+     */
+    private function businessUnitsForPicker(): array
+    {
+        return HelpdeskBusinessUnit::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (HelpdeskBusinessUnit $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'slug' => $u->slug,
+                'screen_label' => $u->slug === 'it-mis'
+                    ? 'IT Service Desk'
+                    : trim($u->name).' · Service Desk',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return Builder<\App\Models\HelpdeskTicket>
+     */
+    private function ticketsQuery(): Builder
+    {
+        $query = HelpdeskTicket::query();
+        if ($this->businessUnitId !== null) {
+            $query->where('business_unit_id', $this->businessUnitId);
+        }
+
+        return $query;
+    }
+
+    /**
      * @return array<string, int>
      */
     private function volumes(\DateTimeInterface $now, \DateTimeInterface $startOfToday, \DateTimeInterface $endOfToday): array
     {
-        $byStatus = HelpdeskTicket::query()
+        $byStatus = $this->ticketsQuery()
             ->selectRaw('status, COUNT(*) AS c')
             ->groupBy('status')
             ->pluck('c', 'status');
@@ -84,12 +186,12 @@ class PublicScreenController extends Controller
         $inProgress = (int) ($byStatus['in_progress'] ?? 0);
         $awaiting = (int) ($byStatus['awaiting_requester_confirmation'] ?? 0);
 
-        $unassigned = HelpdeskTicket::query()
+        $unassigned = $this->ticketsQuery()
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->whereNull('assigned_user_id')
             ->count();
 
-        $resolvedToday = HelpdeskTicket::query()
+        $resolvedToday = $this->ticketsQuery()
             ->whereIn('status', ['resolved', 'closed'])
             ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
                 $startOfToday->format('Y-m-d H:i:s'),
@@ -97,17 +199,17 @@ class PublicScreenController extends Controller
             ])
             ->count();
 
-        $resolvedOnlyToday = HelpdeskTicket::query()
+        $resolvedOnlyToday = $this->ticketsQuery()
             ->where('status', 'resolved')
             ->whereBetween('resolved_at', [$startOfToday, $endOfToday])
             ->count();
 
-        $closedToday = HelpdeskTicket::query()
+        $closedToday = $this->ticketsQuery()
             ->where('status', 'closed')
             ->whereBetween('closed_at', [$startOfToday, $endOfToday])
             ->count();
 
-        $createdToday = HelpdeskTicket::query()
+        $createdToday = $this->ticketsQuery()
             ->whereBetween('created_at', [$startOfToday, $endOfToday])
             ->count();
 
@@ -133,9 +235,9 @@ class PublicScreenController extends Controller
         // Average first-response minutes for tickets that received their first
         // response in the last 24h (smoothed; ignores ancient outliers).
         $oneDayAgo = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)))->modify('-1 day');
-        $avg = $firstResponse->averageFirstResponseMinutesSince($oneDayAgo);
+        $avg = $firstResponse->averageFirstResponseMinutesSince($oneDayAgo, $this->businessUnitId);
 
-        $oldest = HelpdeskTicket::query()
+        $oldest = $this->ticketsQuery()
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->orderBy('created_at')
             ->first(['ticket_number', 'created_at', 'priority']);
@@ -160,7 +262,7 @@ class PublicScreenController extends Controller
     private function slaMetrics(\DateTimeInterface $since, \DateTimeInterface $now): array
     {
         // Response SLA: tickets that breached or met their response target.
-        $responseStats = HelpdeskTicket::query()
+        $responseStats = $this->ticketsQuery()
             ->whereNotNull('sla_response_due_at')
             ->whereNotNull('first_response_at')
             ->where('first_response_at', '>=', $since)
@@ -168,7 +270,7 @@ class PublicScreenController extends Controller
             ->first();
 
         // Resolution SLA: tickets resolved within their resolution target.
-        $resolutionStats = HelpdeskTicket::query()
+        $resolutionStats = $this->ticketsQuery()
             ->whereNotNull('sla_resolution_due_at')
             ->whereNotNull('resolved_at')
             ->where('resolved_at', '>=', $since)
@@ -176,7 +278,7 @@ class PublicScreenController extends Controller
             ->first();
 
         // Active tickets already past their SLA — the "warning" count.
-        $breachedPending = HelpdeskTicket::query()
+        $breachedPending = $this->ticketsQuery()
             ->whereIn('status', self::ACTIVE_STATUSES)
             ->whereNotNull('sla_resolution_due_at')
             ->where('sla_resolution_due_at', '<', $now)
@@ -206,7 +308,7 @@ class PublicScreenController extends Controller
      */
     private function byPriority(): array
     {
-        $rows = HelpdeskTicket::query()
+        $rows = $this->ticketsQuery()
             ->whereIn('status', self::PENDING_STATUSES)
             ->selectRaw('priority, COUNT(*) AS c')
             ->groupBy('priority')
@@ -225,7 +327,7 @@ class PublicScreenController extends Controller
      */
     private function byCategory(): array
     {
-        $rows = HelpdeskTicket::query()
+        $rows = $this->ticketsQuery()
             ->whereIn('status', self::PENDING_STATUSES)
             ->selectRaw('category_id, COUNT(*) AS c')
             ->groupBy('category_id')
@@ -265,13 +367,13 @@ class PublicScreenController extends Controller
         \DateTimeInterface $startOfWeek,
         StaffDirectoryLookupService $directory,
     ): array {
-        $openByStaff = HelpdeskTicket::query()
+        $openByStaff = $this->ticketsQuery()
             ->whereIn('status', self::PENDING_STATUSES)
             ->selectRaw('requester_staff_id, COUNT(*) AS c')
             ->groupBy('requester_staff_id')
             ->pluck('c', 'requester_staff_id');
 
-        $closedThisWeekByStaff = HelpdeskTicket::query()
+        $closedThisWeekByStaff = $this->ticketsQuery()
             ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
                 $startOfWeek->format('Y-m-d H:i:s'),
                 $now->format('Y-m-d H:i:s'),
@@ -280,7 +382,7 @@ class PublicScreenController extends Controller
             ->groupBy('requester_staff_id')
             ->pluck('c', 'requester_staff_id');
 
-        $overtimeByStaff = HelpdeskTicket::query()
+        $overtimeByStaff = $this->ticketsQuery()
             ->whereIn('status', self::PENDING_STATUSES)
             ->whereNotNull('sla_resolution_due_at')
             ->where('sla_resolution_due_at', '<', $now)
@@ -341,7 +443,7 @@ class PublicScreenController extends Controller
      */
     private function closuresByAgentThisMonth(\DateTimeInterface $startOfMonth, \DateTimeInterface $now): array
     {
-        $loads = HelpdeskTicket::query()
+        $loads = $this->ticketsQuery()
             ->whereRaw('COALESCE(resolved_at, closed_at) BETWEEN ? AND ?', [
                 $startOfMonth->format('Y-m-d H:i:s'),
                 $now->format('Y-m-d H:i:s'),
@@ -384,14 +486,14 @@ class PublicScreenController extends Controller
      */
     private function workload(): array
     {
-        $loads = HelpdeskTicket::query()
+        $loads = $this->ticketsQuery()
             ->whereIn('status', self::PENDING_STATUSES)
             ->whereNotNull('assigned_user_id')
             ->selectRaw('assigned_user_id, COUNT(*) AS c')
             ->groupBy('assigned_user_id')
             ->pluck('c', 'assigned_user_id');
 
-        $inProgressLoads = HelpdeskTicket::query()
+        $inProgressLoads = $this->ticketsQuery()
             ->where('status', 'in_progress')
             ->whereNotNull('assigned_user_id')
             ->selectRaw('assigned_user_id, COUNT(*) AS c')
@@ -436,7 +538,7 @@ class PublicScreenController extends Controller
      */
     private function inProgressWorkload(): array
     {
-        $loads = HelpdeskTicket::query()
+        $loads = $this->ticketsQuery()
             ->where('status', 'in_progress')
             ->whereNotNull('assigned_user_id')
             ->selectRaw('assigned_user_id, COUNT(*) AS c')
@@ -476,13 +578,13 @@ class PublicScreenController extends Controller
      */
     private function trend30Days(\DateTimeInterface $since, \DateTimeInterface $now): array
     {
-        $created = HelpdeskTicket::query()
+        $created = $this->ticketsQuery()
             ->where('created_at', '>=', $since)
             ->selectRaw('DATE(created_at) AS d, COUNT(*) AS c')
             ->groupBy('d')
             ->pluck('c', 'd');
 
-        $resolved = HelpdeskTicket::query()
+        $resolved = $this->ticketsQuery()
             ->whereNotNull('resolved_at')
             ->where('resolved_at', '>=', $since)
             ->selectRaw('DATE(resolved_at) AS d, COUNT(*) AS c')

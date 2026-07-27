@@ -163,6 +163,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, chrome: false },
   },
   {
+    path: '/screen/bu/:unitSlug',
+    name: 'screen-bu',
+    component: () => import('../views/ScreenDashboardView.vue'),
+    meta: { public: true, chrome: false },
+  },
+  {
     path: '/tools',
     component: () => import('../views/tools/ToolsLayoutView.vue'),
     meta: { requiresAuth: true },

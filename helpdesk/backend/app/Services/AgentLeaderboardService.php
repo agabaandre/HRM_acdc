@@ -23,23 +23,23 @@ class AgentLeaderboardService
     /**
      * @return array<string, mixed>
      */
-    public function agentOfWeek(\DateTimeInterface $now): array
+    public function agentOfWeek(\DateTimeInterface $now, ?int $businessUnitId = null): array
     {
         $start = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)))->modify('monday this week')->setTime(0, 0, 0);
         $end = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)));
 
-        return $this->buildLeaderboard($start, $end, 'This week');
+        return $this->buildLeaderboard($start, $end, 'This week', $businessUnitId);
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function agentOfMonth(\DateTimeInterface $now): array
+    public function agentOfMonth(\DateTimeInterface $now, ?int $businessUnitId = null): array
     {
         $start = (new \DateTimeImmutable($now->format('Y-m-01')))->setTime(0, 0, 0);
         $end = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)));
 
-        return $this->buildLeaderboard($start, $end, 'This month');
+        return $this->buildLeaderboard($start, $end, 'This month', $businessUnitId);
     }
 
     /**
@@ -48,7 +48,7 @@ class AgentLeaderboardService
      *
      * @return list<array<string, mixed>>
      */
-    public function priorityMatrixBySupportGroup(\DateTimeInterface $now): array
+    public function priorityMatrixBySupportGroup(\DateTimeInterface $now, ?int $businessUnitId = null): array
     {
         $start = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)))->modify('monday this week')->setTime(0, 0, 0);
         $end = (new \DateTimeImmutable($now->format(\DateTimeInterface::ATOM)));
@@ -61,9 +61,9 @@ class AgentLeaderboardService
             ->orderBy('name')
             ->get();
 
-        return $groups->map(function (HelpdeskSupportGroup $group) use ($start, $end, $weights): array {
+        return $groups->map(function (HelpdeskSupportGroup $group) use ($start, $end, $weights, $businessUnitId): array {
             $memberIds = $group->members->pluck('id')->map(fn ($id) => (int) $id)->all();
-            $statsByUser = $this->collectAgentStats($start, $end, $group->id, $memberIds);
+            $statsByUser = $this->collectAgentStats($start, $end, $group->id, $memberIds, $businessUnitId);
             $agent = $this->pickTopAgent($statsByUser, $weights['tickets'], $weights['response']);
 
             return [
@@ -72,7 +72,7 @@ class AgentLeaderboardService
                     'name' => $group->name,
                     'slug' => $group->slug,
                 ],
-                'by_priority' => $this->byPriorityForGroup($group->id),
+                'by_priority' => $this->byPriorityForGroup($group->id, $businessUnitId),
                 'agent_of_week' => [
                     'period_label' => 'This week',
                     'weights' => $weights,
@@ -85,10 +85,11 @@ class AgentLeaderboardService
     /**
      * @return array<string, int>
      */
-    private function byPriorityForGroup(int $groupId): array
+    private function byPriorityForGroup(int $groupId, ?int $businessUnitId = null): array
     {
         $rows = HelpdeskTicket::query()
             ->where('assigned_group_id', $groupId)
+            ->when($businessUnitId !== null, fn ($q) => $q->where('business_unit_id', $businessUnitId))
             ->whereIn('status', self::PENDING_STATUSES)
             ->selectRaw('priority, COUNT(*) AS c')
             ->groupBy('priority')
@@ -105,10 +106,14 @@ class AgentLeaderboardService
     /**
      * @return array<string, mixed>
      */
-    private function buildLeaderboard(\DateTimeInterface $start, \DateTimeInterface $end, string $periodLabel): array
-    {
+    private function buildLeaderboard(
+        \DateTimeInterface $start,
+        \DateTimeInterface $end,
+        string $periodLabel,
+        ?int $businessUnitId = null,
+    ): array {
         $weights = HelpdeskSetting::screenAgentLeaderboardWeights();
-        $statsByUser = $this->collectAgentStats($start, $end, null, null);
+        $statsByUser = $this->collectAgentStats($start, $end, null, null, $businessUnitId);
         $agent = $this->pickTopAgent($statsByUser, $weights['tickets'], $weights['response']);
 
         return [
@@ -119,16 +124,15 @@ class AgentLeaderboardService
     }
 
     /**
-     * @return array<int, array<string, mixed>>
-     */
-    /**
      * @param  list<int>|null  $memberIds  When set, only these group members may rank (per support group).
+     * @return array<int, array<string, mixed>>
      */
     private function collectAgentStats(
         \DateTimeInterface $start,
         \DateTimeInterface $end,
         ?int $groupId,
         ?array $memberIds,
+        ?int $businessUnitId = null,
     ): array {
         $startStr = $start->format('Y-m-d H:i:s');
         $endStr = $end->format('Y-m-d H:i:s');
@@ -140,6 +144,7 @@ class AgentLeaderboardService
             ->whereNotNull('first_response_at')
             ->whereBetween('first_response_at', [$startStr, $endStr])
             ->when($groupId !== null, fn ($q) => $q->where('assigned_group_id', $groupId))
+            ->when($businessUnitId !== null, fn ($q) => $q->where('business_unit_id', $businessUnitId))
             ->get(['id', 'assigned_user_id']);
 
         foreach ($responseRows as $row) {
@@ -152,6 +157,7 @@ class AgentLeaderboardService
             ->whereNotNull('resolved_by_user_id')
             ->whereBetween('resolved_at', [$startStr, $endStr])
             ->when($groupId !== null, fn ($q) => $q->where('assigned_group_id', $groupId))
+            ->when($businessUnitId !== null, fn ($q) => $q->where('business_unit_id', $businessUnitId))
             ->get(['id', 'resolved_by_user_id']);
 
         foreach ($resolutionRows as $row) {
@@ -169,6 +175,7 @@ class AgentLeaderboardService
             ->whereNotNull('first_response_at')
             ->whereBetween('first_response_at', [$startStr, $endStr])
             ->when($groupId !== null, fn ($q) => $q->where('assigned_group_id', $groupId))
+            ->when($businessUnitId !== null, fn ($q) => $q->where('business_unit_id', $businessUnitId))
             ->groupBy('assigned_user_id')
             ->selectRaw('assigned_user_id, AVG(TIMESTAMPDIFF(MINUTE, created_at, first_response_at)) AS avg_min')
             ->pluck('avg_min', 'assigned_user_id');
