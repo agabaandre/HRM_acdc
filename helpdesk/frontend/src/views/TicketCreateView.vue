@@ -499,7 +499,7 @@ async function submit() {
           <UFormField name="for_someone_else" class="full">
             <UCheckbox v-model="forSomeoneElse" :disabled="busy">
               <template #label>
-                This request is for <strong>another staff member</strong> (not me)
+                Request for another Person
               </template>
             </UCheckbox>
           </UFormField>

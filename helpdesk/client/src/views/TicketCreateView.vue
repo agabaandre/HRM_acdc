@@ -61,7 +61,6 @@ const staffRows = ref<StaffRow[]>([])
 const selectedStaffId = ref<number | null>(null)
 const staffSearch = ref('')
 let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
-let skipStaffSearchWatch = false
 
 /**
  * Open ticket for another staff member (directory picker).
@@ -70,8 +69,6 @@ let skipStaffSearchWatch = false
 const forSomeoneElse = ref(false)
 
 const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !== 'user')
-
-const isEndUser = computed(() => auth.me?.profile?.role === 'user')
 
 const canAccessSoftwareRequests = computed(() => Boolean(auth.me))
 
@@ -280,7 +277,7 @@ async function fetchStaffList() {
 }
 
 watch(staffSearch, () => {
-  if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
+  if (!needsDirectoryPicker.value) {
     return
   }
   if (staffSearchTimer) clearTimeout(staffSearchTimer)
@@ -502,7 +499,7 @@ async function submit() {
           <UFormField name="for_someone_else" class="full">
             <UCheckbox v-model="forSomeoneElse" :disabled="busy">
               <template #label>
-                This request is for <strong>another staff member</strong> (not me)
+                Request for another Person
               </template>
             </UCheckbox>
           </UFormField>
