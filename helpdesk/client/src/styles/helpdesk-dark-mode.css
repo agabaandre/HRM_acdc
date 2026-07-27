@@ -548,6 +548,35 @@ html.helpdesk-theme-dark .hd-inline-link-btn {
   color: #4ade80 !important;
 }
 
+/* ── General settings cards / toggle rows ───────────────────────── */
+html.helpdesk-theme-dark article.settings-card,
+html.helpdesk-theme-dark .settings-grid .settings-card {
+  background: #1e293b !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-row {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-copy,
+html.helpdesk-theme-dark .settings-card .toggle-copy strong {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-hint,
+html.helpdesk-theme-dark .settings-card .card-lede,
+html.helpdesk-theme-dark .settings-card .cleanup-msg {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .card-head h3,
+html.helpdesk-theme-dark .settings-card .cleanup-title {
+  color: #f1f5f9 !important;
+}
+
 /* ── Ticket detail (cards, resolve, description, comments) ──────── */
 html.helpdesk-theme-dark .detail-body.cbp-card,
 html.helpdesk-theme-dark .cbp-card.detail-body {

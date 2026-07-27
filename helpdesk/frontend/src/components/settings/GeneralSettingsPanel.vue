@@ -1112,6 +1112,56 @@ html.helpdesk-theme-dark .checks-scroll,
 html.helpdesk-theme-dark .settings-card {
   background: #1e293b;
 }
+html.helpdesk-theme-dark .toggle-row {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+html.helpdesk-theme-dark .toggle-copy {
+  color: #e2e8f0;
+}
+html.helpdesk-theme-dark .toggle-hint,
+html.helpdesk-theme-dark .card-lede,
+html.helpdesk-theme-dark .hint,
+html.helpdesk-theme-dark .hint-tight,
+html.helpdesk-theme-dark .muted,
+html.helpdesk-theme-dark .cleanup-msg,
+html.helpdesk-theme-dark .selection-summary {
+  color: #94a3b8;
+}
+html.helpdesk-theme-dark .card-head h3,
+html.helpdesk-theme-dark .panel h2,
+html.helpdesk-theme-dark .panel h3,
+html.helpdesk-theme-dark .cleanup-title,
+html.helpdesk-theme-dark .label,
+html.helpdesk-theme-dark .manual-details summary {
+  color: #f1f5f9;
+}
+html.helpdesk-theme-dark .cleanup-block,
+html.helpdesk-theme-dark .field-block--agents {
+  border-top-color: rgba(148, 163, 184, 0.22);
+}
+html.helpdesk-theme-dark .actions--sticky {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, #0f172a 35%);
+}
+html.helpdesk-theme-dark .check-row__name {
+  color: #e2e8f0 !important;
+}
+html.helpdesk-theme-dark .check-row__id {
+  color: #94a3b8 !important;
+}
+html.helpdesk-theme-dark .warn {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+html.helpdesk-theme-dark .btn-unmark {
+  background: #0f172a;
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+html.helpdesk-theme-dark .btn-unmark:hover {
+  background: rgba(127, 29, 29, 0.35);
+}
 .check-row {
   padding: 0.2rem 0;
 }
@@ -1405,5 +1455,68 @@ code {
 }
 .center {
   text-align: center;
+}
+</style>
+
+<style>
+/* Unscoped dark mode — scoped attribute selectors can miss nested toggle rows */
+html.helpdesk-theme-dark .settings-grid .settings-card,
+html.helpdesk-theme-dark article.settings-card {
+  background: #1e293b !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-row {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-copy,
+html.helpdesk-theme-dark .settings-card .toggle-copy strong {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-hint,
+html.helpdesk-theme-dark .settings-card .card-lede {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .card-head h3,
+html.helpdesk-theme-dark .settings-card .cleanup-title {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .cleanup-block {
+  border-top-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.helpdesk-theme-dark .settings-card .cleanup-msg,
+html.helpdesk-theme-dark .settings-card .muted,
+html.helpdesk-theme-dark .settings-card .hint-tight {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .v-field {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .v-field__input,
+html.helpdesk-theme-dark .settings-card .v-select__selection-text {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .hd-v-form-field__label {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .checks-scroll {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+html.helpdesk-theme-dark .panel > .actions--sticky {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, #0f172a 40%) !important;
 }
 </style>
