@@ -64,9 +64,11 @@ class BusinessUnitTicketCreateTest extends TestCase
         $res = $this->getJson('/api/v1/business-units');
         $res->assertOk();
         $this->assertArrayHasKey('show_issue_category_on_request_form', $res->json('meta'));
+        $this->assertArrayHasKey('show_category_ai_description_on_request_form', $res->json('meta'));
         $this->assertTrue((bool) $res->json('meta.agent_coverage_enforced'));
         $this->assertNotEmpty($res->json('data'));
         $this->assertNotEmpty($res->json('data.0.categories'));
+        $this->assertArrayHasKey('ai_description', $res->json('data.0.categories.0'));
     }
 
     public function test_business_units_without_agents_are_hidden_from_request_form(): void

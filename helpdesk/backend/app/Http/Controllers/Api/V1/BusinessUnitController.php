@@ -59,6 +59,7 @@ class BusinessUnitController extends Controller
                     'name' => $c->name,
                     'slug' => $c->slug,
                     'default_priority' => $c->default_priority ?? 'medium',
+                    'ai_description' => $c->ai_description,
                 ])->values(),
             ])
             ->values();
@@ -67,6 +68,7 @@ class BusinessUnitController extends Controller
             'data' => $units,
             'meta' => [
                 'show_issue_category_on_request_form' => HelpdeskSetting::showIssueCategoryOnRequestForm(),
+                'show_category_ai_description_on_request_form' => HelpdeskSetting::showCategoryAiDescriptionOnRequestForm(),
                 'agent_coverage_enforced' => true,
             ],
         ]);

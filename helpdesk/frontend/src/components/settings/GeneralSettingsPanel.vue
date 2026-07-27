@@ -233,6 +233,7 @@ async function saveGeneral() {
       license_expiry_alert_enabled: ctx.form.license_expiry_alert_enabled,
       license_expiry_alert_interval_days: ctx.form.license_expiry_alert_interval_days,
       show_issue_category_on_request_form: ctx.form.show_issue_category_on_request_form,
+      show_category_ai_description_on_request_form: ctx.form.show_category_ai_description_on_request_form,
       email_ticket_intake_enabled: ctx.form.email_ticket_intake_enabled,
     },
     "General settings saved.",
@@ -404,17 +405,30 @@ function roleLabel(c: CandidateRow): string {
           <div>
             <h3>Request form categories</h3>
             <p class="card-lede">
-              Control whether requesters pick an issue category, or only a business unit (AI categorizes asynchronously).
+              Control whether requesters pick a category, and whether category cards show the AI description helper text.
             </p>
           </div>
         </header>
         <div class="toggle-row">
           <USwitch v-model="ctx.form.show_issue_category_on_request_form" />
           <span class="toggle-copy">
-            <strong>Show issue category on create ticket form</strong>
+            <strong>Show category on create ticket form</strong>
             <span class="toggle-hint">
-              Off by default: requesters select a business unit only; AI assigns the issue category (and routes by category).
+              Off by default: requesters select a business unit only; AI assigns the category (and routes by category).
               On: requesters pick business unit, then category under it; AI categorization is skipped.
+            </span>
+          </span>
+        </div>
+        <div class="toggle-row">
+          <USwitch
+            v-model="ctx.form.show_category_ai_description_on_request_form"
+            :disabled="!ctx.form.show_issue_category_on_request_form"
+          />
+          <span class="toggle-copy">
+            <strong>Show AI description on category cards</strong>
+            <span class="toggle-hint">
+              On by default. When category selection is enabled, each card shows the category’s AI description in brackets
+              (up to two lines) to help requesters pick the right option.
             </span>
           </span>
         </div>

@@ -119,6 +119,12 @@ class HelpdeskSetting extends Model
      */
     public const KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM = 'show_issue_category_on_request_form';
 
+    /**
+     * When "1" (default), category cards on the create form show AI description text.
+     * When "0", only category names are shown.
+     */
+    public const KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM = 'show_category_ai_description_on_request_form';
+
     /** Master switch: poll Business Unit mailboxes and create tickets from email. */
     public const KEY_EMAIL_TICKET_INTAKE_ENABLED = 'email_ticket_intake_enabled';
 
@@ -132,6 +138,13 @@ class HelpdeskSetting extends Model
     public static function showIssueCategoryOnRequestForm(): bool
     {
         $v = static::getValue(self::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM, '0');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function showCategoryAiDescriptionOnRequestForm(): bool
+    {
+        $v = static::getValue(self::KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM, '1');
 
         return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
     }

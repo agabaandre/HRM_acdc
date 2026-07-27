@@ -35,9 +35,10 @@ const businessUnits = ref<Array<{
   slug: string
   description?: string | null
   allows_anonymous: boolean
-  categories: Array<{ id: number; name: string; description?: string | null }>
+  categories: Array<{ id: number; name: string; ai_description?: string | null }>
 }>>([])
 const showCategoryField = ref(false)
+const showCategoryAiDescription = ref(true)
 const form = reactive({
   business_unit_id: undefined as number | undefined,
   category_id: undefined as number | undefined,
@@ -196,10 +197,14 @@ async function loadCats() {
         allows_anonymous: boolean
         categories: Array<{ id: number; name: string }>
       }>
-      meta?: { show_issue_category_on_request_form?: boolean }
+      meta?: {
+        show_issue_category_on_request_form?: boolean
+        show_category_ai_description_on_request_form?: boolean
+      }
     }>('/api/v1/business-units')
     businessUnits.value = Array.isArray(data.data) ? data.data : []
     showCategoryField.value = Boolean(data.meta?.show_issue_category_on_request_form)
+    showCategoryAiDescription.value = data.meta?.show_category_ai_description_on_request_form !== false
     cats.value = businessUnits.value.flatMap((u) =>
       u.categories.map((c) => ({ ...c, business_unit_id: u.id })),
     )
@@ -379,7 +384,7 @@ async function submit() {
         :aria-selected="activeTab === 'ticket'"
         @click="activeTab = 'ticket'"
       >
-        Help desk
+        Service Desk
       </button>
       <button
         v-if="canAccessSoftwareRequests"
@@ -436,7 +441,7 @@ async function submit() {
 
         <UFormField
           v-if="form.business_unit_id && categoriesForUnit.length > 0"
-          label="Issue category"
+          label="Category"
           name="category_id"
           :required="showCategoryField"
           stacked-label
@@ -445,7 +450,7 @@ async function submit() {
           <div
             class="category-radio-grid"
             role="radiogroup"
-            :aria-label="'Issue category'"
+            aria-label="Category"
             :aria-required="showCategoryField ? 'true' : undefined"
           >
             <label
@@ -467,7 +472,18 @@ async function submit() {
               />
               <span class="category-radio-body">
                 <span class="category-radio-name">{{ cat.name }}</span>
-                <span v-if="cat.description" class="category-radio-desc">{{ cat.description }}</span>
+                <span
+                  v-if="showCategoryAiDescription && cat.ai_description"
+                  class="category-radio-ai"
+                  :title="cat.ai_description"
+                >
+                  ({{ cat.ai_description }})
+                </span>
+              </span>
+              <span class="category-radio-check" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 10.5L8.5 14L15 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
               </span>
             </label>
           </div>
@@ -476,10 +492,10 @@ async function submit() {
           </p>
         </UFormField>
         <p v-else-if="form.business_unit_id && categoriesForUnit.length === 0" class="ai-cat-hint full">
-          No issue categories are available for this business unit yet.
+          No categories are available for this business unit yet.
         </p>
         <p v-else-if="!form.business_unit_id && showCategoryField" class="ai-cat-hint full">
-          Select a business unit to choose an issue category.
+          Select a business unit to choose a category.
         </p>
 
         <UFormField v-if="allowsAnonymous" name="is_anonymous" class="full">
@@ -813,55 +829,100 @@ textarea {
 }
 .category-radio-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+  gap: 0.75rem;
 }
 .category-radio {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
+  gap: 0.7rem;
   margin: 0;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid #dbe3ef;
-  border-radius: 6px;
-  background: #fff;
+  min-height: 4.75rem;
+  padding: 0.9rem 2.1rem 0.9rem 0.9rem;
+  border: 1px solid #d5e0ec;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 .category-radio:hover:not(.is-disabled) {
   border-color: #86c9a0;
-  background: #f7fcf9;
+  background: linear-gradient(180deg, #f7fcf9 0%, #eef8f2 100%);
+  box-shadow: 0 4px 14px rgba(17, 154, 72, 0.1);
+  transform: translateY(-1px);
 }
 .category-radio.is-selected {
   border-color: #119a48;
-  background: #f0faf4;
-  box-shadow: inset 0 0 0 1px #119a48;
+  background: linear-gradient(180deg, #f2fbf6 0%, #e6f7ed 100%);
+  box-shadow:
+    0 0 0 1px #119a48,
+    0 6px 16px rgba(17, 154, 72, 0.12);
 }
 .category-radio.is-disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 .category-radio-input {
-  margin-top: 0.2rem;
-  accent-color: #119a48;
-  flex-shrink: 0;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 .category-radio-body {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.35rem;
   min-width: 0;
+  flex: 1;
 }
 .category-radio-name {
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
-  line-height: 1.3;
-}
-.category-radio-desc {
-  font-size: 0.8rem;
-  color: #64748b;
   line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+.category-radio-ai {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-style: italic;
+  color: #64748b;
+  line-height: 1.4;
+  max-height: calc(1.4em * 2);
+}
+.category-radio-check {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  background: #fff;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.category-radio-check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.category-radio.is-selected .category-radio-check {
+  border-color: #119a48;
+  background: #119a48;
+  color: #fff;
 }
 .requester-preview {
   margin: 0.45rem 0 0;
@@ -914,19 +975,34 @@ html.helpdesk-theme-dark .requester-preview {
   color: #e2e8f0;
 }
 html.helpdesk-theme-dark .category-radio {
-  background: #0f172a;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
   border-color: rgba(148, 163, 184, 0.28);
   color: #e2e8f0;
+  box-shadow: none;
+}
+html.helpdesk-theme-dark .category-radio:hover:not(.is-disabled) {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: linear-gradient(180deg, #1f3a2d 0%, #15261d 100%);
 }
 html.helpdesk-theme-dark .category-radio.is-selected {
-  border-color: rgba(74, 222, 128, 0.5);
-  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.55);
+  background: linear-gradient(180deg, #1f3f2d 0%, #163024 100%);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.35);
 }
 html.helpdesk-theme-dark .category-radio-name {
   color: #f1f5f9;
 }
-html.helpdesk-theme-dark .category-radio-desc {
+html.helpdesk-theme-dark .category-radio-ai {
   color: #94a3b8;
+}
+html.helpdesk-theme-dark .category-radio-check {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: #0f172a;
+}
+html.helpdesk-theme-dark .category-radio.is-selected .category-radio-check {
+  border-color: #4ade80;
+  background: #16a34a;
+  color: #fff;
 }
 html.helpdesk-theme-dark .submit-overlay-card {
   background: #1e293b;
