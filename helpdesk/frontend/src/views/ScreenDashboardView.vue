@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { api } from '../lib/api'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 
@@ -178,9 +178,6 @@ const brandSub = computed(() =>
     ? 'Live operations dashboard'
     : 'Unified live operations dashboard',
 )
-
-const screenUnits = computed(() => data.value?.business_units ?? [])
-const isUnifiedScope = computed(() => !unitSlug.value)
 
 async function fetchScreen(): Promise<void> {
   try {
@@ -490,24 +487,6 @@ onUnmounted(() => {
           <p class="brand-sub">{{ brandSub }}</p>
         </div>
       </div>
-      <nav v-if="screenUnits.length" class="screen-scope" aria-label="Live screen scope">
-        <RouterLink
-          to="/screen"
-          class="screen-scope-chip"
-          :class="{ active: isUnifiedScope }"
-        >
-          All units
-        </RouterLink>
-        <RouterLink
-          v-for="unit in screenUnits"
-          :key="unit.id"
-          :to="{ name: 'screen-bu', params: { unitSlug: unit.slug } }"
-          class="screen-scope-chip"
-          :class="{ active: unitSlug === unit.slug }"
-        >
-          {{ unit.screen_label }}
-        </RouterLink>
-      </nav>
       <div class="screen-live-pill" aria-hidden="true">
         <span class="live-dot" :class="{ stale: isStale || consecutiveErrors > 1 }" />
         {{ isStale ? 'Reconnecting' : 'Live' }}
@@ -1112,46 +1091,6 @@ html.screen-mode .hd-content-frame--full .hd-content-frame__body {
   margin: 0.15rem 0 0;
   font-size: clamp(0.72rem, 1.6vw, 0.88rem);
   color: var(--ink-muted);
-}
-.screen-scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  flex: 1 1 220px;
-  min-width: 0;
-  max-width: min(100%, 42rem);
-}
-.screen-scope-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.28rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--tile-border);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--ink-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.screen-scope-chip:hover {
-  color: var(--ink);
-  border-color: rgba(22, 163, 74, 0.45);
-}
-.screen-scope-chip.active {
-  color: #fff;
-  background: rgba(22, 163, 74, 0.85);
-  border-color: transparent;
-}
-.screen.theme-light .screen-scope-chip {
-  background: rgba(15, 23, 42, 0.03);
-}
-.screen.theme-light .screen-scope-chip.active {
-  color: #fff;
-  background: #15803d;
 }
 .screen-live-pill {
   display: inline-flex;
