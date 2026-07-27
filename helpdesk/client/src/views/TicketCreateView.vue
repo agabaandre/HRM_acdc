@@ -347,6 +347,10 @@ async function submit() {
     notifyWarning('An image is still uploading. Wait a moment and try again.')
     return
   }
+  if (showCategoryField.value && !(form.category_id ?? 0)) {
+    notifyWarning('Choose a category before submitting.')
+    return
+  }
   await descriptionEditorRef.value?.ensureImagesUploaded()
   if (htmlContainsDataUriImages(form.description)) {
     notifyWarning('An image is still uploading. Wait a moment and try again.')
@@ -358,7 +362,9 @@ async function submit() {
       business_unit_id: form.business_unit_id,
       description: form.description,
     }
-    if (showCategoryField.value && form.category_id) {
+    if (showCategoryField.value) {
+      body.category_id = form.category_id
+    } else if (form.category_id) {
       body.category_id = form.category_id
     }
     if (form.is_anonymous && allowsAnonymous.value) {
@@ -538,7 +544,10 @@ async function submit() {
               </span>
             </label>
           </div>
-          <p v-if="!showCategoryField" class="field-hint">
+          <p v-if="showCategoryField" class="field-hint">
+            Required — select the category that best matches your request.
+          </p>
+          <p v-else class="field-hint">
             Optional — leave unselected to let AI assign a category from your description.
           </p>
         </UFormField>
@@ -880,17 +889,32 @@ textarea {
 }
 .category-radio-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+@media (max-width: 1100px) {
+  .category-radio-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .category-radio-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .category-radio-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .category-radio {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 0.7rem;
+  gap: 0.75rem;
   margin: 0;
-  min-height: 4.75rem;
-  padding: 0.9rem 2.1rem 0.9rem 0.9rem;
+  min-height: 5.5rem;
+  padding: 1.05rem 2.25rem 1.05rem 1.05rem;
   border: 1px solid #d5e0ec;
   border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);

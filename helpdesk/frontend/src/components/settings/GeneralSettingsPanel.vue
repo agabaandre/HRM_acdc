@@ -415,8 +415,8 @@ function roleLabel(c: CandidateRow): string {
           <span class="toggle-copy">
             <strong>Show category on create ticket form</strong>
             <span class="toggle-hint">
-              Off by default: requesters select a business unit only; AI assigns the category (and routes by category).
-              On: requesters pick business unit, then category under it; AI categorization is skipped.
+              Off by default: requesters select a support area only; AI assigns the category (and routes by category).
+              On: requesters must pick a support area and a category; category is required and AI categorization is skipped.
             </span>
           </span>
         </div>
