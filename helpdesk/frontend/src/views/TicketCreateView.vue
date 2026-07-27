@@ -166,7 +166,7 @@ const businessUnitItems = computed((): SelectNumberItem[] =>
 function validateCreateForm(_state: typeof form): FormError[] {
   const errors: FormError[] = []
   if (!_state.business_unit_id || _state.business_unit_id < 1) {
-    errors.push({ name: 'business_unit_id', message: 'Choose a business unit' })
+    errors.push({ name: 'business_unit_id', message: 'Choose a support area' })
   }
   if (showCategoryField.value && (!_state.category_id || _state.category_id < 1)) {
     errors.push({ name: 'category_id', message: 'Choose a category' })
@@ -423,13 +423,13 @@ async function submit() {
         :disabled="busy"
         @submit="onFormSubmit"
       >
-        <UFormField label="Business unit" name="business_unit_id" required class="full">
+        <UFormField label="Support Area" name="business_unit_id" required class="full">
           <USelectMenu
             v-model="form.business_unit_id"
             :items="businessUnitItems"
             searchable
             :disabled="busy || catsLoading || businessUnits.length === 0"
-            :placeholder="catsLoading ? 'Loading…' : businessUnits.length === 0 ? 'No business units available' : 'Search or select business unit'"
+            :placeholder="catsLoading ? 'Loading…' : businessUnits.length === 0 ? 'No support areas available' : 'Search or select support area'"
             class="w-full"
             value-key="value"
           />
@@ -491,10 +491,10 @@ async function submit() {
           </p>
         </UFormField>
         <p v-else-if="form.business_unit_id && categoriesForUnit.length === 0" class="ai-cat-hint full">
-          No categories are available for this business unit yet.
+          No categories are available for this support area yet.
         </p>
         <p v-else-if="!form.business_unit_id && showCategoryField" class="ai-cat-hint full">
-          Select a business unit to choose a category.
+          Select a support area to choose a category.
         </p>
 
         <UFormField v-if="allowsAnonymous" name="is_anonymous" class="full">
