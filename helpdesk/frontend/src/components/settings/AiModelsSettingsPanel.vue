@@ -11,7 +11,8 @@ import { applyAiProviderPreset, aiModelPlaceholder, normalizeAiProvider } from '
 const ctx = useInjectedHelpdeskAdminSettings()
 
 const testBusy = ref(false)
-const testResult = ref<{
+
+interface AiTestResult {
   ok: boolean
   message: string
   provider?: string
@@ -22,7 +23,9 @@ const testResult = ref<{
   latency_ms?: number | null
   http_status?: number | null
   reply_preview?: string | null
-} | null>(null)
+}
+
+const testResult = ref<AiTestResult | null>(null)
 
 const providerItems: { label: string; value: AiProviderId }[] = [
   { label: 'OpenAI', value: 'openai' },
@@ -84,16 +87,17 @@ async function testAiConfiguration() {
     if (ctx.form.ai_api_key.trim() !== '') {
       payload.ai_api_key = ctx.form.ai_api_key.trim()
     }
-    const { data } = await api.post<{ data: NonNullable<typeof testResult.value> }>(
+    const { data } = await api.post<{ data: AiTestResult }>(
       '/api/v1/admin/settings/test-ai',
       payload,
       { validateStatus: (s) => s === 200 || s === 422 },
     )
-    testResult.value = data.data
-    if (data.data.ok) {
-      notifySuccess(data.data.message)
+    const result = data.data
+    testResult.value = result
+    if (result.ok) {
+      notifySuccess(result.message)
     } else {
-      notifyWarning(data.data.message)
+      notifyWarning(result.message)
     }
   } catch (e) {
     const msg = apiErrorMessage(e, 'AI configuration test failed.')

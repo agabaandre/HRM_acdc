@@ -1,11 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { FormSubmitEvent } from '../../types/form'
+import { api } from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiErrorMessage'
+import { notifyError, notifySuccess, notifyWarning } from '../../lib/notify'
 import { useInjectedHelpdeskAdminSettings } from '../../composables/useHelpdeskAdminSettings'
 import type { AiProviderId } from '../../lib/aiProviderPresets'
 import { applyAiProviderPreset, aiModelPlaceholder, normalizeAiProvider } from '../../lib/aiProviderPresets'
 
 const ctx = useInjectedHelpdeskAdminSettings()
+
+const testBusy = ref(false)
+
+interface AiTestResult {
+  ok: boolean
+  message: string
+  provider?: string
+  endpoint?: string
+  model?: string
+  ai_active?: boolean
+  key_present?: boolean
+  latency_ms?: number | null
+  http_status?: number | null
+  reply_preview?: string | null
+}
+
+const testResult = ref<AiTestResult | null>(null)
 
 const providerItems: { label: string; value: AiProviderId }[] = [
   { label: 'OpenAI', value: 'openai' },
@@ -55,6 +75,37 @@ async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
   }
   await ctx.savePartial(payload, 'AI settings saved.')
 }
+
+async function testAiConfiguration() {
+  testBusy.value = true
+  testResult.value = null
+  try {
+    const payload: Record<string, unknown> = {
+      ai_api_endpoint: ctx.form.ai_api_endpoint || null,
+      ai_model_name: ctx.form.ai_model_name || null,
+    }
+    if (ctx.form.ai_api_key.trim() !== '') {
+      payload.ai_api_key = ctx.form.ai_api_key.trim()
+    }
+    const { data } = await api.post<{ data: NonNullable<typeof testResult.value> }>(
+      '/api/v1/admin/settings/test-ai',
+      payload,
+      { validateStatus: (s) => s === 200 || s === 422 },
+    )
+    testResult.value = data.data
+    if (data.data.ok) {
+      notifySuccess(data.data.message)
+    } else {
+      notifyWarning(data.data.message)
+    }
+  } catch (e) {
+    const msg = apiErrorMessage(e, 'AI configuration test failed.')
+    testResult.value = { ok: false, message: msg }
+    notifyError(msg)
+  } finally {
+    testBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -63,7 +114,7 @@ async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
     <p class="hint">URS §10 — provider, endpoint, model, keys, and fallback. Keys are stored encrypted; leave blank to keep the current key.</p>
 
     <UCard>
-      <UForm :state="ctx.form" class="hd-form" :disabled="ctx.busy" @submit="onSaveAi">
+      <UForm :state="ctx.form" class="hd-form" :disabled="ctx.busy || testBusy" @submit="onSaveAi">
         <UFormField label="Provider" name="ai_provider">
           <USelect
             v-model="ctx.form.ai_provider"
@@ -103,7 +154,37 @@ async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
         </UFormField>
 
         <div class="hd-form-actions">
-          <UButton type="submit" color="primary" :loading="ctx.busy">Save AI settings</UButton>
+          <UButton type="submit" color="primary" :loading="ctx.busy" :disabled="testBusy">Save AI settings</UButton>
+          <UButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            :loading="testBusy"
+            :disabled="ctx.busy"
+            @click="testAiConfiguration"
+          >
+            Test AI configuration
+          </UButton>
+        </div>
+
+        <div
+          v-if="testResult"
+          class="test-result"
+          :class="testResult.ok ? 'is-ok' : 'is-fail'"
+          role="status"
+        >
+          <strong>{{ testResult.ok ? 'Connection OK' : 'Connection failed' }}</strong>
+          <p>{{ testResult.message }}</p>
+          <ul class="test-meta">
+            <li v-if="testResult.provider">Provider: {{ testResult.provider }}</li>
+            <li v-if="testResult.endpoint">Endpoint: {{ testResult.endpoint }}</li>
+            <li v-if="testResult.model">Model: {{ testResult.model }}</li>
+            <li>API key on file / form: {{ testResult.key_present ? 'yes' : 'no' }}</li>
+            <li>AI active: {{ testResult.ai_active ? 'yes' : 'no' }}</li>
+            <li v-if="testResult.latency_ms != null">Latency: {{ testResult.latency_ms }} ms</li>
+            <li v-if="testResult.http_status != null">HTTP: {{ testResult.http_status }}</li>
+            <li v-if="testResult.reply_preview">Reply: {{ testResult.reply_preview }}</li>
+          </ul>
         </div>
       </UForm>
     </UCard>
@@ -131,6 +212,43 @@ async function onSaveAi(_event: FormSubmitEvent<typeof ctx.form>) {
   font-size: 0.8rem;
   color: #64748b;
   margin: 0;
+}
+.hd-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+.test-result {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.test-result.is-ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.test-result.is-fail {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.test-result strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.test-result p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.test-meta {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.5;
 }
 code {
   font-size: 0.85em;
