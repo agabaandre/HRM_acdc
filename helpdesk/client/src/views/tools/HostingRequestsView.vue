@@ -225,10 +225,10 @@ onMounted(() => {
           <UInput v-model="form.cloud_provider" class="w-full" placeholder="Azure or other CDC-approved" />
         </UFormField>
         <UFormField label="Description" class="span-3 hd-rich-field">
-          <CbpRichTextEditor v-model="form.description" :min-rows="4" placeholder="Describe the hosting need…" />
+          <CbpRichTextEditor v-model="form.description" :enable-images="false" :min-rows="4" placeholder="Describe the hosting need…" />
         </UFormField>
         <UFormField label="Environment notes" class="span-3 hd-rich-field">
-          <CbpRichTextEditor v-model="form.environment_notes" :min-rows="3" placeholder="Capacity, URLs, constraints…" />
+          <CbpRichTextEditor v-model="form.environment_notes" :enable-images="false" :min-rows="3" placeholder="Capacity, URLs, constraints…" />
         </UFormField>
       </div>
       <div class="actions">

@@ -34,6 +34,8 @@ const props = withDefaults(
     minRows?: number
     /** Enable toolbar image button, paste, and drag-drop uploads. */
     enableImages?: boolean
+    /** Show “Screenshots help us fix issues faster” tip (Create ticket only). */
+    showScreenshotTip?: boolean
   }>(),
   {
     placeholder: 'Enter text…',
@@ -42,6 +44,7 @@ const props = withDefaults(
     disabled: false,
     minRows: DEFAULT_RICH_TEXT_MIN_ROWS,
     enableImages: true,
+    showScreenshotTip: false,
   },
 )
 
@@ -404,7 +407,7 @@ defineExpose({
     </div>
     <p v-if="inlineImageBusy" class="cbp-rich-text__status" role="status">Uploading image…</p>
     <p v-else-if="imageHint" class="cbp-rich-text__hint" role="alert">{{ imageHint }}</p>
-    <p v-else-if="enableImages" class="cbp-rich-text__tip muted">
+    <p v-else-if="enableImages && showScreenshotTip" class="cbp-rich-text__tip muted">
       <strong>Screenshots help us fix issues faster.</strong>
       Paste one with ⌘V / Ctrl+V, drag it here, or use the image button in the toolbar (max 10 MB).
       After inserting, click the image and drag a corner to resize (starts at 25%).

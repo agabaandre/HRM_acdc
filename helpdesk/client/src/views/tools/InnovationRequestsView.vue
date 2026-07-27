@@ -17,7 +17,6 @@ interface InnovationRequest {
   status: string
   title: string
   description?: string | null
-  innovation_type?: string | null
   requester_name: string
   requester_division_name?: string | null
   process_notes?: string | null
@@ -45,7 +44,6 @@ const canProcess = computed(
 const form = reactive({
   title: '',
   description: '',
-  innovation_type: '',
 })
 
 const statusItems = [
@@ -101,7 +99,6 @@ async function save(submit: boolean) {
     notifySuccess(submit ? 'Innovation request submitted.' : 'Draft saved.')
     form.title = ''
     form.description = ''
-    form.innovation_type = ''
     activeTab.value = 'requests'
     await load()
   } catch (e) {
@@ -192,11 +189,8 @@ onMounted(() => {
         <UFormField label="Title" required class="span-3">
           <UInput v-model="form.title" class="w-full" />
         </UFormField>
-        <UFormField label="Type" class="span-3">
-          <UInput v-model="form.innovation_type" class="w-full" placeholder="Optional classification" />
-        </UFormField>
         <UFormField label="Description" class="span-3 hd-rich-field">
-          <CbpRichTextEditor v-model="form.description" :min-rows="5" placeholder="Describe the innovation…" />
+          <CbpRichTextEditor v-model="form.description" :enable-images="false" :min-rows="5" placeholder="Describe the innovation…" />
         </UFormField>
       </div>
       <div class="actions">
@@ -249,7 +243,6 @@ onMounted(() => {
           </template>
           <dl class="detail-dl">
             <dt>Title</dt><dd>{{ selected.title }}</dd>
-            <dt>Type</dt><dd>{{ selected.innovation_type || '—' }}</dd>
             <dt>Requester</dt><dd>{{ selected.requester_name }} · {{ selected.requester_division_name || '—' }}</dd>
             <dt>Description</dt><dd><div class="rich-text-content" v-html="selected.description || '—'" /></dd>
           </dl>

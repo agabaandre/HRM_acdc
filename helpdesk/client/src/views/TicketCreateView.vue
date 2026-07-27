@@ -599,6 +599,7 @@ async function submit() {
             ref="descriptionEditorRef"
             v-model="form.description"
             :disabled="busy"
+            show-screenshot-tip
             @uploading="inlineImageBusy = $event"
             placeholder="Describe what happened (required). Paste a screenshot of the error with ⌘V / Ctrl+V — include when it started and your device."
           />
