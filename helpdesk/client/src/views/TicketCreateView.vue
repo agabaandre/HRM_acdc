@@ -105,15 +105,20 @@ const staffSelectItems = computed((): SelectNumberItem[] =>
   })),
 )
 
+const isSelfRequester = computed(() => {
+  const myId = auth.me?.profile?.staff_id
+  return Boolean(myId && selectedStaffId.value === myId)
+})
+
 const selectedRequesterPreview = computed(() => {
+  if (isSelfRequester.value) {
+    return null
+  }
   const row = selectedStaffRow.value
   if (!row) {
     return null
   }
-  const email = (row.work_email ?? '').trim() || '—'
-  const duty = (row.duty_station_name ?? '').trim()
-  const dutyPart = duty ? ` · Duty station: ${duty}` : ''
-  return `${row.name} · ${email} · Staff ID ${row.id}${dutyPart}`
+  return staffOptionLabel(row)
 })
 
 const staffRequesterReady = computed(() => {
@@ -301,30 +306,58 @@ async function retryDirectory() {
   await fetchStaffList()
 }
 
+function ensureSelfInStaffRows(): void {
+  const myId = auth.me?.profile?.staff_id
+  const profile = auth.me?.profile
+  if (!myId || !auth.me || !profile) {
+    return
+  }
+  if (staffRows.value.some((s) => s.id === myId)) {
+    return
+  }
+  staffRows.value.unshift({
+    id: myId,
+    name: auth.me.name,
+    work_email: auth.me.email ?? null,
+    division_id: profile.division_id ?? null,
+    directorate_id: profile.directorate_id ?? null,
+    duty_station_name: profile.duty_station ?? null,
+  })
+}
+
+/** Staff/agents: default requester to self; keep search empty (details shown below). */
+function preselectSelfRequester(): void {
+  if (!isStaff.value || !auth.me?.profile?.staff_id) {
+    return
+  }
+  const myId = auth.me.profile.staff_id
+  ensureSelfInStaffRows()
+  skipStaffSearchWatch = true
+  selectedStaffId.value = myId
+  staffSearch.value = ''
+  queueMicrotask(() => {
+    skipStaffSearchWatch = false
+  })
+}
+
+watch(selectedStaffId, () => {
+  if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
+    return
+  }
+  // After a pick (or clear), keep the search box empty so the Selected line is the source of truth.
+  skipStaffSearchWatch = true
+  staffSearch.value = ''
+  queueMicrotask(() => {
+    skipStaffSearchWatch = false
+  })
+})
+
 onMounted(async () => {
   await loadCats()
   if (needsDirectoryPicker.value) {
     await loadReferenceData()
     await fetchStaffList()
-    if (isStaff.value && auth.me?.profile?.staff_id) {
-      const myId = auth.me.profile.staff_id
-      selectedStaffId.value = myId
-      if (!staffRows.value.some((s) => s.id === myId)) {
-        staffRows.value.unshift({
-          id: myId,
-          name: auth.me.name,
-          work_email: auth.me.email ?? null,
-          division_id: auth.me.profile.division_id ?? null,
-          directorate_id: auth.me.profile.directorate_id ?? null,
-          duty_station_name: auth.me.profile.duty_station ?? null,
-        })
-      }
-      skipStaffSearchWatch = true
-      staffSearch.value = staffOptionLabel(staffRows.value.find((s) => s.id === myId)!)
-      queueMicrotask(() => {
-        skipStaffSearchWatch = false
-      })
-    }
+    preselectSelfRequester()
   }
 })
 
@@ -530,6 +563,7 @@ async function submit() {
               :items="staffSelectItems"
               searchable
               hide-details-label
+              hide-selection-text
               :disabled="busy || !!refErr"
               placeholder="Search name, email, or duty station…"
               class="w-full"

@@ -23,6 +23,11 @@ const props = withDefaults(
     clearable?: boolean
     /** Prefer stacked UFormField label; hide floating Vuetify label. */
     hideDetailsLabel?: boolean
+    /**
+     * Keep the input empty after a value is chosen (selection shown elsewhere).
+     * Avoids Vuetify falling back to the raw item-value (e.g. staff id) in the field.
+     */
+    hideSelectionText?: boolean
   }>(),
   {
     items: () => [],
@@ -32,6 +37,7 @@ const props = withDefaults(
     valueKey: 'value',
     clearable: true,
     hideDetailsLabel: false,
+    hideSelectionText: false,
   },
 )
 
@@ -66,8 +72,13 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
     density="compact"
     no-filter
     class="hd-v-select-menu w-full"
+    :class="{ 'hd-v-select-menu--hide-selection': hideSelectionText }"
     v-bind="$attrs"
-  />
+  >
+    <template v-if="hideSelectionText" #selection>
+      <span class="hd-v-select-menu__empty-selection" aria-hidden="true" />
+    </template>
+  </v-autocomplete>
   <v-select
     v-else
     v-model="model"
@@ -92,5 +103,8 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
 <style scoped>
 .w-full {
   width: 100%;
+}
+.hd-v-select-menu__empty-selection {
+  display: none;
 }
 </style>
