@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Ai\OpenAiCompatibleClient;
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskSetting;
 use Illuminate\Http\JsonResponse;
@@ -114,6 +115,28 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_FAQ_INGEST_LAST_RESULT] = $lastIngestRaw ?? '';
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * Probe the AI provider with a tiny chat completion (saved settings, with optional form overrides).
+     */
+    public function testAi(Request $request, OpenAiCompatibleClient $client): JsonResponse
+    {
+        $this->ensureHelpdeskAdmin($request);
+
+        $validated = $request->validate([
+            'ai_api_endpoint' => ['nullable', 'string', 'max:512'],
+            'ai_model_name' => ['nullable', 'string', 'max:191'],
+            'ai_api_key' => ['nullable', 'string', 'max:8192'],
+        ]);
+
+        $result = $client->testConnection(
+            $validated['ai_api_key'] ?? null,
+            $validated['ai_api_endpoint'] ?? null,
+            $validated['ai_model_name'] ?? null,
+        );
+
+        return response()->json(['data' => $result], $result['ok'] ? 200 : 422);
     }
 
     public function update(Request $request): JsonResponse

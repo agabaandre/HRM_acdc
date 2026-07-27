@@ -60,4 +60,45 @@ class AdminSettingsTest extends TestCase
 
         $this->assertSame('#112233', HelpdeskSetting::getValue(HelpdeskSetting::KEY_BRANDING_PRIMARY));
     }
+
+    public function test_admin_can_test_ai_configuration(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        Sanctum::actingAs($this->adminUser());
+
+        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_API_ENDPOINT, 'https://api.openai.com/v1');
+        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_MODEL_NAME, 'gpt-4o-mini');
+        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_ACTIVE, '1');
+        HelpdeskSetting::setValue(
+            HelpdeskSetting::KEY_AI_API_KEY,
+            \Illuminate\Support\Facades\Crypt::encryptString('sk-test-key')
+        );
+
+        \Illuminate\Support\Facades\Http::fake([
+            'https://api.openai.com/v1/chat/completions' => \Illuminate\Support\Facades\Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'ok']],
+                ],
+            ], 200),
+        ]);
+
+        $this->postJson('/api/v1/admin/settings/test-ai')
+            ->assertOk()
+            ->assertJsonPath('data.ok', true)
+            ->assertJsonPath('data.key_present', true)
+            ->assertJsonPath('data.ai_active', true);
+    }
+
+    public function test_ai_test_fails_without_api_key(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        Sanctum::actingAs($this->adminUser());
+
+        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_API_KEY, '');
+
+        $this->postJson('/api/v1/admin/settings/test-ai')
+            ->assertStatus(422)
+            ->assertJsonPath('data.ok', false)
+            ->assertJsonPath('data.key_present', false);
+    }
 }

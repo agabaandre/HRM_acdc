@@ -115,6 +115,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/admin/settings', [HelpdeskSettingsController::class, 'show']);
         Route::put('/admin/settings', [HelpdeskSettingsController::class, 'update']);
+        Route::post('/admin/settings/test-ai', [HelpdeskSettingsController::class, 'testAi']);
         Route::get('/admin/faq-ingest', [AdminFaqIngestController::class, 'show']);
         Route::post('/admin/faq-ingest', [AdminFaqIngestController::class, 'store']);
         Route::get('/admin/agents', [AdminHelpdeskAgentController::class, 'index']);
