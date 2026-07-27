@@ -37,6 +37,7 @@ interface AgentRow {
   can_change_ticket_category: boolean
   can_manage_it_assets: boolean
   can_manage_licenses: boolean
+  can_manage_information_systems: boolean
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
@@ -67,6 +68,7 @@ interface StaffPermissionRow {
   can_change_ticket_category: boolean
   can_manage_it_assets: boolean
   can_manage_licenses: boolean
+  can_manage_information_systems: boolean
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
@@ -124,6 +126,7 @@ const STAFF_OVERRIDE_OPTIONS = [
   { key: 'can_change_ticket_category', label: 'Change category' },
   { key: 'can_manage_it_assets', label: 'IT assets' },
   { key: 'can_manage_licenses', label: 'Licenses' },
+  { key: 'can_manage_information_systems', label: 'Information systems' },
   { key: 'can_submit_software_requests', label: 'SW requests (submit)' },
   { key: 'can_approve_software_requests', label: 'SW requests (approve)' },
   { key: 'can_manage_software_requests', label: 'SW requests (manage)' },
@@ -596,7 +599,6 @@ onMounted(() => {
         <p class="toolbar-hint muted">
           Edit each group in a modal (categories, members, active). Leave categories empty for a catch-all group.
         </p>
-        <UButton color="primary" @click="openCreateGroupModal">Add group</UButton>
       </div>
 
       <v-card v-if="groups.length" class="group-table-card" elevation="10">
@@ -662,14 +664,14 @@ onMounted(() => {
             <UFormField label="Name" name="name" required class="span-2">
               <UInput v-model="groupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
             </UFormField>
-            <UFormField label="Description" name="description" class="span-2" stacked-label>
+            <UFormField label="Description" name="description" class="span-2">
               <UTextarea v-model="groupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
             </UFormField>
             <UFormField
               label="Issue categories"
               name="category_ids"
               class="span-2"
-              stacked-label
+             
               description="Leave empty to route every category (catch-all)"
             >
               <USelect
@@ -986,6 +988,21 @@ onMounted(() => {
 }
 .hub-tab.active .tab-count { background: #e8f5ee; color: #0d7a3a; }
 .tab-panel { display: flex; flex-direction: column; gap: 1rem; }
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.toolbar-hint {
+  margin: 0;
+  flex: 1;
+  min-width: 14rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.group-table-card { overflow: hidden; }
 .card {
   border: none; border-radius: 12px; background: #fff;
   box-shadow: rgba(145, 158, 171, 0.12) 0 12px 24px -4px, rgba(145, 158, 171, 0.2) 0 0 2px 0;

@@ -319,7 +319,7 @@ onMounted(() => {
             <UFormField label="Name" name="name" required class="span-2">
               <UInput v-model="brandDraft.name" maxlength="191" icon="mdi-tag-outline" />
             </UFormField>
-            <UFormField label="Slug (optional)" name="slug" stacked-label description="Leave blank to auto-generate">
+            <UFormField label="Slug (optional)" name="slug" description="Leave blank to auto-generate">
               <UInput v-model="brandDraft.slug" maxlength="191" placeholder="auto from name" />
             </UFormField>
             <UFormField label="Sort order" name="sort_order">
@@ -392,7 +392,7 @@ onMounted(() => {
             <UFormField label="Name" name="name" required class="span-2">
               <UInput v-model="catDraft.name" maxlength="191" placeholder="e.g. SIM cards" icon="mdi-tag-outline" />
             </UFormField>
-            <UFormField label="Slug (optional)" name="slug" stacked-label description="Leave blank to auto-generate">
+            <UFormField label="Slug (optional)" name="slug" description="Leave blank to auto-generate">
               <UInput v-model="catDraft.slug" maxlength="191" placeholder="auto from name" />
             </UFormField>
             <UFormField label="Default useful life (years)" name="default_useful_life_years">

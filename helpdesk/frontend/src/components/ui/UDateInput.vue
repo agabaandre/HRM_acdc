@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
+import { fieldLabelKey, fieldRequiredKey } from './formContext'
 
 const model = defineModel<string | null>({ default: '' })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     label?: string
     disabled?: boolean
@@ -14,6 +15,12 @@ withDefaults(
     clearable: true,
   },
 )
+
+const injectedLabel = inject(fieldLabelKey, undefined)
+const injectedRequired = inject(fieldRequiredKey, undefined)
+const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
+const fieldRequired = computed(() => injectedRequired?.value ?? false)
+const persistFloatLabel = computed(() => Boolean(props.placeholder?.trim()))
 
 function toIso(d: Date | null | undefined): string {
   if (!d || Number.isNaN(d.getTime())) return ''
@@ -42,13 +49,17 @@ const dateModel = computed<Date | null>({
 <template>
   <v-date-input
     v-model="dateModel"
-    :label="label"
+    :label="fieldLabel"
     :disabled="disabled"
     :placeholder="placeholder"
     :clearable="clearable"
+    :required="fieldRequired"
+    :active="persistFloatLabel ? true : undefined"
+    :persistent-placeholder="persistFloatLabel"
     prepend-icon=""
     prepend-inner-icon="mdi-calendar"
     class="hd-v-date-input w-full"
+    :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
   />
 </template>

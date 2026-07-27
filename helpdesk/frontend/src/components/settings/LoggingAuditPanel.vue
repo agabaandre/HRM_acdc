@@ -521,7 +521,7 @@ void load()
         <UFormField v-if="reverseActionItems.length > 1" label="Reversal type" name="action_type">
           <USelect v-model="reverseForm.action_type" :items="reverseActionItems" />
         </UFormField>
-        <UFormField label="Reason" name="reason" required stacked-label description="Required — min 10 characters">
+        <UFormField label="Reason" name="reason" required description="Required — min 10 characters">
           <UTextarea v-model="reverseForm.reason" :rows="3" maxlength="500" placeholder="Why are you reversing this action?" />
         </UFormField>
         <v-card-actions class="reverse-actions">

@@ -7,7 +7,11 @@ const props = defineProps<{
   name?: string
   required?: boolean
   description?: string
-  /** When true, label renders above the control instead of on the Vuetify field. */
+  /**
+   * When true, label renders above the control instead of on the Vuetify outline notch.
+   * Project standard is floating outline labels (IT Assets style).
+   * Use stacked only for non-Vuetify controls (rich text, custom radio grids, etc.).
+   */
   stackedLabel?: boolean
 }>()
 
@@ -19,6 +23,7 @@ const isRichField = computed(() => String(attrs.class ?? '').includes('hd-rich-f
 
 const useStackedLabel = computed(() => {
   if (props.stackedLabel !== undefined) return props.stackedLabel
+  // Rich text editors are not Vuetify fields — keep a stacked label above them.
   return isRichField.value
 })
 

@@ -664,14 +664,14 @@ onMounted(() => {
             <UFormField label="Name" name="name" required class="span-2">
               <UInput v-model="groupForm.name" type="text" placeholder="e.g. Field support" class="w-full" />
             </UFormField>
-            <UFormField label="Description" name="description" class="span-2" stacked-label>
+            <UFormField label="Description" name="description" class="span-2">
               <UTextarea v-model="groupForm.description" :rows="2" placeholder="Optional summary for admins" class="w-full" />
             </UFormField>
             <UFormField
               label="Issue categories"
               name="category_ids"
               class="span-2"
-              stacked-label
+             
               description="Leave empty to route every category (catch-all)"
             >
               <USelect

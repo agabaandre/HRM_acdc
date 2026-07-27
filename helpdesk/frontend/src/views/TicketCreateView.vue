@@ -423,12 +423,11 @@ async function submit() {
         :disabled="busy"
         @submit="onFormSubmit"
       >
-        <UFormField label="Business unit" name="business_unit_id" required stacked-label class="full">
+        <UFormField label="Business unit" name="business_unit_id" required class="full">
           <USelectMenu
             v-model="form.business_unit_id"
             :items="businessUnitItems"
             searchable
-            hide-details-label
             :disabled="busy || catsLoading || businessUnits.length === 0"
             :placeholder="catsLoading ? 'Loading…' : businessUnits.length === 0 ? 'No business units available' : 'Search or select business unit'"
             class="w-full"
@@ -522,13 +521,12 @@ async function submit() {
         </template>
 
         <template v-if="needsDirectoryPicker && !form.is_anonymous">
-          <UFormField label="Find requester" name="requester_staff_id" required stacked-label class="full">
+          <UFormField label="Find requester" name="requester_staff_id" required class="full">
             <USelectMenu
               v-model="selectedStaffId"
               v-model:search="staffSearch"
               :items="staffSelectItems"
               searchable
-              hide-details-label
               :disabled="busy || !!refErr"
               placeholder="Search name, email, or duty station…"
               class="w-full"
@@ -544,7 +542,7 @@ async function submit() {
           </UFormField>
         </template>
 
-        <UFormField label="Description" name="description" required stacked-label class="full hd-rich-field">
+        <UFormField label="Description" name="description" required class="full hd-rich-field">
           <CbpRichTextEditor
             ref="descriptionEditorRef"
             v-model="form.description"

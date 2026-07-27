@@ -458,7 +458,7 @@ onMounted(async () => {
             name="category_ids"
             required
             class="span-2"
-            stacked-label
+           
             description="Pick global, one category, or several at once"
           >
             <USelectMenu
@@ -472,7 +472,7 @@ onMounted(async () => {
             />
           </UFormField>
 
-          <UFormField label="Notes" name="notes" class="span-2" stacked-label description="Shared note for all new mappings (optional)">
+          <UFormField label="Notes" name="notes" class="span-2" description="Shared note for all new mappings (optional)">
             <UTextarea v-model="createDraft.notes" :rows="2" maxlength="2000" placeholder="e.g. Director — escalate all ICT requests" />
           </UFormField>
 
@@ -524,7 +524,7 @@ onMounted(async () => {
             />
           </UFormField>
 
-          <UFormField label="Notes" name="notes" class="span-2" stacked-label>
+          <UFormField label="Notes" name="notes" class="span-2">
             <UTextarea v-model="editDraft.notes" :rows="2" maxlength="2000" />
           </UFormField>
 

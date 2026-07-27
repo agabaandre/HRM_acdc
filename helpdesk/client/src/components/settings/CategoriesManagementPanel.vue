@@ -585,7 +585,7 @@ onMounted(() => {
             <UFormField label="Business unit" name="business_unit_id" required>
               <USelect v-model="draft.business_unit_id" :items="unitItems" icon="mdi-office-building-outline" />
             </UFormField>
-            <UFormField label="Slug (optional)" name="slug" stacked-label description="Leave blank to auto-generate">
+            <UFormField label="Slug (optional)" name="slug" description="Leave blank to auto-generate">
               <UInput v-model="draft.slug" maxlength="191" placeholder="auto from name" />
             </UFormField>
             <UFormField label="Default priority" name="default_priority">
@@ -601,7 +601,7 @@ onMounted(() => {
               label="AI description"
               name="ai_description"
               class="full"
-              stacked-label
+             
               description="Criteria AI uses to match this category"
             >
               <UTextarea v-model="draft.ai_description" :rows="3" />
@@ -711,7 +711,7 @@ onMounted(() => {
               label="Description"
               name="description"
               class="full"
-              stacked-label
+             
               description="Shown on the create ticket form to explain which issues this unit handles"
             >
               <UTextarea v-model="buDraft.description" :rows="2" />
@@ -720,7 +720,7 @@ onMounted(() => {
               label="Support mailbox"
               name="support_mailbox"
               class="full"
-              stacked-label
+             
               description="Exchange mailbox for this unit (e.g. helpdesk@africacdc.org for IT & MIS)"
             >
               <UInput
