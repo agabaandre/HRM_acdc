@@ -34,6 +34,7 @@ export interface HelpdeskSettingsPayload {
   software_request_review_board_user_ids?: string | null
   show_issue_category_on_request_form?: boolean
   show_category_ai_description_on_request_form?: boolean
+  assign_agent_created_tickets_to_creator?: boolean
   email_ticket_intake_enabled?: boolean
   ai_api_key: string
   ai_api_key_configured: boolean
@@ -68,6 +69,7 @@ export interface HelpdeskAdminSettingsForm {
   software_request_review_board_user_ids: string
   show_issue_category_on_request_form: boolean
   show_category_ai_description_on_request_form: boolean
+  assign_agent_created_tickets_to_creator: boolean
   email_ticket_intake_enabled: boolean
   ai_api_key: string
 }
@@ -115,6 +117,7 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
     software_request_review_board_user_ids: '',
     show_issue_category_on_request_form: false,
     show_category_ai_description_on_request_form: true,
+    assign_agent_created_tickets_to_creator: true,
     email_ticket_intake_enabled: false,
     ai_api_key: '',
   })
@@ -152,6 +155,7 @@ export function createHelpdeskAdminSettings(): HelpdeskAdminSettingsContext {
       form.software_request_review_board_user_ids = d.software_request_review_board_user_ids ?? ''
       form.show_issue_category_on_request_form = Boolean(d.show_issue_category_on_request_form)
       form.show_category_ai_description_on_request_form = d.show_category_ai_description_on_request_form !== false
+      form.assign_agent_created_tickets_to_creator = d.assign_agent_created_tickets_to_creator !== false
       form.email_ticket_intake_enabled = Boolean(d.email_ticket_intake_enabled)
       form.ai_api_key = ''
       keyConfigured.value = Boolean(d.ai_api_key_configured)

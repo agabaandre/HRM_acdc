@@ -136,7 +136,7 @@ const toolsAreaActive = computed(() => route.path.startsWith('/tools'))
               @click.stop="toggleTools"
             >
               <i :class="HELP_DESK_NAV_ICONS.tools" class="cbp-nav-link-icon" aria-hidden="true" />
-              <span>Helpdesk Modules</span>
+              <span>Service Desk Modules</span>
               <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
             </button>
             <div class="cbp-nav-dd-menu" role="menu">

@@ -26,6 +26,10 @@ abstract class TestCase extends BaseTestCase
                     'name' => 'Test Division',
                     'short_name' => null,
                     'directorate_id' => $directorateId,
+                    'division_head' => $staffId,
+                    'head_oic_id' => null,
+                    'head_oic_start_date' => null,
+                    'head_oic_end_date' => null,
                 ],
             ],
             'directorates' => [

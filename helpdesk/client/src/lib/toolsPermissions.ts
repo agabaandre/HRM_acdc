@@ -13,6 +13,8 @@ export function profileHasToolsPermission(
 
 export function visibleToolsNavItems(profile: MeProfile | null | undefined): ToolsNavItem[] {
   return TOOLS_NAV_DROPDOWN_ITEMS.filter((item) => {
+    if (!profile) return false
+    if (item.publicToAuth) return true
     if (!item.permission) return true
     return profileHasToolsPermission(profile, item.permission)
   })

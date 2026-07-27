@@ -46,6 +46,8 @@ class HelpdeskProfile extends Model
         'can_submit_software_requests',
         'can_approve_software_requests',
         'can_manage_software_requests',
+        'can_process_hosting_requests',
+        'can_process_innovation_requests',
         'grant_helpdesk_admin',
         'grant_supervisor_access',
         'directorate_id',
@@ -71,6 +73,8 @@ class HelpdeskProfile extends Model
             'can_submit_software_requests' => 'boolean',
             'can_approve_software_requests' => 'boolean',
             'can_manage_software_requests' => 'boolean',
+            'can_process_hosting_requests' => 'boolean',
+            'can_process_innovation_requests' => 'boolean',
             'grant_helpdesk_admin' => 'boolean',
             'grant_supervisor_access' => 'boolean',
             'is_designated_agent' => 'boolean',
@@ -298,6 +302,24 @@ class HelpdeskProfile extends Model
         return (bool) $this->can_manage_software_requests;
     }
 
+    public function canProcessHostingRequests(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_process_hosting_requests;
+    }
+
+    public function canProcessInnovationRequests(): bool
+    {
+        if ($this->isHelpdeskAdmin()) {
+            return true;
+        }
+
+        return (bool) $this->can_process_innovation_requests;
+    }
+
     public function hasAnyToolsAccess(): bool
     {
         return $this->canManageItAssets()
@@ -305,6 +327,8 @@ class HelpdeskProfile extends Model
             || $this->canManageInformationSystems()
             || $this->canSubmitSoftwareRequests()
             || $this->canApproveSoftwareRequests()
-            || $this->canManageSoftwareRequests();
+            || $this->canManageSoftwareRequests()
+            || $this->canProcessHostingRequests()
+            || $this->canProcessInnovationRequests();
     }
 }

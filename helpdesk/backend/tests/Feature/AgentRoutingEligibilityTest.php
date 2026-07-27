@@ -109,6 +109,165 @@ class AgentRoutingEligibilityTest extends TestCase
         $this->assertContains($other->id, $eligible);
     }
 
+    public function test_eligible_agent_creator_is_assigned_when_setting_enabled(): void
+    {
+        \App\Models\HelpdeskSetting::setValue(
+            \App\Models\HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR,
+            '1'
+        );
+
+        $category = HelpdeskCategory::query()->create([
+            'name' => 'Portal',
+            'slug' => 'portal',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $creator = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $creator->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9401,
+            'division_id' => 21,
+        ]);
+        $creator->helpdeskAgentCategories()->sync([$category->id]);
+
+        $other = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $other->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9402,
+            'division_id' => 21,
+        ]);
+        $other->helpdeskAgentCategories()->sync([$category->id]);
+
+        $ticket = HelpdeskTicket::query()->create([
+            'created_by_user_id' => $creator->id,
+            'ticket_number' => 'HD-TEST-CREATOR-1',
+            'category_id' => $category->id,
+            'subject' => 'Created by eligible agent',
+            'description' => 'Body',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 9999,
+            'requester_name' => 'Someone Else',
+            'requester_email' => 'someone@example.com',
+            'division_id' => 21,
+        ]);
+
+        $result = app(TicketAssignmentService::class)->assignAgentOrSupervisorFallback($ticket, null);
+
+        $this->assertSame($creator->id, $result['user_id']);
+        $this->assertFalse($result['fallback']);
+    }
+
+    public function test_ineligible_agent_creator_uses_normal_routing(): void
+    {
+        \App\Models\HelpdeskSetting::setValue(
+            \App\Models\HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR,
+            '1'
+        );
+
+        $category = HelpdeskCategory::query()->create([
+            'name' => 'Network-X',
+            'slug' => 'network-x',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $creator = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $creator->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9411,
+            'division_id' => 21,
+        ]);
+        // Creator has no category routing for this ticket.
+
+        $other = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $other->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9412,
+            'division_id' => 21,
+        ]);
+        $other->helpdeskAgentCategories()->sync([$category->id]);
+
+        $ticket = HelpdeskTicket::query()->create([
+            'created_by_user_id' => $creator->id,
+            'ticket_number' => 'HD-TEST-CREATOR-2',
+            'category_id' => $category->id,
+            'subject' => 'Created by ineligible agent',
+            'description' => 'Body',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 9998,
+            'requester_name' => 'Someone Else',
+            'requester_email' => 'someone2@example.com',
+            'division_id' => 21,
+        ]);
+
+        $result = app(TicketAssignmentService::class)->assignAgentOrSupervisorFallback($ticket, null);
+
+        $this->assertSame($other->id, $result['user_id']);
+        $this->assertNotSame($creator->id, $result['user_id']);
+    }
+
+    public function test_agent_creator_self_assign_can_be_disabled(): void
+    {
+        \App\Models\HelpdeskSetting::setValue(
+            \App\Models\HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR,
+            '0'
+        );
+
+        $category = HelpdeskCategory::query()->create([
+            'name' => 'Email-X',
+            'slug' => 'email-x',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+
+        $creator = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $creator->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9421,
+            'division_id' => 21,
+        ]);
+        $creator->helpdeskAgentCategories()->sync([$category->id]);
+
+        $other = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $other->id,
+            'role' => HelpdeskProfile::ROLE_AGENT,
+            'staff_id' => 9422,
+            'division_id' => 21,
+        ]);
+        $other->helpdeskAgentCategories()->sync([$category->id]);
+
+        $ticket = HelpdeskTicket::query()->create([
+            'created_by_user_id' => $creator->id,
+            'ticket_number' => 'HD-TEST-CREATOR-3',
+            'category_id' => $category->id,
+            'subject' => 'Setting off',
+            'description' => 'Body',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 9997,
+            'requester_name' => 'Someone Else',
+            'requester_email' => 'someone3@example.com',
+            'division_id' => 21,
+        ]);
+
+        $result = app(TicketAssignmentService::class)->assignAgentOrSupervisorFallback($ticket, null);
+
+        $this->assertSame($other->id, $result['user_id']);
+        $this->assertNotSame($creator->id, $result['user_id']);
+    }
+
     public function test_agent_create_dispatches_auto_assign_instead_of_self_assign(): void
     {
         Bus::fake([AssignEndUserTicket::class]);

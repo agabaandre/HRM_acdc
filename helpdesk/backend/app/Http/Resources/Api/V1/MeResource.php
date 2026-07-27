@@ -44,6 +44,8 @@ class MeResource extends JsonResource
                 'can_submit_software_requests' => $p->canSubmitSoftwareRequests(),
                 'can_approve_software_requests' => $p->canApproveSoftwareRequests(),
                 'can_manage_software_requests' => $p->canManageSoftwareRequests(),
+                'can_process_hosting_requests' => $p->canProcessHostingRequests(),
+                'can_process_innovation_requests' => $p->canProcessInnovationRequests(),
                 'has_tools_access' => $p->hasAnyToolsAccess(),
             ] : null,
         ];

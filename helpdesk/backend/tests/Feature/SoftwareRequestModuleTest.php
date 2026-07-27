@@ -58,7 +58,7 @@ class SoftwareRequestModuleTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('data.status', 'submitted');
+        $response->assertJsonPath('data.status', 'pending_hod');
         $response->assertJsonPath('data.division_id', 21);
         $response->assertJsonPath('data.directorate_id', 3);
 
@@ -67,6 +67,11 @@ class SoftwareRequestModuleTest extends TestCase
 
     public function test_review_board_member_can_approve_when_board_configured(): void
     {
+        $this->seedHelpdeskStaffDirectoryCache(601, 'board@example.com', 'Board', 'Member', 21, 3);
+        $bundle = cache('helpdesk_reference_bundle_v1');
+        $bundle['divisions'][0]['division_head'] = 601;
+        cache()->put('helpdesk_reference_bundle_v1', $bundle, 3600);
+
         $board = User::factory()->create(['email' => 'board@example.com']);
         HelpdeskProfile::query()->create([
             'user_id' => $board->id,
@@ -82,6 +87,7 @@ class SoftwareRequestModuleTest extends TestCase
             'user_id' => $requester->id,
             'role' => HelpdeskProfile::ROLE_USER,
             'staff_id' => 602,
+            'division_id' => 21,
             'can_submit_software_requests' => true,
         ]);
 
@@ -93,8 +99,18 @@ class SoftwareRequestModuleTest extends TestCase
         ])->assertCreated();
 
         $id = (int) $create->json('data.id');
+        $this->assertSame('pending_hod', $create->json('data.status'));
 
         Sanctum::actingAs($board->fresh(['helpdeskProfile']));
+        $this->postJson("/api/v1/tools/software-requests/{$id}/approve", [
+            'approval_role' => 'review_board',
+            'decision' => 'approved',
+        ])->assertForbidden();
+
+        $this->postJson("/api/v1/tools/software-requests/{$id}/hod-approve")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'hod_approved');
+
         $this->postJson("/api/v1/tools/software-requests/{$id}/approve", [
             'approval_role' => 'review_board',
             'decision' => 'approved',

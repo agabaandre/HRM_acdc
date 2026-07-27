@@ -5,6 +5,8 @@ export type ToolsPermissionKey =
   | 'can_approve_software_requests'
   | 'can_manage_software_requests'
   | 'can_manage_information_systems'
+  | 'can_process_hosting_requests'
+  | 'can_process_innovation_requests'
 
 export interface ToolsNavItem {
   path: string
@@ -33,6 +35,18 @@ export const TOOLS_NAV_DROPDOWN_ITEMS: ToolsNavItem[] = [
     label: 'Software requests',
     icon: 'bx bx-file-blank',
     permission: 'can_submit_software_requests',
+    publicToAuth: true,
+  },
+  {
+    path: '/tools/hosting-requests',
+    label: 'Hosting',
+    icon: 'bx bx-cloud',
+    publicToAuth: true,
+  },
+  {
+    path: '/tools/innovation-requests',
+    label: 'Innovations',
+    icon: 'bx bx-bulb',
     publicToAuth: true,
   },
   {

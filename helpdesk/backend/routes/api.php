@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\V1\Tools\ItAssetController;
 use App\Http\Controllers\Api\V1\Tools\LicenseController;
 use App\Http\Controllers\Api\V1\Tools\SoftwareRequestController;
+use App\Http\Controllers\Api\V1\Tools\HostingRequestController;
+use App\Http\Controllers\Api\V1\Tools\InnovationRequestController;
 use App\Http\Controllers\Api\V1\Tools\InformationSystemController;
 use App\Http\Controllers\Api\V1\Admin\AdminAuditLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
@@ -202,7 +204,26 @@ Route::prefix('v1')->group(function () {
         Route::post('/tools/software-requests', [SoftwareRequestController::class, 'store']);
         Route::get('/tools/software-requests/{softwareRequest}', [SoftwareRequestController::class, 'show']);
         Route::put('/tools/software-requests/{softwareRequest}', [SoftwareRequestController::class, 'update']);
+        Route::post('/tools/software-requests/{softwareRequest}/hod-approve', [SoftwareRequestController::class, 'hodApprove']);
+        Route::post('/tools/software-requests/{softwareRequest}/hod-reject', [SoftwareRequestController::class, 'hodReject']);
         Route::post('/tools/software-requests/{softwareRequest}/approve', [SoftwareRequestController::class, 'approve']);
         Route::post('/tools/software-requests/{softwareRequest}/team', [SoftwareRequestController::class, 'syncTeam']);
+
+        Route::get('/tools/hosting-requests', [HostingRequestController::class, 'index']);
+        Route::post('/tools/hosting-requests', [HostingRequestController::class, 'store']);
+        Route::get('/tools/hosting-requests/{hostingRequest}', [HostingRequestController::class, 'show']);
+        Route::put('/tools/hosting-requests/{hostingRequest}', [HostingRequestController::class, 'update']);
+        Route::post('/tools/hosting-requests/{hostingRequest}/hod-approve', [HostingRequestController::class, 'hodApprove']);
+        Route::post('/tools/hosting-requests/{hostingRequest}/hod-reject', [HostingRequestController::class, 'hodReject']);
+        Route::post('/tools/hosting-requests/{hostingRequest}/process', [HostingRequestController::class, 'process']);
+        Route::post('/tools/hosting-requests/{hostingRequest}/complete', [HostingRequestController::class, 'complete']);
+
+        Route::get('/tools/innovation-requests', [InnovationRequestController::class, 'index']);
+        Route::post('/tools/innovation-requests', [InnovationRequestController::class, 'store']);
+        Route::get('/tools/innovation-requests/{innovationRequest}', [InnovationRequestController::class, 'show']);
+        Route::put('/tools/innovation-requests/{innovationRequest}', [InnovationRequestController::class, 'update']);
+        Route::post('/tools/innovation-requests/{innovationRequest}/process', [InnovationRequestController::class, 'process']);
+        Route::post('/tools/innovation-requests/{innovationRequest}/complete', [InnovationRequestController::class, 'complete']);
+        Route::post('/tools/innovation-requests/{innovationRequest}/reject', [InnovationRequestController::class, 'reject']);
     });
 });

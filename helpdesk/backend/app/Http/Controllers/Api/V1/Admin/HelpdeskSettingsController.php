@@ -55,6 +55,7 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS,
             HelpdeskSetting::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM,
             HelpdeskSetting::KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM,
+            HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR,
             HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED,
         ];
 
@@ -80,6 +81,7 @@ class HelpdeskSettingsController extends Controller
         $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS] = $data[HelpdeskSetting::KEY_SOFTWARE_REQUEST_REVIEW_BOARD_USER_IDS] ?? '';
         $data[HelpdeskSetting::KEY_SHOW_ISSUE_CATEGORY_ON_REQUEST_FORM] = HelpdeskSetting::showIssueCategoryOnRequestForm();
         $data[HelpdeskSetting::KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM] = HelpdeskSetting::showCategoryAiDescriptionOnRequestForm();
+        $data[HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR] = HelpdeskSetting::assignAgentCreatedTicketsToCreator();
         $data[HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED] = HelpdeskSetting::emailTicketIntakeEnabled();
         $data[HelpdeskSetting::KEY_SCREEN_DUTY_STATION_ITEMS_PER_PAGE] = HelpdeskSetting::screenDutyStationItemsPerPage();
         $data[HelpdeskSetting::KEY_SCREEN_CATEGORY_ITEMS_PER_PAGE] = HelpdeskSetting::screenCategoryItemsPerPage();
@@ -159,6 +161,7 @@ class HelpdeskSettingsController extends Controller
             'software_request_review_board_user_ids' => ['nullable', 'string', 'max:512'],
             'show_issue_category_on_request_form' => ['nullable', 'boolean'],
             'show_category_ai_description_on_request_form' => ['nullable', 'boolean'],
+            'assign_agent_created_tickets_to_creator' => ['nullable', 'boolean'],
             'email_ticket_intake_enabled' => ['nullable', 'boolean'],
         ]);
 
@@ -286,6 +289,13 @@ class HelpdeskSettingsController extends Controller
             HelpdeskSetting::setValue(
                 HelpdeskSetting::KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM,
                 $validated['show_category_ai_description_on_request_form'] ? '1' : '0'
+            );
+        }
+
+        if (array_key_exists('assign_agent_created_tickets_to_creator', $validated) && $validated['assign_agent_created_tickets_to_creator'] !== null) {
+            HelpdeskSetting::setValue(
+                HelpdeskSetting::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR,
+                $validated['assign_agent_created_tickets_to_creator'] ? '1' : '0'
             );
         }
 

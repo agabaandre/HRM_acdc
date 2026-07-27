@@ -25,6 +25,8 @@ export interface MeProfile {
   can_submit_software_requests?: boolean
   can_approve_software_requests?: boolean
   can_manage_software_requests?: boolean
+  can_process_hosting_requests?: boolean
+  can_process_innovation_requests?: boolean
   has_tools_access?: boolean
 }
 

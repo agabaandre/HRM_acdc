@@ -23,7 +23,7 @@ interface StaffRow {
   duty_station_name?: string | null
 }
 
-type CreateTabId = 'ticket' | 'software'
+type CreateTabId = 'ticket' | 'software' | 'hosting' | 'innovations'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -72,9 +72,19 @@ const forSomeoneElse = ref(false)
 const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !== 'user')
 
 const canAccessSoftwareRequests = computed(() => Boolean(auth.me))
+const canAccessHosting = computed(() => Boolean(auth.me))
+const canAccessInnovations = computed(() => Boolean(auth.me))
 
 function goToSoftwareRequests(): void {
   void router.push({ path: '/tools/software-requests', query: { tab: 'new' } })
+}
+
+function goToHostingRequests(): void {
+  void router.push({ path: '/tools/hosting-requests', query: { tab: 'new' } })
+}
+
+function goToInnovationRequests(): void {
+  void router.push({ path: '/tools/innovation-requests', query: { tab: 'new' } })
 }
 
 const needsDirectoryPicker = computed(() => forSomeoneElse.value)
@@ -397,15 +407,57 @@ async function submit() {
       >
         Information System Request
       </button>
+      <button
+        v-if="canAccessHosting"
+        type="button"
+        role="tab"
+        class="create-tab"
+        :class="{ active: activeTab === 'hosting' }"
+        :aria-selected="activeTab === 'hosting'"
+        @click="activeTab = 'hosting'"
+      >
+        Hosting
+      </button>
+      <button
+        v-if="canAccessInnovations"
+        type="button"
+        role="tab"
+        class="create-tab"
+        :class="{ active: activeTab === 'innovations' }"
+        :aria-selected="activeTab === 'innovations'"
+        @click="activeTab = 'innovations'"
+      >
+        Innovations
+      </button>
     </div>
 
     <div v-show="activeTab === 'software'" class="cbp-card software-gateway" role="tabpanel">
       <h2 class="gateway-title">Information System Request</h2>
       <p class="gateway-copy">
-        Information System requests use a dedicated form under Helpdesk Modules — including drafts, status tracking, and reviewer workflows.
+        Information System requests use a dedicated form under Service Desk Modules — including drafts, status tracking, HoD approval, and reviewer workflows.
       </p>
       <UButton color="primary" @click="goToSoftwareRequests">
         Continue to Information System Request
+      </UButton>
+    </div>
+
+    <div v-show="activeTab === 'hosting'" class="cbp-card software-gateway" role="tabpanel">
+      <h2 class="gateway-title">Hosting request</h2>
+      <p class="gateway-copy">
+        Request cloud or on-premises hosting. Your Head of Division must approve before Service Desk agents can process the request.
+      </p>
+      <UButton color="primary" @click="goToHostingRequests">
+        Continue to Hosting request
+      </UButton>
+    </div>
+
+    <div v-show="activeTab === 'innovations'" class="cbp-card software-gateway" role="tabpanel">
+      <h2 class="gateway-title">Innovations</h2>
+      <p class="gateway-copy">
+        Submit an innovation idea. No Head of Division approval is required — processors can act after you submit.
+      </p>
+      <UButton color="primary" @click="goToInnovationRequests">
+        Continue to Innovations
       </UButton>
     </div>
 
@@ -491,10 +543,10 @@ async function submit() {
           </p>
         </UFormField>
         <p v-else-if="form.business_unit_id && categoriesForUnit.length === 0" class="ai-cat-hint full">
-          No categories are available for this business unit yet.
+          No categories are available for this support area yet.
         </p>
         <p v-else-if="!form.business_unit_id && showCategoryField" class="ai-cat-hint full">
-          Select a business unit to choose a category.
+          Select a support area to choose a category.
         </p>
 
         <UFormField v-if="allowsAnonymous" name="is_anonymous" class="full">

@@ -41,6 +41,8 @@ interface AgentRow {
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
+  can_process_hosting_requests: boolean
+  can_process_innovation_requests: boolean
   grant_helpdesk_admin: boolean
   grant_supervisor_access: boolean
   is_designated_agent?: boolean
@@ -72,6 +74,8 @@ interface StaffPermissionRow {
   can_submit_software_requests: boolean
   can_approve_software_requests: boolean
   can_manage_software_requests: boolean
+  can_process_hosting_requests: boolean
+  can_process_innovation_requests: boolean
 }
 
 interface CandidateRow {
@@ -130,6 +134,8 @@ const STAFF_OVERRIDE_OPTIONS = [
   { key: 'can_submit_software_requests', label: 'SW requests (submit)' },
   { key: 'can_approve_software_requests', label: 'SW requests (approve)' },
   { key: 'can_manage_software_requests', label: 'SW requests (manage)' },
+  { key: 'can_process_hosting_requests', label: 'Hosting (process)' },
+  { key: 'can_process_innovation_requests', label: 'Innovations (process)' },
 ] as const
 
 const staffOverrideSelectItems = STAFF_OVERRIDE_OPTIONS.map((o) => ({

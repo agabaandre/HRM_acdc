@@ -11,18 +11,46 @@ final class StaffShareNormalizer
 {
     /**
      * @param  array<string, mixed>  $r
-     * @return array{id:int,name:string,short_name:?string,directorate_id:?int}
+     * @return array{
+     *     id:int,
+     *     name:string,
+     *     short_name:?string,
+     *     directorate_id:?int,
+     *     division_head:?int,
+     *     head_oic_id:?int,
+     *     head_oic_start_date:?string,
+     *     head_oic_end_date:?string
+     * }
      */
     public static function division(array $r): array
     {
         $id = (int) ($r['division_id'] ?? $r['id'] ?? 0);
+        $head = isset($r['division_head']) && $r['division_head'] !== '' && (int) $r['division_head'] > 0
+            ? (int) $r['division_head']
+            : null;
+        $oic = isset($r['head_oic_id']) && $r['head_oic_id'] !== '' && (int) $r['head_oic_id'] > 0
+            ? (int) $r['head_oic_id']
+            : null;
 
         return [
             'id' => $id,
             'name' => (string) ($r['division_name'] ?? $r['name'] ?? ''),
             'short_name' => isset($r['division_short_name']) ? (string) $r['division_short_name'] : (isset($r['short_name']) ? (string) $r['short_name'] : null),
             'directorate_id' => isset($r['directorate_id']) ? (int) $r['directorate_id'] : null,
+            'division_head' => $head,
+            'head_oic_id' => $oic,
+            'head_oic_start_date' => self::nullableDateString($r['head_oic_start_date'] ?? null),
+            'head_oic_end_date' => self::nullableDateString($r['head_oic_end_date'] ?? null),
         ];
+    }
+
+    private static function nullableDateString(mixed $value): ?string
+    {
+        if ($value === null || $value === '' || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     /**

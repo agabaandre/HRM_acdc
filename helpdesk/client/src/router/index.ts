@@ -187,6 +187,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresSoftwareRequests: true },
       },
       {
+        path: 'hosting-requests',
+        name: 'tools-hosting-requests',
+        component: () => import('../views/tools/HostingRequestsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'innovation-requests',
+        name: 'tools-innovation-requests',
+        component: () => import('../views/tools/InnovationRequestsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: 'information-systems',
         name: 'tools-information-systems',
         component: () => import('../views/tools/InformationSystemsView.vue'),

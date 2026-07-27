@@ -125,6 +125,13 @@ class HelpdeskSetting extends Model
      */
     public const KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM = 'show_category_ai_description_on_request_form';
 
+    /**
+     * When "1" (default), tickets created by an eligible agent are assigned to that agent
+     * when they match Agents & support groups routing for the ticket category.
+     * When "0", creator is excluded from the pool and normal routing applies.
+     */
+    public const KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR = 'assign_agent_created_tickets_to_creator';
+
     /** Master switch: poll Business Unit mailboxes and create tickets from email. */
     public const KEY_EMAIL_TICKET_INTAKE_ENABLED = 'email_ticket_intake_enabled';
 
@@ -145,6 +152,13 @@ class HelpdeskSetting extends Model
     public static function showCategoryAiDescriptionOnRequestForm(): bool
     {
         $v = static::getValue(self::KEY_SHOW_CATEGORY_AI_DESCRIPTION_ON_REQUEST_FORM, '1');
+
+        return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
+    }
+
+    public static function assignAgentCreatedTicketsToCreator(): bool
+    {
+        $v = static::getValue(self::KEY_ASSIGN_AGENT_CREATED_TICKETS_TO_CREATOR, '1');
 
         return in_array(strtolower(trim((string) $v)), ['1', 'true', 'yes'], true);
     }

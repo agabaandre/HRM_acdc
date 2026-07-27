@@ -234,6 +234,7 @@ async function saveGeneral() {
       license_expiry_alert_interval_days: ctx.form.license_expiry_alert_interval_days,
       show_issue_category_on_request_form: ctx.form.show_issue_category_on_request_form,
       show_category_ai_description_on_request_form: ctx.form.show_category_ai_description_on_request_form,
+      assign_agent_created_tickets_to_creator: ctx.form.assign_agent_created_tickets_to_creator,
       email_ticket_intake_enabled: ctx.form.email_ticket_intake_enabled,
     },
     "General settings saved.",
@@ -429,6 +430,29 @@ function roleLabel(c: CandidateRow): string {
             <span class="toggle-hint">
               On by default. When category selection is enabled, each card shows the category’s AI description in brackets
               (up to two lines) to help requesters pick the right option.
+            </span>
+          </span>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <header class="card-head">
+          <span class="card-icon" aria-hidden="true">🧭</span>
+          <div>
+            <h3>Agent ticket assignment</h3>
+            <p class="card-lede">
+              Control how tickets are assigned when an agent creates one (for themselves or on behalf of a requester).
+            </p>
+          </div>
+        </header>
+        <div class="toggle-row">
+          <USwitch v-model="ctx.form.assign_agent_created_tickets_to_creator" />
+          <span class="toggle-copy">
+            <strong>Assign agent-created tickets to the creating agent</strong>
+            <span class="toggle-hint">
+              On by default. If the creating agent is eligible for the ticket’s category under
+              <strong>Settings → Agents</strong> routing, the ticket is assigned to them.
+              If they are not eligible (or this is off), normal category routing applies.
             </span>
           </span>
         </div>

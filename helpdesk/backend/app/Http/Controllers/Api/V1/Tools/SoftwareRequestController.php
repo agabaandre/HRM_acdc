@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HelpdeskSoftwareRequest;
 use App\Models\HelpdeskSoftwareRequestApproval;
 use App\Models\HelpdeskSoftwareRequestTeamMember;
+use App\Services\DivisionHeadResolver;
 use App\Services\HelpdeskPdfReportService;
 use App\Services\HtmlSanitizer;
 use App\Services\SoftwareRequestNotifyService;
@@ -99,11 +100,12 @@ class SoftwareRequestController extends Controller
         );
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, DivisionHeadResolver $heads): JsonResponse
     {
         $user = $request->user();
         $profile = $user?->helpdeskProfile;
         $canManage = $profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests());
+        $staffId = (int) ($profile?->staff_id ?? 0);
 
         $query = HelpdeskSoftwareRequest::query()
             ->with(['teamMembers', 'approvals'])
@@ -111,7 +113,34 @@ class SoftwareRequestController extends Controller
 
         if (! $canManage) {
             $this->ensureSoftwareRequestSubmit($request);
-            $query->where('requester_user_id', $user?->id);
+            $query->where(function ($q) use ($user, $staffId, $heads) {
+                $q->where('requester_user_id', $user?->id);
+                if ($staffId > 0) {
+                    $q->orWhere(function ($hodQ) use ($staffId) {
+                        $hodQ->where('status', 'pending_hod')
+                            ->where('hod_staff_id', $staffId);
+                    });
+                    $pendingDivisionIds = HelpdeskSoftwareRequest::query()
+                        ->where('status', 'pending_hod')
+                        ->whereNotNull('division_id')
+                        ->pluck('division_id')
+                        ->unique()
+                        ->filter()
+                        ->values();
+                    $myDivisions = [];
+                    foreach ($pendingDivisionIds as $divId) {
+                        if ($heads->effectiveHeadStaffIdForDivision((int) $divId) === $staffId) {
+                            $myDivisions[] = (int) $divId;
+                        }
+                    }
+                    if ($myDivisions !== []) {
+                        $q->orWhere(function ($divQ) use ($myDivisions) {
+                            $divQ->where('status', 'pending_hod')
+                                ->whereIn('division_id', $myDivisions);
+                        });
+                    }
+                }
+            });
         }
 
         if ($request->filled('status')) {
@@ -148,7 +177,7 @@ class SoftwareRequestController extends Controller
         return response()->json(['data' => $softwareRequest]);
     }
 
-    public function store(Request $request, StaffDirectoryLookupService $directory, SoftwareRequestNotifyService $notifier): JsonResponse
+    public function store(Request $request, StaffDirectoryLookupService $directory, SoftwareRequestNotifyService $notifier, DivisionHeadResolver $heads): JsonResponse
     {
         $this->ensureSoftwareRequestSubmit($request);
         $user = $request->user();
@@ -158,14 +187,25 @@ class SoftwareRequestController extends Controller
         $org = $this->resolveOrgFields($user->id, $profile?->staff_id, $directory, $profile?->division_id, $profile?->directorate_id);
         $submit = $request->boolean('submit');
 
+        $hodStaffId = ! empty($org['division_id'])
+            ? $heads->effectiveHeadStaffIdForDivision((int) $org['division_id'])
+            : null;
+        $hodName = null;
+        if ($hodStaffId) {
+            $resolved = $directory->resolveByStaffId($hodStaffId);
+            $hodName = $resolved['name'] ?? ('Staff '.$hodStaffId);
+        }
+
         $row = HelpdeskSoftwareRequest::query()->create(array_merge($validated, $org, [
             'request_number' => HelpdeskSoftwareRequest::generateRequestNumber(),
             'requester_user_id' => $user->id,
             'requester_name' => $validated['requester_name'] ?? $user->name,
             'email' => $validated['email'] ?? $user->email,
             'department' => $org['division_name'] ?? ($validated['department'] ?? null),
-            'status' => $submit ? 'submitted' : 'draft',
+            'status' => $submit ? 'pending_hod' : 'draft',
             'received_at' => $submit ? now() : null,
+            'hod_staff_id' => $hodStaffId,
+            'hod_name' => $hodName,
         ]));
 
         if ($submit) {
@@ -184,7 +224,7 @@ class SoftwareRequestController extends Controller
         $wasDraft = in_array($softwareRequest->status, ['draft', 'returned'], true);
 
         if ($submit && $wasDraft) {
-            $validated['status'] = 'submitted';
+            $validated['status'] = 'pending_hod';
             $validated['received_at'] = $softwareRequest->received_at ?? now();
         }
 
@@ -198,9 +238,59 @@ class SoftwareRequestController extends Controller
         return response()->json(['data' => $softwareRequest->fresh(['teamMembers', 'approvals'])]);
     }
 
+    public function hodApprove(
+        Request $request,
+        HelpdeskSoftwareRequest $softwareRequest,
+        DivisionHeadResolver $heads,
+    ): JsonResponse {
+        $this->assertIsHod($request, $softwareRequest, $heads);
+        abort_unless(
+            $softwareRequest->status === 'pending_hod',
+            422,
+            'Only requests pending Head of Division approval can be approved here.',
+        );
+
+        $notes = $request->validate(['notes' => ['nullable', 'string']])['notes'] ?? null;
+        $user = $request->user();
+
+        $softwareRequest->status = 'hod_approved';
+        $softwareRequest->hod_decided_at = now();
+        $softwareRequest->hod_decided_by_user_id = $user->id;
+        $softwareRequest->hod_decision_notes = $notes;
+        $softwareRequest->save();
+
+        return response()->json(['data' => $softwareRequest->fresh(['teamMembers', 'approvals'])]);
+    }
+
+    public function hodReject(
+        Request $request,
+        HelpdeskSoftwareRequest $softwareRequest,
+        DivisionHeadResolver $heads,
+    ): JsonResponse {
+        $this->assertIsHod($request, $softwareRequest, $heads);
+        abort_unless(
+            $softwareRequest->status === 'pending_hod',
+            422,
+            'Only requests pending Head of Division approval can be rejected here.',
+        );
+
+        $notes = $request->validate(['notes' => ['nullable', 'string']])['notes'] ?? null;
+        $user = $request->user();
+
+        $softwareRequest->status = 'hod_rejected';
+        $softwareRequest->hod_decided_at = now();
+        $softwareRequest->hod_decided_by_user_id = $user->id;
+        $softwareRequest->hod_decision_notes = $notes;
+        $softwareRequest->decision = 'rejected';
+        $softwareRequest->save();
+
+        return response()->json(['data' => $softwareRequest->fresh(['teamMembers', 'approvals'])]);
+    }
+
     public function approve(Request $request, HelpdeskSoftwareRequest $softwareRequest): JsonResponse
     {
         $this->ensureSoftwareRequestManage($request);
+        $this->assertHodGatePassed($softwareRequest);
         $user = $request->user();
 
         $validated = $request->validate([
@@ -253,6 +343,7 @@ class SoftwareRequestController extends Controller
     public function syncTeam(Request $request, HelpdeskSoftwareRequest $softwareRequest): JsonResponse
     {
         $this->ensureSoftwareRequestManage($request);
+        $this->assertHodGatePassed($softwareRequest);
 
         $validated = $request->validate([
             'members' => ['required', 'array', 'min:1'],
@@ -400,21 +491,61 @@ class SoftwareRequestController extends Controller
         ];
     }
 
-    private function assertCanView(Request $request, HelpdeskSoftwareRequest $row): void
+    private function assertCanView(Request $request, HelpdeskSoftwareRequest $row, ?DivisionHeadResolver $heads = null): void
     {
         $profile = $request->user()?->helpdeskProfile;
         if ($profile && ($profile->canManageSoftwareRequests() || $profile->canApproveSoftwareRequests())) {
             return;
         }
-        abort_unless((int) $row->requester_user_id === (int) $request->user()?->id, 403);
+        if ((int) $row->requester_user_id === (int) $request->user()?->id) {
+            return;
+        }
+        $heads ??= app(DivisionHeadResolver::class);
+        if ($this->userIsHodFor($request, $row, $heads)) {
+            return;
+        }
+        abort(403);
     }
 
     private function assertCanEdit(Request $request, HelpdeskSoftwareRequest $row): void
     {
-        if (in_array($row->status, ['draft', 'returned'], true) && (int) $row->requester_user_id === (int) $request->user()?->id) {
+        if (in_array($row->status, ['draft', 'returned', 'hod_rejected'], true) && (int) $row->requester_user_id === (int) $request->user()?->id) {
             return;
         }
         $profile = $request->user()?->helpdeskProfile;
         abort_unless($profile && $profile->canManageSoftwareRequests(), 403);
+    }
+
+    private function assertHodGatePassed(HelpdeskSoftwareRequest $row): void
+    {
+        $allowed = ['hod_approved', 'approved', 'deferred', 'team_formed', 'submitted'];
+        // Legacy "submitted" rows (pre-HoD gate) remain processable.
+        abort_unless(
+            in_array($row->status, $allowed, true),
+            403,
+            'Software requests can only be processed after Head of Division approval.',
+        );
+    }
+
+    private function assertIsHod(Request $request, HelpdeskSoftwareRequest $row, DivisionHeadResolver $heads): void
+    {
+        abort_unless($this->userIsHodFor($request, $row, $heads), 403, 'Only the Head of Division can approve this request.');
+    }
+
+    private function userIsHodFor(Request $request, HelpdeskSoftwareRequest $row, DivisionHeadResolver $heads): bool
+    {
+        $staffId = (int) ($request->user()?->helpdeskProfile?->staff_id ?? 0);
+        if ($staffId <= 0) {
+            return false;
+        }
+        if ($row->hod_staff_id && (int) $row->hod_staff_id === $staffId) {
+            return true;
+        }
+        $divId = (int) ($row->division_id ?? 0);
+        if ($divId <= 0) {
+            return false;
+        }
+
+        return $heads->effectiveHeadStaffIdForDivision($divId) === $staffId;
     }
 }

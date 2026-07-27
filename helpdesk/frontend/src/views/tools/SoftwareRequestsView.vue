@@ -57,6 +57,8 @@ interface SoftwareRequest {
   assigned_ba_name?: string
   project_id?: string
   project_team_formed_at?: string
+  hod_staff_id?: number | null
+  hod_name?: string | null
   team_members?: TeamMember[]
   approvals?: Approval[]
 }
@@ -99,6 +101,19 @@ const canManage = computed(
     !!auth.me?.profile?.can_approve_software_requests,
 )
 
+const isHodForSelected = computed(() => {
+  const staffId = auth.me?.profile?.staff_id
+  if (!selected.value || !staffId) return false
+  return selected.value.status === 'pending_hod' && Number(selected.value.hod_staff_id) === Number(staffId)
+})
+
+const canProcessSelected = computed(() => {
+  if (!selected.value || !canManage.value) return false
+  return ['hod_approved', 'approved', 'deferred', 'team_formed', 'submitted'].includes(selected.value.status)
+})
+
+const hodNotes = ref('')
+
 const form = reactive({
   requester_name: '',
   email: '',
@@ -129,6 +144,9 @@ const teamDraft = ref<TeamMember[]>([{ member_name: '', member_email: '', role: 
 const statusItems = [
   { label: 'All statuses', value: '' },
   { label: 'Draft', value: 'draft' },
+  { label: 'Pending HoD', value: 'pending_hod' },
+  { label: 'HoD approved', value: 'hod_approved' },
+  { label: 'HoD rejected', value: 'hod_rejected' },
   { label: 'Submitted', value: 'submitted' },
   { label: 'Approved', value: 'approved' },
   { label: 'Deferred', value: 'deferred' },
@@ -288,7 +306,27 @@ async function submitApproval() {
     notifySuccess('Approval recorded.')
     await load()
   } catch (e) {
-    notifyError(apiErrorMessage(e, 'Approval failed.'))
+    notifyError(apiErrorMessage(e, 'Approval failed. HoD approval may still be required.'))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function submitHod(approve: boolean) {
+  if (!selected.value) return
+  busy.value = true
+  try {
+    const path = approve ? 'hod-approve' : 'hod-reject'
+    const { data } = await api.post<{ data: SoftwareRequest }>(
+      `/api/v1/tools/software-requests/${selected.value.id}/${path}`,
+      { notes: hodNotes.value || null },
+    )
+    selected.value = data.data
+    notifySuccess(approve ? 'HoD approved.' : 'HoD rejected.')
+    hodNotes.value = ''
+    await load()
+  } catch (e) {
+    notifyError(apiErrorMessage(e, 'HoD action failed.'))
   } finally {
     busy.value = false
   }
@@ -519,6 +557,7 @@ onMounted(() => {
               <dt>Requester</dt><dd>{{ selected.requester_name }}</dd>
               <dt>Division</dt><dd>{{ selected.division_name || selected.department || '—' }}</dd>
               <dt>Directorate</dt><dd>{{ selected.directorate_name || '—' }}</dd>
+              <dt>HoD</dt><dd>{{ selected.hod_name || '—' }}</dd>
               <dt>Contact</dt><dd>{{ selected.email || '—' }} · {{ selected.phone || '—' }}</dd>
               <dt>Problem</dt>
               <dd>
@@ -562,7 +601,22 @@ onMounted(() => {
               </ul>
             </section>
 
-            <section v-if="canManage" class="sub-section">
+            <section v-if="isHodForSelected" class="sub-section">
+              <h4>Head of Division approval</h4>
+              <UFormField label="Notes">
+                <UTextarea v-model="hodNotes" :rows="2" class="w-full" />
+              </UFormField>
+              <div class="team-actions">
+                <UButton color="primary" size="sm" :loading="busy" @click="submitHod(true)">Approve</UButton>
+                <UButton color="error" variant="outline" size="sm" :loading="busy" @click="submitHod(false)">Reject</UButton>
+              </div>
+            </section>
+
+            <p v-if="canManage && selected.status === 'pending_hod'" class="hint">
+              Waiting for Head of Division approval before review-board processing.
+            </p>
+
+            <section v-if="canProcessSelected" class="sub-section">
               <h4>Review board — decision</h4>
               <div class="hd-form hd-form--grid">
                 <UFormField label="Approval role">

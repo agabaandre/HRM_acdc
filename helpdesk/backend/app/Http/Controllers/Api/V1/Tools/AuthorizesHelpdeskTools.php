@@ -39,4 +39,16 @@ trait AuthorizesHelpdeskTools
             'You need software request approval or management permission.'
         );
     }
+
+    protected function ensureHostingProcess(Request $request): void
+    {
+        $p = $request->user()?->helpdeskProfile;
+        abort_unless($p && $p->canProcessHostingRequests(), 403, 'You need hosting request processing permission.');
+    }
+
+    protected function ensureInnovationProcess(Request $request): void
+    {
+        $p = $request->user()?->helpdeskProfile;
+        abort_unless($p && $p->canProcessInnovationRequests(), 403, 'You need innovation request processing permission.');
+    }
 }

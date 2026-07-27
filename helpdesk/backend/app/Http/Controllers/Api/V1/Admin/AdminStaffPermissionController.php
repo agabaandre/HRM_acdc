@@ -48,6 +48,8 @@ class AdminStaffPermissionController extends Controller
             'can_submit_software_requests' => ['sometimes', 'boolean'],
             'can_approve_software_requests' => ['sometimes', 'boolean'],
             'can_manage_software_requests' => ['sometimes', 'boolean'],
+            'can_process_hosting_requests' => ['sometimes', 'boolean'],
+            'can_process_innovation_requests' => ['sometimes', 'boolean'],
         ]);
 
         $profile = $user->helpdeskProfile;
@@ -85,6 +87,8 @@ class AdminStaffPermissionController extends Controller
             'can_submit_software_requests',
             'can_approve_software_requests',
             'can_manage_software_requests',
+            'can_process_hosting_requests',
+            'can_process_innovation_requests',
         ] as $key) {
             if (array_key_exists($key, $validated)) {
                 $profile->{$key} = (bool) $validated[$key];
@@ -117,6 +121,8 @@ class AdminStaffPermissionController extends Controller
             'can_submit_software_requests' => (bool) ($p?->can_submit_software_requests ?? true),
             'can_approve_software_requests' => (bool) ($p?->can_approve_software_requests),
             'can_manage_software_requests' => (bool) ($p?->can_manage_software_requests),
+            'can_process_hosting_requests' => (bool) ($p?->can_process_hosting_requests),
+            'can_process_innovation_requests' => (bool) ($p?->can_process_innovation_requests),
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HelpdeskProfile;
+use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskSupportGroup;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
@@ -206,11 +207,18 @@ class TicketAssignmentService
 
     /**
      * Prefer an eligible agent; if none, assign a supervisor (then admin) by load.
+     * When enabled in settings, tickets created by an agent who is eligible for the
+     * category (Agents & support groups routing) are assigned to that creator.
      *
      * @return array{user_id: ?int, group_id: ?int, fallback: bool}
      */
     public function assignAgentOrSupervisorFallback(HelpdeskTicket $ticket, ?string $requesterDutyStation): array
     {
+        $creatorAssign = $this->assignToCreatingAgentIfEligible($ticket);
+        if ($creatorAssign !== null) {
+            return $creatorAssign;
+        }
+
         $result = $this->assignAgent($ticket, $requesterDutyStation);
         if ($result['user_id'] || $result['group_id']) {
             return ['user_id' => $result['user_id'], 'group_id' => $result['group_id'], 'fallback' => false];
@@ -222,6 +230,38 @@ class TicketAssignmentService
             'user_id' => $fallback['user_id'],
             'group_id' => $fallback['group_id'],
             'fallback' => $fallback['user_id'] !== null,
+        ];
+    }
+
+    /**
+     * @return array{user_id: int, group_id: null, fallback: false}|null
+     */
+    public function assignToCreatingAgentIfEligible(HelpdeskTicket $ticket): ?array
+    {
+        if (! HelpdeskSetting::assignAgentCreatedTicketsToCreator()) {
+            return null;
+        }
+
+        $creatorId = (int) ($ticket->created_by_user_id ?? 0);
+        $categoryId = (int) ($ticket->category_id ?? 0);
+        if ($creatorId < 1 || $categoryId < 1) {
+            return null;
+        }
+
+        $creator = User::query()->with('helpdeskProfile')->find($creatorId);
+        $profile = $creator?->helpdeskProfile;
+        if ($profile === null || ! $profile->isEligibleForTicketRouting()) {
+            return null;
+        }
+
+        if (! $this->routing->agentHandlesCategory($creatorId, $categoryId)) {
+            return null;
+        }
+
+        return [
+            'user_id' => $creatorId,
+            'group_id' => null,
+            'fallback' => false,
         ];
     }
 
