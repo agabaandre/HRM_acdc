@@ -52,6 +52,16 @@ class HelpdeskAskTest extends TestCase
             'answer' => '1. Open the Staff portal. 2. Click Forgot password. 3. Follow the email link.',
             'sort_order' => 1,
             'is_active' => true,
+            'search_keywords' => 'password reset sign-in',
+        ]);
+
+        HelpdeskKbArticle::query()->create([
+            'category_id' => $category->id,
+            'question' => 'How do I request a new laptop?',
+            'answer' => 'Submit an IT assets request form.',
+            'sort_order' => 1,
+            'is_active' => true,
+            'search_keywords' => 'laptop hardware',
         ]);
 
         Sanctum::actingAs($this->endUser());
@@ -63,6 +73,16 @@ class HelpdeskAskTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.source', 'knowledge_base')
             ->assertJsonStructure(['data' => ['answer', 'steps', 'related_articles']]);
+
+        $related = collect($response->json('data.related_articles'))->pluck('question')->all();
+        $this->assertTrue(
+            collect($related)->contains(fn ($q) => str_contains(strtolower((string) $q), 'password')),
+            'Expected password FAQ among related articles'
+        );
+        $this->assertFalse(
+            collect($related)->contains(fn ($q) => str_contains(strtolower((string) $q), 'laptop')),
+            'Unrelated laptop FAQ should not be returned for a password question'
+        );
     }
 
     public function test_ask_requires_authentication(): void

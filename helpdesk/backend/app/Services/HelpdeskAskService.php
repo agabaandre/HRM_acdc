@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Ai\Agents\HelpdeskAssistantAgent;
 use App\Models\HelpdeskKbArticle;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class HelpdeskAskService
@@ -47,7 +48,7 @@ class HelpdeskAskService
 
     /**
      * @param  array{summary: string, steps: list<string>, related_kb_article_ids: list<int>, suggest_ticket: bool, confidence: string}  $ai
-     * @param  \Illuminate\Support\Collection<int, HelpdeskKbArticle>  $kbArticles
+     * @param  Collection<int, HelpdeskKbArticle>  $kbArticles
      * @return array{
      *   answer: string,
      *   steps: list<string>,
@@ -57,16 +58,19 @@ class HelpdeskAskService
      *   source: string
      * }
      */
-    private function formatAiResponse(array $ai, $kbArticles): array
+    private function formatAiResponse(array $ai, Collection $kbArticles): array
     {
-        $related = $kbArticles
-            ->filter(fn (HelpdeskKbArticle $a) => in_array($a->id, $ai['related_kb_article_ids'], true))
+        $byId = $kbArticles->keyBy('id');
+        $related = collect($ai['related_kb_article_ids'])
+            ->map(fn (int $id) => $byId->get($id))
+            ->filter()
             ->map(fn (HelpdeskKbArticle $a) => ['id' => $a->id, 'question' => $a->question])
             ->values()
             ->all();
 
-        if ($related === [] && $kbArticles->isNotEmpty()) {
-            $related = $kbArticles->take(3)->map(fn (HelpdeskKbArticle $a) => [
+        // Only auto-attach top KB hits when the model is reasonably confident and cited none.
+        if ($related === [] && $kbArticles->isNotEmpty() && in_array($ai['confidence'], ['high', 'medium'], true)) {
+            $related = $kbArticles->take(2)->map(fn (HelpdeskKbArticle $a) => [
                 'id' => $a->id,
                 'question' => $a->question,
             ])->values()->all();
@@ -83,7 +87,7 @@ class HelpdeskAskService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, HelpdeskKbArticle>  $kbArticles
+     * @param  Collection<int, HelpdeskKbArticle>  $kbArticles
      * @return array{
      *   answer: string,
      *   steps: list<string>,
@@ -93,16 +97,19 @@ class HelpdeskAskService
      *   source: string
      * }
      */
-    private function heuristicResponse(string $question, $kbArticles): array
+    private function heuristicResponse(string $question, Collection $kbArticles): array
     {
         if ($kbArticles->isNotEmpty()) {
             $top = $kbArticles->first();
             $steps = $this->stepsFromAnswer($top->answer);
+            $plain = $this->plainAnswer($top->answer);
 
             return [
-                'answer' => 'Based on our knowledge base, this may help: '.$top->question,
-                'steps' => $steps !== [] ? $steps : [
-                    'Review the FAQ answer below for detailed guidance.',
+                'answer' => $plain !== ''
+                    ? Str::limit($plain, 500, '…')
+                    : 'Based on our knowledge base, this may help: '.$top->question,
+                'steps' => $steps !== [] ? array_slice($steps, 0, 6) : [
+                    'Review the related FAQ for detailed guidance.',
                     'If the issue persists, log a new request so an agent can assist.',
                 ],
                 'related_articles' => $kbArticles->take(3)->map(fn (HelpdeskKbArticle $a) => [
@@ -116,7 +123,7 @@ class HelpdeskAskService
         }
 
         return [
-            'answer' => 'I could not find a matching FAQ for your question. An IT agent can investigate further.',
+            'answer' => 'I could not find a matching FAQ for your question. A Service Desk agent can investigate further.',
             'steps' => [
                 'Note any error messages, screenshots, or when the problem started.',
                 'Try signing out and back in to the Staff portal if the issue affects access.',
@@ -129,30 +136,108 @@ class HelpdeskAskService
         ];
     }
 
-    /** @return \Illuminate\Support\Collection<int, HelpdeskKbArticle> */
-    private function findRelevantArticles(string $question): \Illuminate\Support\Collection
+    /**
+     * Rank active KB articles by term overlap (question/keywords weighted higher than body).
+     *
+     * @return Collection<int, HelpdeskKbArticle>
+     */
+    private function findRelevantArticles(string $question): Collection
     {
         $terms = $this->searchTerms($question);
-        $query = HelpdeskKbArticle::query()
-            ->where('is_active', true)
-            ->with(['category:id,name']);
+        if ($terms === []) {
+            return collect();
+        }
 
-        if ($terms !== []) {
-            $query->where(function ($w) use ($terms) {
+        $candidates = HelpdeskKbArticle::query()
+            ->where('is_active', true)
+            ->with(['category:id,name'])
+            ->where(function ($w) use ($terms) {
                 foreach ($terms as $term) {
                     $like = '%'.$term.'%';
                     $w->orWhere('question', 'like', $like)
                         ->orWhere('answer', 'like', $like)
                         ->orWhere('search_keywords', 'like', $like);
                 }
-            });
+            })
+            ->limit(60)
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            return collect();
         }
 
-        return $query
-            ->orderBy('sort_order')
-            ->orderBy('question')
-            ->limit(8)
-            ->get();
+        $questionLower = strtolower($question);
+        $minScore = count($terms) >= 3 ? 8 : (count($terms) === 2 ? 6 : 5);
+
+        $scored = $candidates->map(function (HelpdeskKbArticle $article) use ($terms, $questionLower) {
+            $q = strtolower((string) $article->question);
+            $kw = strtolower((string) ($article->search_keywords ?? ''));
+            $ans = strtolower($this->plainAnswer((string) $article->answer));
+            $score = 0;
+            $hits = 0;
+
+            foreach ($terms as $term) {
+                $termHit = false;
+                if (str_contains($q, $term)) {
+                    $score += 5;
+                    $termHit = true;
+                }
+                if ($kw !== '' && str_contains($kw, $term)) {
+                    $score += 3;
+                    $termHit = true;
+                }
+                if (str_contains($ans, $term)) {
+                    $score += 1;
+                    $termHit = true;
+                }
+                if ($termHit) {
+                    $hits++;
+                }
+            }
+
+            // Bonus when the FAQ title closely resembles the user question.
+            similar_text($questionLower, $q, $percent);
+            if ($percent >= 45) {
+                $score += 4;
+            }
+
+            // Prefer articles that hit multiple query terms.
+            if ($hits >= 2) {
+                $score += $hits * 2;
+            }
+
+            return [
+                'article' => $article,
+                'score' => $score,
+                'hits' => $hits,
+            ];
+        })
+            ->filter(fn (array $row) => $row['score'] >= $minScore && $row['hits'] >= 1)
+            ->sortByDesc(fn (array $row) => [$row['score'], $row['hits']])
+            ->values();
+
+        // Soften threshold once if nothing passed (still require a real title/keyword hit).
+        if ($scored->isEmpty()) {
+            $scored = $candidates->map(function (HelpdeskKbArticle $article) use ($terms) {
+                $q = strtolower((string) $article->question);
+                $kw = strtolower((string) ($article->search_keywords ?? ''));
+                $score = 0;
+                $hits = 0;
+                foreach ($terms as $term) {
+                    if (str_contains($q, $term) || ($kw !== '' && str_contains($kw, $term))) {
+                        $score += str_contains($q, $term) ? 5 : 3;
+                        $hits++;
+                    }
+                }
+
+                return ['article' => $article, 'score' => $score, 'hits' => $hits];
+            })
+                ->filter(fn (array $row) => $row['hits'] >= 1 && $row['score'] >= 5)
+                ->sortByDesc(fn (array $row) => $row['score'])
+                ->values();
+        }
+
+        return $scored->take(5)->map(fn (array $row) => $row['article'])->values();
     }
 
     /**
@@ -160,7 +245,12 @@ class HelpdeskAskService
      */
     private function searchTerms(string $question): array
     {
-        $stop = ['the', 'and', 'for', 'with', 'this', 'that', 'from', 'have', 'help', 'please', 'cant', "can't"];
+        $stop = [
+            'the', 'and', 'for', 'with', 'this', 'that', 'from', 'have', 'help', 'please',
+            'cant', "can't", 'does', 'what', 'when', 'where', 'which', 'who', 'how',
+            'are', 'is', 'was', 'were', 'been', 'can', 'could', 'would', 'should',
+            'into', 'about', 'your', 'our', 'not', 'get', 'got', 'need', 'want',
+        ];
         $words = preg_split('/\s+/', strtolower($question)) ?: [];
         $terms = [];
         foreach ($words as $word) {
@@ -170,7 +260,7 @@ class HelpdeskAskService
             }
         }
 
-        return array_values(array_unique(array_slice($terms, 0, 6)));
+        return array_values(array_unique(array_slice($terms, 0, 8)));
     }
 
     private function plainAnswer(string $html): string

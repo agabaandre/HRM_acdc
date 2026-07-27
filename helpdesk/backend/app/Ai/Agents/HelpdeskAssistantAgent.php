@@ -6,7 +6,7 @@ use App\Ai\OpenAiCompatibleClient;
 use Illuminate\Support\Str;
 
 /**
- * Ask Helpdesk agent — structured troubleshooting guidance for staff.
+ * Ask Service Desk agent — structured troubleshooting guidance for staff.
  * Designed to align with Laravel AI SDK agent classes (instructions + prompt).
  */
 class HelpdeskAssistantAgent
@@ -18,16 +18,19 @@ class HelpdeskAssistantAgent
     public function instructions(): string
     {
         return <<<'PROMPT'
-You are Ask Helpdesk, the Africa CDC Service Desk virtual assistant.
+You are Ask Service Desk, the Africa CDC Service Desk virtual assistant.
 
 Your role:
 - Understand the user's service request or issue in plain language (IT, Protocol, HR, Finance, and other business units).
-- Search the provided knowledge-base excerpts first; prefer answers grounded in those articles.
+- Use ONLY the knowledge-base excerpts that clearly address the user's question.
+- If none of the excerpts are relevant, say you do not have a matching FAQ, set confidence to "low", set suggest_ticket to true, leave related_kb_article_ids empty, and do not invent steps from unrelated articles.
+- When excerpts are relevant, ground the summary and steps in those articles. Prefer adapting the FAQ wording over inventing new procedures.
 - Give clear, numbered troubleshooting steps the user can try before opening a ticket.
 - Be professional, concise, and calm. Use Africa CDC / corporate tone (no slang).
 - If the issue needs hands-on support, say so and recommend logging a ticket via "New request".
 - Never invent policy, credentials, or URLs not present in the knowledge base.
 - Never ask for passwords or MFA codes.
+- related_kb_article_ids must only include IDs from the provided excerpts that you actually used.
 
 Reply with JSON only, matching this schema:
 {
@@ -51,7 +54,8 @@ PROMPT;
         }
 
         $kbBlock = $this->formatKbContext($kbArticles);
-        $userPayload = "User question:\n".trim($question)."\n\nKnowledge base excerpts:\n".$kbBlock;
+        $userPayload = "User question:\n".trim($question)."\n\nKnowledge base excerpts (use only if relevant):\n".$kbBlock
+            ."\n\nRemember: ignore excerpts that do not match the question. Return JSON only.";
 
         $raw = $this->client->chat([
             ['role' => 'system', 'content' => $this->instructions()],
@@ -62,7 +66,27 @@ PROMPT;
             return null;
         }
 
-        return $this->parseStructuredResponse($raw);
+        $parsed = $this->parseStructuredResponse($raw);
+        if ($parsed === null) {
+            return null;
+        }
+
+        // Drop cited IDs that were not in the provided context.
+        $allowed = [];
+        foreach ($kbArticles as $article) {
+            $allowed[(int) $article['id']] = true;
+        }
+        $parsed['related_kb_article_ids'] = array_values(array_filter(
+            $parsed['related_kb_article_ids'],
+            fn (int $id) => isset($allowed[$id])
+        ));
+
+        if ($kbArticles === [] && $parsed['confidence'] !== 'low') {
+            $parsed['confidence'] = 'low';
+            $parsed['suggest_ticket'] = true;
+        }
+
+        return $parsed;
     }
 
     /**
@@ -92,6 +116,18 @@ PROMPT;
      */
     private function parseStructuredResponse(string $raw): ?array
     {
+        $raw = trim($raw);
+        // Some models wrap JSON in markdown fences.
+        if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $raw, $m)) {
+            $raw = $m[1];
+        } elseif (! str_starts_with($raw, '{')) {
+            $start = strpos($raw, '{');
+            $end = strrpos($raw, '}');
+            if ($start !== false && $end !== false && $end > $start) {
+                $raw = substr($raw, $start, $end - $start + 1);
+            }
+        }
+
         try {
             $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         } catch (\Throwable) {

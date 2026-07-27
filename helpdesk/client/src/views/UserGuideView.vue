@@ -11,7 +11,7 @@ const slides = [
     steps: [
       { title: 'Go to the Staff portal', text: 'Sign in at your usual Africa CDC Staff home (same login as Finance and APM).' },
       { title: 'Open Service Desk', text: 'From the home dashboard, choose Service Desk.' },
-      { title: 'Explore the home page', text: 'Browse FAQs, try Ask Helpdesk (AI assistant), or jump to Create ticket.' },
+      { title: 'Explore the home page', text: 'Browse FAQs, try Ask Service Desk (AI assistant), or jump to Create ticket.' },
     ],
     tip: 'If you see “No active session”, return to the Staff portal and open Helpdesk from there.',
   },
@@ -28,7 +28,7 @@ const slides = [
       { title: 'Describe the problem & add a screenshot', text: 'Explain what happened and when. Paste a screenshot (⌘V / Ctrl+V) or drag an image — up to 10 MB.' },
       { title: 'Submit', text: 'By default the ticket is for you. Use “another staff member” only when logging on someone else’s behalf. You can also email IT & MIS at helpdesk@africacdc.org when email intake is enabled.' },
     ],
-    tip: 'A screenshot saves back-and-forth email. Try Ask Helpdesk first if you only need a quick FAQ answer.',
+    tip: 'A screenshot saves back-and-forth email. Try Ask Service Desk first if you only need a quick FAQ answer.',
   },
   {
     num: 3,
