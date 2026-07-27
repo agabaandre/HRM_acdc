@@ -168,6 +168,7 @@ function submitForm() {
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+  color: #0f172a;
 }
 
 .kb-modal-head {
@@ -207,5 +208,61 @@ function submitForm() {
   color: #991b1b;
   border-radius: 4px;
   font-size: 0.875rem;
+}
+</style>
+
+<style>
+/* Unscoped so dark-mode field labels / inputs inside the custom modal stay readable */
+html.helpdesk-theme-dark .kb-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+html.helpdesk-theme-dark .kb-modal {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+html.helpdesk-theme-dark .kb-modal-head,
+html.helpdesk-theme-dark .kb-modal-foot {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: #1e293b !important;
+}
+
+html.helpdesk-theme-dark .kb-modal-title {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .kb-modal-body {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .kb-modal .hd-v-form-field__label,
+html.helpdesk-theme-dark .kb-modal .v-label,
+html.helpdesk-theme-dark .kb-modal .v-checkbox .v-label {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .kb-modal .v-field {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .kb-modal .v-field__input,
+html.helpdesk-theme-dark .kb-modal .v-select__selection-text {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .kb-modal .v-field--variant-outlined .v-field__outline {
+  color: rgba(148, 163, 184, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .kb-modal-err {
+  background: rgba(127, 29, 29, 0.35);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
 }
 </style>

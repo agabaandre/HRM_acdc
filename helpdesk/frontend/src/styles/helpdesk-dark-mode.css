@@ -455,6 +455,26 @@ html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-expansion-panel
   opacity: 1 !important;
 }
 
+/* Title row must not keep the light surface — that hides the question text */
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-home .kb-panels .v-expansion-panel-title {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active > .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel--active > .v-expansion-panel-title {
+  background: #152033 !important;
+  background-color: #152033 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-expansion-panel-title__overlay {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
 html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text,
 html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text__wrapper,
 html.helpdesk-theme-dark .hd-kb-card .kb-panel-text,
@@ -503,6 +523,25 @@ html.helpdesk-theme-dark .hd-kb-more-link {
 
 html.helpdesk-theme-dark .hd-kb-card .v-divider {
   border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+/* KB edit modal (custom backdrop, not UModal) */
+html.helpdesk-theme-dark .kb-modal {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+html.helpdesk-theme-dark .kb-modal-title {
+  color: #f1f5f9 !important;
+}
+html.helpdesk-theme-dark .kb-modal-head,
+html.helpdesk-theme-dark .kb-modal-foot {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+html.helpdesk-theme-dark .kb-modal .hd-v-form-field__label,
+html.helpdesk-theme-dark .kb-modal .v-label {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
 }
 
 html.helpdesk-theme-dark .hd-inline-link-btn {

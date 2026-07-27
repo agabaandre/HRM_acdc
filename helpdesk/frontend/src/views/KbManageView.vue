@@ -126,8 +126,8 @@ const tableCountLabel = computed(() =>
 const kbHeaders = computed((): DataTableHeader[] => [
   { title: '#', key: 'row_num', sortable: false, width: '52px', align: 'center' },
   { title: 'Category', key: 'category', sortable: false, minWidth: '120px' },
-  { title: 'Question', key: 'question', sortable: false, minWidth: '180px' },
-  { title: 'Answer preview', key: 'answer_preview', sortable: false, minWidth: '180px' },
+  { title: 'Question', key: 'question', sortable: false, minWidth: '160px' },
+  { title: 'Answer preview', key: 'answer_preview', sortable: false, width: '35%', minWidth: '220px' },
   { title: 'Sort', key: 'sort_order', sortable: false, width: '72px', align: 'center' },
   { title: 'Status', key: 'status', sortable: false, width: '100px' },
   { title: 'Last updated', key: 'updated_at', sortable: false, minWidth: '140px' },
@@ -386,9 +386,11 @@ onMounted(() => {
         </template>
 
         <template #item.answer_preview="{ item }">
-          <span class="hd-dt-truncate hd-dt-truncate--muted" :title="stripHtml(item.answer, 0)">
-            {{ stripHtml(item.answer) }}
-          </span>
+          <div
+            class="kb-answer-preview rich-text-content"
+            :title="stripHtml(item.answer, 0)"
+            v-html="item.answer"
+          />
         </template>
 
         <template #item.sort_order="{ item }">
@@ -505,5 +507,79 @@ onMounted(() => {
   font-size: 0.95rem;
   font-weight: 700;
   color: #1a1a1a;
+}
+.kb-answer-preview {
+  width: 100%;
+  max-width: 100%;
+  max-height: 7.5rem;
+  overflow: auto;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #475569;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.kb-answer-preview :deep(p) {
+  margin: 0 0 0.35rem;
+}
+.kb-answer-preview :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.kb-answer-preview :deep(ul),
+.kb-answer-preview :deep(ol) {
+  margin: 0.2rem 0 0.35rem;
+  padding-left: 1.1rem;
+}
+.kb-answer-preview :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.25rem 0;
+}
+.kb-answer-preview :deep(table) {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.72rem;
+  margin: 0.25rem 0;
+}
+.kb-answer-preview :deep(th),
+.kb-answer-preview :deep(td) {
+  border: 1px solid #cbd5e1;
+  padding: 0.2rem 0.35rem;
+  vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.kb-answer-preview :deep(th) {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+.kb-answer-preview :deep(a) {
+  color: #0d7a3a;
+  word-break: break-all;
+}
+</style>
+
+<style>
+html.helpdesk-theme-dark .create-panel-title {
+  color: #f1f5f9 !important;
+}
+html.helpdesk-theme-dark .kb-answer-preview {
+  color: #cbd5e1 !important;
+}
+html.helpdesk-theme-dark .kb-answer-preview th,
+html.helpdesk-theme-dark .kb-answer-preview td {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+html.helpdesk-theme-dark .kb-answer-preview th {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+html.helpdesk-theme-dark .kb-answer-preview a {
+  color: #4ade80 !important;
 }
 </style>

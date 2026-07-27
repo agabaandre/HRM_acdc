@@ -388,8 +388,12 @@ onMounted(() => {
 .kb-panels :deep(.v-expansion-panel) {
   border: 1px solid var(--hd-line);
   margin-bottom: 0.45rem;
-  background: #fff;
-  color: #1f2933;
+  background: var(--cbp-card-bg, #fff);
+  color: var(--cbp-card-text, #1f2933);
+}
+.kb-panels :deep(.v-expansion-panel-title) {
+  background: transparent;
+  color: inherit;
 }
 .kb-panels :deep(.v-expansion-panel--active) {
   border-color: rgba(17, 154, 72, 0.4);
@@ -536,6 +540,22 @@ html.helpdesk-theme-dark .hd-kb-card .kb-question,
 html.helpdesk-theme-dark .hd-kb-card .kb-question-wrap {
   color: #f1f5f9 !important;
   opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel-title {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active > .v-expansion-panel-title {
+  background: #152033 !important;
+  background-color: #152033 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-expansion-panel-title__overlay {
+  background: transparent !important;
+  opacity: 0 !important;
 }
 
 html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text,
