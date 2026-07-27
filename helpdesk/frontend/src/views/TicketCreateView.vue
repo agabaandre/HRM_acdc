@@ -61,14 +61,14 @@ const staffRows = ref<StaffRow[]>([])
 const selectedStaffId = ref<number | null>(null)
 const staffSearch = ref('')
 let staffSearchTimer: ReturnType<typeof setTimeout> | null = null
-let skipStaffSearchWatch = false
 
-/** End user: open ticket for another staff member (loads directory picker). */
+/**
+ * Open ticket for another staff member (directory picker).
+ * Staff/admins default to true; end users default to self.
+ */
 const forSomeoneElse = ref(false)
 
 const isStaff = computed(() => auth.me?.profile?.role && auth.me.profile.role !== 'user')
-
-const isEndUser = computed(() => auth.me?.profile?.role === 'user')
 
 const canAccessSoftwareRequests = computed(() => Boolean(auth.me))
 
@@ -76,7 +76,7 @@ function goToSoftwareRequests(): void {
   void router.push({ path: '/tools/software-requests', query: { tab: 'new' } })
 }
 
-const needsDirectoryPicker = computed(() => isStaff.value || (isEndUser.value && forSomeoneElse.value))
+const needsDirectoryPicker = computed(() => forSomeoneElse.value)
 
 const selfRequesterLine = computed(() => {
   const m = auth.me
@@ -98,27 +98,31 @@ const selectedStaffRow = computed(() => {
   return staffRows.value.find((s) => s.id === selectedStaffId.value) ?? null
 })
 
-const staffSelectItems = computed((): SelectNumberItem[] =>
-  staffRows.value.slice(0, 40).map((s) => ({
-    label: staffOptionLabel(s),
-    value: s.id,
-  })),
-)
-
-const isSelfRequester = computed(() => {
-  const myId = auth.me?.profile?.staff_id
-  return Boolean(myId && selectedStaffId.value === myId)
+const staffSelectItems = computed((): SelectNumberItem[] => {
+  const seen = new Set<number>()
+  const items: SelectNumberItem[] = []
+  const push = (s: StaffRow) => {
+    if (seen.has(s.id)) return
+    seen.add(s.id)
+    items.push({ label: staffOptionLabel(s), value: s.id })
+  }
+  const selected = selectedStaffRow.value
+  if (selected) push(selected)
+  for (const s of staffRows.value.slice(0, 40)) {
+    push(s)
+  }
+  return items
 })
 
 const selectedRequesterPreview = computed(() => {
-  if (isSelfRequester.value) {
-    return null
-  }
   const row = selectedStaffRow.value
   if (!row) {
     return null
   }
-  return staffOptionLabel(row)
+  const email = (row.work_email ?? '').trim() || '—'
+  const duty = (row.duty_station_name ?? '').trim()
+  const dutyPart = duty ? ` · Duty station: ${duty}` : ''
+  return `${row.name} · ${email} · Staff ID ${row.id}${dutyPart}`
 })
 
 const staffRequesterReady = computed(() => {
@@ -273,7 +277,7 @@ async function fetchStaffList() {
 }
 
 watch(staffSearch, () => {
-  if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
+  if (!needsDirectoryPicker.value) {
     return
   }
   if (staffSearchTimer) clearTimeout(staffSearchTimer)
@@ -306,58 +310,15 @@ async function retryDirectory() {
   await fetchStaffList()
 }
 
-function ensureSelfInStaffRows(): void {
-  const myId = auth.me?.profile?.staff_id
-  const profile = auth.me?.profile
-  if (!myId || !auth.me || !profile) {
-    return
-  }
-  if (staffRows.value.some((s) => s.id === myId)) {
-    return
-  }
-  staffRows.value.unshift({
-    id: myId,
-    name: auth.me.name,
-    work_email: auth.me.email ?? null,
-    division_id: profile.division_id ?? null,
-    directorate_id: profile.directorate_id ?? null,
-    duty_station_name: profile.duty_station ?? null,
-  })
-}
-
-/** Staff/agents: default requester to self; keep search empty (details shown below). */
-function preselectSelfRequester(): void {
-  if (!isStaff.value || !auth.me?.profile?.staff_id) {
-    return
-  }
-  const myId = auth.me.profile.staff_id
-  ensureSelfInStaffRows()
-  skipStaffSearchWatch = true
-  selectedStaffId.value = myId
-  staffSearch.value = ''
-  queueMicrotask(() => {
-    skipStaffSearchWatch = false
-  })
-}
-
-watch(selectedStaffId, () => {
-  if (!needsDirectoryPicker.value || skipStaffSearchWatch) {
-    return
-  }
-  // After a pick (or clear), keep the search box empty so the Selected line is the source of truth.
-  skipStaffSearchWatch = true
-  staffSearch.value = ''
-  queueMicrotask(() => {
-    skipStaffSearchWatch = false
-  })
-})
-
 onMounted(async () => {
+  // Staff/agents log for a colleague by default; end users log for themselves.
+  if (isStaff.value) {
+    forSomeoneElse.value = true
+  }
   await loadCats()
   if (needsDirectoryPicker.value) {
     await loadReferenceData()
     await fetchStaffList()
-    preselectSelfRequester()
   }
 })
 
@@ -450,7 +411,7 @@ async function submit() {
 
     <div v-show="activeTab === 'ticket'" class="cbp-card" :class="{ 'is-submitting': busy }" role="tabpanel">
       <p v-if="isStaff" class="ticket-lede">
-        Log a request for a colleague using the staff search. Name, work email, and duty station are taken from the directory when you submit.
+        By default this request is for <strong>another staff member</strong>. Search the directory to choose the requester, or turn the option off to log it for yourself.
       </p>
       <p v-else class="ticket-lede">
         By default this request is for <strong>you</strong> (from your session). Turn on “another staff member” only if you are opening the ticket on someone else’s behalf.
@@ -534,7 +495,7 @@ async function submit() {
           </UCheckbox>
         </UFormField>
 
-        <template v-if="isEndUser && !form.is_anonymous">
+        <template v-if="!form.is_anonymous">
           <UFormField name="for_someone_else" class="full">
             <UCheckbox v-model="forSomeoneElse" :disabled="busy">
               <template #label>
@@ -563,7 +524,6 @@ async function submit() {
               :items="staffSelectItems"
               searchable
               hide-details-label
-              hide-selection-text
               :disabled="busy || !!refErr"
               placeholder="Search name, email, or duty station…"
               class="w-full"
@@ -573,6 +533,9 @@ async function submit() {
               <strong>Selected:</strong> {{ selectedRequesterPreview }}
             </p>
             <p v-if="refErr" class="field-hint warn-inline">{{ refErr }}</p>
+            <p v-else class="field-hint">
+              Search by name, email, or duty station — same directory picker for all roles.
+            </p>
           </UFormField>
         </template>
 
