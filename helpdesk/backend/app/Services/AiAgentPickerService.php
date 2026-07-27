@@ -6,6 +6,7 @@ use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
+use App\Ai\OpenAiCompatibleClient;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 
@@ -80,14 +81,13 @@ class AiAgentPickerService
             $response = Http::timeout(15)
                 ->withToken($apiKey)
                 ->acceptJson()
-                ->post($endpoint.'/chat/completions', [
+                ->post($endpoint.'/chat/completions', array_merge([
                     'model' => $model,
-                    'max_tokens' => 60,
                     'messages' => [
                         ['role' => 'system', 'content' => $system],
                         ['role' => 'user', 'content' => json_encode($payload, JSON_THROW_ON_ERROR)],
                     ],
-                ]);
+                ], OpenAiCompatibleClient::completionLimitFields($model, 60)));
         } catch (\Throwable) {
             return null;
         }

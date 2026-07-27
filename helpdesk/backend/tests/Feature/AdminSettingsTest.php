@@ -67,7 +67,7 @@ class AdminSettingsTest extends TestCase
         Sanctum::actingAs($this->adminUser());
 
         HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_API_ENDPOINT, 'https://api.openai.com/v1');
-        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_MODEL_NAME, 'gpt-4o-mini');
+        HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_MODEL_NAME, 'gpt-5-mini');
         HelpdeskSetting::setValue(HelpdeskSetting::KEY_AI_ACTIVE, '1');
         HelpdeskSetting::setValue(
             HelpdeskSetting::KEY_AI_API_KEY,
@@ -87,6 +87,16 @@ class AdminSettingsTest extends TestCase
             ->assertJsonPath('data.ok', true)
             ->assertJsonPath('data.key_present', true)
             ->assertJsonPath('data.ai_active', true);
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            $data = $request->data();
+
+            return $request->url() === 'https://api.openai.com/v1/chat/completions'
+                && ($data['model'] ?? null) === 'gpt-5-mini'
+                && array_key_exists('max_completion_tokens', $data)
+                && ! array_key_exists('max_tokens', $data)
+                && ! array_key_exists('temperature', $data);
+        });
     }
 
     public function test_ai_test_fails_without_api_key(): void

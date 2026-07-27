@@ -49,9 +49,8 @@ class TicketSubjectAiService
             $response = Http::timeout(12)
                 ->withToken($apiKey)
                 ->acceptJson()
-                ->post($url, [
+                ->post($url, array_merge([
                     'model' => $model,
-                    'max_tokens' => 40,
                     'messages' => [
                         [
                             'role' => 'system',
@@ -62,7 +61,7 @@ class TicketSubjectAiService
                             'content' => $userText,
                         ],
                     ],
-                ]);
+                ], \App\Ai\OpenAiCompatibleClient::completionLimitFields($model, 40)));
             if (! $response->successful()) {
                 return '';
             }

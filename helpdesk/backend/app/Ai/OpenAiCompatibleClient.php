@@ -22,6 +22,39 @@ class OpenAiCompatibleClient
     }
 
     /**
+     * Newer OpenAI models (GPT-5 / o-series) reject `max_tokens` in favor of `max_completion_tokens`.
+     */
+    public static function usesMaxCompletionTokens(string $model): bool
+    {
+        $m = strtolower(trim($model));
+
+        return str_starts_with($m, 'gpt-5')
+            || str_starts_with($m, 'o1')
+            || str_starts_with($m, 'o3')
+            || str_starts_with($m, 'o4');
+    }
+
+    /**
+     * @return array{max_completion_tokens: int}|array{max_tokens: int}
+     */
+    public static function completionLimitFields(string $model, int $limit): array
+    {
+        if (self::usesMaxCompletionTokens($model)) {
+            return ['max_completion_tokens' => $limit];
+        }
+
+        return ['max_tokens' => $limit];
+    }
+
+    /**
+     * Reasoning-style models often only accept the default temperature.
+     */
+    public static function supportsCustomTemperature(string $model): bool
+    {
+        return ! self::usesMaxCompletionTokens($model);
+    }
+
+    /**
      * Probe the configured (or override) OpenAI-compatible endpoint with a tiny chat call.
      *
      * @return array{
@@ -92,20 +125,24 @@ class OpenAiCompatibleClient
         $started = microtime(true);
 
         try {
+            $payload = array_merge([
+                'model' => $model,
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => 'Reply with exactly: ok',
+                    ],
+                ],
+            ], self::completionLimitFields($model, 16));
+
+            if (self::supportsCustomTemperature($model)) {
+                $payload['temperature'] = 0;
+            }
+
             $response = Http::timeout(30)
                 ->withToken($apiKey)
                 ->acceptJson()
-                ->post($endpoint.'/chat/completions', [
-                    'model' => $model,
-                    'max_tokens' => 16,
-                    'temperature' => 0,
-                    'messages' => [
-                        [
-                            'role' => 'user',
-                            'content' => 'Reply with exactly: ok',
-                        ],
-                    ],
-                ]);
+                ->post($endpoint.'/chat/completions', $payload);
 
             $base['latency_ms'] = (int) round((microtime(true) - $started) * 1000);
             $base['http_status'] = $response->status();
@@ -154,16 +191,20 @@ class OpenAiCompatibleClient
         $model = (string) HelpdeskSetting::getValue(HelpdeskSetting::KEY_AI_MODEL_NAME, 'gpt-4o-mini');
 
         try {
+            $payload = array_merge([
+                'model' => $model,
+                'response_format' => ['type' => 'json_object'],
+                'messages' => $messages,
+            ], self::completionLimitFields($model, $maxTokens));
+
+            if (self::supportsCustomTemperature($model)) {
+                $payload['temperature'] = $temperature;
+            }
+
             $response = Http::timeout(45)
                 ->withToken($apiKey)
                 ->acceptJson()
-                ->post($endpoint.'/chat/completions', [
-                    'model' => $model,
-                    'max_tokens' => $maxTokens,
-                    'temperature' => $temperature,
-                    'response_format' => ['type' => 'json_object'],
-                    'messages' => $messages,
-                ]);
+                ->post($endpoint.'/chat/completions', $payload);
 
             if (! $response->successful()) {
                 return null;
