@@ -39,6 +39,40 @@ interface CategoryRow {
 
 const tab = ref<'categories' | 'business-units'>('categories')
 
+const catPage = ref(1)
+const catItemsPerPage = ref(25)
+const buPage = ref(1)
+const buItemsPerPage = ref(25)
+const itemsPerPageOptions = [10, 25, 50, 100, { value: -1, title: 'All' }] as const
+
+function listCountLabel(
+  total: number,
+  page: number,
+  perPage: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  if (total === 0) {
+    return `0 ${plural}`
+  }
+  const limit = perPage === -1 ? total : perPage
+  const start = (page - 1) * limit + 1
+  const end = perPage === -1 ? total : Math.min(total, page * perPage)
+  const noun = total === 1 ? singular : plural
+  if (start === 1 && end === total) {
+    return `${total} ${noun}`
+  }
+  return `${start}-${end} of ${total} ${plural}`
+}
+
+const catCountLabel = computed(() =>
+  listCountLabel(rows.value.length, catPage.value, catItemsPerPage.value, 'category', 'categories'),
+)
+
+const buCountLabel = computed(() =>
+  listCountLabel(units.value.length, buPage.value, buItemsPerPage.value, 'business unit', 'business units'),
+)
+
 const catHeaders: DataTableHeader[] = [
   { title: 'Name', key: 'name', sortable: false, minWidth: '180px' },
   { title: 'Business unit', key: 'business_unit', sortable: false, minWidth: '160px' },
@@ -500,13 +534,20 @@ onMounted(() => {
       </div>
 
       <v-card v-if="rows.length" class="cat-table-card" elevation="10">
+        <v-card-text class="hd-data-table-card__head">
+          <p class="table-count" role="status">
+            Showing <strong>{{ catCountLabel }}</strong>
+          </p>
+        </v-card-text>
         <v-data-table
+          v-model:page="catPage"
+          v-model:items-per-page="catItemsPerPage"
           :headers="catHeaders"
           :items="rows"
+          :items-per-page-options="[...itemsPerPageOptions]"
           item-value="id"
           density="comfortable"
           class="hd-data-table cat-table"
-          hide-default-footer
         >
           <template #item.name="{ item }">
             <strong>{{ item.name }}</strong>
@@ -589,13 +630,20 @@ onMounted(() => {
       </div>
 
       <v-card v-if="units.length" class="cat-table-card" elevation="10">
+        <v-card-text class="hd-data-table-card__head">
+          <p class="table-count" role="status">
+            Showing <strong>{{ buCountLabel }}</strong>
+          </p>
+        </v-card-text>
         <v-data-table
+          v-model:page="buPage"
+          v-model:items-per-page="buItemsPerPage"
           :headers="buHeaders"
           :items="units"
+          :items-per-page-options="[...itemsPerPageOptions]"
           item-value="id"
           density="comfortable"
           class="hd-data-table cat-table"
-          hide-default-footer
         >
           <template #item.name="{ item }">
             <strong>{{ item.name }}</strong>
@@ -609,8 +657,14 @@ onMounted(() => {
           <template #item.categories="{ item }">
             <div class="bu-cats">
               <span class="bu-cat-count">{{ item.categories_count ?? item.categories?.length ?? 0 }} linked</span>
-              <span v-for="c in (item.categories ?? []).slice(0, 4)" :key="c.id" class="bu-cat-chip">{{ c.name }}</span>
-              <span v-if="(item.categories?.length ?? 0) > 4" class="bu-cat-more">+{{ (item.categories?.length ?? 0) - 4 }} more</span>
+              <span
+                v-for="c in item.categories ?? []"
+                :key="c.id"
+                class="bu-cat-chip"
+                :class="{ 'bu-cat-chip--inactive': !c.is_active }"
+              >
+                {{ c.name }}
+              </span>
             </div>
           </template>
           <template #item.is_active="{ item }">
@@ -903,7 +957,12 @@ onMounted(() => {
   font-size: 0.72rem; background: #eef5f9; color: #3a4752;
   padding: 0.1rem 0.4rem; border-radius: 999px;
 }
-.bu-cat-more { font-size: 0.72rem; color: #768b9e; }
+.bu-cat-chip--inactive { opacity: 0.65; }
+.table-count {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
 .test-read-hint { margin: 0.4rem 0 0; font-size: 0.8rem; line-height: 1.4; }
 .test-read-err { margin: 0; color: #b91c1c; font-size: 0.9rem; }
 .test-read-body { display: flex; flex-direction: column; gap: 0.75rem; }
