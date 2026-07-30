@@ -449,15 +449,14 @@ $(document).ready(function () {
     }
     
     function updateTotalParticipants() {
-        let internalCount = 0;
+        // Count staff participant rows (division + other divisions). Do not use
+        // .hasClass('text-muted') — index cells also use text-muted and would skip every row.
+        let internalCount = $('#participantsTableBody tr[data-participant-id]').not('.participant-days-warning-row').length;
+        if (internalCount === 0) {
+            internalCount = ($('#internal_participants').val() || []).length;
+        }
 
-        $('#participantsTableBody tr').each(function () {
-            if (!$(this).find('td').hasClass('text-muted')) {
-                internalCount++;
-            }
-        });
-
-        const externalCount = parseInt($('#total_external_participants').val()) || 0;
+        const externalCount = parseInt($('#total_external_participants').val(), 10) || 0;
         const total = internalCount + externalCount;
 
         $('#total_participants_display').val(total);

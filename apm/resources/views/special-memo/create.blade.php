@@ -286,20 +286,19 @@ $(document).ready(function () {
         return $('#date_from').val() && $('#date_to').val();
     }
     function updateTotalParticipants() {
-    let internalCount = 0;
-
-    $('#participantsTableBody tr').each(function () {
-        if (!$(this).find('td').hasClass('text-muted')) {
-            internalCount++;
+        // Count staff participant rows (division + other divisions). Do not use
+        // .hasClass('text-muted') — index cells also use text-muted and would skip every row.
+        let internalCount = $('#participantsTableBody tr[data-participant-id]').not('.participant-days-warning-row').length;
+        if (internalCount === 0) {
+            internalCount = ($('#internal_participants').val() || []).length;
         }
-    });
 
-    const externalCount = parseInt($('#total_external_participants').val()) || 0;
-    const total = internalCount + externalCount;
+        const externalCount = parseInt($('#total_external_participants').val(), 10) || 0;
+        const total = internalCount + externalCount;
 
-    $('#total_participants_display').val(total);
-    $('#total_participants').val(total);
-}
+        $('#total_participants_display').val(total);
+        $('#total_participants').val(total);
+    }
     window.updateTotalParticipants = updateTotalParticipants;
 
 $('#internal_participants').on('change', function () {

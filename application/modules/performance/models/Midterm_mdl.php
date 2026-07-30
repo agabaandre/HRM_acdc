@@ -1235,6 +1235,7 @@ public function count_ppas_filtered($filters)
 /**
  * Returns staff who have submitted a PPA for the given period but have NOT submitted a midterm.
  * - Only considers staff with active contracts (status_id 1 or 2, not in excluded contract types).
+ * - Must have had a contract overlapping the performance period (excludes new hires for prior years).
  * - Only considers PPA entries that are not drafts (draft_status != 1).
  * - Returns staff details for those missing a midterm (midterm_draft_status is NULL or 1).
  */
@@ -1260,6 +1261,7 @@ public function get_staff_without_midterm($period = null, $division_id = null)
     $this->db->where_not_in('sc.contract_type_id', [1, 5, 3, 7]); // Exclude Regular, Fixed, AUYVC, ALD (same as PPA dashboard)
     $this->db->where("TRIM(s.work_email) !=", '');
     $this->db->where("TRIM(s.work_email) !=", 'xx%');
+    apply_performance_period_contract_overlap_exists($this->db, $period, [1, 3, 5, 7]);
 
     if ($division_id) {
         $this->db->where('sc.division_id', $division_id);

@@ -570,9 +570,10 @@ public function cron_register(){
 
     /**
      * @param int[] $staffIds
-     * @return int[] staff_ids whose latest contract has an allowed status
+     * @param string|null $period When set, also require a contract overlapping this performance period
+     * @return int[] staff_ids whose latest contract has an allowed status (and period overlap when requested)
      */
-    private function filter_staff_ids_by_allowed_latest_contract(array $staffIds)
+    private function filter_staff_ids_by_allowed_latest_contract(array $staffIds, $period = null)
     {
         $staffIds = array_values(array_unique(array_filter(array_map('intval', $staffIds))));
         if ($staffIds === []) {
@@ -598,20 +599,44 @@ public function cron_register(){
         foreach ($this->db->get()->result() as $row) {
             $out[] = (int) $row->staff_id;
         }
+        $out = array_values(array_unique($out));
 
-        return array_values(array_unique($out));
+        $range = performance_period_date_range($period);
+        if ($range === null || $out === []) {
+            return $out;
+        }
+
+        list($periodFrom, $periodTo) = $range;
+        $pf = $this->db->escape($periodFrom);
+        $pt = $this->db->escape($periodTo);
+
+        $this->db->select('sc.staff_id', false);
+        $this->db->distinct();
+        $this->db->from('staff_contracts sc');
+        $this->db->where_in('sc.staff_id', $out);
+        $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
+        $this->db->where('sc.start_date <= ' . $pt, null, false);
+        $this->db->where('(sc.end_date IS NULL OR sc.end_date >= ' . $pf . ' OR sc.end_date < \'1900-01-01\')', null, false);
+
+        $periodOk = [];
+        foreach ($this->db->get()->result() as $row) {
+            $periodOk[] = (int) $row->staff_id;
+        }
+
+        return array_values(array_unique($periodOk));
     }
 
     /**
      * Whether this person should receive (or appear on) performance-related reminder emails.
+     * Pass $period for staff whose reminders are for a specific year (new hires without that year are excluded).
      */
-    private function staff_has_allowed_contract_for_performance_reminders($staffId)
+    private function staff_has_allowed_contract_for_performance_reminders($staffId, $period = null)
     {
         $staffId = (int) $staffId;
         if ($staffId <= 0) {
             return false;
         }
-        $ok = $this->filter_staff_ids_by_allowed_latest_contract([$staffId]);
+        $ok = $this->filter_staff_ids_by_allowed_latest_contract([$staffId], $period);
 
         return in_array($staffId, $ok, true);
     }
@@ -634,7 +659,7 @@ $days_remaining = days_to_ppa_deadline();
          foreach ($staff_list as $s) {
              $staffIdsForContract[] = (int) $s->staff_id;
          }
-         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract, $current_period));
 
          foreach ($staff_list as $staff) {
              if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
@@ -657,7 +682,7 @@ $days_remaining = days_to_ppa_deadline();
          }
      }
  } 
-
+ 
  //notify staff on midterms
  public function notify_unsubmitted_midterms()
  {
@@ -674,7 +699,7 @@ $days_remaining = days_to_ppa_deadline();
          foreach ($staff_list as $s) {
              $staffIdsForContract[] = (int) $s->staff_id;
          }
-         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+         $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract, $current_period));
 
          foreach ($staff_list as $staff) {
              if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
@@ -739,7 +764,7 @@ public function notify_supervisors_pending_ppas()
         foreach ($pending_list as $row) {
             $pendingStaffIds[] = (int) $row->staff_id;
         }
-        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
+        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds, $current_period));
         $pendingFiltered = [];
         foreach ($pending_list as $row) {
             if (isset($allowedPendingFlip[(int) $row->staff_id])) {
@@ -804,7 +829,7 @@ public function notify_supervisors_pending_midterms()
         foreach ($pending_list as $row) {
             $pendingStaffIds[] = (int) $row->staff_id;
         }
-        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
+        $allowedPendingFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds, $current_period));
         $pendingFiltered = [];
         foreach ($pending_list as $row) {
             if (isset($allowedPendingFlip[(int) $row->staff_id])) {
@@ -875,7 +900,7 @@ public function notify_unsubmitted_endterms()
         foreach ($staff_list as $s) {
             $staffIdsForContract[] = (int) $s->staff_id;
         }
-        $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract));
+        $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($staffIdsForContract, $period));
 
         foreach ($staff_list as $staff) {
             if (!isset($allowedStaffFlip[(int) $staff->staff_id])) {
@@ -1037,15 +1062,11 @@ public function notify_supervisors_pending_performance_approval()
         }
 
         if (!empty($pendingList)) {
-            $pendingStaffIds = [];
-            foreach ($pendingList as $pRow) {
-                $pendingStaffIds[] = (int) ($pRow['staff_id'] ?? 0);
-            }
-            $allowedPendingStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract($pendingStaffIds));
             $pendingFiltered = [];
             foreach ($pendingList as $pRow) {
                 $sid = (int) ($pRow['staff_id'] ?? 0);
-                if ($sid > 0 && isset($allowedPendingStaffFlip[$sid])) {
+                $rowPeriod = $pRow['period'] ?? null;
+                if ($sid > 0 && $this->staff_has_allowed_contract_for_performance_reminders($sid, $rowPeriod)) {
                     $pendingFiltered[] = $pRow;
                 }
             }
@@ -1136,17 +1157,19 @@ private function notify_first_supervisors_pending_endterms($current_period, $dea
     
     $pending_endterms = $this->db->get()->result();
 
-    $contractCheckIds = [];
+    $staffIds = [];
+    $supervisorIds = [];
     foreach ($pending_endterms as $entry) {
-        $contractCheckIds[] = (int) $entry->staff_id;
-        $contractCheckIds[] = (int) $entry->supervisor_id;
+        $staffIds[] = (int) $entry->staff_id;
+        $supervisorIds[] = (int) $entry->supervisor_id;
     }
-    $allowedContractFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($contractCheckIds))));
+    $allowedStaffFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($staffIds)), $current_period));
+    $allowedSupervisorFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($supervisorIds))));
 
     // Group by supervisor
     $supervisor_pending = [];
     foreach ($pending_endterms as $entry) {
-        if (!isset($allowedContractFlip[(int) $entry->staff_id]) || !isset($allowedContractFlip[(int) $entry->supervisor_id])) {
+        if (!isset($allowedStaffFlip[(int) $entry->staff_id]) || !isset($allowedSupervisorFlip[(int) $entry->supervisor_id])) {
             continue;
         }
         if (!isset($supervisor_pending[$entry->supervisor_id])) {
@@ -1232,7 +1255,7 @@ private function notify_staff_consent_pending_endterms($current_period, $deadlin
     foreach ($pending_consent as $entry) {
         $consentStaffIds[] = (int) $entry->staff_id;
     }
-    $allowedConsentFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($consentStaffIds))));
+    $allowedConsentFlip = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($consentStaffIds)), $current_period));
 
     foreach ($pending_consent as $entry) {
         if (!isset($allowedConsentFlip[(int) $entry->staff_id])) {
@@ -1310,17 +1333,19 @@ private function notify_second_supervisors_pending_endterms($current_period, $de
 
     $pending_endterms = $this->db->get()->result();
 
-    $contractCheckIds2 = [];
+    $staffIds2 = [];
+    $supervisorIds2 = [];
     foreach ($pending_endterms as $entry) {
-        $contractCheckIds2[] = (int) $entry->staff_id;
-        $contractCheckIds2[] = (int) $entry->supervisor_id;
+        $staffIds2[] = (int) $entry->staff_id;
+        $supervisorIds2[] = (int) $entry->supervisor_id;
     }
-    $allowedContractFlip2 = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($contractCheckIds2))));
+    $allowedStaffFlip2 = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($staffIds2)), $current_period));
+    $allowedSupervisorFlip2 = array_flip($this->filter_staff_ids_by_allowed_latest_contract(array_values(array_unique($supervisorIds2))));
 
     // Group by supervisor
     $supervisor_pending = [];
     foreach ($pending_endterms as $entry) {
-        if (!isset($allowedContractFlip2[(int) $entry->staff_id]) || !isset($allowedContractFlip2[(int) $entry->supervisor_id])) {
+        if (!isset($allowedStaffFlip2[(int) $entry->staff_id]) || !isset($allowedSupervisorFlip2[(int) $entry->supervisor_id])) {
             continue;
         }
         if (!isset($supervisor_pending[$entry->supervisor_id])) {

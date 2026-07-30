@@ -924,6 +924,120 @@ if (!function_exists('previous_period')) {
     }
 }
 
+if (!function_exists('performance_period_date_range')) {
+
+    /**
+     * Parse a performance period label into [Y-m-d from, Y-m-d to].
+     * Accepts "January 2025 to December 2025" or "January-2025-to-December-2025".
+     *
+     * @param string|null $period
+     * @return array{0:string,1:string}|null
+     */
+    function performance_period_date_range($period)
+    {
+        $period = trim((string) $period);
+        if ($period === '') {
+            return null;
+        }
+
+        // Prefer explicit years in the label (handles both spaced and hyphenated forms).
+        if (preg_match('/(\d{4}).*?(\d{4})/', $period, $m)) {
+            $y1 = (int) $m[1];
+            $y2 = (int) $m[2];
+            if ($y1 > 1990 && $y2 >= $y1 && $y2 < 2100) {
+                return [sprintf('%04d-01-01', $y1), sprintf('%04d-12-31', $y2)];
+            }
+        }
+
+        if (preg_match('/(\d{4})/', $period, $m)) {
+            $y = (int) $m[1];
+            if ($y > 1990 && $y < 2100) {
+                return [sprintf('%04d-01-01', $y), sprintf('%04d-12-31', $y)];
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('staff_has_contract_overlapping_performance_period')) {
+
+    /**
+     * Whether staff_id has at least one non-excluded contract overlapping the performance period.
+     * Open-ended / legacy invalid end dates are treated as still open (same as Staff History).
+     *
+     * @param int $staffId
+     * @param string|null $period
+     * @param int[] $excludedContractTypeIds
+     */
+    function staff_has_contract_overlapping_performance_period($staffId, $period, array $excludedContractTypeIds = [1, 3, 5, 7])
+    {
+        $staffId = (int) $staffId;
+        $range = performance_period_date_range($period);
+        if ($staffId <= 0 || $range === null) {
+            return false;
+        }
+
+        $ci = &get_instance();
+        list($periodFrom, $periodTo) = $range;
+        $pf = $ci->db->escape($periodFrom);
+        $pt = $ci->db->escape($periodTo);
+
+        $ci->db->from('staff_contracts sc');
+        $ci->db->where('sc.staff_id', $staffId);
+        $ci->db->where('sc.start_date <= ' . $pt, null, false);
+        $ci->db->where('(sc.end_date IS NULL OR sc.end_date >= ' . $pf . ' OR sc.end_date < \'1900-01-01\')', null, false);
+        if ($excludedContractTypeIds !== []) {
+            $ci->db->where_not_in('sc.contract_type_id', array_map('intval', $excludedContractTypeIds));
+        }
+
+        return $ci->db->count_all_results() > 0;
+    }
+}
+
+if (!function_exists('apply_performance_period_contract_overlap_exists')) {
+
+    /**
+     * Restrict a query already joined to staff `s` so only staff with a contract
+     * overlapping the performance period are included.
+     *
+     * @param CI_DB_query_builder $db
+     * @param string|null $period
+     * @param int[] $excludedContractTypeIds
+     * @return bool true when a period filter was applied
+     */
+    function apply_performance_period_contract_overlap_exists($db, $period, array $excludedContractTypeIds = [1, 3, 5, 7])
+    {
+        $range = performance_period_date_range($period);
+        if ($range === null) {
+            return false;
+        }
+
+        list($periodFrom, $periodTo) = $range;
+        $pf = $db->escape($periodFrom);
+        $pt = $db->escape($periodTo);
+        $typeSql = '';
+        if ($excludedContractTypeIds !== []) {
+            $ids = implode(',', array_map('intval', $excludedContractTypeIds));
+            $typeSql = ' AND sc_period.contract_type_id NOT IN (' . $ids . ')';
+        }
+
+        $db->where(
+            "EXISTS (
+                SELECT 1 FROM staff_contracts sc_period
+                WHERE sc_period.staff_id = s.staff_id
+                  AND sc_period.start_date <= {$pt}
+                  AND (sc_period.end_date IS NULL OR sc_period.end_date >= {$pf} OR sc_period.end_date < '1900-01-01')
+                  {$typeSql}
+            )",
+            null,
+            false
+        );
+
+        return true;
+    }
+}
+
 if (!function_exists('endterm_reminder_period')) {
 
     /**

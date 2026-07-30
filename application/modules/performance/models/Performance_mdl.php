@@ -1317,7 +1317,7 @@ public function count_ppas_filtered($filters)
 
 public function get_staff_without_ppa($period = null, $division_id = null)
 {
-    // STEP 1: Get latest contract for each staff
+    // STEP 1: Get latest contract for each staff (must still be Active/Due today)
     $subquery = $this->db->select('MAX(staff_contract_id)', false)
         ->from('staff_contracts')
         ->group_by('staff_id')
@@ -1337,7 +1337,8 @@ public function get_staff_without_ppa($period = null, $division_id = null)
     $this->db->where_not_in('sc.contract_type_id', [1, 3, 5, 7]);
     $this->db->where("TRIM(s.work_email) !=", '');
     $this->db->where("TRIM(s.work_email) !=", 'xx%');
-    // Excluded contract types
+    // Must have had a contract overlapping the reminder period (excludes new hires for prior years)
+    apply_performance_period_contract_overlap_exists($this->db, $period, [1, 3, 5, 7]);
 
     if ($division_id) {
         $this->db->where('sc.division_id', $division_id);
