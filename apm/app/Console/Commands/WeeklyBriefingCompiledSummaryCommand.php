@@ -273,7 +273,7 @@ HTML;
                 }
 
                 $dirLabelEsc = htmlspecialchars($dirLabel, ENT_QUOTES, 'UTF-8');
-                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for your directorate (as the director assigned on the <strong>directorates</strong> table). Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary for the same directorate scope.</p>';
+                $combinedInner = '<p>Please find attached (1) the <strong>Director report</strong>, comprising submitted <strong>Weekly brief</strong> returns for your directorate scope (director assigned on the <strong>directorates</strong> table and/or as division director). Reporting week: <strong>'.$weekHuman.'</strong> This package is <strong>not</strong> the organisation-wide compiled document sent to central recipients. (2) A completion summary for the same directorate scope.</p>';
                 $combinedSubject = 'Weekly brief — director report — '.$dirLabel.' — W'.$w.'/'.$y.WeeklyBriefingMailTemplate::subjectSuffix();
                 if ($directorStaff && WeeklyBriefingNotificationMailer::sendToStaff($directorStaff, $combinedSubject, 'Weekly brief — director report', $combinedInner, 'weekly_briefing_director_compiled', null, $attachments)) {
                     $compiledDispatched = true;

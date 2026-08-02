@@ -338,7 +338,7 @@
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" name="cc_division_hod_on_compiled" value="1" id="ccHod" @checked(old('cc_division_hod_on_compiled', $settings->cc_division_hod_on_compiled))>
-                    <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each <strong>directorate director</strong> (from the <code>directorates</code> table) a <strong>separate director report</strong> for their directorate scope (submitted briefs under that directorate — not the organisation-wide compiled pack) plus a completion summary for that scope only. Directorates without a director are skipped for the director copy.</label>
+                    <label class="form-check-label" for="ccHod">Email division HoDs their division’s submitted briefing PDF; email each <strong>director</strong> (from <code>directorates.director_id</code> and/or <code>divisions.director_id</code> / active director OIC) a <strong>separate director report</strong> for their directorate scope (submitted briefs under that scope — not the organisation-wide compiled pack) plus a completion summary for that scope only. Directors with no submitted briefs in their scope for the week are skipped.</label>
                 </div>
                 <input type="hidden" name="compiled_exclude_unreviewed_director_divisions" value="0">
                 <div class="form-check mb-2">
