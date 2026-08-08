@@ -27,15 +27,16 @@ final class DivisionWeeklyBriefGate
         return $r === 10;
     }
 
-    public static function isListedContributor(int $staffId): bool
+    public static function isListedContributor(?int $staffId = null): bool
     {
-        if ($staffId <= 0) {
+        $sid = $staffId ?? self::sessionStaffId();
+        if ($sid <= 0) {
             return false;
         }
 
         return WeeklyBriefingSetting::current()
             ->contributors()
-            ->where('staff_id', $staffId)
+            ->where('staff_id', $sid)
             ->exists();
     }
 
