@@ -51,6 +51,9 @@ if ($report->requiresDirectorReview()) {
         echo '<br><span style="font-size:8.5pt;color:#64748b;">Trail: '.htmlspecialchars($trailSum, ENT_QUOTES, 'UTF-8').'</span>';
     }
 }
+$directorComments = method_exists($report, 'directorCommentsPlain')
+    ? $report->directorCommentsPlain()
+    : trim((string) ($report->director_comments ?? ''));
 ?>
     <?php
 if ($report->submitted_by_staff_id && $report->submittedBy) {
@@ -124,6 +127,13 @@ if (count($bodyRows) > 0) {
     } ?>
     </tbody>
 </table>
+
+<?php if ($directorComments !== '') { ?>
+<h2>Director comments</h2>
+<div class="rich" style="border:1px solid #94a3b8;padding:10px;background:#f8fafc;white-space:pre-wrap;">
+<?php echo htmlspecialchars($directorComments, ENT_QUOTES, 'UTF-8'); ?>
+</div>
+<?php } ?>
 
 <div class="footer">Africa CDC · Weekly brief · Generated <?php echo date('Y-m-d H:i'); ?></div>
 </body>

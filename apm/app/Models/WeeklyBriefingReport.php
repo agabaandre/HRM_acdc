@@ -31,6 +31,7 @@ class WeeklyBriefingReport extends Model
         'director_reviewed_at',
         'director_reviewed_by_staff_id',
         'director_review_trail',
+        'director_comments',
     ];
 
     protected function casts(): array
@@ -211,18 +212,28 @@ class WeeklyBriefingReport extends Model
     /**
      * @param  'edited'|'reviewed'  $action
      */
-    public function appendDirectorReviewTrail(string $action, int $staffId): void
+    public function appendDirectorReviewTrail(string $action, int $staffId, ?string $comment = null): void
     {
         $trail = $this->director_review_trail;
         if (! is_array($trail)) {
             $trail = [];
         }
-        $trail[] = [
+        $entry = [
             'at' => now()->toIso8601String(),
             'staff_id' => $staffId,
             'action' => $action,
         ];
+        $comment = is_string($comment) ? trim($comment) : '';
+        if ($comment !== '') {
+            $entry['comment'] = $comment;
+        }
+        $trail[] = $entry;
         $this->director_review_trail = $trail;
+    }
+
+    public function directorCommentsPlain(): string
+    {
+        return trim((string) ($this->director_comments ?? ''));
     }
 
     public function appendSubmissionFiledOnBehalfTrail(int $filerStaffId, int $attributedToStaffId): void

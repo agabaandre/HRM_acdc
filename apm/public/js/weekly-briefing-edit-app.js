@@ -15,7 +15,7 @@
         window.ApmVuetifyPage.destroy(MOUNT_ID);
         mountEl.innerHTML = '';
 
-        const { createApp, ref, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, onMounted, nextTick } = Vue;
         const { createVuetify } = Vuetify;
 
         const vuetify = createVuetify({
@@ -152,9 +152,97 @@
                     }
                 }
 
-                function confirmDirectorReview(e) {
-                    if (!window.confirm('Record that you have reviewed this weekly briefing?')) {
-                        e.preventDefault();
+                const reviewDialog = ref(false);
+                const reviewLoading = ref(false);
+                const reviewSubmitting = ref(false);
+                const reviewError = ref('');
+                const reviewComments = ref(cfg.report?.director_comments || '');
+                const reviewPayload = ref(null);
+
+                const reviewSection1 = computed(() => {
+                    const rows = reviewPayload.value?.section1;
+                    if (Array.isArray(rows) && rows.length) return rows;
+                    return (cfg.section1 || [])
+                        .map((row, idx) => ({
+                            n: idx + 1,
+                            major_happening: row.major_happening || '',
+                            description_key_actions: row.description_key_actions || '',
+                            strategic_relevance: row.strategic_relevance || '',
+                        }))
+                        .filter((row) => {
+                            const plain = [row.major_happening, row.description_key_actions, row.strategic_relevance]
+                                .map((v) => String(v || '').replace(/<[^>]+>/g, '').trim())
+                                .join('');
+                            return plain !== '';
+                        });
+                });
+
+                const reviewSection2 = computed(() => {
+                    const rows = reviewPayload.value?.section2;
+                    if (Array.isArray(rows) && rows.length) return rows;
+                    return (section2.value || []).filter((row) => {
+                        const plain = [row.issue, row.impact_risk, row.required_action]
+                            .map((v) => String(v || '').replace(/<[^>]+>/g, '').trim())
+                            .join('');
+                        return plain !== '';
+                    });
+                });
+
+                async function openDirectorReviewModal() {
+                    reviewError.value = '';
+                    reviewDialog.value = true;
+                    reviewLoading.value = true;
+                    reviewPayload.value = null;
+                    reviewComments.value = cfg.report?.director_comments || '';
+                    try {
+                        if (cfg.directorReviewModalUrl) {
+                            const res = await fetch(cfg.directorReviewModalUrl, {
+                                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                                credentials: 'same-origin',
+                            });
+                            const json = await res.json();
+                            if (!res.ok) {
+                                throw new Error(json.message || 'Could not load director review.');
+                            }
+                            reviewPayload.value = json.data || null;
+                            if (reviewPayload.value?.director_comments != null) {
+                                reviewComments.value = reviewPayload.value.director_comments;
+                            }
+                        }
+                    } catch (err) {
+                        reviewError.value = err && err.message ? err.message : 'Could not load director review.';
+                    } finally {
+                        reviewLoading.value = false;
+                    }
+                }
+
+                async function submitDirectorReview() {
+                    if (!cfg.canMarkDirectorReview || !cfg.directorReviewUrl) return;
+                    reviewSubmitting.value = true;
+                    reviewError.value = '';
+                    try {
+                        const body = new FormData();
+                        body.append('_token', cfg.csrfToken);
+                        body.append('director_comments', reviewComments.value || '');
+                        const res = await fetch(cfg.directorReviewUrl, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                            body,
+                        });
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Could not save director review.');
+                        }
+                        reviewDialog.value = false;
+                        window.location.href = cfg.routes?.edit || window.location.pathname + window.location.search;
+                    } catch (err) {
+                        reviewError.value = err && err.message ? err.message : 'Could not save director review.';
+                    } finally {
+                        reviewSubmitting.value = false;
                     }
                 }
 
@@ -166,6 +254,9 @@
                             if (form && cfg.formEditable) {
                                 form.addEventListener('submit', onFormSubmit);
                             }
+                            if (cfg.openDirectorReviewModal && cfg.canMarkDirectorReview) {
+                                openDirectorReviewModal();
+                            }
                         });
                     });
                 });
@@ -175,7 +266,16 @@
                     section2,
                     addBottleneck,
                     removeBottleneck,
-                    confirmDirectorReview,
+                    reviewDialog,
+                    reviewLoading,
+                    reviewSubmitting,
+                    reviewError,
+                    reviewComments,
+                    reviewPayload,
+                    reviewSection1,
+                    reviewSection2,
+                    openDirectorReviewModal,
+                    submitDirectorReview,
                 };
             },
             template: `
@@ -249,24 +349,127 @@
         <v-icon icon="mdi-account-tie" class="me-2"></v-icon>Director review
       </v-card-title>
       <v-card-text>
-        <p v-if="cfg.report.director_review_reviewed" class="mb-0 text-success font-weight-medium">
+        <p v-if="cfg.report.director_review_reviewed" class="mb-2 text-success font-weight-medium">
           Reviewed<span v-if="cfg.report.director_label"> · {{ cfg.report.director_label }}</span>
         </p>
-        <p v-else class="mb-0 font-weight-medium">
+        <p v-else class="mb-2 font-weight-medium">
           Yet to be reviewed<span v-if="cfg.report.director_label"> · {{ cfg.report.director_label }}</span>
         </p>
-        <form
+        <div v-if="cfg.report.director_comments" class="mb-3">
+          <div class="text-caption text-medium-emphasis mb-1">Director comments</div>
+          <div class="text-body-2" style="white-space: pre-wrap;">{{ cfg.report.director_comments }}</div>
+        </div>
+        <v-btn
           v-if="cfg.canMarkDirectorReview"
-          method="post"
-          :action="cfg.directorReviewUrl"
-          class="mt-3"
-          @submit="confirmDirectorReview"
-        >
-          <input type="hidden" name="_token" :value="cfg.csrfToken">
-          <v-btn type="submit" color="success" prepend-icon="mdi-check-circle">Mark reviewed by director</v-btn>
-        </form>
+          color="success"
+          prepend-icon="mdi-comment-check-outline"
+          @click="openDirectorReviewModal"
+        >Review &amp; comment</v-btn>
+        <v-btn
+          v-else-if="cfg.report.director_review_reviewed"
+          variant="outlined"
+          color="primary"
+          class="ms-2"
+          prepend-icon="mdi-eye-outline"
+          @click="openDirectorReviewModal"
+        >View review</v-btn>
       </v-card-text>
     </v-card>
+
+    <v-dialog v-model="reviewDialog" max-width="960" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
+          <span>
+            <v-icon icon="mdi-account-tie" class="me-2"></v-icon>
+            Director review
+          </span>
+          <v-btn icon="mdi-close" variant="text" @click="reviewDialog = false"></v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text style="max-height: 70vh;">
+          <v-alert v-if="reviewError" type="error" variant="tonal" density="compact" class="mb-3">{{ reviewError }}</v-alert>
+          <div v-if="reviewLoading" class="py-8 text-center text-medium-emphasis">Loading division report…</div>
+          <template v-else>
+            <div class="mb-4">
+              <div class="text-h6 font-weight-bold">{{ (reviewPayload && reviewPayload.week_range) || cfg.report.week_range }}</div>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <v-chip v-if="(reviewPayload && reviewPayload.directorate_name) || cfg.report.directorate_name" color="info" variant="tonal" size="small">
+                  {{ (reviewPayload && reviewPayload.directorate_name) || cfg.report.directorate_name }}
+                </v-chip>
+                <v-chip color="secondary" variant="tonal" size="small">
+                  {{ (reviewPayload && reviewPayload.unit_label) || cfg.report.unit_label }}
+                </v-chip>
+              </div>
+              <div class="text-caption text-medium-emphasis mt-2">
+                Review the division report below, then add comments and mark reviewed. Comments appear on this division’s PDF.
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="text-subtitle-2 font-weight-bold text-primary mb-2">Section 1 — Major happenings</div>
+              <div v-if="!reviewSection1.length" class="text-medium-emphasis text-body-2 mb-3">No major happenings recorded.</div>
+              <v-card v-for="row in reviewSection1" :key="'rs1-' + row.n" variant="outlined" class="mb-2">
+                <v-card-text class="py-3">
+                  <div class="text-caption text-medium-emphasis mb-1">#{{ row.n }} Major happening</div>
+                  <div class="mb-2" v-html="row.major_happening || '—'"></div>
+                  <div class="text-caption text-medium-emphasis mb-1">Description &amp; key actions</div>
+                  <div class="mb-2" v-html="row.description_key_actions || '—'"></div>
+                  <div class="text-caption text-medium-emphasis mb-1">Strategic relevance</div>
+                  <div v-html="row.strategic_relevance || '—'"></div>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <div class="mb-4">
+              <div class="text-subtitle-2 font-weight-bold mb-2">Section 2 — Bottlenecks</div>
+              <div v-if="!reviewSection2.length" class="text-medium-emphasis text-body-2 mb-3">No bottlenecks recorded.</div>
+              <v-card v-for="(row, idx) in reviewSection2" :key="'rs2-' + idx" variant="outlined" class="mb-2">
+                <v-card-text class="py-3">
+                  <div class="text-caption text-medium-emphasis mb-1">Issue</div>
+                  <div class="mb-2" v-html="row.issue || '—'"></div>
+                  <div class="text-caption text-medium-emphasis mb-1">Impact / risk</div>
+                  <div class="mb-2" v-html="row.impact_risk || '—'"></div>
+                  <div class="text-caption text-medium-emphasis mb-1">Required action</div>
+                  <div v-html="row.required_action || '—'"></div>
+                </v-card-text>
+              </v-card>
+            </div>
+
+            <v-textarea
+              v-model="reviewComments"
+              label="Director comments on approval"
+              placeholder="Optional comments for this division’s weekly brief (shown on the PDF)…"
+              rows="4"
+              auto-grow
+              variant="outlined"
+              :readonly="!(reviewPayload ? reviewPayload.can_mark : cfg.canMarkDirectorReview)"
+              counter="5000"
+              maxlength="5000"
+            ></v-textarea>
+          </template>
+        </v-card-text>
+        <v-divider></v-divider>
+        <v-card-actions class="pa-4">
+          <v-btn
+            v-if="(reviewPayload && reviewPayload.pdf_url) || cfg.routes.pdf"
+            :href="(reviewPayload && reviewPayload.pdf_url) || cfg.routes.pdf"
+            target="_blank"
+            variant="text"
+            prepend-icon="mdi-file-pdf-box"
+          >Open PDF</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="reviewDialog = false">Close</v-btn>
+          <v-btn
+            v-if="reviewPayload ? reviewPayload.can_mark : cfg.canMarkDirectorReview"
+            color="success"
+            prepend-icon="mdi-check-circle"
+            :loading="reviewSubmitting"
+            :disabled="reviewLoading"
+            @click="submitDirectorReview"
+          >Mark reviewed</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <form id="weekly-briefing-form" method="post" :action="cfg.updateUrl">
       <input type="hidden" name="_token" :value="cfg.csrfToken">

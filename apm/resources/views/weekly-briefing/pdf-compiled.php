@@ -191,6 +191,18 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
         </tbody>
     </table>
     <?php } ?>
+
+    <?php
+    $directorComments = method_exists($report, 'directorCommentsPlain')
+        ? $report->directorCommentsPlain()
+        : trim((string) ($report->director_comments ?? ''));
+    if ($directorComments !== '') {
+        echo '<h3 class="section-title">Director comments</h3>';
+        echo '<div class="cell-rich" style="border:1px solid #94a3b8;padding:8px;background:#f8fafc;white-space:pre-wrap;">'
+            .htmlspecialchars($directorComments, ENT_QUOTES, 'UTF-8')
+            .'</div>';
+    }
+    ?>
 </div>
 <?php } ?>
 </body>

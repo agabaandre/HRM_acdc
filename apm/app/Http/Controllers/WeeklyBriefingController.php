@@ -14,6 +14,7 @@ use App\Services\WeeklyBriefingContributionKeyResolver;
 use App\Services\WeeklyBriefingCompletionSummary;
 use App\Services\WeeklyBriefingDirectorateCombined;
 use App\Services\WeeklyBriefingWindowService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -574,6 +575,7 @@ class WeeklyBriefingController extends Controller
                 'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
                 'director_review_reviewed' => $report->isDirectorReviewed(),
                 'director_label' => $directorLabel,
+                'director_comments' => $report->directorCommentsPlain(),
                 'show_director_review_block' => $report->requiresDirectorReview()
                     && $report->status === WeeklyBriefingReport::STATUS_SUBMITTED,
             ],
@@ -587,8 +589,11 @@ class WeeklyBriefingController extends Controller
             'section2' => $section2,
             'updateUrl' => route('weekly-briefing.update', $report),
             'directorReviewUrl' => route('weekly-briefing.director-review', $report),
+            'directorReviewModalUrl' => route('weekly-briefing.director-review-modal', $report),
+            'openDirectorReviewModal' => (bool) request()->boolean('review'),
             'routes' => [
                 'index' => route('weekly-briefing.index'),
+                'edit' => route('weekly-briefing.edit', $report),
                 'pdf' => route('weekly-briefing.pdf', $report),
             ],
         ];
@@ -709,7 +714,28 @@ class WeeklyBriefingController extends Controller
         return redirect()->route('weekly-briefing.edit', $report)->with('status', $msg);
     }
 
-    public function directorReview(WeeklyBriefingReport $report): RedirectResponse
+    /**
+     * JSON payload for the director-review modal (hub + edit).
+     */
+    public function directorReviewModal(WeeklyBriefingReport $report): JsonResponse
+    {
+        $this->assertDivisionWeeklyBriefModuleAccess();
+        $this->assertCanViewReport($report);
+        if (! DivisionWeeklyBriefGate::mayDirectorAccessReportOnHub($report) && ! DivisionWeeklyBriefGate::mayMarkDirectorReview($report)) {
+            abort(403);
+        }
+
+        $window = new WeeklyBriefingWindowService;
+        $canMark = DivisionWeeklyBriefGate::mayMarkDirectorReview($report)
+            && $window->canMarkDirectorReview($report)
+            && ! $report->isDirectorReviewed();
+
+        return response()->json([
+            'data' => $this->buildDirectorReviewModalPayload($report, $canMark),
+        ]);
+    }
+
+    public function directorReview(Request $request, WeeklyBriefingReport $report): RedirectResponse|JsonResponse
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
         $this->assertCanViewReport($report);
@@ -718,16 +744,115 @@ class WeeklyBriefingController extends Controller
         }
         $window = new WeeklyBriefingWindowService;
         if (! $window->canMarkDirectorReview($report)) {
-            return back()->with('error', 'Director review cannot be recorded (deadline passed or briefing locked — use an administrative unlock in settings if appropriate).');
+            $message = 'Director review cannot be recorded (deadline passed or briefing locked — use an administrative unlock in settings if appropriate).';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
+        if ($report->isDirectorReviewed()) {
+            $message = 'This briefing has already been marked as reviewed by a director.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
+
+        $validated = $request->validate([
+            'director_comments' => ['nullable', 'string', 'max:5000'],
+        ]);
+        $comments = trim((string) ($validated['director_comments'] ?? ''));
+        $staffId = (int) user_session('staff_id');
+
         $report->director_reviewed_at = now();
-        $report->director_reviewed_by_staff_id = (int) user_session('staff_id');
-        $report->appendDirectorReviewTrail('reviewed', (int) user_session('staff_id'));
+        $report->director_reviewed_by_staff_id = $staffId;
+        $report->director_comments = $comments !== '' ? $comments : null;
+        $report->appendDirectorReviewTrail('reviewed', $staffId, $comments !== '' ? $comments : null);
         $report->save();
 
-        return redirect()->route('weekly-briefing.edit', $report)
-            ->with('status', 'Recorded as reviewed by director.');
+        $status = 'Recorded as reviewed by director.'.($comments !== '' ? ' Comments saved for the division PDF.' : '');
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => $status,
+                'data' => [
+                    'director_review_line' => $report->directorReviewSummaryLine(),
+                    'director_review_reviewed' => true,
+                    'director_comments' => $report->directorCommentsPlain(),
+                ],
+            ]);
+        }
+
+        return redirect()->route('weekly-briefing.edit', $report)->with('status', $status);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDirectorReviewModalPayload(WeeklyBriefingReport $report, bool $canMark): array
+    {
+        $report->loadMissing(['division', 'directorate', 'submittedBy', 'directorReviewedBy']);
+
+        $section1 = [];
+        foreach ($report->section1RowsForForm() as $idx => $row) {
+            $mh = trim((string) ($row['major_happening'] ?? ''));
+            $desc = trim((string) ($row['description_key_actions'] ?? ''));
+            $strat = trim((string) ($row['strategic_relevance'] ?? ''));
+            if (trim(strip_tags($mh)) === '' && trim(strip_tags($desc)) === '' && trim(strip_tags($strat)) === '') {
+                continue;
+            }
+            $section1[] = [
+                'n' => $idx + 1,
+                'major_happening' => $mh,
+                'description_key_actions' => $desc,
+                'strategic_relevance' => $strat,
+            ];
+        }
+
+        $section2 = [];
+        foreach ($report->section2RowsForForm() as $row) {
+            $issue = trim((string) ($row['issue'] ?? ''));
+            $impact = trim((string) ($row['impact_risk'] ?? ''));
+            $action = trim((string) ($row['required_action'] ?? ''));
+            if (trim(strip_tags($issue)) === '' && trim(strip_tags($impact)) === '' && trim(strip_tags($action)) === '') {
+                continue;
+            }
+            $section2[] = [
+                'issue' => $issue,
+                'impact_risk' => $impact,
+                'required_action' => $action,
+            ];
+        }
+
+        $submittedBy = '';
+        if ($report->submittedBy) {
+            $submittedBy = trim((string) ($report->submittedBy->name ?? ''));
+        }
+
+        return [
+            'report_id' => (int) $report->id,
+            'week_range' => WeeklyBriefingReport::humanIsoWeekRangeInline(
+                (int) $report->report_iso_week_year,
+                (int) $report->report_iso_week
+            ),
+            'unit_label' => $report->contributionEntityLabel(),
+            'directorate_name' => $report->directorate?->name,
+            'division_name' => $report->division?->division_name,
+            'status' => (string) $report->status,
+            'submitted_by' => $submittedBy !== '' ? $submittedBy : null,
+            'submitted_at' => $report->submitted_at?->format('M j, Y g:i A'),
+            'director_label' => $report->assignedDirectorDisplayName(),
+            'director_review_reviewed' => $report->isDirectorReviewed(),
+            'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
+            'director_comments' => $report->directorCommentsPlain(),
+            'can_mark' => $canMark,
+            'section1' => $section1,
+            'section2' => $section2,
+            'pdf_url' => route('weekly-briefing.pdf', $report),
+            'submit_url' => route('weekly-briefing.director-review', $report),
+        ];
     }
 
     public function pdf(WeeklyBriefingReport $report)
@@ -1016,7 +1141,7 @@ class WeeklyBriefingController extends Controller
         bool $hubCanViewAllReports,
     ): array {
         $hubSubtitle = $hubShowsDirectorateOversight
-            ? 'You are viewing submission status for divisions in your directorate; open Director review on submitted briefs to review and mark complete.'
+            ? 'You are viewing submission status for divisions in your directorate; open Director review on submitted briefs to add comments and mark complete.'
             : (DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant()
                 ? 'You may file weekly briefs for divisions where you are the admin assistant (on behalf of the division head).'
                 : 'Contributors edit assigned units.');
@@ -1163,6 +1288,7 @@ class WeeklyBriefingController extends Controller
                 ['value' => 'submitted', 'title' => 'Submitted'],
                 ['value' => 'locked', 'title' => 'Locked'],
             ],
+            'csrfToken' => csrf_token(),
             'headerActions' => [
                 'filingWeekReports' => $filingWeekReports->map(fn (WeeklyBriefingReport $r) => [
                     'id' => (int) $r->id,
@@ -1197,7 +1323,7 @@ class WeeklyBriefingController extends Controller
     /**
      * @param  array<string, true>  $filingKeySet
      * @param  array<string, true>  $directorReviewKeySet
-     * @return list<array{label: string, url: string, variant: string, color: string, target?: string}>
+     * @return list<array<string, mixed>>
      */
     private function weeklyBriefHubActionsForRow(
         ?WeeklyBriefingReport $report,
@@ -1217,12 +1343,32 @@ class WeeklyBriefingController extends Controller
             if ($hubCanViewAllReports) {
                 $actions[] = ['label' => 'View', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'secondary'];
                 $actions[] = ['label' => 'PDF', 'url' => route('weekly-briefing.pdf', $report), 'variant' => 'outlined', 'color' => 'secondary', 'target' => '_blank'];
+                if ($canDirectorReview) {
+                    $actions[] = [
+                        'label' => 'Director review',
+                        'url' => route('weekly-briefing.edit', ['report' => $report, 'review' => 1]),
+                        'variant' => 'tonal',
+                        'color' => 'info',
+                        'action' => 'director_review',
+                        'modal_url' => route('weekly-briefing.director-review-modal', $report),
+                        'submit_url' => route('weekly-briefing.director-review', $report),
+                    ];
+                }
             } else {
                 if ($canFile) {
                     $actions[] = ['label' => 'Edit', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'primary'];
-                } elseif ($canDirectorReview) {
-                    $actions[] = ['label' => 'Director review', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'tonal', 'color' => 'info'];
-                } elseif ($canDirectorView) {
+                }
+                if ($canDirectorReview) {
+                    $actions[] = [
+                        'label' => 'Director review',
+                        'url' => route('weekly-briefing.edit', ['report' => $report, 'review' => 1]),
+                        'variant' => 'tonal',
+                        'color' => 'info',
+                        'action' => 'director_review',
+                        'modal_url' => route('weekly-briefing.director-review-modal', $report),
+                        'submit_url' => route('weekly-briefing.director-review', $report),
+                    ];
+                } elseif ($canDirectorView && ! $canFile) {
                     $actions[] = ['label' => 'View', 'url' => route('weekly-briefing.edit', $report), 'variant' => 'outlined', 'color' => 'secondary'];
                 }
                 if ($canFile || $canDirectorView || $canDirectorReview) {
