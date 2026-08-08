@@ -98,7 +98,13 @@ $compiledPdfMetaHtml = $compiledPdfMetaHtml ?? null;
         if ($sn === '') {
             $sn = 'Staff #'.(int) $report->submitted_by_staff_id;
         }
+        $onBehalf = method_exists($report, 'submissionOnBehalfDisplayLine')
+            ? $report->submissionOnBehalfDisplayLine()
+            : null;
         echo ' · Submitted by: <strong>'.htmlspecialchars($sn, ENT_QUOTES, 'UTF-8').'</strong>';
+        if ($onBehalf !== null && $onBehalf !== '') {
+            echo ' · <strong>'.htmlspecialchars($onBehalf, ENT_QUOTES, 'UTF-8').'</strong>';
+        }
         if ($report->submitted_at) {
             echo ' ('.htmlspecialchars($report->submitted_at->format('Y-m-d H:i'), ENT_QUOTES, 'UTF-8').')';
         }

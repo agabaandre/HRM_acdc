@@ -28,7 +28,7 @@ class WeeklyBriefingSettingsController extends Controller
     {
         abort_unless(DivisionWeeklyBriefGate::isSystemAdmin(), 403);
 
-        $settings = WeeklyBriefingSetting::current()->load(['contributors.staff', 'contributors.apmDivision']);
+        $settings = WeeklyBriefingSetting::current()->load(['contributors.staff', 'contributors.delegateStaff', 'contributors.apmDivision']);
 
         $staffList = Staff::query()->active()
             ->orderBy('lname')
@@ -94,6 +94,7 @@ class WeeklyBriefingSettingsController extends Controller
             ],
             'contributors' => 'nullable|array',
             'contributors.*.staff_id' => 'nullable|integer',
+            'contributors.*.delegate_staff_id' => 'nullable|integer',
             'contributors.*.apm_division_id' => 'nullable|integer',
             'contributors.*.contribution_kind' => 'nullable|in:division,directorate',
             'contributors.*.contribution_division_id' => 'nullable|integer',
@@ -152,8 +153,18 @@ class WeeklyBriefingSettingsController extends Controller
             if (! Staff::query()->whereKey($staffId)->exists()) {
                 return back()->withInput()->with('error', 'Invalid staff selected.');
             }
+            $delegateId = (int) ($row['delegate_staff_id'] ?? 0);
+            if ($delegateId > 0) {
+                if ($delegateId === $staffId) {
+                    return back()->withInput()->with('error', 'Delegate cannot be the same person as the main contributor.');
+                }
+                if (! Staff::query()->whereKey($delegateId)->exists()) {
+                    return back()->withInput()->with('error', 'Invalid delegate staff selected.');
+                }
+            }
             $normalized[] = [
                 'staff_id' => $staffId,
+                'delegate_staff_id' => $delegateId > 0 ? $delegateId : null,
                 'apm_division_id' => $apmDivisionId,
                 'contribution_key' => $key,
                 'display_name' => ($hasPdfLabel ? Str::limit($rowDisplay, 255, '') : null),

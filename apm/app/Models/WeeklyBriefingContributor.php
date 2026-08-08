@@ -11,6 +11,7 @@ class WeeklyBriefingContributor extends Model
     protected $fillable = [
         'weekly_briefing_setting_id',
         'staff_id',
+        'delegate_staff_id',
         'apm_division_id',
         'contribution_key',
         'display_name',
@@ -21,6 +22,7 @@ class WeeklyBriefingContributor extends Model
         return [
             'weekly_briefing_setting_id' => 'integer',
             'staff_id' => 'integer',
+            'delegate_staff_id' => 'integer',
             'apm_division_id' => 'integer',
         ];
     }
@@ -94,6 +96,11 @@ class WeeklyBriefingContributor extends Model
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
+    }
+
+    public function delegateStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'delegate_staff_id', 'staff_id');
     }
 
     public function apmDivision(): BelongsTo

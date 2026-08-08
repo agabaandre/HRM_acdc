@@ -13,9 +13,11 @@ class WeeklyBriefingSubmissionAttributionTest extends TestCase
         $report->appendSubmissionFiledOnBehalfTrail(42, 99);
 
         $this->assertSame(42, $report->submissionFiledOnBehalfByStaffId());
-        $summary = $report->directorReviewTrailSummary();
-        $this->assertStringContainsString('submitted on behalf of staff #99', $summary);
-        $this->assertStringContainsString('by staff #42', $summary);
+        $trail = $report->director_review_trail;
+        $this->assertIsArray($trail);
+        $this->assertSame('submitted_on_behalf', $trail[0]['action'] ?? null);
+        $this->assertSame(42, (int) ($trail[0]['staff_id'] ?? 0));
+        $this->assertSame(99, (int) ($trail[0]['attributed_to_staff_id'] ?? 0));
     }
 
     public function test_submission_filed_on_behalf_uses_latest_entry(): void

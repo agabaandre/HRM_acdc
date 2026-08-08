@@ -262,6 +262,48 @@
                     }
                 }
 
+                const delegationRows = ref(
+                    (cfg.delegation?.rows || []).map((row) => ({
+                        ...row,
+                        saving: false,
+                        message: '',
+                        error: '',
+                    }))
+                );
+                const delegationStaffOptions = cfg.delegation?.staffOptions || [];
+
+                async function saveDelegation(row) {
+                    if (!row?.update_url) return;
+                    row.saving = true;
+                    row.message = '';
+                    row.error = '';
+                    try {
+                        const body = new FormData();
+                        body.append('_token', cfg.csrfToken || '');
+                        body.append('_method', 'PUT');
+                        body.append('delegate_staff_id', row.delegate_staff_id || '');
+                        const res = await fetch(row.update_url, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                            body,
+                        });
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            throw new Error(json.message || 'Could not save delegate.');
+                        }
+                        row.delegate_staff_id = json.data?.delegate_staff_id || '';
+                        row.message = json.message || 'Delegate saved.';
+                    } catch (err) {
+                        row.error = err && err.message ? err.message : 'Could not save delegate.';
+                    } finally {
+                        row.saving = false;
+                    }
+                }
+
                 return {
                     cfg,
                     tab,
@@ -290,6 +332,9 @@
                     openDirectorReview,
                     onHubAction,
                     submitDirectorReview,
+                    delegationRows,
+                    delegationStaffOptions,
+                    saveDelegation,
                 };
             },
             template: `
@@ -360,6 +405,41 @@
       </v-card-title>
     </v-card>
 
+    <v-card v-if="delegationRows.length" class="mb-4" elevation="1">
+      <v-card-title class="text-subtitle-1 font-weight-bold py-3">
+        <v-icon icon="mdi-account-arrow-right" class="me-2"></v-icon>
+        Filing delegate
+      </v-card-title>
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-3">
+          Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
+          Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
+          System administrators can also set this in Weekly brief settings.
+        </p>
+        <div v-for="row in delegationRows" :key="row.id" class="mb-3">
+          <div class="text-body-2 font-weight-medium mb-2">{{ row.label }}</div>
+          <v-row dense align="center">
+            <v-col cols="12" md="8">
+              <v-select
+                v-model="row.delegate_staff_id"
+                :items="delegationStaffOptions"
+                item-title="title"
+                item-value="value"
+                label="Delegate"
+                hide-details
+                clearable
+              ></v-select>
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-btn color="primary" :loading="row.saving" @click="saveDelegation(row)">Save delegate</v-btn>
+            </v-col>
+          </v-row>
+          <v-alert v-if="row.message" type="success" variant="tonal" density="compact" class="mt-2">{{ row.message }}</v-alert>
+          <v-alert v-if="row.error" type="error" variant="tonal" density="compact" class="mt-2">{{ row.error }}</v-alert>
+        </div>
+      </v-card-text>
+    </v-card>
+
     <v-card elevation="1">
       <v-tabs :model-value="tab" @update:model-value="switchTab" color="primary" class="apm-vuetify-tabs px-2">
         <v-tab value="this_week">This reporting week</v-tab>
@@ -402,6 +482,7 @@
               <template #item.label="{ item }">
                 <div class="font-weight-medium">{{ item.label }}</div>
                 <div v-if="item.staff_name" class="text-caption text-medium-emphasis">{{ item.staff_name }}</div>
+                <div v-if="item.delegate_name" class="text-caption text-medium-emphasis">Delegate: {{ item.delegate_name }}</div>
               </template>
               <template #item.directorate="{ item }">
                 <div v-if="item.directorate_name" class="text-body-2 font-weight-medium">{{ item.directorate_name }}</div>
@@ -540,6 +621,7 @@
               <div v-if="reviewPayload.submitted_by" class="text-caption text-medium-emphasis mt-2">
                 Submitted by <strong>{{ reviewPayload.submitted_by }}</strong>
                 <span v-if="reviewPayload.submitted_at"> · {{ reviewPayload.submitted_at }}</span>
+                <span v-if="reviewPayload.filed_on_behalf_line"> · <strong>{{ reviewPayload.filed_on_behalf_line }}</strong></span>
               </div>
               <div class="text-caption text-medium-emphasis mt-2">
                 Review the division report below, then add comments and mark reviewed. Comments appear on this division’s PDF.

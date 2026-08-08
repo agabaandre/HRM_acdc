@@ -136,9 +136,33 @@ final class DivisionWeeklyBriefGate
         $sid = self::sessionStaffId();
 
         return self::isListedContributor($sid)
+            || self::isListedDelegate($sid)
             || self::isListedReportViewer($sid)
             || self::mayActAsDivisionDirector($sid)
             || self::mayActAsDivisionAdminAssistant($sid);
+    }
+
+    /**
+     * True when this staff is configured as a filing delegate on at least one contributor row.
+     */
+    public static function isListedDelegate(?int $staffId = null): bool
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+        if ($sid <= 0) {
+            return false;
+        }
+
+        return WeeklyBriefingSetting::current()
+            ->contributors()
+            ->where('delegate_staff_id', $sid)
+            ->exists();
+    }
+
+    public static function contributorRowVisibleToDelegate(WeeklyBriefingContributor $contributor, ?int $staffId = null): bool
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+
+        return $sid > 0 && (int) ($contributor->delegate_staff_id ?? 0) === $sid;
     }
 
     /**
@@ -459,7 +483,10 @@ final class DivisionWeeklyBriefGate
             ->all();
 
         foreach (WeeklyBriefingSetting::current()->contributors()->get() as $contributor) {
-            if (! self::contributorRowVisibleToAdminAssistant($contributor, $staffId)) {
+            if (
+                ! self::contributorRowVisibleToAdminAssistant($contributor, $staffId)
+                && ! self::contributorRowVisibleToDelegate($contributor, $staffId)
+            ) {
                 continue;
             }
             $key = WeeklyBriefingContributionKeyResolver::effectiveKeyForContributor($contributor);
@@ -515,7 +542,7 @@ final class DivisionWeeklyBriefGate
             return collect();
         }
 
-        $q = $settings->contributors()->with(['staff', 'apmDivision'])->orderBy('id');
+        $q = $settings->contributors()->with(['staff', 'delegateStaff', 'apmDivision'])->orderBy('id');
 
         if (self::mayViewAllConfiguredReportsOnHub()) {
             return $q->get();
@@ -525,6 +552,10 @@ final class DivisionWeeklyBriefGate
 
         return $q->get()->filter(function (WeeklyBriefingContributor $c) use ($sid): bool {
             if ((int) ($c->staff_id ?? 0) === $sid) {
+                return true;
+            }
+
+            if (self::contributorRowVisibleToDelegate($c, $sid)) {
                 return true;
             }
 
@@ -565,6 +596,10 @@ final class DivisionWeeklyBriefGate
             }
 
             if ((int) ($contributor->staff_id ?? 0) === $uid) {
+                return $contributor;
+            }
+
+            if (self::contributorRowVisibleToDelegate($contributor, $uid)) {
                 return $contributor;
             }
 
@@ -641,6 +676,7 @@ final class DivisionWeeklyBriefGate
         $uid = self::sessionStaffId();
 
         return self::userIsContributorForReport($uid, $report)
+            || self::userIsDelegateForReport($uid, $report)
             || self::userIsAdminAssistantForReport($uid, $report)
             || self::mayViewAsDivisionDirector($report);
     }
@@ -654,6 +690,7 @@ final class DivisionWeeklyBriefGate
         $uid = self::sessionStaffId();
 
         return self::userIsContributorForReport($uid, $report)
+            || self::userIsDelegateForReport($uid, $report)
             || self::userIsAdminAssistantForReport($uid, $report);
     }
 
@@ -662,6 +699,37 @@ final class DivisionWeeklyBriefGate
         $sid = $staffId ?? self::sessionStaffId();
 
         return self::userIsAdminAssistantForReport($sid, $report);
+    }
+
+    public static function mayEditReportAsDelegate(WeeklyBriefingReport $report, ?int $staffId = null): bool
+    {
+        $sid = $staffId ?? self::sessionStaffId();
+
+        return self::userIsDelegateForReport($sid, $report);
+    }
+
+    /**
+     * True when the session user is filing for someone else (delegate or admin assistant).
+     */
+    public static function mayEditReportOnBehalf(WeeklyBriefingReport $report, ?int $staffId = null): bool
+    {
+        return self::mayEditReportAsDelegate($report, $staffId)
+            || self::mayEditReportAsAdminAssistant($report, $staffId);
+    }
+
+    private static function userIsDelegateForReport(int $staffId, WeeklyBriefingReport $report): bool
+    {
+        if ($staffId <= 0) {
+            return false;
+        }
+
+        foreach (WeeklyBriefingSetting::current()->contributors()->where('delegate_staff_id', $staffId)->get() as $contributor) {
+            if (WeeklyBriefingContributionKeyResolver::contributorOwnsReport($contributor, $report)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -705,6 +773,41 @@ final class DivisionWeeklyBriefGate
         $session = self::sessionStaffId();
 
         return $session > 0 ? $session : 0;
+    }
+
+    /**
+     * True when the session user (or admin) may set the filing delegate on this contributor row.
+     * Division heads manage their own rows; system admins may set a delegate for any head.
+     */
+    public static function mayManageContributorDelegate(WeeklyBriefingContributor $contributor, ?int $staffId = null): bool
+    {
+        if (self::isSystemAdmin()) {
+            return true;
+        }
+
+        $sid = $staffId ?? self::sessionStaffId();
+
+        return $sid > 0 && (int) ($contributor->staff_id ?? 0) === $sid;
+    }
+
+    /**
+     * Contributor rows the session user may assign a filing delegate for (own rows only; admins use settings).
+     *
+     * @return Collection<int, WeeklyBriefingContributor>
+     */
+    public static function contributorRowsForSelfDelegation(): Collection
+    {
+        $sid = self::sessionStaffId();
+        if ($sid <= 0 || ! self::canAccessModule()) {
+            return collect();
+        }
+
+        return WeeklyBriefingSetting::current()
+            ->contributors()
+            ->with(['staff', 'delegateStaff', 'apmDivision'])
+            ->where('staff_id', $sid)
+            ->orderBy('id')
+            ->get();
     }
 
     /**

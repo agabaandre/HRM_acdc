@@ -289,7 +289,11 @@
     <v-alert v-if="cfg.flash?.status" type="success" variant="tonal" density="compact" class="mb-3">{{ cfg.flash.status }}</v-alert>
     <v-alert v-if="cfg.flash?.error" type="error" variant="tonal" density="compact" class="mb-3">{{ cfg.flash.error }}</v-alert>
 
-    <v-alert v-if="cfg.filingAsAdminAssistant" type="info" variant="tonal" class="mb-3">
+    <v-alert v-if="cfg.filingAsDelegate" type="info" variant="tonal" class="mb-3">
+      <strong>Filing as a delegate.</strong>
+      You are completing this weekly brief on behalf of the configured division head. When you submit, the briefing is attributed to the main contributor and your name is shown as filing on their behalf.
+    </v-alert>
+    <v-alert v-else-if="cfg.filingAsAdminAssistant" type="info" variant="tonal" class="mb-3">
       <strong>Filing on behalf of the division head.</strong>
       You are the admin assistant for this division. When you submit, the briefing is attributed to the division head; your filing is recorded on the completion trail.
     </v-alert>
@@ -328,7 +332,8 @@
           <div v-if="cfg.report.submitted_by" class="text-caption text-medium-emphasis mt-2">
             Submitted by <strong>{{ cfg.report.submitted_by }}</strong>
             <span v-if="cfg.report.submitted_at"> · {{ cfg.report.submitted_at }}</span>
-            <span v-if="cfg.report.filed_on_behalf_by"> · Filed by admin assistant <strong>{{ cfg.report.filed_on_behalf_by }}</strong></span>
+            <span v-if="cfg.report.filed_on_behalf_line"> · <strong>{{ cfg.report.filed_on_behalf_line }}</strong></span>
+            <span v-else-if="cfg.report.filed_on_behalf_by"> · Filed by <strong>{{ cfg.report.filed_on_behalf_by }}</strong></span>
           </div>
         </div>
         <div class="text-end">

@@ -341,6 +341,66 @@ class WeeklyBriefingController extends Controller
         return view('weekly-briefing.index', compact('pageConfig'));
     }
 
+    /**
+     * Division heads (or admins) assign a filing delegate for a contributor row.
+     */
+    public function updateDelegate(Request $request, WeeklyBriefingContributor $contributor): JsonResponse|RedirectResponse
+    {
+        $this->assertDivisionWeeklyBriefModuleAccess();
+        abort_unless(DivisionWeeklyBriefGate::mayManageContributorDelegate($contributor), 403);
+
+        $data = $request->validate([
+            'delegate_staff_id' => 'nullable|integer',
+        ]);
+        $delegateId = (int) ($data['delegate_staff_id'] ?? 0);
+        $mainStaffId = (int) ($contributor->staff_id ?? 0);
+
+        if ($delegateId > 0) {
+            if ($delegateId === $mainStaffId) {
+                $message = 'Delegate cannot be the same person as the main contributor.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['message' => $message], 422);
+                }
+
+                return back()->with('error', $message);
+            }
+            if (! Staff::query()->whereKey($delegateId)->exists()) {
+                $message = 'Invalid delegate staff selected.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['message' => $message], 422);
+                }
+
+                return back()->with('error', $message);
+            }
+        }
+
+        $contributor->delegate_staff_id = $delegateId > 0 ? $delegateId : null;
+        $contributor->save();
+        $contributor->load('delegateStaff');
+
+        $delegateName = '';
+        if ($contributor->delegateStaff) {
+            $delegateName = trim((string) ($contributor->delegateStaff->name ?? ''));
+        }
+
+        $status = $delegateId > 0
+            ? 'Delegate saved. They may complete this unit’s weekly brief on your behalf.'
+            : 'Delegate cleared.';
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => $status,
+                'data' => [
+                    'contributor_id' => (int) $contributor->id,
+                    'delegate_staff_id' => $delegateId > 0 ? $delegateId : null,
+                    'delegate_name' => $delegateName !== '' ? $delegateName : null,
+                ],
+            ]);
+        }
+
+        return redirect()->route('weekly-briefing.index')->with('status', $status);
+    }
+
     public function create(Request $request): RedirectResponse
     {
         $this->assertDivisionWeeklyBriefModuleAccess();
@@ -426,6 +486,8 @@ class WeeklyBriefingController extends Controller
         $formEditable = $canContributorEdit || $canDirectorEdit;
         $unlockOverrideActive = $settings->reportUnlockOverrideAppliesTo($report);
         $filingAsAdminAssistant = DivisionWeeklyBriefGate::mayEditReportAsAdminAssistant($report);
+        $filingAsDelegate = DivisionWeeklyBriefGate::mayEditReportAsDelegate($report);
+        $filingOnBehalf = DivisionWeeklyBriefGate::mayEditReportOnBehalf($report);
         $filedOnBehalfBy = null;
         $filedOnBehalfStaffId = $report->submissionFiledOnBehalfByStaffId();
         if ($filedOnBehalfStaffId) {
@@ -442,6 +504,8 @@ class WeeklyBriefingController extends Controller
             $formEditable,
             $unlockOverrideActive,
             $filingAsAdminAssistant,
+            $filingAsDelegate,
+            $filingOnBehalf,
             $filedOnBehalfBy
         );
 
@@ -461,6 +525,8 @@ class WeeklyBriefingController extends Controller
         bool $formEditable,
         bool $unlockOverrideActive,
         bool $filingAsAdminAssistant,
+        bool $filingAsDelegate,
+        bool $filingOnBehalf,
         ?Staff $filedOnBehalfBy,
     ): array {
         $submissionDeadline = $report->submissionDeadline($settings);
@@ -524,6 +590,7 @@ class WeeklyBriefingController extends Controller
                 $filedOnBehalfName = 'Staff #'.(int) $filedOnBehalfBy->staff_id;
             }
         }
+        $filedOnBehalfLine = $report->submissionOnBehalfDisplayLine();
 
         $assignedDirectorName = $report->requiresDirectorReview() ? $report->assignedDirectorDisplayName() : '';
         $reviewerName = '';
@@ -544,6 +611,8 @@ class WeeklyBriefingController extends Controller
             'formEditable' => $formEditable,
             'hubViewOnly' => $hubViewOnly,
             'filingAsAdminAssistant' => $filingAsAdminAssistant,
+            'filingAsDelegate' => $filingAsDelegate,
+            'filingOnBehalf' => $filingOnBehalf,
             'unlockOverrideActive' => $unlockOverrideActive,
             'unlockUntil' => $unlockOverrideActive && $settings->report_unlock_override_until
                 ? $settings->report_unlock_override_until->timezone(config('app.timezone'))->format('M j, Y g:i A')
@@ -571,6 +640,7 @@ class WeeklyBriefingController extends Controller
                 'submitted_by' => $submittedByName ?: null,
                 'submitted_at' => $report->submitted_at?->format('M j, Y g:i A'),
                 'filed_on_behalf_by' => $filedOnBehalfName,
+                'filed_on_behalf_line' => $filedOnBehalfLine,
                 'requires_director_review' => $report->requiresDirectorReview(),
                 'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
                 'director_review_reviewed' => $report->isDirectorReviewed(),
@@ -696,7 +766,7 @@ class WeeklyBriefingController extends Controller
             $filerId = DivisionWeeklyBriefGate::sessionStaffId();
             $report->submitted_by_staff_id = $attributionId > 0 ? $attributionId : $filerId;
             if ($filerId > 0 && $attributionId > 0 && $filerId !== $attributionId
-                && DivisionWeeklyBriefGate::mayEditReportAsAdminAssistant($report)) {
+                && DivisionWeeklyBriefGate::mayEditReportOnBehalf($report)) {
                 $report->appendSubmissionFiledOnBehalfTrail($filerId, $attributionId);
             }
         }
@@ -830,6 +900,7 @@ class WeeklyBriefingController extends Controller
         if ($report->submittedBy) {
             $submittedBy = trim((string) ($report->submittedBy->name ?? ''));
         }
+        $filedOnBehalfLine = $report->submissionOnBehalfDisplayLine();
 
         return [
             'report_id' => (int) $report->id,
@@ -843,6 +914,7 @@ class WeeklyBriefingController extends Controller
             'status' => (string) $report->status,
             'submitted_by' => $submittedBy !== '' ? $submittedBy : null,
             'submitted_at' => $report->submitted_at?->format('M j, Y g:i A'),
+            'filed_on_behalf_line' => $filedOnBehalfLine,
             'director_label' => $report->assignedDirectorDisplayName(),
             'director_review_reviewed' => $report->isDirectorReviewed(),
             'director_review_line' => $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
@@ -1142,9 +1214,13 @@ class WeeklyBriefingController extends Controller
     ): array {
         $hubSubtitle = $hubShowsDirectorateOversight
             ? 'You are viewing submission status for divisions in your directorate; open Director review on submitted briefs to add comments and mark complete.'
-            : (DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant()
-                ? 'You may file weekly briefs for divisions where you are the admin assistant (on behalf of the division head).'
-                : 'Contributors edit assigned units.');
+            : (DivisionWeeklyBriefGate::isListedDelegate()
+                ? 'You may file weekly briefs as a delegate on behalf of the configured division head; submissions still show their name with yours as the filer.'
+                : (DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant()
+                    ? 'You may file weekly briefs for divisions where you are the admin assistant (on behalf of the division head).'
+                    : (DivisionWeeklyBriefGate::isListedContributor()
+                        ? 'Contributors edit assigned units. Assign a filing delegate below when you need someone to complete a brief on your behalf.'
+                        : 'Contributors edit assigned units.')));
 
         $thisWeekRows = [];
         $rowNum = (int) ($thisWeekPaginator->firstItem() ?? 1);
@@ -1155,8 +1231,14 @@ class WeeklyBriefingController extends Controller
             $statusMeta = $this->weeklyBriefStatusMeta($report);
             $contributor = $row['contributor'] ?? null;
             $staffName = '';
-            if ($contributor instanceof WeeklyBriefingContributor && $contributor->staff) {
-                $staffName = trim((string) $contributor->staff->name);
+            $delegateName = '';
+            if ($contributor instanceof WeeklyBriefingContributor) {
+                if ($contributor->staff) {
+                    $staffName = trim((string) $contributor->staff->name);
+                }
+                if ($contributor->delegateStaff) {
+                    $delegateName = trim((string) $contributor->delegateStaff->name);
+                }
             }
 
             $thisWeekRows[] = [
@@ -1164,6 +1246,7 @@ class WeeklyBriefingController extends Controller
                 'key' => $key,
                 'label' => (string) ($row['label'] ?? WeeklyBriefingContributor::presentationLabelForContributionKey($key)),
                 'staff_name' => $staffName,
+                'delegate_name' => $delegateName,
                 'directorate_name' => trim((string) (($row['directorate_display']['directorate_name'] ?? ''))),
                 'director_name' => trim((string) (($row['directorate_display']['director_name'] ?? ''))),
                 'status' => $statusMeta['status'],
@@ -1317,6 +1400,47 @@ class WeeklyBriefingController extends Controller
             'routes' => [
                 'index' => route('weekly-briefing.index'),
             ],
+            'delegation' => $this->buildHubDelegationConfig(),
+        ];
+    }
+
+    /**
+     * Self-service filing delegate picker for configured division heads on the hub.
+     *
+     * @return array{rows: list<array<string, mixed>>, staffOptions: list<array{value: int|string, title: string}>}
+     */
+    private function buildHubDelegationConfig(): array
+    {
+        $rows = DivisionWeeklyBriefGate::contributorRowsForSelfDelegation();
+        if ($rows->isEmpty()) {
+            return ['rows' => [], 'staffOptions' => []];
+        }
+
+        $staffOptions = [['value' => '', 'title' => '— No delegate —']];
+        foreach (Staff::query()->active()->orderBy('lname')->orderBy('fname')->get(['staff_id', 'title', 'fname', 'lname', 'oname', 'job_name']) as $s) {
+            $title = trim((string) ($s->name ?? ''));
+            if ($title === '') {
+                $title = 'Staff #'.(int) $s->staff_id;
+            }
+            if (! empty($s->job_name)) {
+                $title .= ' — '.$s->job_name;
+            }
+            $staffOptions[] = [
+                'value' => (int) $s->staff_id,
+                'title' => $title,
+            ];
+        }
+
+        return [
+            'rows' => $rows->map(function (WeeklyBriefingContributor $c) {
+                return [
+                    'id' => (int) $c->id,
+                    'label' => $c->hubLabel(),
+                    'delegate_staff_id' => (int) ($c->delegate_staff_id ?? 0) > 0 ? (int) $c->delegate_staff_id : '',
+                    'update_url' => route('weekly-briefing.contributor.delegate', $c),
+                ];
+            })->values()->all(),
+            'staffOptions' => $staffOptions,
         ];
     }
 

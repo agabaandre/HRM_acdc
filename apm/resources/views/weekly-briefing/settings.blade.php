@@ -164,7 +164,7 @@
                 <button type="button" class="btn btn-sm btn-outline-success" id="wb-add-contributor">+ Add row</button>
             </div>
             <div class="card-body">
-                <p class="small text-muted">Pick <strong>staff</strong>, one <strong>division</strong> per row (that division’s weekly brief, <code>d-…</code>), and <strong>reporting unit type</strong>. For <strong>Directorate</strong> rows, the directorate is filled automatically from the division’s director when possible. The hub lists one line per row.</p>
+                <p class="small text-muted">Pick <strong>staff</strong> (main contributor / division head), one <strong>division</strong> per row, and optionally a <strong>delegate</strong> who may complete the brief on their behalf when they are busy or away. For <strong>Directorate</strong> rows, the directorate is filled automatically from the division’s director when possible. The hub lists one line per row.</p>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle" id="wb-contributors-table">
                         <thead class="table-light">
@@ -174,7 +174,8 @@
                                 <th style="min-width:220px">Division</th>
                                 <th style="min-width:150px">Reporting unit type</th>
                                 <th style="min-width:200px">Directorate <span class="text-muted fw-normal">(auto from division)</span></th>
-                                <th style="min-width:200px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
+                                <th style="min-width:180px">PDF display name <span class="text-muted fw-normal">(optional)</span></th>
+                                <th style="min-width:220px">Delegate <span class="text-muted fw-normal">(optional)</span></th>
                                 <th style="width:48px"></th>
                             </tr>
                         </thead>
@@ -204,12 +205,14 @@
                                             : 0;
                                     }
                                     $displayName = $row ? (string)($row['display_name'] ?? '') : (string)($c->display_name ?? '');
+                                    $delegateStaffId = $row ? (int) ($row['delegate_staff_id'] ?? 0) : (int) ($c->delegate_staff_id ?? 0);
                                 @endphp
                                 @include('weekly-briefing.partials.contributor-row', [
                                     'idx' => $idx,
                                     'rowNum' => $loop->iteration,
                                     'showRowNum' => true,
                                     'staffId' => $staffId,
+                                    'delegateStaffId' => $delegateStaffId,
                                     'divisionId' => $divisionId,
                                     'kind' => $kind,
                                     'contribDir' => $contribDir,
@@ -222,7 +225,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="small text-muted mb-0">Staff listed here may <strong>start, edit, and submit</strong> for their assigned reporting unit only. <strong>System administrators</strong> and <strong>report viewers</strong> (below) can open the module and see all units; only assigned contributors get filing actions.</p>
+                <p class="small text-muted mb-0">Staff listed here may <strong>start, edit, and submit</strong> for their assigned reporting unit. A <strong>delegate</strong> may do the same on their behalf; the report still attributes submission to the main contributor and shows the delegate’s name. Division heads can also set their own delegate from the Weekly brief hub. <strong>System administrators</strong> and <strong>report viewers</strong> (below) can open the module and see all units.</p>
             </div>
         </div>
 
@@ -405,6 +408,7 @@
             'rowNum' => '',
             'showRowNum' => true,
             'staffId' => 0,
+            'delegateStaffId' => 0,
             'divisionId' => 0,
             'kind' => 'directorate',
             'contribDir' => 0,

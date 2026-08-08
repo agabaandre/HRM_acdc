@@ -269,6 +269,42 @@ class WeeklyBriefingReport extends Model
         return null;
     }
 
+    /**
+     * Display line for reports/PDFs when a delegate or admin assistant filed the brief.
+     * Example: "Jane Doe on behalf of John Smith".
+     */
+    public function submissionOnBehalfDisplayLine(): ?string
+    {
+        $filerId = $this->submissionFiledOnBehalfByStaffId();
+        if ($filerId === null) {
+            return null;
+        }
+
+        $attrId = 0;
+        $trail = $this->director_review_trail;
+        if (is_array($trail)) {
+            foreach (array_reverse($trail) as $entry) {
+                if (! is_array($entry) || ($entry['action'] ?? '') !== 'submitted_on_behalf') {
+                    continue;
+                }
+                $attrId = (int) ($entry['attributed_to_staff_id'] ?? 0);
+                break;
+            }
+        }
+        if ($attrId <= 0) {
+            $attrId = (int) ($this->submitted_by_staff_id ?? 0);
+        }
+
+        $cache = [];
+        $filer = $this->staffDisplayNameForTrail($filerId, $cache);
+        $main = $attrId > 0 ? $this->staffDisplayNameForTrail($attrId, $cache) : '';
+        if ($main === '' || $main === '—') {
+            return $filer !== '—' ? $filer : null;
+        }
+
+        return $filer.' on behalf of '.$main;
+    }
+
     public function directorReviewSummaryLine(): string
     {
         if (! $this->requiresDirectorReview()) {
@@ -368,7 +404,7 @@ class WeeklyBriefingReport extends Model
             if ($act === 'submitted_on_behalf') {
                 $attr = isset($entry['attributed_to_staff_id']) ? (int) $entry['attributed_to_staff_id'] : 0;
                 $onBehalfOf = $this->staffDisplayNameForTrail($attr, $nameCache);
-                $parts[] = trim('Submitted on behalf of '.$onBehalfOf.' by '.$who.($when !== '' ? ' · '.$when : ''));
+                $parts[] = trim($who.' on behalf of '.$onBehalfOf.($when !== '' ? ' · '.$when : ''));
 
                 continue;
             }

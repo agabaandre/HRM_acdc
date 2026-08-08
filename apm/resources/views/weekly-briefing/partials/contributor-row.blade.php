@@ -50,6 +50,17 @@
     <td>
         <input type="text" name="contributors[{{ $idx }}][display_name]" class="form-control form-control-sm wb-display-name" value="{{ $displayName ?? '' }}" maxlength="255" placeholder="As on PDF if different from system name">
     </td>
+    <td>
+        <select name="contributors[{{ $idx }}][delegate_staff_id]" class="form-select form-select-sm wb-staff-select wb-delegate-select select2 w-100">
+            <option value="">— No delegate —</option>
+            @foreach($staffList as $s)
+                <option value="{{ $s->staff_id }}" @selected((int) ($delegateStaffId ?? 0) === (int) $s->staff_id)>
+                    {{ trim((string) ($s->name ?? '')) }} @if($s->job_name) — {{ $s->job_name }} @endif
+                </option>
+            @endforeach
+        </select>
+        <small class="form-text text-muted">May file this unit on behalf of the staff above.</small>
+    </td>
     <td class="text-center">
         <button type="button" class="btn btn-sm btn-outline-danger wb-remove-row" title="Remove">&times;</button>
     </td>
