@@ -1230,6 +1230,7 @@ class WeeklyBriefingController extends Controller
             $contributor = $row['contributor'] ?? null;
             $staffName = '';
             $delegateName = '';
+            $delegation = null;
             if ($contributor instanceof WeeklyBriefingContributor) {
                 if ($contributor->staff) {
                     $staffName = trim((string) $contributor->staff->name);
@@ -1237,6 +1238,25 @@ class WeeklyBriefingController extends Controller
                 if ($contributor->delegateStaff) {
                     $delegateName = trim((string) $contributor->delegateStaff->name);
                 }
+                $delegation = DivisionWeeklyBriefGate::hubDelegationPayloadForContributor($contributor);
+            }
+
+            $actions = $this->weeklyBriefHubActionsForRow(
+                $report,
+                $key,
+                $hubCanViewAllReports,
+                $filingKeySet,
+                $directorReviewKeySet,
+                $startUrls[$key] ?? null
+            );
+            if ($delegation !== null) {
+                $actions[] = [
+                    'label' => 'Assign delegate',
+                    'action' => 'assign_delegate',
+                    'variant' => 'tonal',
+                    'color' => 'secondary',
+                    'contributor_id' => (int) $delegation['id'],
+                ];
             }
 
             $thisWeekRows[] = [
@@ -1245,20 +1265,14 @@ class WeeklyBriefingController extends Controller
                 'label' => (string) ($row['label'] ?? WeeklyBriefingContributor::presentationLabelForContributionKey($key)),
                 'staff_name' => $staffName,
                 'delegate_name' => $delegateName,
+                'delegation' => $delegation,
                 'directorate_name' => trim((string) (($row['directorate_display']['directorate_name'] ?? ''))),
                 'director_name' => trim((string) (($row['directorate_display']['director_name'] ?? ''))),
                 'status' => $statusMeta['status'],
                 'status_color' => $statusMeta['color'],
                 'director_review_line' => $report && $report->requiresDirectorReview() ? $report->directorReviewSummaryLine() : '',
                 'director_review_reviewed' => $report && $report->requiresDirectorReview() && $report->isDirectorReviewed(),
-                'actions' => $this->weeklyBriefHubActionsForRow(
-                    $report,
-                    $key,
-                    $hubCanViewAllReports,
-                    $filingKeySet,
-                    $directorReviewKeySet,
-                    $startUrls[$key] ?? null
-                ),
+                'actions' => $actions,
             ];
         }
 
@@ -1403,15 +1417,18 @@ class WeeklyBriefingController extends Controller
     }
 
     /**
-     * Self-service filing delegate picker for configured division heads on the hub.
+     * Filing delegate picker for the hub: HoDs get their own rows (header button);
+     * system admins get staff options for the per-division table action.
      *
-     * @return array{rows: list<array<string, mixed>>, staffOptions: list<array{value: int|string, title: string}>}
+     * @return array{rows: list<array<string, mixed>>, staffOptions: list<array{value: int|string, title: string}>, is_admin: bool}
      */
     private function buildHubDelegationConfig(): array
     {
+        $isAdmin = DivisionWeeklyBriefGate::isSystemAdmin();
         $rows = DivisionWeeklyBriefGate::contributorRowsForSelfDelegation();
-        if ($rows->isEmpty()) {
-            return ['rows' => [], 'staffOptions' => []];
+
+        if ($rows->isEmpty() && ! $isAdmin) {
+            return ['rows' => [], 'staffOptions' => [], 'is_admin' => false];
         }
 
         $staffOptions = [['value' => '', 'title' => '— No delegate —']];
@@ -1431,7 +1448,7 @@ class WeeklyBriefingController extends Controller
 
         return [
             'rows' => $rows->map(function (WeeklyBriefingContributor $c) {
-                return [
+                return DivisionWeeklyBriefGate::hubDelegationPayloadForContributor($c) ?? [
                     'id' => (int) $c->id,
                     'label' => $c->hubLabel(),
                     'delegate_staff_id' => (int) ($c->delegate_staff_id ?? 0) > 0 ? (int) $c->delegate_staff_id : '',
@@ -1439,6 +1456,7 @@ class WeeklyBriefingController extends Controller
                 ];
             })->values()->all(),
             'staffOptions' => $staffOptions,
+            'is_admin' => $isAdmin,
         ];
     }
 

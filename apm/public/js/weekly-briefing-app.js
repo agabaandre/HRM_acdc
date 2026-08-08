@@ -208,6 +208,10 @@
                         openDirectorReview(action, item);
                         return;
                     }
+                    if (action && action.action === 'assign_delegate') {
+                        openRowDelegation(item);
+                        return;
+                    }
                     if (action?.url) {
                         if (action.target === '_blank') {
                             window.open(action.url, '_blank');
@@ -271,7 +275,30 @@
                         error: '',
                     }))
                 );
+                const dialogDelegationRows = ref([]);
+                const delegationHubRowRef = ref(null);
                 const delegationStaffOptions = cfg.delegation?.staffOptions || [];
+                const delegationIsAdmin = !!cfg.delegation?.is_admin;
+
+                function openDelegationDialog(rows, hubRow) {
+                    dialogDelegationRows.value = (rows || []).map((row) => ({
+                        ...row,
+                        saving: false,
+                        message: '',
+                        error: '',
+                    }));
+                    delegationHubRowRef.value = hubRow || null;
+                    delegationDialog.value = true;
+                }
+
+                function openHeaderDelegation() {
+                    openDelegationDialog(delegationRows.value, null);
+                }
+
+                function openRowDelegation(item) {
+                    if (!item?.delegation?.update_url) return;
+                    openDelegationDialog([item.delegation], item);
+                }
 
                 async function saveDelegation(row) {
                     if (!row?.update_url) return;
@@ -298,6 +325,25 @@
                         }
                         row.delegate_staff_id = json.data?.delegate_staff_id || '';
                         row.message = json.message || 'Delegate saved.';
+                        const headerRow = delegationRows.value.find((r) => r.id === row.id);
+                        if (headerRow) {
+                            headerRow.delegate_staff_id = row.delegate_staff_id;
+                        }
+                        if (delegationHubRowRef.value && delegationHubRowRef.value.delegation?.id === row.id) {
+                            delegationHubRowRef.value.delegate_name = json.data?.delegate_name || '';
+                            delegationHubRowRef.value.delegation = {
+                                ...delegationHubRowRef.value.delegation,
+                                delegate_staff_id: row.delegate_staff_id,
+                            };
+                        }
+                        const tableRow = (cfg.thisWeekRows || []).find((r) => r.delegation?.id === row.id);
+                        if (tableRow) {
+                            tableRow.delegate_name = json.data?.delegate_name || '';
+                            tableRow.delegation = {
+                                ...tableRow.delegation,
+                                delegate_staff_id: row.delegate_staff_id,
+                            };
+                        }
                     } catch (err) {
                         row.error = err && err.message ? err.message : 'Could not save delegate.';
                     } finally {
@@ -335,7 +381,10 @@
                     submitDirectorReview,
                     delegationDialog,
                     delegationRows,
+                    dialogDelegationRows,
                     delegationStaffOptions,
+                    delegationIsAdmin,
+                    openHeaderDelegation,
                     saveDelegation,
                 };
             },
@@ -368,7 +417,7 @@
             variant="tonal"
             color="secondary"
             prepend-icon="mdi-account-arrow-right"
-            @click="delegationDialog = true"
+            @click="openHeaderDelegation"
           >Filing delegate</v-btn>
           <div class="d-flex flex-wrap gap-2 justify-end">
             <template v-if="cfg.headerActions.filingWeekReports.length === 1">
@@ -429,10 +478,16 @@
         <v-divider></v-divider>
         <v-card-text class="pt-4">
           <p class="text-body-2 text-medium-emphasis mb-3">
-            Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
-            Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
+            <template v-if="delegationIsAdmin">
+              Choose a staff member who may complete this unit’s weekly brief on behalf of the division head when they are busy or away.
+              Submitted reports stay attributed to the head and show the delegate’s name as filing on their behalf.
+            </template>
+            <template v-else>
+              Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
+              Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
+            </template>
           </p>
-          <div v-for="row in delegationRows" :key="row.id" class="mb-3">
+          <div v-for="row in dialogDelegationRows" :key="row.id" class="mb-3">
             <div class="text-body-2 font-weight-medium mb-2">{{ row.label }}</div>
             <v-row dense align="center">
               <v-col cols="12" md="8">

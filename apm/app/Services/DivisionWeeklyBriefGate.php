@@ -792,7 +792,8 @@ final class DivisionWeeklyBriefGate
     }
 
     /**
-     * Contributor rows the session user may assign a filing delegate for (own rows only; admins use settings).
+     * Contributor rows the session user may assign a filing delegate for from the hub header button
+     * (own rows only). System admins assign per division from the hub table action instead.
      *
      * @return Collection<int, WeeklyBriefingContributor>
      */
@@ -809,6 +810,27 @@ final class DivisionWeeklyBriefGate
             ->where('staff_id', $sid)
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * Hub payload for assigning a filing delegate on one contributor row (admin or that head).
+     *
+     * @return array{id: int, label: string, delegate_staff_id: int|string, update_url: string}|null
+     */
+    public static function hubDelegationPayloadForContributor(?WeeklyBriefingContributor $contributor): ?array
+    {
+        if (! $contributor || ! self::mayManageContributorDelegate($contributor)) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $contributor->id,
+            'label' => $contributor->hubLabel(),
+            'delegate_staff_id' => (int) ($contributor->delegate_staff_id ?? 0) > 0
+                ? (int) $contributor->delegate_staff_id
+                : '',
+            'update_url' => route('weekly-briefing.contributor.delegate', $contributor),
+        ];
     }
 
     /**
