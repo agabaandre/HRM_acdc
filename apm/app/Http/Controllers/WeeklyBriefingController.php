@@ -1219,7 +1219,7 @@ class WeeklyBriefingController extends Controller
                 : (DivisionWeeklyBriefGate::mayActAsDivisionAdminAssistant()
                     ? 'You may file weekly briefs for divisions where you are the admin assistant (on behalf of the division head).'
                     : (DivisionWeeklyBriefGate::isListedContributor()
-                        ? 'Contributors edit assigned units. Assign a filing delegate below when you need someone to complete a brief on your behalf.'
+                        ? 'Contributors edit assigned units. Use Delegate (top right) when you need someone to complete a brief on your behalf.'
                         : 'Contributors edit assigned units.')));
 
         $thisWeekRows = [];

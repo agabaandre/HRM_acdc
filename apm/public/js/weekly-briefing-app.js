@@ -262,6 +262,7 @@
                     }
                 }
 
+                const delegationDialog = ref(false);
                 const delegationRows = ref(
                     (cfg.delegation?.rows || []).map((row) => ({
                         ...row,
@@ -271,6 +272,9 @@
                     }))
                 );
                 const delegationStaffOptions = cfg.delegation?.staffOptions || [];
+                const hasDelegation = (cfg.delegation?.rows || []).length > 0;
+                const hasActiveDelegate = () =>
+                    delegationRows.value.some((row) => row.delegate_staff_id !== '' && row.delegate_staff_id != null);
 
                 async function saveDelegation(row) {
                     if (!row?.update_url) return;
@@ -332,8 +336,11 @@
                     openDirectorReview,
                     onHubAction,
                     submitDirectorReview,
+                    delegationDialog,
                     delegationRows,
                     delegationStaffOptions,
+                    hasDelegation,
+                    hasActiveDelegate,
                     saveDelegation,
                 };
             },
@@ -359,7 +366,23 @@
             <strong>Submission deadline</strong> {{ cfg.filing.deadline_date }} at {{ cfg.filing.deadline_time }}
           </div>
         </div>
-        <div class="d-flex flex-wrap gap-2 justify-end">
+        <div class="d-flex flex-wrap gap-2 justify-end align-center">
+          <v-btn
+            v-if="hasDelegation"
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-account-arrow-right"
+            @click="delegationDialog = true"
+          >
+            Delegate
+            <v-badge
+              v-if="hasActiveDelegate()"
+              color="success"
+              dot
+              inline
+              class="ms-1"
+            ></v-badge>
+          </v-btn>
           <template v-if="cfg.headerActions.filingWeekReports.length === 1">
             <v-btn :href="cfg.headerActions.filingWeekReports[0].edit_url" color="primary" prepend-icon="mdi-pencil">Continue reporting week</v-btn>
             <v-btn :href="cfg.headerActions.filingWeekReports[0].pdf_url" target="_blank" variant="outlined" prepend-icon="mdi-file-pdf-box">PDF</v-btn>
@@ -405,40 +428,45 @@
       </v-card-title>
     </v-card>
 
-    <v-card v-if="delegationRows.length" class="mb-4" elevation="1">
-      <v-card-title class="text-subtitle-1 font-weight-bold py-3">
-        <v-icon icon="mdi-account-arrow-right" class="me-2"></v-icon>
-        Filing delegate
-      </v-card-title>
-      <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-3">
-          Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
-          Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
-          System administrators can also set this in Weekly brief settings.
-        </p>
-        <div v-for="row in delegationRows" :key="row.id" class="mb-3">
-          <div class="text-body-2 font-weight-medium mb-2">{{ row.label }}</div>
-          <v-row dense align="center">
-            <v-col cols="12" md="8">
-              <v-select
-                v-model="row.delegate_staff_id"
-                :items="delegationStaffOptions"
-                item-title="title"
-                item-value="value"
-                label="Delegate"
-                hide-details
-                clearable
-              ></v-select>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-btn color="primary" :loading="row.saving" @click="saveDelegation(row)">Save delegate</v-btn>
-            </v-col>
-          </v-row>
-          <v-alert v-if="row.message" type="success" variant="tonal" density="compact" class="mt-2">{{ row.message }}</v-alert>
-          <v-alert v-if="row.error" type="error" variant="tonal" density="compact" class="mt-2">{{ row.error }}</v-alert>
-        </div>
-      </v-card-text>
-    </v-card>
+    <v-dialog v-model="delegationDialog" max-width="640" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between py-3">
+          <span class="d-flex align-center text-subtitle-1 font-weight-bold">
+            <v-icon icon="mdi-account-arrow-right" class="me-2"></v-icon>
+            Filing delegate
+          </span>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="delegationDialog = false"></v-btn>
+        </v-card-title>
+        <v-divider></v-divider>
+        <v-card-text class="pt-4">
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
+            Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
+            System administrators can also set this in Weekly brief settings.
+          </p>
+          <div v-for="row in delegationRows" :key="row.id" class="mb-4">
+            <div class="text-body-2 font-weight-medium mb-2">{{ row.label }}</div>
+            <v-select
+              v-model="row.delegate_staff_id"
+              :items="delegationStaffOptions"
+              item-title="title"
+              item-value="value"
+              label="Delegate"
+              hide-details
+              clearable
+              class="mb-3"
+            ></v-select>
+            <v-btn color="primary" :loading="row.saving" @click="saveDelegation(row)">Save delegate</v-btn>
+            <v-alert v-if="row.message" type="success" variant="tonal" density="compact" class="mt-3">{{ row.message }}</v-alert>
+            <v-alert v-if="row.error" type="error" variant="tonal" density="compact" class="mt-3">{{ row.error }}</v-alert>
+          </div>
+        </v-card-text>
+        <v-divider></v-divider>
+        <v-card-actions class="justify-end px-4 py-3">
+          <v-btn variant="text" @click="delegationDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-card elevation="1">
       <v-tabs :model-value="tab" @update:model-value="switchTab" color="primary" class="apm-vuetify-tabs px-2">
