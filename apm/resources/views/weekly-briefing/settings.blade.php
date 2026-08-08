@@ -653,7 +653,12 @@ window.wbDivisionDirectorateMap = @json($divisionDirectorateMap ?? []);
             if ($s.hasClass('select2-hidden-accessible')) {
                 try { $s.select2('destroy'); } catch (e) {}
             }
-            $s.select2({ theme: 'bootstrap4', width: '100%' });
+            var opts = { theme: 'bootstrap4', width: '100%' };
+            if ($s.hasClass('wb-delegate-select')) {
+                opts.placeholder = $s.data('placeholder') || 'Search reporting delegate…';
+                opts.allowClear = true;
+            }
+            $s.select2(opts);
         });
     }
 

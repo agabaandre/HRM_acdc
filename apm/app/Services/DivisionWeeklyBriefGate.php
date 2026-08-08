@@ -815,7 +815,7 @@ final class DivisionWeeklyBriefGate
     /**
      * Hub payload for assigning a filing delegate on one contributor row (admin or that head).
      *
-     * @return array{id: int, label: string, delegate_staff_id: int|string, update_url: string}|null
+     * @return array{id: int, label: string, delegate_staff_id: int|null, update_url: string}|null
      */
     public static function hubDelegationPayloadForContributor(?WeeklyBriefingContributor $contributor): ?array
     {
@@ -823,12 +823,12 @@ final class DivisionWeeklyBriefGate
             return null;
         }
 
+        $delegateId = (int) ($contributor->delegate_staff_id ?? 0);
+
         return [
             'id' => (int) $contributor->id,
             'label' => $contributor->hubLabel(),
-            'delegate_staff_id' => (int) ($contributor->delegate_staff_id ?? 0) > 0
-                ? (int) $contributor->delegate_staff_id
-                : '',
+            'delegate_staff_id' => $delegateId > 0 ? $delegateId : null,
             'update_url' => route('weekly-briefing.contributor.delegate', $contributor),
         ];
     }

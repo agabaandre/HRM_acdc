@@ -1431,7 +1431,7 @@ class WeeklyBriefingController extends Controller
             return ['rows' => [], 'staffOptions' => [], 'is_admin' => false];
         }
 
-        $staffOptions = [['value' => '', 'title' => '— No delegate —']];
+        $staffOptions = [];
         foreach (Staff::query()->active()->orderBy('lname')->orderBy('fname')->get(['staff_id', 'title', 'fname', 'lname', 'oname', 'job_name']) as $s) {
             $title = trim((string) ($s->name ?? ''));
             if ($title === '') {
@@ -1451,7 +1451,7 @@ class WeeklyBriefingController extends Controller
                 return DivisionWeeklyBriefGate::hubDelegationPayloadForContributor($c) ?? [
                     'id' => (int) $c->id,
                     'label' => $c->hubLabel(),
-                    'delegate_staff_id' => (int) ($c->delegate_staff_id ?? 0) > 0 ? (int) $c->delegate_staff_id : '',
+                    'delegate_staff_id' => (int) ($c->delegate_staff_id ?? 0) > 0 ? (int) $c->delegate_staff_id : null,
                     'update_url' => route('weekly-briefing.contributor.delegate', $c),
                 ];
             })->values()->all(),

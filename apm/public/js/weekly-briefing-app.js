@@ -283,6 +283,7 @@
                 function openDelegationDialog(rows, hubRow) {
                     dialogDelegationRows.value = (rows || []).map((row) => ({
                         ...row,
+                        delegate_staff_id: row.delegate_staff_id || null,
                         saving: false,
                         message: '',
                         error: '',
@@ -323,7 +324,7 @@
                         if (!res.ok) {
                             throw new Error(json.message || 'Could not save delegate.');
                         }
-                        row.delegate_staff_id = json.data?.delegate_staff_id || '';
+                        row.delegate_staff_id = json.data?.delegate_staff_id || null;
                         row.message = json.message || 'Delegate saved.';
                         const headerRow = delegationRows.value.find((r) => r.id === row.id);
                         if (headerRow) {
@@ -496,11 +497,12 @@
                   :items="delegationStaffOptions"
                   item-title="title"
                   item-value="value"
-                  label="Delegate"
-                  placeholder="Search staff…"
+                  label="Search reporting delegate"
+                  placeholder="Type a name to search…"
                   hide-details
                   clearable
                   auto-select-first
+                  no-data-text="No matching staff"
                 ></v-autocomplete>
               </v-col>
               <v-col cols="12" md="4">
