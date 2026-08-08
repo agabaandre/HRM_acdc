@@ -272,9 +272,6 @@
                     }))
                 );
                 const delegationStaffOptions = cfg.delegation?.staffOptions || [];
-                const hasDelegation = (cfg.delegation?.rows || []).length > 0;
-                const hasActiveDelegate = () =>
-                    delegationRows.value.some((row) => row.delegate_staff_id !== '' && row.delegate_staff_id != null);
 
                 async function saveDelegation(row) {
                     if (!row?.update_url) return;
@@ -339,8 +336,6 @@
                     delegationDialog,
                     delegationRows,
                     delegationStaffOptions,
-                    hasDelegation,
-                    hasActiveDelegate,
                     saveDelegation,
                 };
             },
@@ -366,64 +361,58 @@
             <strong>Submission deadline</strong> {{ cfg.filing.deadline_date }} at {{ cfg.filing.deadline_time }}
           </div>
         </div>
-        <div class="d-flex flex-wrap gap-2 justify-end align-center">
+        <div class="d-flex flex-column align-end gap-2">
           <v-btn
-            v-if="hasDelegation"
+            v-if="delegationRows.length"
+            size="small"
             variant="tonal"
-            color="primary"
+            color="secondary"
             prepend-icon="mdi-account-arrow-right"
             @click="delegationDialog = true"
-          >
-            Delegate
-            <v-badge
-              v-if="hasActiveDelegate()"
-              color="success"
-              dot
-              inline
-              class="ms-1"
-            ></v-badge>
-          </v-btn>
-          <template v-if="cfg.headerActions.filingWeekReports.length === 1">
-            <v-btn :href="cfg.headerActions.filingWeekReports[0].edit_url" color="primary" prepend-icon="mdi-pencil">Continue reporting week</v-btn>
-            <v-btn :href="cfg.headerActions.filingWeekReports[0].pdf_url" target="_blank" variant="outlined" prepend-icon="mdi-file-pdf-box">PDF</v-btn>
-          </template>
-          <v-menu v-else-if="cfg.headerActions.filingWeekReports.length > 1">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" color="primary" append-icon="mdi-menu-down">Continue reporting week</v-btn>
+          >Filing delegate</v-btn>
+          <div class="d-flex flex-wrap gap-2 justify-end">
+            <template v-if="cfg.headerActions.filingWeekReports.length === 1">
+              <v-btn :href="cfg.headerActions.filingWeekReports[0].edit_url" color="primary" prepend-icon="mdi-pencil">Continue reporting week</v-btn>
+              <v-btn :href="cfg.headerActions.filingWeekReports[0].pdf_url" target="_blank" variant="outlined" prepend-icon="mdi-file-pdf-box">PDF</v-btn>
             </template>
-            <v-list density="compact">
-              <v-list-item v-for="item in cfg.headerActions.filingWeekReports" :key="item.id" :href="item.edit_url" :title="item.label"></v-list-item>
-            </v-list>
-          </v-menu>
-          <v-btn
-            v-for="unit in cfg.headerActions.startUnits"
-            :key="unit.key"
-            :href="unit.url"
-            size="small"
-            variant="outlined"
-            color="primary"
-          >Start {{ unit.label }}</v-btn>
-          <template v-if="cfg.headerActions.canCompiledExports">
-            <v-btn :href="cfg.headerActions.compiledPdfUrl" target="_blank" variant="outlined" color="primary" prepend-icon="mdi-file-document-multiple">Compiled PDF</v-btn>
-            <v-btn :href="cfg.headerActions.completionSummaryUrl" target="_blank" variant="outlined" prepend-icon="mdi-clipboard-list-outline">Completion summary</v-btn>
-          </template>
-          <template v-if="cfg.headerActions.directorCombinedOptions.length === 1">
-            <v-btn :href="cfg.headerActions.directorCombinedOptions[0].url" target="_blank" variant="outlined" color="info" prepend-icon="mdi-layers-triple">Director report — my directorate</v-btn>
-          </template>
-          <v-menu v-else-if="cfg.headerActions.directorCombinedOptions.length > 1">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" variant="outlined" color="info" prepend-icon="mdi-layers-triple" append-icon="mdi-menu-down">Director report — my directorates</v-btn>
+            <v-menu v-else-if="cfg.headerActions.filingWeekReports.length > 1">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" color="primary" append-icon="mdi-menu-down">Continue reporting week</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item v-for="item in cfg.headerActions.filingWeekReports" :key="item.id" :href="item.edit_url" :title="item.label"></v-list-item>
+              </v-list>
+            </v-menu>
+            <v-btn
+              v-for="unit in cfg.headerActions.startUnits"
+              :key="unit.key"
+              :href="unit.url"
+              size="small"
+              variant="outlined"
+              color="primary"
+            >Start {{ unit.label }}</v-btn>
+            <template v-if="cfg.headerActions.canCompiledExports">
+              <v-btn :href="cfg.headerActions.compiledPdfUrl" target="_blank" variant="outlined" color="primary" prepend-icon="mdi-file-document-multiple">Compiled PDF</v-btn>
+              <v-btn :href="cfg.headerActions.completionSummaryUrl" target="_blank" variant="outlined" prepend-icon="mdi-clipboard-list-outline">Completion summary</v-btn>
             </template>
-            <v-list density="compact">
-              <v-list-item
-                v-for="opt in cfg.headerActions.directorCombinedOptions"
-                :key="opt.directorate_id"
-                :href="opt.url"
-                target="_blank"
-                :title="opt.label"
-              ></v-list-item>
-            </v-list>
-          </v-menu>
+            <template v-if="cfg.headerActions.directorCombinedOptions.length === 1">
+              <v-btn :href="cfg.headerActions.directorCombinedOptions[0].url" target="_blank" variant="outlined" color="info" prepend-icon="mdi-layers-triple">Director report — my directorate</v-btn>
+            </template>
+            <v-menu v-else-if="cfg.headerActions.directorCombinedOptions.length > 1">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" variant="outlined" color="info" prepend-icon="mdi-layers-triple" append-icon="mdi-menu-down">Director report — my directorates</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="opt in cfg.headerActions.directorCombinedOptions"
+                  :key="opt.directorate_id"
+                  :href="opt.url"
+                  target="_blank"
+                  :title="opt.label"
+                ></v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
         </div>
       </v-card-title>
     </v-card>
@@ -431,7 +420,7 @@
     <v-dialog v-model="delegationDialog" max-width="640" scrollable>
       <v-card>
         <v-card-title class="d-flex align-center justify-space-between py-3">
-          <span class="d-flex align-center text-subtitle-1 font-weight-bold">
+          <span class="d-flex align-center">
             <v-icon icon="mdi-account-arrow-right" class="me-2"></v-icon>
             Filing delegate
           </span>
@@ -439,30 +428,37 @@
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text class="pt-4">
-          <p class="text-body-2 text-medium-emphasis mb-4">
+          <p class="text-body-2 text-medium-emphasis mb-3">
             Choose a staff member who may complete your weekly brief on your behalf when you are busy or away.
             Submitted reports stay attributed to you and show the delegate’s name as filing on your behalf.
-            System administrators can also set this in Weekly brief settings.
           </p>
-          <div v-for="row in delegationRows" :key="row.id" class="mb-4">
+          <div v-for="row in delegationRows" :key="row.id" class="mb-3">
             <div class="text-body-2 font-weight-medium mb-2">{{ row.label }}</div>
-            <v-select
-              v-model="row.delegate_staff_id"
-              :items="delegationStaffOptions"
-              item-title="title"
-              item-value="value"
-              label="Delegate"
-              hide-details
-              clearable
-              class="mb-3"
-            ></v-select>
-            <v-btn color="primary" :loading="row.saving" @click="saveDelegation(row)">Save delegate</v-btn>
-            <v-alert v-if="row.message" type="success" variant="tonal" density="compact" class="mt-3">{{ row.message }}</v-alert>
-            <v-alert v-if="row.error" type="error" variant="tonal" density="compact" class="mt-3">{{ row.error }}</v-alert>
+            <v-row dense align="center">
+              <v-col cols="12" md="8">
+                <v-autocomplete
+                  v-model="row.delegate_staff_id"
+                  :items="delegationStaffOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Delegate"
+                  placeholder="Search staff…"
+                  hide-details
+                  clearable
+                  auto-select-first
+                ></v-autocomplete>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-btn color="primary" :loading="row.saving" @click="saveDelegation(row)">Save delegate</v-btn>
+              </v-col>
+            </v-row>
+            <v-alert v-if="row.message" type="success" variant="tonal" density="compact" class="mt-2">{{ row.message }}</v-alert>
+            <v-alert v-if="row.error" type="error" variant="tonal" density="compact" class="mt-2">{{ row.error }}</v-alert>
           </div>
         </v-card-text>
         <v-divider></v-divider>
-        <v-card-actions class="justify-end px-4 py-3">
+        <v-card-actions class="px-4 py-3">
+          <v-spacer></v-spacer>
           <v-btn variant="text" @click="delegationDialog = false">Close</v-btn>
         </v-card-actions>
       </v-card>
