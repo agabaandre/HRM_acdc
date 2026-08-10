@@ -5,10 +5,10 @@ import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import ReportColumnHeader from '../components/reports/ReportColumnHeader.vue'
+import TicketDatesCell from '../components/tickets/TicketDatesCell.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { notifyError } from '../lib/notify'
-import { formatDateTime } from '../lib/formatDateTime'
 import {
   formatTableCountLabel,
   rowIndex,
@@ -65,7 +65,7 @@ const reportHeaders: DataTableHeader[] = [
   { title: 'Subject', key: 'subject', sortable: false, minWidth: '200px' },
   { title: 'Assigned to', key: 'assignee_name', sortable: false, minWidth: '150px' },
   { title: 'Status', key: 'status', sortable: false, width: '130px' },
-  { title: 'Created', key: 'created_at', sortable: false, minWidth: '140px' },
+  { title: 'Dates', key: 'created_at', sortable: false, minWidth: '168px' },
 ]
 
 /** Ticket rows from report APIs (aligned with ticket API resource fields). */
@@ -75,6 +75,8 @@ interface ReportTicket {
   subject?: string
   status?: string
   created_at?: string | null
+  resolved_at?: string | null
+  closed_at?: string | null
   assignee?: { name: string; avatar_url?: string | null } | null
 }
 
@@ -1105,15 +1107,11 @@ watch(
             <span v-else class="hd-dt-empty">—</span>
           </template>
           <template #item.created_at="{ item }">
-            <time
-              v-if="item.created_at"
-              class="hd-dt-created"
-              :datetime="item.created_at"
-              :title="formatDateTime(item.created_at)"
-            >
-              {{ formatDateTime(item.created_at) }}
-            </time>
-            <span v-else class="hd-dt-empty">—</span>
+            <TicketDatesCell
+              :created-at="item.created_at"
+              :resolved-at="item.resolved_at"
+              :closed-at="item.closed_at"
+            />
           </template>
           <template #no-data>
             <div class="hd-dt-empty-msg">No matching tickets.</div>
@@ -1364,15 +1362,11 @@ watch(
             <span v-else class="hd-dt-empty">—</span>
           </template>
           <template #item.created_at="{ item }">
-            <time
-              v-if="item.created_at"
-              class="hd-dt-created"
-              :datetime="item.created_at"
-              :title="formatDateTime(item.created_at)"
-            >
-              {{ formatDateTime(item.created_at) }}
-            </time>
-            <span v-else class="hd-dt-empty">—</span>
+            <TicketDatesCell
+              :created-at="item.created_at"
+              :resolved-at="item.resolved_at"
+              :closed-at="item.closed_at"
+            />
           </template>
           <template #no-data>
             <div class="hd-dt-empty-msg">No matching tickets.</div>

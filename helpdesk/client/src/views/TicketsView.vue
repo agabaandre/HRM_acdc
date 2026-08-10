@@ -7,6 +7,7 @@ import CbpPageHeading from '../components/common/CbpPageHeading.vue'
 import TicketReassignModal, {
   type ReassignTicketRef,
 } from '../components/tickets/TicketReassignModal.vue'
+import TicketDatesCell from '../components/tickets/TicketDatesCell.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
@@ -14,7 +15,6 @@ import { type PageSize } from '../lib/helpdeskForm'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import { formatTableCountLabel, priorityMeta, statusMeta } from '../lib/ticketTableMeta'
-import { formatDateTime } from '../lib/formatDateTime'
 import { displayPlainText } from '../lib/richText'
 
 interface AssigneeBrief {
@@ -31,6 +31,8 @@ interface TicketRow {
   status: string
   priority: string
   created_at?: string | null
+  resolved_at?: string | null
+  closed_at?: string | null
   requester_name?: string | null
   assignee?: AssigneeBrief | null
   assignees?: AssigneeBrief[]
@@ -91,7 +93,7 @@ const headers = computed((): DataTableHeader[] => {
     { title: 'Assigned to', key: 'assignee_name', sortable: true, minWidth: '150px' },
     { title: 'Status', key: 'status', sortable: true, width: '130px' },
     { title: 'Priority', key: 'priority', sortable: true, width: '110px' },
-    { title: 'Created', key: 'created_at', sortable: true, minWidth: '140px' },
+    { title: 'Dates', key: 'created_at', sortable: true, minWidth: '168px' },
   ]
   if (canReassign.value) {
     cols.push({ title: 'Actions', key: 'actions', sortable: false, align: 'end', width: '110px' })
@@ -255,15 +257,11 @@ function resetSearch() {
         </template>
 
         <template #item.created_at="{ item }">
-          <time
-            v-if="item.created_at"
-            class="hd-dt-created"
-            :datetime="item.created_at"
-            :title="formatDateTime(item.created_at)"
-          >
-            {{ formatDateTime(item.created_at) }}
-          </time>
-          <span v-else class="hd-dt-empty">—</span>
+          <TicketDatesCell
+            :created-at="item.created_at"
+            :resolved-at="item.resolved_at"
+            :closed-at="item.closed_at"
+          />
         </template>
 
         <template v-if="canReassign" #item.actions="{ item }">
