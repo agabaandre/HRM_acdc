@@ -850,43 +850,51 @@
     <div class="section-label mb-15" style="margin-top: 20px;"><strong>Budget Breakdown - Detailed Comparison</strong></div>
     
     <?php
+      $isNonTravelBudget = ($changeRequest->parent_memo_model ?? '') === 'App\\Models\\NonTravelMemo';
       $parentBudgetBreakdown = $parentMemo->budget_breakdown ?? [];
       if (is_string($parentBudgetBreakdown)) {
           $parentBudgetBreakdown = json_decode($parentBudgetBreakdown, true) ?? [];
       }
-      $parentTotal = $parentBudgetBreakdown['grand_total'] ?? 0;
-      unset($parentBudgetBreakdown['grand_total']);
-      
       $currentBudgetBreakdown = $changeRequest->budget_breakdown ?? [];
       if (is_string($currentBudgetBreakdown)) {
           $currentBudgetBreakdown = json_decode($currentBudgetBreakdown, true) ?? [];
       }
-      $currentTotal = $currentBudgetBreakdown['grand_total'] ?? 0;
-      unset($currentBudgetBreakdown['grand_total']);
-      
-      // Build a map of original budget items for comparison
-      // Use a unique signature that includes all item properties to handle duplicates
-      // Key: fundCodeId_itemName_unitCost_units_days, Value: count of occurrences
+      $parentTotal = floatval($parentBudgetBreakdown['grand_total'] ?? 0);
+      $currentTotal = floatval($currentBudgetBreakdown['grand_total'] ?? 0);
+      unset($parentBudgetBreakdown['grand_total'], $currentBudgetBreakdown['grand_total']);
+
+      $qtyHeader = $isNonTravelBudget ? 'Qty' : 'Units';
+      $extraHeader = $isNonTravelBudget ? 'Unit' : 'Days';
+
       $originalBudgetMap = [];
       foreach ($parentBudgetBreakdown as $fundCodeId => $items) {
-          if (is_array($items)) {
+          if (!is_array($items)) {
+              continue;
+          }
+          foreach ($items as $item) {
+              if (!is_array($item)) {
+                  continue;
+              }
+              $line = change_request_budget_line_display($item, $isNonTravelBudget);
+              if ($parentTotal <= 0) {
+                  $parentTotal += $line['total'];
+              }
+              $key = $fundCodeId . '_' . $line['signature'];
+              $originalBudgetMap[$key] = ($originalBudgetMap[$key] ?? 0) + 1;
+          }
+      }
+      if ($currentTotal <= 0) {
+          foreach ($currentBudgetBreakdown as $items) {
+              if (!is_array($items)) {
+                  continue;
+              }
               foreach ($items as $item) {
-                  $itemName = $item['cost'] ?? $item['description'] ?? '';
-                  $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                  $units = floatval($item['units'] ?? 0);
-                  $days = floatval($item['days'] ?? 1);
-                  
-                  // Create unique key using all properties to handle duplicate item names
-                  $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
-                  if (!isset($originalBudgetMap[$key])) {
-                      $originalBudgetMap[$key] = 0;
+                  if (is_array($item)) {
+                      $currentTotal += change_request_budget_line_display($item, $isNonTravelBudget)['total'];
                   }
-                  $originalBudgetMap[$key]++;
               }
           }
       }
-      
-      // Create a working copy for tracking matches
       $matchedItems = [];
     ?>
     
@@ -915,31 +923,28 @@
                         <tr style="background: #f9fafb;">
                           <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
                           <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Cost</th>
-                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Units</th>
-                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($qtyHeader); ?></th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($extraHeader); ?></th>
                           <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         <?php foreach ($items as $item): ?>
                           <?php
-                            $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                            $units = floatval($item['units'] ?? 0);
-                            $days = floatval($item['days'] ?? 1);
-                            
-                            // Use days when greater than 1, otherwise just unit_cost * units
-                            if ($days > 1) {
-                                $total = $unitCost * $units * $days;
-                            } else {
-                                $total = $unitCost * $units;
+                            if (!is_array($item)) {
+                                continue;
                             }
+                            $line = change_request_budget_line_display($item, $isNonTravelBudget);
+                            $extraCell = $isNonTravelBudget
+                                ? htmlspecialchars((string) ($line['extra_text'] ?: '—'))
+                                : number_format((float) ($line['extra'] ?? 1), 0);
                           ?>
                           <tr>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($item['cost'] ?? $item['description'] ?? 'N/A'); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($unitCost, 2); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($units, 0); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($days, 0); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($line['name']); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['unit_cost'], 2); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($line['qty'], $isNonTravelBudget ? 2 : 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $extraCell; ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['total'], 2); ?></td>
                           </tr>
                         <?php endforeach; ?>
                       </tbody>
@@ -970,56 +975,38 @@
                         <tr style="background: #f9fafb;">
                           <th style="padding: 8px; text-align: left; border-bottom: 1px solid #e5e7eb;">Item</th>
                           <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Unit Cost</th>
-                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Units</th>
-                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Days</th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($qtyHeader); ?></th>
+                          <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($extraHeader); ?></th>
                           <th style="padding: 8px; text-align: right; border-bottom: 1px solid #e5e7eb;">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         <?php foreach ($items as $item): ?>
                           <?php
-                            $itemName = $item['cost'] ?? $item['description'] ?? '';
-                            $unitCost = floatval($item['unit_cost'] ?? $item['cost'] ?? 0);
-                            $units = floatval($item['units'] ?? 0);
-                            $days = floatval($item['days'] ?? 1);
-                            
-                            // Use days when greater than 1, otherwise just unit_cost * units
-                            if ($days > 1) {
-                                $total = $unitCost * $units * $days;
-                            } else {
-                                $total = $unitCost * $units;
+                            if (!is_array($item)) {
+                                continue;
                             }
-                            
-                            // Check if this budget item should be highlighted
-                            $shouldHighlight = false;
-                            
-                            // Create unique key using all properties to match with original
-                            $key = $fundCodeId . '_' . md5($itemName . '_' . $unitCost . '_' . $units . '_' . $days);
-                            
-                            // Initialize matched items counter for this fund code if needed
+                            $line = change_request_budget_line_display($item, $isNonTravelBudget);
+                            $key = $fundCodeId . '_' . $line['signature'];
                             if (!isset($matchedItems[$fundCodeId])) {
                                 $matchedItems[$fundCodeId] = [];
                             }
                             if (!isset($matchedItems[$fundCodeId][$key])) {
                                 $matchedItems[$fundCodeId][$key] = 0;
                             }
-                            
-                            // Increment match counter for this item
                             $matchedItems[$fundCodeId][$key]++;
-                            
-                            // Check if this item exists in original and if we've exceeded the count
                             $originalCount = $originalBudgetMap[$key] ?? 0;
-                            if ($originalCount === 0 || $matchedItems[$fundCodeId][$key] > $originalCount) {
-                                // Item doesn't exist in original OR we have more instances than original
-                                $shouldHighlight = true;
-                            }
+                            $shouldHighlight = $originalCount === 0 || $matchedItems[$fundCodeId][$key] > $originalCount;
+                            $extraCell = $isNonTravelBudget
+                                ? htmlspecialchars((string) ($line['extra_text'] ?: '—'))
+                                : number_format((float) ($line['extra'] ?? 1), 0);
                           ?>
                           <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($itemName ?: 'N/A'); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($unitCost, 2); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($units, 0); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($days, 0); ?></td>
-                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($total, 2); ?></td>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($line['name']); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['unit_cost'], 2); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($line['qty'], $isNonTravelBudget ? 2 : 0); ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $extraCell; ?></td>
+                            <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['total'], 2); ?></td>
                           </tr>
                         <?php endforeach; ?>
                       </tbody>

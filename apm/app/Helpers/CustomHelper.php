@@ -593,11 +593,68 @@ if (! function_exists('user_session')) {
 
     if (! function_exists('change_request_hide_budget_details_for_viewer')) {
         /**
-         * Hide budget comparison panels from approvers who are not on the finance_officer workflow step.
+         * Whether to hide budget comparison badges/panels on the change-request show page.
+         * Comparison is visible to anyone who can open the CR; the finance “Available Budget”
+         * input remains gated by {@see change_request_show_finance_available_budget_field()}.
          */
         function change_request_hide_budget_details_for_viewer(object $changeRequest): bool
         {
-            return ! change_request_viewer_may_see_budget($changeRequest);
+            return false;
+        }
+    }
+
+    if (! function_exists('change_request_budget_line_display')) {
+        /**
+         * Normalize a budget line for CR show/print: non-travel uses quantity/unit/description;
+         * travel/special uses units/days/cost.
+         *
+         * @param  array<string, mixed>  $item
+         * @return array{name: string, unit_cost: float, qty: float, qty_header: string, extra: float|null, extra_header: string|null, total: float, signature: string}
+         */
+        function change_request_budget_line_display(array $item, bool $isNonTravel): array
+        {
+            if ($isNonTravel) {
+                $name = trim((string) ($item['description'] ?? ''));
+                if ($name === '') {
+                    $name = trim((string) ($item['cost'] ?? ''));
+                }
+                $unitCost = (float) ($item['unit_cost'] ?? 0);
+                $qty = (float) ($item['quantity'] ?? ($item['qty'] ?? ($item['units'] ?? 1)));
+                $unitLabel = trim((string) ($item['unit'] ?? ''));
+
+                return [
+                    'name' => $name !== '' ? $name : 'N/A',
+                    'unit_cost' => $unitCost,
+                    'qty' => $qty,
+                    'qty_header' => 'Qty',
+                    'extra' => null,
+                    'extra_header' => $unitLabel !== '' ? 'Unit' : null,
+                    'extra_text' => $unitLabel !== '' ? $unitLabel : null,
+                    'total' => $qty * $unitCost,
+                    'signature' => md5($name.'_'.$unitCost.'_'.$qty.'_'.$unitLabel),
+                ];
+            }
+
+            $name = trim((string) ($item['cost'] ?? ''));
+            if ($name === '') {
+                $name = trim((string) ($item['description'] ?? ''));
+            }
+            $unitCost = (float) ($item['unit_cost'] ?? 0);
+            $units = (float) ($item['units'] ?? ($item['quantity'] ?? 0));
+            $days = (float) ($item['days'] ?? 1);
+            $total = $days > 1 ? ($unitCost * $units * $days) : ($unitCost * $units);
+
+            return [
+                'name' => $name !== '' ? $name : 'N/A',
+                'unit_cost' => $unitCost,
+                'qty' => $units,
+                'qty_header' => 'Units',
+                'extra' => $days,
+                'extra_header' => 'Days',
+                'extra_text' => null,
+                'total' => $total,
+                'signature' => md5($name.'_'.$unitCost.'_'.$units.'_'.$days),
+            ];
         }
     }
 

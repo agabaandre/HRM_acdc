@@ -329,6 +329,10 @@ class ChangeRequestController extends Controller
                 $budgetItems = $isNonTravelParent
                     ? $request->input('budget_breakdown', [])
                     : $request->input('budget', []);
+                // Non-travel CR forms use budget_breakdown; accept budget[] as a fallback.
+                if ($isNonTravelParent && empty($budgetItems)) {
+                    $budgetItems = $request->input('budget', []);
+                }
                 $fundTypeId = (int) $request->input('fund_type', 1);
                 
                 if (!empty($budgetItems)) {
@@ -614,9 +618,9 @@ class ChangeRequestController extends Controller
             }
         }
 
-        // Non-travel legacy guard:
-        // Older records could be saved with empty change-request budget fields due to key mismatch (budget vs budget_breakdown).
-        // Recompute effective budget flags for display so false "Budget Code/Budget Breakdown" badges are avoided.
+        // Non-travel: recompute budget change flags from snapshots when the CR has a budget snapshot.
+        // If the snapshot is empty (legacy budget vs budget_breakdown key mismatch), keep persisted flags
+        // so a real budget change is not wiped to “remarks only” on the show page.
         if ($parentMemo instanceof NonTravelMemo) {
             $parentBudget = $parentMemo->budget_breakdown ?? [];
             if (is_string($parentBudget)) {
@@ -640,70 +644,25 @@ class ChangeRequestController extends Controller
                 $crBudgetIds = is_array($decoded) ? $decoded : [];
             }
 
-            // If CR budget snapshot is empty, treat it as inherited baseline for display-level change detection.
-            if (empty($crBudget) && empty($crBudgetIds)) {
-                $crBudget = $parentBudget;
-                $crBudgetIds = $parentBudgetIds;
+            $crBudgetForCompare = is_array($crBudget) ? $crBudget : [];
+            unset($crBudgetForCompare['grand_total']);
+            $crIdsForEmpty = array_values(array_filter(
+                array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []),
+                static fn (int $id): bool => $id > 0
+            ));
+            $crHasSnapshot = $crBudgetForCompare !== [] || $crIdsForEmpty !== [];
+
+            if ($crHasSnapshot) {
+                $parentNormalized = $this->normalizeNonTravelMemoBudget(is_array($parentBudget) ? $parentBudget : []);
+                $crNormalized = $this->normalizeNonTravelMemoBudget(is_array($crBudget) ? $crBudget : []);
+                $changeRequest->has_budget_breakdown_changed = json_encode($parentNormalized) !== json_encode($crNormalized);
+
+                $parentIds = array_values(array_map('intval', is_array($parentBudgetIds) ? $parentBudgetIds : []));
+                $crIds = array_values(array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []));
+                sort($parentIds);
+                sort($crIds);
+                $changeRequest->has_budget_id_changed = $parentIds !== $crIds;
             }
-
-            $parentNormalized = $this->normalizeNonTravelMemoBudget(is_array($parentBudget) ? $parentBudget : []);
-            $crNormalized = $this->normalizeNonTravelMemoBudget(is_array($crBudget) ? $crBudget : []);
-            $effectiveBudgetBreakdownChanged = json_encode($parentNormalized) !== json_encode($crNormalized);
-
-            $parentIds = array_values(array_map('intval', is_array($parentBudgetIds) ? $parentBudgetIds : []));
-            $crIds = array_values(array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []));
-            sort($parentIds);
-            sort($crIds);
-            $effectiveBudgetIdChanged = $parentIds !== $crIds;
-
-            $changeRequest->has_budget_breakdown_changed = $effectiveBudgetBreakdownChanged;
-            $changeRequest->has_budget_id_changed = $effectiveBudgetIdChanged;
-        }
-
-        // Non-travel legacy guard:
-        // Older records could be saved with empty change-request budget fields due to key mismatch (budget vs budget_breakdown).
-        // Recompute effective budget flags for display so false "Budget Code/Budget Breakdown" badges are avoided.
-        if ($parentMemo instanceof NonTravelMemo) {
-            $parentBudget = $parentMemo->budget_breakdown ?? [];
-            if (is_string($parentBudget)) {
-                $decoded = json_decode($parentBudget, true);
-                $parentBudget = is_array($decoded) ? $decoded : [];
-            }
-            $parentBudgetIds = $parentMemo->budget_id ?? [];
-            if (is_string($parentBudgetIds)) {
-                $decoded = json_decode($parentBudgetIds, true);
-                $parentBudgetIds = is_array($decoded) ? $decoded : [];
-            }
-
-            $crBudget = $changeRequest->budget_breakdown ?? [];
-            if (is_string($crBudget)) {
-                $decoded = json_decode($crBudget, true);
-                $crBudget = is_array($decoded) ? $decoded : [];
-            }
-            $crBudgetIds = $changeRequest->budget_id ?? [];
-            if (is_string($crBudgetIds)) {
-                $decoded = json_decode($crBudgetIds, true);
-                $crBudgetIds = is_array($decoded) ? $decoded : [];
-            }
-
-            // If CR budget snapshot is empty, treat it as inherited baseline for display-level change detection.
-            if (empty($crBudget) && empty($crBudgetIds)) {
-                $crBudget = $parentBudget;
-                $crBudgetIds = $parentBudgetIds;
-            }
-
-            $parentNormalized = $this->normalizeNonTravelMemoBudget(is_array($parentBudget) ? $parentBudget : []);
-            $crNormalized = $this->normalizeNonTravelMemoBudget(is_array($crBudget) ? $crBudget : []);
-            $effectiveBudgetBreakdownChanged = json_encode($parentNormalized) !== json_encode($crNormalized);
-
-            $parentIds = array_values(array_map('intval', is_array($parentBudgetIds) ? $parentBudgetIds : []));
-            $crIds = array_values(array_map('intval', is_array($crBudgetIds) ? $crBudgetIds : []));
-            sort($parentIds);
-            sort($crIds);
-            $effectiveBudgetIdChanged = $parentIds !== $crIds;
-
-            $changeRequest->has_budget_breakdown_changed = $effectiveBudgetBreakdownChanged;
-            $changeRequest->has_budget_id_changed = $effectiveBudgetIdChanged;
         }
 
         $existingArf = $changeRequest->request_arf_id
@@ -1388,19 +1347,23 @@ class ChangeRequestController extends Controller
             $parentBudget = is_array($decoded) ? $decoded : [];
         }
 
-        // Check if this is a Special Memo or Matrix memo (different structure)
-        $isSpecialOrMatrixMemo = $parentMemo instanceof SpecialMemo || 
-                                ($parentMemo instanceof Activity && $parentMemo->matrix_id);
-
-        if ($isSpecialOrMatrixMemo) {
-            // Special/Matrix forms submit budget in `budget[...]`
-            $requestBudget = $request->input('budget', []);
-            return $this->detectSpecialMemoBudgetChange($parentBudget, $requestBudget, $parentMemo, $request);
-        } else {
-            // Non-travel forms submit budget in `budget_breakdown[...]`
+        if ($parentMemo instanceof NonTravelMemo) {
+            // Non-travel forms submit budget in `budget_breakdown[...]` (fallback: budget[])
             $requestBudget = $request->input('budget_breakdown', []);
+            if (empty($requestBudget)) {
+                $requestBudget = $request->input('budget', []);
+            }
+
             return $this->detectNonTravelMemoBudgetChange($parentBudget, $requestBudget);
         }
+
+        // Activity / Special Memo / matrix: forms submit budget in `budget[...]`
+        $requestBudget = $request->input('budget', []);
+        if (empty($requestBudget)) {
+            $requestBudget = $request->input('budget_breakdown', []);
+        }
+
+        return $this->detectSpecialMemoBudgetChange($parentBudget, $requestBudget, $parentMemo, $request);
     }
 
     /**
@@ -2412,28 +2375,42 @@ class ChangeRequestController extends Controller
         }
 
         if ($changeRequest->has_budget_id_changed || $changeRequest->has_budget_breakdown_changed) {
-            // Get budget totals
-            $originalTotal = 0;
-            $changedTotal = 0;
-            
-            if ($parentMemo) {
-                $parentBudget = $parentMemo->budget_breakdown ?? [];
-                if (is_string($parentBudget)) {
-                    $parentBudget = json_decode($parentBudget, true) ?? [];
+            $isNonTravelBudget = $parentMemo instanceof NonTravelMemo
+                || ($changeRequest->parent_memo_model ?? '') === NonTravelMemo::class;
+
+            $sumBreakdown = static function ($raw) use ($isNonTravelBudget): float {
+                if (is_string($raw)) {
+                    $decoded = json_decode($raw, true);
+                    $raw = is_array($decoded) ? $decoded : [];
                 }
-                $originalTotal = $parentBudget['grand_total'] ?? 0;
-            }
-            
-            $changedBudget = $changeRequest->budget_breakdown ?? [];
-            if (is_string($changedBudget)) {
-                $changedBudget = json_decode($changedBudget, true) ?? [];
-            }
-            $changedTotal = $changedBudget['grand_total'] ?? 0;
-            
+                if (! is_array($raw)) {
+                    return 0.0;
+                }
+                $total = (float) ($raw['grand_total'] ?? 0);
+                if ($total > 0) {
+                    return $total;
+                }
+                foreach ($raw as $codeId => $items) {
+                    if ((string) $codeId === 'grand_total' || ! is_array($items)) {
+                        continue;
+                    }
+                    foreach ($items as $item) {
+                        if (is_array($item)) {
+                            $total += change_request_budget_line_display($item, $isNonTravelBudget)['total'];
+                        }
+                    }
+                }
+
+                return $total;
+            };
+
+            $originalTotal = $parentMemo ? $sumBreakdown($parentMemo->budget_breakdown ?? []) : 0.0;
+            $changedTotal = $sumBreakdown($changeRequest->budget_breakdown ?? []);
+
             $changes[] = [
                 'type' => 'Budget',
-                'original' => 'KES ' . number_format($originalTotal, 2),
-                'changed' => 'KES ' . number_format($changedTotal, 2)
+                'original' => '$'.number_format($originalTotal, 2),
+                'changed' => '$'.number_format($changedTotal, 2),
             ];
         }
 
