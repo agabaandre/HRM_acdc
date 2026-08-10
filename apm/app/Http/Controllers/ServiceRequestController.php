@@ -109,8 +109,14 @@ class ServiceRequestController extends Controller
             $originalTotalBudget = 0;
             $internalParticipants = [];
             
+            // URL change_request_id seeds a new SR from a CR. For supplementary SRs, resolve the
+            // parent's originating CR for budget/display only — do not set changeRequestId so store
+            // does not re-point change_request.service_request_id away from the parent.
             $changeRequestId = $request->get('change_request_id');
             $changeRequest = $changeRequestId ? ChangeRequest::find($changeRequestId) : null;
+            if (! $changeRequest && $isChildRequestForm && $parentServiceRequest) {
+                $changeRequest = $parentServiceRequest->originatingChangeRequest();
+            }
 
             if ($changeRequest && (!$sourceType || !$sourceId)) {
                 $parentClass = $changeRequest->parent_memo_model ?? null;
@@ -143,27 +149,25 @@ class ServiceRequestController extends Controller
                     $internalParticipants = $this->processInternalParticipantsFromSource($sourceData, $sourceType);
                 }
 
-                // When creating from a Change Request, use only the CR's data (not parent memo) for budget, participants, title, division, fund type.
+                // When creating from a Change Request (or a supplementary SR whose parent came from a CR),
+                // use the CR's data (not the original memo) for budget, participants, title, division, fund type.
                 if ($changeRequest && $sourceData) {
+                    $this->applyChangeRequestOverlayToSource($sourceData, $changeRequest);
                     if ($changeRequest->budget_breakdown !== null) {
                         $crBudget = is_string($changeRequest->budget_breakdown)
                             ? json_decode($changeRequest->budget_breakdown, true)
                             : $changeRequest->budget_breakdown;
                         if (is_array($crBudget) && !empty($crBudget)) {
                             $budgetBreakdown = $crBudget;
-                            $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
-                                $sourceType,
-                                $budgetBreakdown
-                            );
-                            if ($originalTotalBudget <= 0 && $changeRequest->available_budget > 0) {
-                                $originalTotalBudget = (float) $changeRequest->available_budget;
+                            if (! $isChildRequestForm) {
+                                $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
+                                    $sourceType,
+                                    $budgetBreakdown
+                                );
+                                if ($originalTotalBudget <= 0 && $changeRequest->available_budget > 0) {
+                                    $originalTotalBudget = (float) $changeRequest->available_budget;
+                                }
                             }
-                        }
-                    }
-                    if ($changeRequest->budget_id !== null) {
-                        $crBudgetIds = is_string($changeRequest->budget_id) ? (json_decode($changeRequest->budget_id, true) ?? []) : $changeRequest->budget_id;
-                        if (is_array($crBudgetIds)) {
-                            $sourceData->budget_id = $crBudgetIds;
                         }
                     }
                     if ($changeRequest->internal_participants !== null) {
@@ -174,26 +178,8 @@ class ServiceRequestController extends Controller
                             $internalParticipants = $crParticipants;
                         }
                     }
-                    $sourceData->activity_title = $changeRequest->activity_title ?? $sourceData->activity_title ?? $sourceData->title ?? null;
-                    $sourceData->title = $sourceData->activity_title;
-                    if ($changeRequest->division_id !== null && $changeRequest->division_id !== '') {
-                        $sourceData->division_id = (int) $changeRequest->division_id;
-                        $crDivision = \App\Models\Division::find($sourceData->division_id);
-                        $sourceData->setRelation('division', $crDivision);
-                    }
-                    if ($changeRequest->fund_type_id !== null && $changeRequest->fund_type_id !== '') {
-                        $sourceData->fund_type_id = (int) $changeRequest->fund_type_id;
-                        $crFundType = \App\Models\FundType::find($sourceData->fund_type_id);
-                        $sourceData->setRelation('fundType', $crFundType);
-                    }
-                    if ($changeRequest->background !== null && $changeRequest->background !== '') {
-                        $sourceData->background = $changeRequest->background;
-                    }
-                    if ($changeRequest->activity_request_remarks !== null && $changeRequest->activity_request_remarks !== '') {
-                        $sourceData->activity_request_remarks = $changeRequest->activity_request_remarks;
-                    }
-                    if ($changeRequest->justification !== null && $changeRequest->justification !== '') {
-                        $sourceData->justification = $changeRequest->justification;
+                    if ($isChildRequestForm) {
+                        $originalTotalBudget = $childBalanceCap;
                     }
                 }
             }
@@ -2004,6 +1990,9 @@ class ServiceRequestController extends Controller
         }
         if ($changeRequest->activity_request_remarks) {
             $sourceData->activity_request_remarks = $changeRequest->activity_request_remarks;
+        }
+        if ($changeRequest->justification) {
+            $sourceData->justification = $changeRequest->justification;
         }
         if ($changeRequest->total_participants !== null) {
             $sourceData->total_participants = $changeRequest->total_participants;

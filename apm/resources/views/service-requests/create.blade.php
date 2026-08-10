@@ -72,21 +72,27 @@
             }
         }
     }
-    // Process source data if available (create mode). When creating from a change request, do NOT use parent memo budget - controller already passed CR budget in $budgetBreakdown.
-    if (!$isEdit && empty($changeRequestId ?? null) && $sourceData && isset($sourceData->budget_breakdown)) {
-        $budgetBreakdown = is_string($sourceData->budget_breakdown)
+    // Create mode: prefer controller $budgetBreakdown (CR overlay / processed source). Fall back to source memo only when empty.
+    // Important for supplementary SRs from a CR-based parent: do not replace CR budget with the original memo.
+    if (!$isEdit) {
+        $createBudgetSource = null;
+        if (!empty($budgetBreakdown) && is_array($budgetBreakdown)) {
+            $createBudgetSource = $budgetBreakdown;
+        } elseif ($sourceData && isset($sourceData->budget_breakdown)) {
+            $createBudgetSource = is_string($sourceData->budget_breakdown)
                 ? json_decode(stripslashes($sourceData->budget_breakdown), true)
-            : $sourceData->budget_breakdown;
-        if (is_string($budgetBreakdown) && !is_array($budgetBreakdown)) {
-            $budgetBreakdown = json_decode($budgetBreakdown, true);
+                : $sourceData->budget_breakdown;
+            if (is_string($createBudgetSource) && !is_array($createBudgetSource)) {
+                $createBudgetSource = json_decode($createBudgetSource, true);
+            }
         }
-        if (is_array($budgetBreakdown) && !empty($budgetBreakdown)) {
+        if (is_array($createBudgetSource) && !empty($createBudgetSource)) {
+            $budgetBreakdown = $createBudgetSource;
             foreach ($budgetBreakdown as $key => $item) {
                 if ($key === 'grand_total') {
                     continue;
                 } elseif (is_array($item)) {
-                    $fundCodeId = $key;
-                    $budgetByFundCode[$fundCodeId] = $item;
+                    $budgetByFundCode[$key] = $item;
                 }
             }
             if (!empty($budgetByFundCode)) {
@@ -97,24 +103,6 @@
                     $budgetBreakdown
                 );
             }
-        }
-    }
-    // When creating from change request, parse controller-provided $budgetBreakdown (already CR data) for display
-    if (!$isEdit && !empty($changeRequestId ?? null) && !empty($budgetBreakdown) && is_array($budgetBreakdown)) {
-        foreach ($budgetBreakdown as $key => $item) {
-            if ($key === 'grand_total') {
-                continue;
-            } elseif (is_array($item)) {
-                $budgetByFundCode[$key] = $item;
-            }
-        }
-        if (!empty($budgetByFundCode)) {
-            $fundCodeIds = array_keys($budgetByFundCode);
-            $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-            $totalOriginal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
-                (string) ($sourceType ?? 'activity'),
-                $budgetBreakdown
-            );
         }
     }
     if (!$isEdit && !empty($changeRequestId ?? null) && isset($originalTotalBudget) && (float)$originalTotalBudget > 0 && $totalOriginal == 0) {

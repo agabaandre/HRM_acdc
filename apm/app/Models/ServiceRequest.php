@@ -120,6 +120,38 @@ class ServiceRequest extends Model
         return (int) ($this->parent_service_request_id ?? 0) > 0;
     }
 
+    /**
+     * Change request that produced this SR (or an ancestor), if any.
+     * Used so supplementary SRs seed budget from the CR, not the original memo.
+     */
+    public function originatingChangeRequest(): ?ChangeRequest
+    {
+        $cursor = $this;
+        $guard = 0;
+        while ($cursor && $guard < 20) {
+            $cr = ChangeRequest::query()
+                ->where('service_request_id', $cursor->id)
+                ->orderByDesc('id')
+                ->first();
+            if ($cr) {
+                return $cr;
+            }
+
+            if ((int) ($cursor->parent_service_request_id ?? 0) <= 0) {
+                break;
+            }
+
+            if ($cursor->relationLoaded('parentServiceRequest')) {
+                $cursor = $cursor->parentServiceRequest;
+            } else {
+                $cursor = self::query()->find((int) $cursor->parent_service_request_id);
+            }
+            $guard++;
+        }
+
+        return null;
+    }
+
     public static function childRequestsEnabled(): bool
     {
         $value = SystemSetting::get('allow_child_service_requests', '1');
