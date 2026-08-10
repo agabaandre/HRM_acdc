@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, onUnmounted, reactive, ref, watch
 import { useRoute } from 'vue-router'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
 import CbpPageHeading from '../components/common/CbpPageHeading.vue'
+import TicketLifecycleTimeline from '../components/tickets/TicketLifecycleTimeline.vue'
+import type { TimelineItem } from '../components/tickets/TicketLifecycleTimeline.vue'
 import { api } from '../lib/api'
 import type { FormError, FormSubmitEvent } from '../types/form'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
@@ -96,6 +98,11 @@ interface TicketDetail {
   status: string
   priority: string
   created_at?: string | null
+  first_response_at?: string | null
+  resolved_at?: string | null
+  resolution_confirmed_at?: string | null
+  closed_at?: string | null
+  timeline?: TimelineItem[]
   assigned_user_id: number | null
   requester_staff_id?: number | null
   requester_name?: string | null
@@ -848,6 +855,9 @@ watch(canReopenWithComment, (can) => {
             </div>
           </div>
         </section>
+
+        <TicketLifecycleTimeline :items="ticket.timeline || []" />
+
       <section class="desc">
         <div v-if="isHtmlDescription" class="html rich-text-content" v-html="descriptionHtml" />
         <pre v-else class="pre">{{ displayPlainDescription }}</pre>

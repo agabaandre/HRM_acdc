@@ -272,6 +272,9 @@ class TicketController extends Controller
             'assignee.helpdeskProfile',
             'assignees',
             'attachments',
+            'histories.user',
+            'resolvedBy',
+            'resolutionSubmittedBy',
         ]));
     }
 

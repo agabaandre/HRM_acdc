@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api\V1;
 
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
+use App\Services\TicketTimelineBuilder;
 use App\Support\HelpdeskAttachmentUrl;
 use App\Support\StaffPhotoUrl;
 use Illuminate\Http\Request;
@@ -54,10 +55,16 @@ class TicketResource extends JsonResource
             'country_id' => $this->country_id,
             'sla_response_due_at' => $this->sla_response_due_at,
             'sla_resolution_due_at' => $this->sla_resolution_due_at,
+            'first_response_at' => $this->first_response_at,
             'resolved_at' => $this->resolved_at,
             'resolution_confirmed_at' => $this->resolution_confirmed_at,
+            'closed_at' => $this->closed_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'timeline' => $this->when(
+                $this->relationLoaded('histories'),
+                fn () => app(TicketTimelineBuilder::class)->build($this->resource)
+            ),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'business_unit' => $this->when(
                 $this->relationLoaded('businessUnit') && $this->businessUnit !== null,
