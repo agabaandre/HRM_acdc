@@ -940,7 +940,7 @@
                                 : number_format((float) ($line['extra'] ?? 1), 0);
                           ?>
                           <tr>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($line['name']); ?></td>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; white-space: normal; word-wrap: break-word; overflow-wrap: break-word;"><?php echo htmlspecialchars($line['name']); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['unit_cost'], 2); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($line['qty'], $isNonTravelBudget ? 2 : 0); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $extraCell; ?></td>
@@ -1002,7 +1002,7 @@
                                 : number_format((float) ($line['extra'] ?? 1), 0);
                           ?>
                           <tr <?php if ($shouldHighlight): ?>style="background-color: #ffe6e6;"<?php endif; ?>>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;"><?php echo htmlspecialchars($line['name']); ?></td>
+                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; white-space: normal; word-wrap: break-word; overflow-wrap: break-word;"><?php echo htmlspecialchars($line['name']); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;">$<?php echo number_format($line['unit_cost'], 2); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo number_format($line['qty'], $isNonTravelBudget ? 2 : 0); ?></td>
                             <td style="padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb;"><?php echo $extraCell; ?></td>

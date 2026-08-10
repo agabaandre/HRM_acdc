@@ -68,11 +68,32 @@
     $extraHeader = $isNonTravelBudget ? 'Unit' : 'Days';
 @endphp
 
+<style>
+    .cr-budget-compare-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .cr-budget-compare-table th:first-child,
+    .cr-budget-compare-table td.cr-budget-item-cell {
+        width: 42%;
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        hyphens: auto;
+        vertical-align: top;
+    }
+    .cr-budget-compare-table th:not(:first-child),
+    .cr-budget-compare-table td:not(.cr-budget-item-cell) {
+        white-space: nowrap;
+        vertical-align: top;
+    }
+</style>
+
 <div class="row">
     <div class="col-md-6">
         <h6 class="text-muted mb-2"><strong>Original Budget</strong></h6>
         @if(count($parentBudgetBreakdown) > 0)
-            <div class="table-responsive">
+            <div>
                 @foreach($parentBudgetBreakdown as $fundCodeId => $items)
                     @if(is_array($items) && count($items) > 0)
                         @php $fundCode = \App\Models\FundCode::find($fundCodeId); @endphp
@@ -80,7 +101,7 @@
                             <div class="bg-light p-2 rounded-top border border-bottom-0">
                                 <strong style="color: #911C39;">{{ $fundCode->code ?? 'N/A' }}</strong>
                             </div>
-                            <table class="table table-sm table-bordered mb-0">
+                            <table class="table table-sm table-bordered mb-0 cr-budget-compare-table">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Item</th>
@@ -95,7 +116,7 @@
                                         @continue(! is_array($item))
                                         @php $line = change_request_budget_line_display($item, $isNonTravelBudget); @endphp
                                         <tr>
-                                            <td>{{ $line['name'] }}</td>
+                                            <td class="cr-budget-item-cell">{{ $line['name'] }}</td>
                                             <td class="text-end">${{ number_format($line['unit_cost'], 2) }}</td>
                                             <td class="text-end">{{ number_format($line['qty'], $isNonTravelBudget ? 2 : 0) }}</td>
                                             <td class="text-end">
@@ -127,7 +148,7 @@
     <div class="col-md-6">
         <h6 class="text-muted mb-2"><strong>Changed Budget</strong></h6>
         @if(count($currentBudgetBreakdown) > 0)
-            <div class="table-responsive">
+            <div>
                 @foreach($currentBudgetBreakdown as $fundCodeId => $items)
                     @if(is_array($items) && count($items) > 0)
                         @php $fundCode = \App\Models\FundCode::find($fundCodeId); @endphp
@@ -135,7 +156,7 @@
                             <div class="bg-light p-2 rounded-top border border-bottom-0">
                                 <strong style="color: #911C39;">{{ $fundCode->code ?? 'N/A' }}</strong>
                             </div>
-                            <table class="table table-sm table-bordered mb-0">
+                            <table class="table table-sm table-bordered mb-0 cr-budget-compare-table">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Item</th>
@@ -162,7 +183,7 @@
                                             $shouldHighlight = $originalCount === 0 || $matchedItems[$fundCodeId][$key] > $originalCount;
                                         @endphp
                                         <tr @if($shouldHighlight) style="background-color: #ffe6e6;" @endif>
-                                            <td>{{ $line['name'] }}</td>
+                                            <td class="cr-budget-item-cell">{{ $line['name'] }}</td>
                                             <td class="text-end">${{ number_format($line['unit_cost'], 2) }}</td>
                                             <td class="text-end">{{ number_format($line['qty'], $isNonTravelBudget ? 2 : 0) }}</td>
                                             <td class="text-end">
