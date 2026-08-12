@@ -13,7 +13,7 @@ class StaffContractService
     public const CURRENT_STATUSES = [1, 2, 7];
 
     /**
-     * @return array<string, Collection<int, object>|list<object>>
+     * @return array<string, mixed>
      */
     public function formLookups(int $excludeStaffId = 0): array
     {
@@ -33,7 +33,11 @@ class StaffContractService
             'contractTypes' => DB::table('contract_types')->orderBy('contract_type')->get(),
             'dutyStations' => DB::table('duty_stations')->orderBy('duty_station_name')->get(),
             'divisions' => DB::table('divisions')->orderBy('division_name')->get(),
+            'units' => DB::getSchemaBuilder()->hasTable('units')
+                ? DB::table('units')->orderBy('unit_name')->get()
+                : [],
             'statuses' => DB::table('status')->orderBy('status_id')->get(),
+            'nationalities' => DB::table('nationalities')->orderBy('nationality')->get(),
             'supervisors' => $supervisors,
         ];
     }

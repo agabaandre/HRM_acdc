@@ -5,13 +5,41 @@ namespace Modules\Staff\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Modules\Staff\Services\StaffContractService;
+use Modules\Staff\Services\StaffCreateService;
 use Modules\Staff\Services\StaffDirectoryService;
 use Modules\Staff\Services\StaffProfileService;
 use Modules\Staff\Support\StaffAccess;
 
 class StaffApiController extends Controller
 {
+    public function formLookups(StaffContractService $contracts): JsonResponse
+    {
+        if (! StaffAccess::canManageStaff()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        return response()->json([
+            'data' => $contracts->formLookups(),
+        ]);
+    }
+
+    public function store(Request $request, StaffCreateService $creator): JsonResponse
+    {
+        if (! StaffAccess::canManageStaff()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $created = $creator->create($this->validatedStorePayload($request));
+
+        return response()->json([
+            'data' => $created,
+            'message' => 'Staff created successfully.',
+        ], 201);
+    }
+
     public function index(Request $request, StaffDirectoryService $directory): JsonResponse
     {
         if (! StaffAccess::canViewDirectory()) {
@@ -188,5 +216,66 @@ class StaffApiController extends Controller
             'other_staff' => 'Other staff',
             default => $category,
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function validatedStorePayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'SAPNO' => ['nullable', 'string', 'max:50'],
+            'title' => ['required', 'string', 'max:20'],
+            'fname' => ['required', 'string', 'max:100'],
+            'lname' => ['required', 'string', 'max:100'],
+            'oname' => ['nullable', 'string', 'max:100'],
+            'date_of_birth' => [
+                'required',
+                'date_format:Y-m-d',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    try {
+                        $birthDate = Carbon::createFromFormat('Y-m-d', (string) $value)->startOfDay();
+                    } catch (\Throwable) {
+                        return;
+                    }
+
+                    $adultThreshold = now()->subYears(18)->startOfDay();
+                    if ($birthDate->gt($adultThreshold)) {
+                        $fail('Staff must be at least 18 years old.');
+                    }
+                },
+            ],
+            'gender' => ['required', 'string', 'in:Male,Female,Other'],
+            'nationality_id' => ['required', 'integer', 'min:1', 'exists:nationalities,nationality_id'],
+            'initiation_date' => ['required', 'date_format:Y-m-d'],
+            'tel_1' => ['required', 'string', 'max:50'],
+            'tel_2' => ['nullable', 'string', 'max:50'],
+            'whatsapp' => ['nullable', 'string', 'max:50'],
+            'work_email' => ['required', 'email:rfc', 'max:255', 'unique:staff,work_email'],
+            'private_email' => ['nullable', 'email:rfc', 'max:255'],
+            'physical_location' => ['nullable', 'string', 'max:1000'],
+            'job_id' => ['required', 'integer', 'min:1', 'exists:jobs,job_id'],
+            'job_acting_id' => ['nullable', 'integer', 'min:1', 'exists:jobs_acting,job_acting_id'],
+            'grade_id' => ['required', 'string', 'max:20', 'exists:grades,grade_id'],
+            'contracting_institution_id' => ['required', 'integer', 'min:1', 'exists:contracting_institutions,contracting_institution_id'],
+            'funder_id' => ['required', 'integer', 'min:1', 'exists:funders,funder_id'],
+            'first_supervisor' => ['required', 'integer', 'min:1', 'exists:staff,staff_id'],
+            'second_supervisor' => ['nullable', 'integer', 'min:1', 'exists:staff,staff_id'],
+            'contract_type_id' => ['required', 'integer', 'min:1', 'exists:contract_types,contract_type_id'],
+            'duty_station_id' => ['required', 'integer', 'min:1', 'exists:duty_stations,duty_station_id'],
+            'division_id' => ['required', 'integer', 'min:1', 'exists:divisions,division_id'],
+            'unit_id' => ['nullable', 'integer', 'min:1', 'exists:units,unit_id'],
+            'other_associated_divisions' => ['nullable', 'array'],
+            'other_associated_divisions.*' => ['integer', 'distinct', 'min:1', 'exists:divisions,division_id'],
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
+            'comments' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $validated['other_associated_divisions'] = array_values(
+            array_map('intval', (array) ($validated['other_associated_divisions'] ?? []))
+        );
+
+        return $validated;
     }
 }

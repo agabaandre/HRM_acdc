@@ -6,6 +6,7 @@ import StaffColumnPicker from '@/components/molecules/StaffColumnPicker.vue'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport } from '@/lib/exportDownload'
+import { useAuthStore } from '@/stores/auth'
 import {
   loadStaffDirectoryColumns,
   saveStaffDirectoryColumns,
@@ -19,6 +20,7 @@ import {
   type StaffPreset,
 } from '@/lib/staffApi'
 
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref<string | null>(null)
 const exporting = ref(false)
@@ -190,7 +192,7 @@ onMounted(() => void load())
     <PortalPageChrome title="Staff directory" lede="Search active and historical contracts.">
       <template #actions>
         <StaffColumnPicker v-model="selectedColumns" />
-        <RouterLink to="/staff/new" style="text-decoration:none">
+        <RouterLink v-if="auth.hasPermission(71)" to="/staff/new" style="text-decoration:none">
           <v-btn size="small" color="primary">New Staff</v-btn>
         </RouterLink>
         <v-btn size="small" variant="tonal" :loading="exporting" @click="onExportCsv">CSV</v-btn>

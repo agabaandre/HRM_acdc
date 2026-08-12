@@ -54,7 +54,7 @@ const router = createRouter({
       path: '/staff/new',
       name: 'staff-new',
       component: () => import('../pages/staff/StaffNewPage.vue'),
-      meta: { requiresAuth: true, permission: 72, title: 'New staff' },
+      meta: { requiresAuth: true, permission: 71, title: 'New staff' },
     },
     {
       path: '/staff/:id',

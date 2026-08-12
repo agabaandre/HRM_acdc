@@ -76,6 +76,71 @@ export interface DataQualityResponse {
   }
 }
 
+export interface StaffLookupOption {
+  [key: string]: unknown
+}
+
+export interface StaffUnitOption {
+  unit_id: number
+  division_id?: number | null
+  unit_name?: string | null
+}
+
+export interface StaffSupervisorOption {
+  staff_id: number
+  fname?: string | null
+  lname?: string | null
+}
+
+export interface StaffFormLookups {
+  jobs: StaffLookupOption[]
+  jobsActing: StaffLookupOption[]
+  grades: StaffLookupOption[]
+  institutions: StaffLookupOption[]
+  funders: StaffLookupOption[]
+  contractTypes: StaffLookupOption[]
+  dutyStations: StaffLookupOption[]
+  divisions: StaffLookupOption[]
+  units: StaffUnitOption[]
+  statuses: StaffLookupOption[]
+  nationalities: StaffLookupOption[]
+  supervisors: StaffSupervisorOption[]
+}
+
+export interface StaffCreatePayload {
+  SAPNO?: string
+  title: string
+  fname: string
+  lname: string
+  oname?: string
+  date_of_birth: string
+  gender: string
+  nationality_id: number | ''
+  initiation_date: string
+  tel_1: string
+  tel_2?: string
+  whatsapp?: string
+  work_email: string
+  private_email?: string
+  physical_location?: string
+  job_id: number | ''
+  job_acting_id?: number | '' | null
+  grade_id: string
+  contracting_institution_id: number | ''
+  funder_id: number | ''
+  first_supervisor: number | ''
+  second_supervisor?: number | '' | null
+  contract_type_id: number | ''
+  duty_station_id: number | ''
+  division_id: number | ''
+  unit_id?: number | '' | null
+  other_associated_divisions?: number[]
+  start_date: string
+  end_date: string
+  comments?: string
+  status_id?: number
+}
+
 export async function fetchStaffList(params: {
   q?: string
   preset?: StaffPreset
@@ -99,5 +164,15 @@ export async function fetchBirthdays(): Promise<BirthdayRow[]> {
 
 export async function fetchDataQuality(): Promise<DataQualityResponse['data']> {
   const { data } = await api.get<DataQualityResponse>('/api/v1/staff/data-quality')
+  return data.data
+}
+
+export async function fetchStaffFormLookups(): Promise<StaffFormLookups> {
+  const { data } = await api.get<{ data: StaffFormLookups }>('/api/v1/staff/form-lookups')
+  return data.data
+}
+
+export async function createStaff(payload: StaffCreatePayload): Promise<{ staff_id: number; contract_id: number }> {
+  const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', payload)
   return data.data
 }
