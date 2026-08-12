@@ -107,13 +107,13 @@ const router = createRouter({
     {
       path: '/performance/create',
       name: 'performance-create',
-      component: () => import('../pages/performance/PerformanceFormBridgePage.vue'),
+      component: () => import('../pages/performance/PerformanceFormPage.vue'),
       meta: { requiresAuth: true, permission: 74, title: 'Create PPA' },
     },
     {
       path: '/performance/form/:phase/:entryId/:staffId',
       name: 'performance-form',
-      component: () => import('../pages/performance/PerformanceFormBridgePage.vue'),
+      component: () => import('../pages/performance/PerformanceFormPage.vue'),
       meta: { requiresAuth: true, permission: 74, title: 'Performance form' },
     },
     {
