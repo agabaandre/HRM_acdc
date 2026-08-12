@@ -349,6 +349,7 @@ class StaffContractService
     {
         $second = $form['second_supervisor'] ?? null;
         $acting = $form['job_acting_id'] ?? null;
+        $unit = $form['unit_id'] ?? null;
 
         return [
             'job_id' => (int) $form['job_id'],
@@ -361,7 +362,7 @@ class StaffContractService
             'contract_type_id' => (int) $form['contract_type_id'],
             'duty_station_id' => (int) $form['duty_station_id'],
             'division_id' => (int) $form['division_id'],
-            'unit_id' => (int) ($form['unit_id'] ?? 1) ?: 1,
+            'unit_id' => $unit !== '' && $unit !== null ? (int) $unit : null,
             'other_associated_divisions' => $this->encodeOtherDivisions($form['other_associated_divisions'] ?? []),
             'start_date' => $form['start_date'],
             'end_date' => $form['end_date'],

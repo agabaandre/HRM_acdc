@@ -82,7 +82,7 @@ class StaffCreateService
             'contract_type_id' => (int) $data['contract_type_id'],
             'duty_station_id' => (int) $data['duty_station_id'],
             'division_id' => (int) $data['division_id'],
-            'unit_id' => $this->blankToNull($data['unit_id'] ?? null) ?? 1,
+            'unit_id' => $this->blankToNull($data['unit_id'] ?? null),
             'other_associated_divisions' => array_values(array_map('intval', (array) ($data['other_associated_divisions'] ?? []))),
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],

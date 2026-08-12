@@ -66,6 +66,23 @@ class StaffCreateApiTest extends TestCase
         $this->assertSame(1, (int) DB::table('user')->where('auth_staff_id', $staffId)->value('status'));
     }
 
+    public function test_store_does_not_coerce_blank_unit_id_to_one(): void
+    {
+        $response = app(StaffApiController::class)->store(
+            Request::create('/api/v1/staff', 'POST', $this->payload([
+                'unit_id' => null,
+                'work_email' => 'blank.unit@example.test',
+            ])),
+            app(StaffCreateService::class)
+        );
+
+        $body = $response->getData(true);
+        $staffId = (int) $body['data']['staff_id'];
+
+        $this->assertSame(201, $response->getStatusCode());
+        $this->assertNull(DB::table('staff_contracts')->where('staff_id', $staffId)->value('unit_id'));
+    }
+
     public function test_store_requires_manage_staff_permission(): void
     {
         session()->put('user.permissions', [72]);
