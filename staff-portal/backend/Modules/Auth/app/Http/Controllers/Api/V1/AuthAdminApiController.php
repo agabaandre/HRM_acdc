@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Modules\Audit\Services\AuditLogRevertService;
 use Modules\Core\Support\PortalPermission;
 use Modules\Core\Support\PortalTable;
 
@@ -168,5 +169,17 @@ class AuthAdminApiController extends Controller
                 'extended' => $extended,
             ],
         ]);
+    }
+
+    public function revertAuditLog(int $id, Request $request): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        $result = app(AuditLogRevertService::class)->revert(
+            $id,
+            auth()->id() ?? session('user.user_id')
+        );
+
+        return response()->json($result['body'], $result['status']);
     }
 }
