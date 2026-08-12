@@ -1,0 +1,504 @@
+<?php
+
+namespace Tests\Feature;
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Modules\Performance\Http\Controllers\Api\V1\PerformanceFormApiController;
+use Modules\Performance\Services\CompetencyService;
+use Modules\Performance\Services\PerformanceApprovalService;
+use Modules\Performance\Services\PerformanceService;
+use Modules\Performance\Services\PerformanceWorkflowService;
+use Modules\Performance\Services\PpaContractService;
+use Modules\Performance\Services\PpaFormService;
+use Modules\Performance\Services\PpaSettingsService;
+use Modules\Performance\Services\SupervisorResolver;
+use Modules\Performance\Support\PerformancePeriod;
+use Tests\TestCase;
+
+class PerformanceFormApiTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutMiddleware();
+        $this->createTables();
+        $this->seedFixtures();
+    }
+
+    public function test_create_bootstrap_returns_a_new_ppa_payload_for_the_owner(): void
+    {
+        $period = 'January 2026 to December 2026';
+        $entryId = app(PpaFormService::class)->entryIdFor(100, PerformancePeriod::toSlug($period) ?? '');
+
+        session()->put($this->portalSession(100));
+
+        $response = app(PerformanceFormApiController::class)->create(
+            Request::create('/api/v1/performance/entries', 'POST', [
+                'period' => $period,
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('ppa', $payload['data']['phase']);
+        $this->assertSame($entryId, $payload['data']['entry']['entry_id']);
+        $this->assertSame(100, $payload['data']['entry']['staff_id']);
+        $this->assertSame('January-2026-to-December-2026', $payload['data']['entry']['performance_period']);
+        $this->assertSame(1000, $payload['data']['form']['staff_contract_id']);
+        $this->assertSame(50, $payload['data']['form']['supervisor_id']);
+        $this->assertSame(51, $payload['data']['form']['supervisor2_id']);
+        $this->assertSame('No', $payload['data']['form']['training_recommended']);
+        $this->assertTrue($payload['data']['can_save']);
+        $this->assertSame(1000, $payload['data']['contract']['staff_contract_id']);
+        $this->assertCount(5, $payload['data']['form']['objectives']);
+
+        $this->assertDatabaseMissing('ppa_entries', [
+            'entry_id' => $entryId,
+        ]);
+    }
+
+    public function test_show_returns_existing_entry_payload_with_workflow_flags(): void
+    {
+        $this->insertPpaEntry([
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => 'January-2026-to-December-2026',
+            'entry_id' => 'ppa-entry-100',
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => json_encode([
+                1 => [
+                    'objective' => 'Ship staffing dashboard',
+                    'timeline' => 'Q1',
+                    'indicator' => 'Go live',
+                    'weight' => 100,
+                    'self_appraisal' => '',
+                    'appraiser_rating' => '',
+                ],
+            ]),
+            'required_skills' => json_encode([1]),
+            'training_recommended' => 'Yes',
+            'draft_status' => 1,
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        $response = app(PerformanceFormApiController::class)->show(
+            'ppa-entry-100',
+            Request::create('/api/v1/performance/entries/ppa-entry-100', 'GET', [
+                'phase' => 'ppa',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('ppa', $payload['data']['phase']);
+        $this->assertSame('ppa-entry-100', $payload['data']['entry']['entry_id']);
+        $this->assertSame(100, $payload['data']['form']['staff_id']);
+        $this->assertSame(50, $payload['data']['form']['supervisor_id']);
+        $this->assertSame(1, $payload['data']['form']['required_skills'][0]);
+        $this->assertSame('Yes', $payload['data']['form']['training_recommended']);
+        $this->assertSame('Ship staffing dashboard', $payload['data']['form']['objectives'][1]['objective']);
+        $this->assertSame('', $payload['data']['readonly']);
+        $this->assertTrue($payload['data']['can_save']);
+        $this->assertFalse($payload['data']['can_approve']);
+        $this->assertFalse($payload['data']['can_return']);
+        $this->assertFalse($payload['data']['can_consent']);
+        $this->assertSame('draft', $payload['data']['workflow']['state']['step']);
+        $this->assertCount(1, $payload['data']['catalogs']['skills']);
+    }
+
+    public function test_put_draft_saves_a_ppa_and_returns_the_saved_payload(): void
+    {
+        $period = 'January-2026-to-December-2026';
+        $entryId = app(PpaFormService::class)->entryIdFor(100, $period);
+
+        $payload = [
+            'phase' => 'ppa',
+            'staff_id' => 100,
+            'performance_period' => $period,
+            'staff_contract_id' => 1000,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => [
+                1 => [
+                    'objective' => 'Complete API rollout',
+                    'timeline' => 'Q2',
+                    'indicator' => 'Routes live',
+                    'weight' => 100,
+                    'self_appraisal' => '',
+                    'appraiser_rating' => '',
+                ],
+            ],
+            'training_recommended' => 'Yes',
+            'required_skills' => [1],
+            'training_contributions' => 'Coached backend team',
+            'recommended_trainings' => 'Advanced API design',
+            'recommended_trainings_details' => 'Internal workshop',
+            'comments' => 'Draft note',
+        ];
+
+        session()->put($this->portalSession(100));
+
+        $response = app(PerformanceFormApiController::class)->update(
+            $entryId,
+            Request::create("/api/v1/performance/entries/{$entryId}", 'PUT', $payload),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $responsePayload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($entryId, $responsePayload['data']['entry']['entry_id']);
+        $this->assertSame('Complete API rollout', $responsePayload['data']['form']['objectives'][1]['objective']);
+        $this->assertSame('Yes', $responsePayload['data']['form']['training_recommended']);
+        $this->assertTrue($responsePayload['data']['can_save']);
+        $this->assertSame('draft', $responsePayload['data']['workflow']['state']['step']);
+
+        $this->assertDatabaseHas('ppa_entries', [
+            'entry_id' => $entryId,
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => $period,
+            'draft_status' => 1,
+            'training_recommended' => 'Yes',
+            'training_contributions' => 'Coached backend team',
+            'recommended_trainings' => 'Advanced API design',
+            'recommended_trainings_details' => 'Internal workshop',
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function portalSession(int $staffId): array
+    {
+        return [
+            'user' => [
+                'staff_id' => $staffId,
+                'role_id' => 17,
+                'permissions' => [74],
+            ],
+        ];
+    }
+
+    protected function createTables(): void
+    {
+        Schema::create('staff', function (Blueprint $table): void {
+            $table->integer('staff_id')->primary();
+            $table->string('SAPNO')->nullable();
+            $table->string('fname')->nullable();
+            $table->string('lname')->nullable();
+            $table->date('initiation_date')->nullable();
+            $table->string('work_email')->nullable();
+        });
+
+        Schema::create('staff_contracts', function (Blueprint $table): void {
+            $table->increments('staff_contract_id');
+            $table->integer('staff_id');
+            $table->integer('job_id')->nullable();
+            $table->integer('job_acting_id')->nullable();
+            $table->integer('division_id')->nullable();
+            $table->integer('funder_id')->nullable();
+            $table->integer('contract_type_id')->nullable();
+            $table->integer('first_supervisor')->nullable();
+            $table->integer('second_supervisor')->nullable();
+        });
+
+        Schema::create('jobs', function (Blueprint $table): void {
+            $table->integer('job_id')->primary();
+            $table->string('job_name')->nullable();
+        });
+
+        Schema::create('jobs_acting', function (Blueprint $table): void {
+            $table->integer('job_acting_id')->primary();
+            $table->string('job_acting')->nullable();
+        });
+
+        Schema::create('divisions', function (Blueprint $table): void {
+            $table->integer('division_id')->primary();
+            $table->string('division_name')->nullable();
+        });
+
+        Schema::create('funders', function (Blueprint $table): void {
+            $table->integer('funder_id')->primary();
+            $table->string('funder')->nullable();
+        });
+
+        Schema::create('contract_types', function (Blueprint $table): void {
+            $table->integer('contract_type_id')->primary();
+            $table->string('contract_type')->nullable();
+        });
+
+        Schema::create('training_skills', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->text('skill');
+            $table->integer('category_id')->default(0);
+        });
+
+        Schema::create('au_values', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->text('description');
+            $table->text('annotation');
+            $table->text('score_5');
+            $table->text('score_4');
+            $table->text('score_3');
+            $table->text('score_2');
+            $table->text('score_1');
+            $table->string('category');
+            $table->integer('version')->default(1);
+        });
+
+        Schema::create('ppa_configs', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->integer('allow_supervisor_return')->default(1);
+            $table->integer('allow_supervisor_comments')->default(1);
+            $table->integer('allow_supervisor_ppa_edit')->default(1);
+            $table->integer('allow_employee_comments')->default(1);
+            $table->boolean('ppa_requires_second_supervisor')->default(false);
+            $table->boolean('midterm_requires_second_supervisor')->default(false);
+            $table->boolean('endterm_requires_second_supervisor')->default(true);
+            $table->boolean('endterm_requires_employee_consent')->default(true);
+            $table->date('ppa_start')->nullable();
+            $table->date('ppa_deadline')->nullable();
+            $table->date('mid_term_start')->nullable();
+            $table->date('mid_term_deadline')->nullable();
+            $table->date('end_term_start')->nullable();
+            $table->date('end_term_deadline')->nullable();
+        });
+
+        Schema::create('ppa_entries', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->integer('staff_id');
+            $table->integer('staff_contract_id')->nullable();
+            $table->string('performance_period', 50);
+            $table->string('entry_id', 100)->unique();
+            $table->integer('supervisor_id')->nullable();
+            $table->integer('supervisor2_id')->nullable();
+            $table->longText('objectives')->nullable();
+            $table->string('training_recommended', 3)->default('No');
+            $table->longText('required_skills')->nullable();
+            $table->text('training_contributions')->nullable();
+            $table->text('recommended_trainings')->nullable();
+            $table->text('recommended_trainings_details')->nullable();
+            $table->boolean('staff_sign_off')->default(false);
+            $table->tinyInteger('draft_status')->default(1);
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->longText('midterm_objectives')->nullable();
+            $table->longText('midterm_competency')->nullable();
+            $table->text('midterm_achievements')->nullable();
+            $table->text('midterm_non_achievements')->nullable();
+            $table->text('midterm_comments')->nullable();
+            $table->text('midterm_training_review')->nullable();
+            $table->longText('midterm_recommended_skills')->nullable();
+            $table->longText('midterm_training_contributions')->nullable();
+            $table->longText('midterm_recommended_trainings')->nullable();
+            $table->longText('midterm_recommended_trainings_details')->nullable();
+            $table->integer('midterm_rating_by')->nullable();
+            $table->boolean('midterm_sign_off')->default(false);
+            $table->tinyInteger('midterm_draft_status')->default(1);
+            $table->dateTime('midterm_created_at')->nullable();
+            $table->dateTime('midterm_updated_at')->nullable();
+            $table->integer('midterm_supervisor_1')->nullable();
+            $table->integer('midterm_supervisor_2')->nullable();
+            $table->longText('endterm_objectives')->nullable();
+            $table->longText('endterm_competency')->nullable();
+            $table->text('endterm_achievements')->nullable();
+            $table->text('endterm_non_achievements')->nullable();
+            $table->text('endterm_comments')->nullable();
+            $table->text('endterm_training_review')->nullable();
+            $table->longText('endterm_recommended_skills')->nullable();
+            $table->longText('endterm_training_contributions')->nullable();
+            $table->longText('endterm_recommended_trainings')->nullable();
+            $table->longText('endterm_recommended_trainings_details')->nullable();
+            $table->integer('endterm_rating_by')->nullable();
+            $table->boolean('endterm_sign_off')->default(false);
+            $table->tinyInteger('endterm_draft_status')->default(1);
+            $table->integer('endterm_supervisor_1')->nullable();
+            $table->integer('endterm_supervisor_2')->nullable();
+            $table->dateTime('endterm_created_at')->nullable();
+            $table->dateTime('endterm_updated_at')->nullable();
+            $table->boolean('endterm_supervisor1_discussion_confirmed')->default(false);
+            $table->boolean('endterm_staff_discussion_confirmed')->default(false);
+            $table->boolean('endterm_staff_rating_acceptance')->nullable();
+            $table->dateTime('endterm_staff_consent_at')->nullable();
+            $table->boolean('endterm_supervisor2_agreement')->nullable();
+        });
+
+        Schema::create('ppa_approval_trail', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('entry_id', 100);
+            $table->integer('staff_id');
+            $table->text('comments')->nullable();
+            $table->string('action');
+            $table->dateTime('created_at')->nullable();
+        });
+
+        Schema::create('ppa_approval_trail_midterm', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('entry_id', 100);
+            $table->integer('staff_id');
+            $table->text('comments')->nullable();
+            $table->string('action');
+            $table->dateTime('created_at')->nullable();
+            $table->string('type', 20)->default('PPA');
+        });
+
+        Schema::create('ppa_approval_trail_end_term', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('entry_id', 255);
+            $table->integer('staff_id');
+            $table->text('comments')->nullable();
+            $table->string('action');
+            $table->dateTime('created_at');
+            $table->string('type')->nullable();
+        });
+    }
+
+    protected function seedFixtures(): void
+    {
+        DB::table('staff')->insert([
+            [
+                'staff_id' => 50,
+                'SAPNO' => null,
+                'fname' => 'Alice',
+                'lname' => 'Supervisor',
+                'initiation_date' => null,
+                'work_email' => 'alice.supervisor@example.test',
+            ],
+            [
+                'staff_id' => 51,
+                'SAPNO' => null,
+                'fname' => 'Bob',
+                'lname' => 'Supervisor',
+                'initiation_date' => null,
+                'work_email' => 'bob.supervisor@example.test',
+            ],
+            [
+                'staff_id' => 100,
+                'fname' => 'Current',
+                'lname' => 'Staff',
+                'SAPNO' => 'AU-100',
+                'initiation_date' => '2024-01-01',
+                'work_email' => 'current.staff@example.test',
+            ],
+        ]);
+
+        DB::table('jobs')->insert([
+            'job_id' => 1,
+            'job_name' => 'Advisor',
+        ]);
+        DB::table('jobs_acting')->insert([
+            'job_acting_id' => 1,
+            'job_acting' => 'Acting Advisor',
+        ]);
+        DB::table('divisions')->insert([
+            'division_id' => 1,
+            'division_name' => 'People',
+        ]);
+        DB::table('funders')->insert([
+            'funder_id' => 1,
+            'funder' => 'AU',
+        ]);
+        DB::table('contract_types')->insert([
+            'contract_type_id' => 1,
+            'contract_type' => 'Permanent',
+        ]);
+        DB::table('staff_contracts')->insert([
+            'staff_contract_id' => 1000,
+            'staff_id' => 100,
+            'job_id' => 1,
+            'job_acting_id' => 1,
+            'division_id' => 1,
+            'funder_id' => 1,
+            'contract_type_id' => 1,
+            'first_supervisor' => 50,
+            'second_supervisor' => 51,
+        ]);
+        DB::table('training_skills')->insert([
+            'id' => 1,
+            'skill' => 'API design',
+            'category_id' => 1,
+        ]);
+        DB::table('au_values')->insert([
+            'id' => 1,
+            'description' => 'Integrity',
+            'annotation' => 'Acts with integrity',
+            'score_5' => 'Always',
+            'score_4' => 'Often',
+            'score_3' => 'Sometimes',
+            'score_2' => 'Rarely',
+            'score_1' => 'Never',
+            'category' => 'values',
+            'version' => 1,
+        ]);
+        DB::table('ppa_configs')->insert([
+            'id' => 1,
+            'allow_supervisor_return' => 1,
+            'allow_supervisor_comments' => 1,
+            'allow_supervisor_ppa_edit' => 1,
+            'allow_employee_comments' => 1,
+            'ppa_requires_second_supervisor' => 0,
+            'midterm_requires_second_supervisor' => 0,
+            'endterm_requires_second_supervisor' => 1,
+            'endterm_requires_employee_consent' => 1,
+            'ppa_start' => '2026-01-01',
+            'ppa_deadline' => '2026-12-31',
+            'mid_term_start' => '2026-01-01',
+            'mid_term_deadline' => '2026-12-31',
+            'end_term_start' => '2026-01-01',
+            'end_term_deadline' => '2026-12-31',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function insertPpaEntry(array $attributes): void
+    {
+        DB::table('ppa_entries')->insert(array_merge([
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => 'January-2026-to-December-2026',
+            'entry_id' => 'ppa-entry-default',
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => json_encode([]),
+            'training_recommended' => 'No',
+            'required_skills' => json_encode([]),
+            'staff_sign_off' => 1,
+            'draft_status' => 1,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ], $attributes));
+    }
+}
