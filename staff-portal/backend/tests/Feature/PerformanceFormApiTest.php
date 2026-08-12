@@ -135,6 +135,79 @@ class PerformanceFormApiTest extends TestCase
         $this->assertCount(1, $payload['data']['catalogs']['skills']);
     }
 
+    public function test_show_can_return_requires_permission_and_setting(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-show-return',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+
+        session()->put($this->portalSession(50, permissions: [74]));
+
+        $response = app(PerformanceFormApiController::class)->show(
+            'ppa-entry-show-return',
+            Request::create('/api/v1/performance/entries/ppa-entry-show-return', 'GET', [
+                'phase' => 'ppa',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertFalse($payload['data']['can_return']);
+
+        DB::table('ppa_configs')->update(['allow_supervisor_return' => 1]);
+        session()->put($this->portalSession(50, permissions: [74, 83]));
+
+        $response = app(PerformanceFormApiController::class)->show(
+            'ppa-entry-show-return',
+            Request::create('/api/v1/performance/entries/ppa-entry-show-return', 'GET', [
+                'phase' => 'ppa',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertTrue($payload['data']['can_return']);
+
+        DB::table('ppa_configs')->update(['allow_supervisor_return' => 0]);
+
+        $response = app(PerformanceFormApiController::class)->show(
+            'ppa-entry-show-return',
+            Request::create('/api/v1/performance/entries/ppa-entry-show-return', 'GET', [
+                'phase' => 'ppa',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertFalse($payload['data']['can_return']);
+    }
+
     public function test_put_draft_saves_a_ppa_and_returns_the_saved_payload(): void
     {
         $period = 'January-2026-to-December-2026';

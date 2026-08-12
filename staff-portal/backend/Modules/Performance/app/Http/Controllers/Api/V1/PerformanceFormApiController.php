@@ -751,6 +751,10 @@ class PerformanceFormApiController extends Controller
         $canConsent = $phase === PerformancePhase::Endterm
             && ($state['step'] ?? '') === 'employee_consent'
             && $actorStaffId === (int) $entry->staff_id;
+        $canReturn = $canAct
+            && ! $canConsent
+            && $this->allowSupervisorReturn($settings)
+            && PortalPermission::can(83);
         $activeReadonly = match ($phase) {
             PerformancePhase::Ppa => $readonly,
             PerformancePhase::Midterm => $midreadonly,
@@ -792,7 +796,7 @@ class PerformanceFormApiController extends Controller
             'is_owner' => $isOwner,
             'can_save' => $isOwner && $submissionOpen && $activeReadonly === '',
             'can_approve' => $canAct && ! $canConsent,
-            'can_return' => $canAct && ! $canConsent,
+            'can_return' => $canReturn,
             'can_consent' => $canConsent,
             'midterm_exists' => $forms->midtermExists((string) $entry->entry_id),
             'endterm_exists' => $forms->endtermExists((string) $entry->entry_id),
