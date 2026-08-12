@@ -129,17 +129,27 @@ onMounted(() => void load())
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
 
     <v-card
-      v-if="createdClient && createdClient.plain_secret"
-      color="warning"
-      variant="tonal"
+      v-if="createdClient"
+      :color="createdClient.plain_secret ? 'warning' : undefined"
+      :variant="createdClient.plain_secret ? 'tonal' : 'outlined'"
       class="mb-4"
     >
-      <v-card-title>Copy this secret now</v-card-title>
+      <v-card-title>{{ createdClient.plain_secret ? 'Copy these credentials now' : 'Client created' }}</v-card-title>
       <v-card-text>
         <div class="mb-2">
-          The secret for <strong>{{ createdClient.name }}</strong> will not be shown again after this page is refreshed.
+          <strong>{{ createdClient.name }}</strong> is ready to use.
         </div>
-        <pre class="oauth-secret">{{ createdClient.plain_secret }}</pre>
+        <div class="mb-3">
+          <div class="text-caption text-medium-emphasis">Client ID</div>
+          <pre class="oauth-value">{{ createdClient.id }}</pre>
+        </div>
+        <template v-if="createdClient.plain_secret">
+          <div class="mb-2">
+            The secret will not be shown again after this page is refreshed.
+          </div>
+          <div class="text-caption text-medium-emphasis">Client secret</div>
+          <pre class="oauth-value">{{ createdClient.plain_secret }}</pre>
+        </template>
       </v-card-text>
     </v-card>
 
@@ -170,6 +180,7 @@ onMounted(() => void load())
           <thead>
             <tr>
               <th>Name</th>
+              <th>Client ID</th>
               <th>Type</th>
               <th>Redirect URIs</th>
               <th>Created</th>
@@ -179,6 +190,7 @@ onMounted(() => void load())
           <tbody>
             <tr v-for="row in rows" :key="row.id">
               <td>{{ row.name }}</td>
+              <td class="text-no-wrap"><code>{{ row.id }}</code></td>
               <td>
                 <v-chip size="small" :color="row.public ? 'info' : 'success'" variant="tonal">
                   {{ row.public ? 'Public' : 'Confidential' }}
@@ -204,7 +216,7 @@ onMounted(() => void load())
               </td>
             </tr>
             <tr v-if="!loading && !rows.length">
-              <td colspan="5" class="text-medium-emphasis">No OAuth clients.</td>
+              <td colspan="6" class="text-medium-emphasis">No OAuth clients.</td>
             </tr>
           </tbody>
         </v-table>
@@ -255,7 +267,7 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
-.oauth-secret {
+.oauth-value {
   margin: 0;
   padding: 0.75rem;
   overflow-x: auto;
