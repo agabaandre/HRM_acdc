@@ -55,6 +55,35 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertStringNotContainsString('Alice', $csv);
     }
 
+    public function test_export_csv_is_not_clamped_to_list_page_size(): void
+    {
+        $this->seedExtraMainStaff(101);
+
+        $list = app(StaffApiController::class)->index(
+            Request::create('/api/v1/staff', 'GET', ['per_page' => 2000]),
+            app(StaffDirectoryService::class)
+        )->getData(true);
+
+        $this->assertSame(102, $list['meta']['total']);
+        $this->assertSame(100, $list['meta']['per_page']);
+        $this->assertCount(100, $list['data']);
+
+        $response = app(StaffApiController::class)->exportCsv(
+            Request::create('/api/v1/staff/export.csv', 'GET'),
+            app(StaffDirectoryService::class),
+            app(CsvExportService::class)
+        );
+
+        ob_start();
+        $response->sendContent();
+        $csv = (string) ob_get_clean();
+
+        $dataRows = array_values(array_filter(explode("\n", trim($csv))));
+        array_shift($dataRows);
+
+        $this->assertCount(102, $dataRows);
+    }
+
     protected function createDirectoryTables(): void
     {
         Schema::create('staff', function (Blueprint $table): void {
@@ -201,5 +230,34 @@ class StaffDirectoryCategoryTest extends TestCase
                 'start_date' => '2026-01-01',
             ],
         ]);
+    }
+
+    protected function seedExtraMainStaff(int $count): void
+    {
+        $staff = [];
+        $contracts = [];
+
+        for ($i = 1; $i <= $count; $i++) {
+            $staffId = 1000 + $i;
+            $staff[] = [
+                'staff_id' => $staffId,
+                'fname' => 'Extra'.$i,
+                'lname' => 'Staff',
+                'photo' => 'extra'.$i.'.jpg',
+                'work_email' => 'extra'.$i.'@example.test',
+            ];
+            $contracts[] = [
+                'staff_contract_id' => 10000 + $i,
+                'staff_id' => $staffId,
+                'contract_type_id' => 1,
+                'division_id' => 1,
+                'job_id' => 1,
+                'status_id' => 1,
+                'start_date' => '2026-01-01',
+            ];
+        }
+
+        \DB::table('staff')->insert($staff);
+        \DB::table('staff_contracts')->insert($contracts);
     }
 }

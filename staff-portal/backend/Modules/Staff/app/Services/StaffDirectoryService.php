@@ -72,6 +72,37 @@ class StaffDirectoryService
     }
 
     /**
+     * @param  int|list<int>|null  $statusId
+     */
+    public function exportRows(
+        string $search = '',
+        int|array|null $statusId = null,
+        string $category = 'main_staff',
+        int $limit = 5000
+    ): Collection {
+        $limit = min(5000, max(1, $limit));
+        $category = $this->normalizeCategory($category);
+
+        $ids = $this->lightQuery($search, $statusId, $category)
+            ->select('s.staff_id', 's.lname', 's.fname')
+            ->groupBy('s.staff_id', 's.lname', 's.fname')
+            ->orderBy('s.lname')
+            ->orderBy('s.fname')
+            ->limit($limit)
+            ->pluck('s.staff_id');
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        return $this->detailQuery($category)
+            ->whereIn('s.staff_id', $ids->all())
+            ->orderBy('s.lname')
+            ->orderBy('s.fname')
+            ->get();
+    }
+
+    /**
      * @return array<string, int>
      */
     public function filterCounts(string $search = '', string $category = 'main_staff'): array

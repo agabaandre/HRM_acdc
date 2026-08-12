@@ -155,9 +155,9 @@ class StaffApiController extends Controller
         };
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
-        $paginator = $directory->paginate($search, $statusId, 1, 2000, $category);
+        $exported = $directory->exportRows($search, $statusId, $category);
         $rows = [['Staff ID', 'First name', 'Last name', 'Email', 'Division', 'Job', 'Status']];
-        foreach ($paginator->items() as $item) {
+        foreach ($exported as $item) {
             $r = (array) $item;
             $rows[] = [
                 $r['staff_id'] ?? '',
