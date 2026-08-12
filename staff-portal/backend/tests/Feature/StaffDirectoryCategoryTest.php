@@ -73,6 +73,8 @@ class StaffDirectoryCategoryTest extends TestCase
         $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
         $statusIndex = array_search('Status', $header, true);
         $this->assertNotFalse($statusIndex);
+        $categoryIndex = array_search('Category', $header, true);
+        $this->assertNotFalse($categoryIndex);
 
         $alice = null;
         foreach (array_slice($lines, 1) as $line) {
@@ -88,6 +90,7 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertNotSame('1', $alice[$statusIndex]);
         $this->assertSame('Advisor', $alice[array_search('Job', $header, true)]);
         $this->assertSame('People', $alice[array_search('Division', $header, true)]);
+        $this->assertSame('Main staff', $alice[$categoryIndex]);
     }
 
     public function test_export_csv_is_not_clamped_to_list_page_size(): void

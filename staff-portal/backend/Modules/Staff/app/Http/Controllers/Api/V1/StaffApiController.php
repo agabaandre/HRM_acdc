@@ -156,7 +156,7 @@ class StaffApiController extends Controller
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
         $exported = $directory->exportRows($search, $statusId, $category);
-        $rows = [['Staff ID', 'First name', 'Last name', 'Email', 'Division', 'Job', 'Status']];
+        $rows = [['Staff ID', 'First name', 'Last name', 'Email', 'Division', 'Job', 'Status', 'Category']];
         foreach ($exported as $item) {
             $r = (array) $item;
             $rows[] = [
@@ -167,6 +167,7 @@ class StaffApiController extends Controller
                 $r['division_name'] ?? '',
                 $r['job_name'] ?? ($r['job_acting'] ?? ''),
                 $r['contract_status'] ?? '',
+                $this->humanizeCategory((string) ($r['category'] ?? '')),
             ];
         }
 
@@ -178,5 +179,14 @@ class StaffApiController extends Controller
         return in_array($category, ['main_staff', 'other_staff', 'all'], true)
             ? $category
             : 'main_staff';
+    }
+
+    protected function humanizeCategory(string $category): string
+    {
+        return match ($category) {
+            'main_staff' => 'Main staff',
+            'other_staff' => 'Other staff',
+            default => $category,
+        };
     }
 }
