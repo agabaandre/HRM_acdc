@@ -104,7 +104,7 @@
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-calendar-alt me-1"></i>Performance Period
       </label>
-      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;" multiple>
+      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;">
         <option value="">Loading periods...</option>
       </select>
     </div>
@@ -201,40 +201,38 @@
 
   function loadPPADashboard() {
     const divisionId = $('#divisionFilter').val();
-    const periods = $('#periodFilter').val() || [];
-    // Send periods as comma-separated string, or empty if none selected
-    const periodParam = periods.length > 0 ? periods.join(',') : '';
+    const periodParam = ($('#periodFilter').val() || '').toString().trim();
 
     $.getJSON(base_url + 'performance/fetch_ppa_dashboard_data', {
       division_id: divisionId,
       period: periodParam
     }, function (data) {
 
-      // Populate period filter with distinct periods; preserve the selection we just requested (not the DOM, which we clear below)
+      // Populate period filter with distinct periods; default to current period (single select)
       if (data.periods && data.periods.length > 0) {
-        $('#periodFilter').html('');
-        // Sort periods descending (newest first)
         const sortedPeriods = [...data.periods].sort().reverse();
-        const currentYear = new Date().getFullYear().toString();
-        // Default: period that contains current year (e.g. January-2026-to-December-2026); else first in list
-        const defaultPeriod = sortedPeriods.find(p => p.indexOf(currentYear) !== -1) || sortedPeriods[0];
-        // Use the period we sent in the request so 2025 (or any chosen period) is preserved after rebuild
-        const selectedPeriods = periodParam ? periodParam.split(',') : [];
-        const shouldSetDefault = selectedPeriods.length === 0;
-        
+        const currentPeriod = (data.current_period || '').toString().trim();
+        if (currentPeriod && !sortedPeriods.includes(currentPeriod)) {
+          sortedPeriods.unshift(currentPeriod);
+        }
+        const selectedPeriod = periodParam || currentPeriod || sortedPeriods[0] || '';
+
+        if ($('#periodFilter').hasClass('select2-hidden-accessible')) {
+          $('#periodFilter').select2('destroy');
+        }
+        $('#periodFilter').html('');
         sortedPeriods.forEach((p) => {
           const periodDisplay = p.replace(/-/g, ' ');
-          const isSelected = shouldSetDefault && p === defaultPeriod ? 'selected' : 
-                            selectedPeriods.includes(p) ? 'selected' : '';
+          const isSelected = p === selectedPeriod ? 'selected' : '';
           $('#periodFilter').append(`<option value="${p}" ${isSelected}>${periodDisplay}</option>`);
         });
-        
-        // Re-initialize select2 to update display
+
         $('#periodFilter').select2({
           theme: 'bootstrap4',
           width: '100%',
           dropdownParent: $('#periodFilter').parent(),
-          placeholder: 'Select period(s) — default: current year'
+          placeholder: 'Select performance period',
+          allowClear: false
         });
       } else {
         $('#periodFilter').html('<option value="">No periods available</option>');
@@ -469,8 +467,7 @@
   $(document).on('click', '.view-staff-link', function () {
     const type = $(this).data('type');
     const divisionId = $('#divisionFilter').val();
-    const periods = $('#periodFilter').val() || [];
-    const period = periods.length > 0 ? periods.join(',') : '';
+    const period = ($('#periodFilter').val() || '').toString().trim();
     window.open(`${base_url}performance/staff_list?type=${type}&division_id=${divisionId}&period=${period}`, '_blank');
   });
 </script>

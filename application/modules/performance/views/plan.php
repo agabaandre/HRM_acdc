@@ -259,8 +259,14 @@ if($showApprovalBtns!='show'){
     <td><b>First Supervisor</b></td>
     <td colspan="1">
       <?= staff_name((!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor_id)) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
-      <?php if (!empty($ppa) && is_object($ppa) && isset($ppa->draft_status) && (int)$ppa->draft_status !== 2): ?>
-        <?php $this->load->view('performance/partials/change_supervisor_modal', ['ppa' => $ppa, 'type' => 'ppa', 'entry_id' => isset($entry_id) ? $entry_id : ($ppa->entry_id ?? '')]); ?>
+      <?php if (!empty($ppa) && is_object($ppa) && (!isset($ppa->draft_status) || (int) $ppa->draft_status !== 2)): ?>
+        <?php $this->load->view('performance/partials/change_supervisor_modal', [
+            'ppa' => $ppa,
+            'type' => 'ppa',
+            'entry_id' => isset($entry_id) ? $entry_id : ($ppa->entry_id ?? ''),
+            'fallback_supervisor_1' => $contract->first_supervisor ?? null,
+            'fallback_supervisor_2' => $contract->second_supervisor ?? null,
+        ]); ?>
       <?php endif; ?>
       <input type="hidden" name="supervisor_id"
         value="<?= (!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor_id)) ? $ppa->supervisor_id : ($contract->first_supervisor ?? '') ?>">

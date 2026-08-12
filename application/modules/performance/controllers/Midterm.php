@@ -52,6 +52,7 @@ class Midterm extends MX_Controller
         $save_data = [
             'midterm_objectives'             => isset($data['objectives']) ? json_encode($data['objectives']) : null,
             'midterm_supervisor_1'           => $data['supervisor_id'] ?? null,
+            'midterm_supervisor_2'           => $data['supervisor2_id'] ?? null,
             'midterm_competency'             => isset($data['midterm_competency']) ? json_encode($data['midterm_competency']) : null,
             'midterm_comments'               => $data['midterm_comments'] ?? null,
             'midterm_training_review'        => $data['midterm_training_review'] ?? null,

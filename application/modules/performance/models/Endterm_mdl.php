@@ -895,8 +895,11 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
     $this->db->order_by("pe.performance_period", "DESC");
     $periods_result = $this->db->get()->result();
     $periods = array_column($periods_result, 'performance_period');
-    $periods = array_unique($periods); // Ensure distinct values
-    $current_period = !empty($periods) ? $periods[0] : $period;
+    $periods = array_values(array_unique($periods)); // Ensure distinct values
+    $system_current_period = str_replace(' ', '-', current_period());
+    if (!in_array($system_current_period, $periods, true)) {
+        array_unshift($periods, $system_current_period);
+    }
 
     // Age groups for endterm (regardless of contract status)
     $age_groups = [
@@ -1054,7 +1057,7 @@ public function get_endterm_dashboard_data($division_id = null, $funder_id = nul
         'staff_without_endterms' => max(0, count($staff_without_endterm)),
         'staff_require_calibration' => count($calibration_staff),
         'periods' => $periods,
-        'current_period' => $current_period,
+        'current_period' => $system_current_period,
     ];
 }
 

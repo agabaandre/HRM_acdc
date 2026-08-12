@@ -1042,8 +1042,11 @@ public function get_dashboard_data($division_id = null, $period = null, $staff_i
     $this->db->order_by("pe.performance_period", "DESC");
     $periods_result = $this->db->get()->result();
     $periods = array_column($periods_result, 'performance_period');
-    $periods = array_unique($periods); // Ensure distinct values
-    $current_period = !empty($periods) ? $periods[0] : $period;
+    $periods = array_values(array_unique($periods)); // Ensure distinct values
+    $system_current_period = str_replace(' ', '-', current_period());
+    if (!in_array($system_current_period, $periods, true)) {
+        array_unshift($periods, $system_current_period);
+    }
 
     // Age groups (regardless of contract status)
     $age_groups = [
@@ -1130,7 +1133,7 @@ public function get_dashboard_data($division_id = null, $period = null, $staff_i
         'staff_without_ppas' => max(0, count($staff_ids) - count($ppa_staff)),
         'staff_with_pdps' => count($pdp_staff),
         'periods' => $periods,
-        'current_period' => $current_period,
+        'current_period' => $system_current_period,
     ];
 }
 

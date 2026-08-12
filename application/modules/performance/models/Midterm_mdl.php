@@ -957,7 +957,10 @@ public function get_midterm_dashboard_data($division_id = null, $period = null, 
     $this->db->order_by("pe.performance_period", "DESC");
     $periods_result = $this->db->get()->result();
     $available_periods = array_values(array_unique(array_column($periods_result, 'performance_period')));
-    $current_period = !empty($available_periods) ? $available_periods[0] : $period;
+    $system_current_period = str_replace(' ', '-', current_period());
+    if (!in_array($system_current_period, $available_periods, true)) {
+        array_unshift($available_periods, $system_current_period);
+    }
 
     // Age groups for midterm (regardless of contract status)
     $age_groups = [
@@ -1044,7 +1047,7 @@ public function get_midterm_dashboard_data($division_id = null, $period = null, 
         'staff_without_midterms' => count($this->get_staff_without_midterm($staff_without_period, $division_id)),
         'staff_with_pdps' => count($pdp_staff),
         'periods' => $available_periods,
-        'current_period' => $current_period,
+        'current_period' => $system_current_period,
     ];
 }
 

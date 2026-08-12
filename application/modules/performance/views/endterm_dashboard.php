@@ -115,7 +115,7 @@
       <label class="form-label fw-bold" style="color: #495057;">
         <i class="fa fa-calendar-alt me-1"></i>Performance Period
       </label>
-      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;" multiple>
+      <select id="periodFilter" class="form-select select2" style="border-color: #119A48;">
         <option value="">Loading periods...</option>
       </select>
     </div>
@@ -222,9 +222,7 @@
   function loadEndtermDashboard() {
     const divisionId = $('#divisionFilter').val();
     const funderId = $('#funderFilter').val();
-    const periods = $('#periodFilter').val() || [];
-    // Send periods as comma-separated string, or empty if none selected
-    const periodParam = periods.length > 0 ? periods.join(',') : '';
+    const periodParam = ($('#periodFilter').val() || '').toString().trim();
 
     $.getJSON(base_url + 'performance/endterm/fetch_ppa_dashboard_data', {
       division_id: divisionId,
@@ -232,29 +230,31 @@
       period: periodParam
     }, function (data) {
 
-      // Populate period filter with distinct periods; preserve the selection we just requested
+      // Populate period filter with distinct periods; default to current period (single select)
       if (data.periods && data.periods.length > 0) {
-        $('#periodFilter').html('');
-        // Sort periods descending (newest first)
         const sortedPeriods = [...data.periods].sort().reverse();
-        // Use the period we sent in the request so chosen period (e.g. 2025) is preserved after rebuild
-        const selectedPeriods = periodParam ? periodParam.split(',') : [];
-        const shouldSetDefault = selectedPeriods.length === 0;
-        
-        sortedPeriods.forEach((p, index) => {
+        const currentPeriod = (data.current_period || '').toString().trim();
+        if (currentPeriod && !sortedPeriods.includes(currentPeriod)) {
+          sortedPeriods.unshift(currentPeriod);
+        }
+        const selectedPeriod = periodParam || currentPeriod || sortedPeriods[0] || '';
+
+        if ($('#periodFilter').hasClass('select2-hidden-accessible')) {
+          $('#periodFilter').select2('destroy');
+        }
+        $('#periodFilter').html('');
+        sortedPeriods.forEach((p) => {
           const periodDisplay = p.replace(/-/g, ' ');
-          // Default: select last two periods; otherwise preserve requested selection
-          const isSelected = shouldSetDefault && index < 2 ? 'selected' : 
-                            selectedPeriods.includes(p) ? 'selected' : '';
+          const isSelected = p === selectedPeriod ? 'selected' : '';
           $('#periodFilter').append(`<option value="${p}" ${isSelected}>${periodDisplay}</option>`);
         });
-        
-        // Re-initialize select2 to update display
+
         $('#periodFilter').select2({
           theme: 'bootstrap4',
           width: '100%',
           dropdownParent: $('#periodFilter').parent(),
-          placeholder: 'Select periods (default: last 2)'
+          placeholder: 'Select performance period',
+          allowClear: false
         });
       } else {
         $('#periodFilter').html('<option value="">No periods available</option>');
@@ -501,8 +501,7 @@
     const type = $(this).data('type');
     const divisionId = $('#divisionFilter').val();
     const funderId = $('#funderFilter').val();
-    const periods = $('#periodFilter').val() || [];
-    const period = periods.length > 0 ? periods.join(',') : '';
+    const period = ($('#periodFilter').val() || '').toString().trim();
     window.open(`${base_url}performance/endterm/staff_list?type=${type}&division_id=${divisionId}&funder_id=${funderId}&period=${period}`, '_blank');
   });
 </script>

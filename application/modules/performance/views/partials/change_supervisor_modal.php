@@ -7,17 +7,19 @@
  * @param $entry_id - Optional entry_id (e.g. from URL on view_ppa) so modal works when ppa->entry_id is missing
  * @param $current_supervisor_1 - Current first supervisor ID
  * @param $current_supervisor_2 - Current second supervisor ID (optional)
+ * @param $fallback_supervisor_1 - Optional contract first supervisor when phase field empty
+ * @param $fallback_supervisor_2 - Optional contract second supervisor when phase field empty
  */
 $modal_entry_id = isset($entry_id) && $entry_id !== '' ? $entry_id : ($ppa->entry_id ?? '');
-
-//dd($modal_entry_id);
+$fallback_supervisor_1 = $fallback_supervisor_1 ?? null;
+$fallback_supervisor_2 = $fallback_supervisor_2 ?? null;
 
 // Check if user has permission 83 (allow_return_ppa)
 $session = $this->session->userdata('user');
 $permissions = $session->permissions ?? [];
 $has_permission = in_array('83', $permissions);
 
-// Determine current supervisors based on type
+// Determine current supervisors based on type (prefer phase fields; fall back to contract)
 $supervisor_1_field = '';
 $supervisor_2_field = '';
 $modal_id = '';
@@ -26,23 +28,32 @@ if ($type === 'ppa') {
     $supervisor_1_field = 'supervisor_id';
     $supervisor_2_field = 'supervisor2_id';
     $modal_id = 'changePpaSupervisorModal';
-    // Get supervisors from PPA entry, not from contract
-    $current_supervisor_1 = !empty($ppa->supervisor_id) ? (int)$ppa->supervisor_id : null;
-    $current_supervisor_2 = !empty($ppa->supervisor2_id) ? (int)$ppa->supervisor2_id : null;
+    $current_supervisor_1 = !empty($ppa->supervisor_id)
+        ? (int) $ppa->supervisor_id
+        : (!empty($fallback_supervisor_1) ? (int) $fallback_supervisor_1 : null);
+    $current_supervisor_2 = !empty($ppa->supervisor2_id)
+        ? (int) $ppa->supervisor2_id
+        : (!empty($fallback_supervisor_2) ? (int) $fallback_supervisor_2 : null);
 } elseif ($type === 'midterm') {
     $supervisor_1_field = 'midterm_supervisor_1';
     $supervisor_2_field = 'midterm_supervisor_2';
     $modal_id = 'changeMidtermSupervisorModal';
-    // Get supervisors from PPA entry (midterm fields), not from contract
-    $current_supervisor_1 = !empty($ppa->midterm_supervisor_1) ? (int)$ppa->midterm_supervisor_1 : null;
-    $current_supervisor_2 = !empty($ppa->midterm_supervisor_2) ? (int)$ppa->midterm_supervisor_2 : null;
+    $current_supervisor_1 = !empty($ppa->midterm_supervisor_1)
+        ? (int) $ppa->midterm_supervisor_1
+        : (!empty($fallback_supervisor_1) ? (int) $fallback_supervisor_1 : null);
+    $current_supervisor_2 = !empty($ppa->midterm_supervisor_2)
+        ? (int) $ppa->midterm_supervisor_2
+        : (!empty($fallback_supervisor_2) ? (int) $fallback_supervisor_2 : null);
 } elseif ($type === 'endterm') {
     $supervisor_1_field = 'endterm_supervisor_1';
     $supervisor_2_field = 'endterm_supervisor_2';
     $modal_id = 'changeEndtermSupervisorModal';
-    // Get supervisors from PPA entry (endterm fields), not from contract
-    $current_supervisor_1 = !empty($ppa->endterm_supervisor_1) ? (int)$ppa->endterm_supervisor_1 : null;
-    $current_supervisor_2 = !empty($ppa->endterm_supervisor_2) ? (int)$ppa->endterm_supervisor_2 : null;
+    $current_supervisor_1 = !empty($ppa->endterm_supervisor_1)
+        ? (int) $ppa->endterm_supervisor_1
+        : (!empty($fallback_supervisor_1) ? (int) $fallback_supervisor_1 : null);
+    $current_supervisor_2 = !empty($ppa->endterm_supervisor_2)
+        ? (int) $ppa->endterm_supervisor_2
+        : (!empty($fallback_supervisor_2) ? (int) $fallback_supervisor_2 : null);
 }
 
 // Get active staff for dropdown (exclude Expired and Separated)
@@ -81,17 +92,17 @@ if (!empty($missing_supervisor_ids)) {
     $active_staff = array_merge($active_staff, $missing_supervisors);
 }
 
-// Only show if user has permission 83 AND PPA is not approved (check appropriate draft_status based on type)
+// Only show if user has permission 83 AND this phase is not yet approved
 $show_modal = false;
 if ($has_permission) {
     if ($type === 'ppa') {
-        $show_modal = isset($ppa->draft_status) && (int)$ppa->draft_status !== 2;
+        $show_modal = isset($ppa->draft_status) && (int) $ppa->draft_status !== 2;
     } elseif ($type === 'midterm') {
-        // For midterm, check both PPA draft_status and midterm_draft_status
-        $show_modal = isset($ppa->draft_status) && (int)$ppa->draft_status !== 2;
+        $show_modal = ! isset($ppa->midterm_draft_status) || (int) $ppa->midterm_draft_status !== 2;
     } elseif ($type === 'endterm') {
-        // For endterm, check both PPA draft_status and endterm_draft_status
-        $show_modal = $ppa->overall_end_term_status !='Approved';
+        $not_overall_approved = ($ppa->overall_end_term_status ?? '') !== 'Approved';
+        $not_draft_approved = !isset($ppa->endterm_draft_status) || (int) $ppa->endterm_draft_status !== 2;
+        $show_modal = $not_overall_approved && $not_draft_approved;
     }
 }
 ?>
@@ -123,7 +134,6 @@ if ($has_permission) {
                             <?php endif; ?>
                         </select>
                     </div>
-                    <?php if ($type =='endterm'): ?>
                     <div class="mb-3">
                         <label for="supervisor_2_<?= $type ?>" class="form-label">Second Supervisor (Optional)</label>
                         <select name="supervisor_2" id="supervisor_2_<?= $type ?>" class="form-control select2">
@@ -137,7 +147,6 @@ if ($has_permission) {
                             <?php endif; ?>
                         </select>
                     </div>
-                    <?php endif; ?>
                     
                     <div class="alert alert-info">
                         <small><i class="fa fa-info-circle"></i> This will update supervisors in both the PPA entry and the staff contract.</small>
@@ -171,11 +180,13 @@ $(document).ready(function() {
             dropdownParent: $('#<?= $modal_id ?>')
         });
         
-        supervisor2Select.select2({
-            theme: 'bootstrap4',
-            width: '100%',
-            dropdownParent: $('#<?= $modal_id ?>')
-        });
+        if (supervisor2Select.length) {
+            supervisor2Select.select2({
+                theme: 'bootstrap4',
+                width: '100%',
+                dropdownParent: $('#<?= $modal_id ?>')
+            });
+        }
         
         // Ensure selected values are set after Select2 initialization
         <?php if (!empty($current_supervisor_1)): ?>
@@ -189,7 +200,14 @@ $(document).ready(function() {
     
     // Destroy Select2 when modal is hidden to prevent conflicts
     $('#<?= $modal_id ?>').on('hidden.bs.modal', function() {
-        $('#supervisor_1_<?= $type ?>, #supervisor_2_<?= $type ?>').select2('destroy');
+        var $s1 = $('#supervisor_1_<?= $type ?>');
+        var $s2 = $('#supervisor_2_<?= $type ?>');
+        if ($s1.length && $s1.hasClass('select2-hidden-accessible')) {
+            $s1.select2('destroy');
+        }
+        if ($s2.length && $s2.hasClass('select2-hidden-accessible')) {
+            $s2.select2('destroy');
+        }
     });
     
     // Handle form submission via AJAX - use button click instead of form submit

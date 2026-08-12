@@ -81,7 +81,7 @@ class Performance extends MX_Controller
         'performance_period' => $performance_period,
         'entry_id' => $entry_id,
         'supervisor_id' => $data['supervisor_id'],
-        'supervisor2_id' => NULL, //Set to NULL beacuse its PPA
+        'supervisor2_id' => !empty($data['supervisor2_id']) ? $data['supervisor2_id'] : null,
         'objectives' => json_encode($data['objectives']),
         'training_recommended' => $data['training_recommended'] ?? 'No',
         'required_skills' => isset($data['required_skills']) ? json_encode($data['required_skills']) : null,
@@ -632,7 +632,8 @@ public function ppa_contract($contract_id){
 
     /**
      * Update supervisors for PPA entry and staff contract
-     * Only allowed if user has permission 83 (allow_return_ppa) and PPA is not approved (draft_status != 2)
+     * Only allowed if user has permission 83 (allow_return_ppa) and the phase is not yet approved
+     * (PPA: draft_status != 2; midterm: midterm_draft_status != 2; endterm: not Approved)
      */
     /**
      * Helper method to send JSON response with CSRF token
@@ -714,13 +715,15 @@ public function ppa_contract($contract_id){
             return;
         }
         
-        // Check if PPA is approved - if so, don't allow changes
-        // For endterm, check overall_end_term_status instead
+        // Check if this phase is approved - if so, don't allow changes
         $is_approved = false;
         if ($type === 'endterm') {
-            $is_approved = isset($ppa->overall_end_term_status) && $ppa->overall_end_term_status === 'Approved';
+            $is_approved = (isset($ppa->overall_end_term_status) && $ppa->overall_end_term_status === 'Approved')
+                || (isset($ppa->endterm_draft_status) && (int) $ppa->endterm_draft_status === 2);
+        } elseif ($type === 'midterm') {
+            $is_approved = isset($ppa->midterm_draft_status) && (int) $ppa->midterm_draft_status === 2;
         } else {
-            $is_approved = (int)$ppa->draft_status === 2;
+            $is_approved = (int) $ppa->draft_status === 2;
         }
         
         if ($is_approved) {
@@ -739,10 +742,14 @@ public function ppa_contract($contract_id){
         
         if ($type === 'ppa') {
             $ppa_update['supervisor_id'] = $supervisor_1 ?: null;
+            $ppa_update['supervisor2_id'] = $supervisor_2 ?: null;
             $contract_update['first_supervisor'] = $supervisor_1 ?: null;
+            $contract_update['second_supervisor'] = $supervisor_2 ?: null;
         } elseif ($type === 'midterm') {
             $ppa_update['midterm_supervisor_1'] = $supervisor_1 ?: null;
+            $ppa_update['midterm_supervisor_2'] = $supervisor_2 ?: null;
             $contract_update['first_supervisor'] = $supervisor_1 ?: null;
+            $contract_update['second_supervisor'] = $supervisor_2 ?: null;
         } elseif ($type === 'endterm') {
             $ppa_update['endterm_supervisor_1'] = $supervisor_1 ?: null;
             $ppa_update['endterm_supervisor_2'] = $supervisor_2 ?: null;
