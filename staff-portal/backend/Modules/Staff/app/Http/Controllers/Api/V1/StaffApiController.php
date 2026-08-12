@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Modules\Staff\Services\StaffContractService;
 use Modules\Staff\Services\StaffCreateService;
 use Modules\Staff\Services\StaffDirectoryService;
@@ -95,6 +96,58 @@ class StaffApiController extends Controller
                 'can_manage' => StaffAccess::canManageStaff(),
                 'can_manage_contracts' => StaffAccess::canManageContracts(),
             ],
+        ]);
+    }
+
+    public function storeContract(int $staff, Request $request, StaffContractService $contracts): JsonResponse
+    {
+        if (! StaffAccess::canManageContracts()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (! DB::table('staff')->where('staff_id', $staff)->exists()) {
+            return response()->json(['message' => 'Staff not found.'], 404);
+        }
+
+        try {
+            $contractId = $contracts->create($staff, $this->validatedContractPayload($request));
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e);
+        }
+
+        return response()->json([
+            'data' => [
+                'contract_id' => $contractId,
+            ],
+            'message' => 'Contract created successfully.',
+        ], 201);
+    }
+
+    public function updateContract(int $staff, int $contractId, Request $request, StaffContractService $contracts): JsonResponse
+    {
+        if (! StaffAccess::canManageContracts()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (! DB::table('staff')->where('staff_id', $staff)->exists()) {
+            return response()->json(['message' => 'Staff not found.'], 404);
+        }
+
+        try {
+            $updated = $contracts->update($contractId, $staff, $this->validatedContractPayload($request));
+        } catch (ValidationException $e) {
+            return $this->validationErrorResponse($e);
+        }
+
+        if (! $updated) {
+            return response()->json(['message' => 'Contract not found.'], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'contract_id' => $contractId,
+            ],
+            'message' => 'Contract updated successfully.',
         ]);
     }
 
@@ -277,5 +330,45 @@ class StaffApiController extends Controller
         );
 
         return $validated;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function validatedContractPayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'job_id' => ['required', 'integer', 'min:1', 'exists:jobs,job_id'],
+            'job_acting_id' => ['nullable', 'integer', 'min:1', 'exists:jobs_acting,job_acting_id'],
+            'grade_id' => ['required', 'string', 'max:20', 'exists:grades,grade_id'],
+            'contracting_institution_id' => ['required', 'integer', 'min:1', 'exists:contracting_institutions,contracting_institution_id'],
+            'funder_id' => ['required', 'integer', 'min:1', 'exists:funders,funder_id'],
+            'first_supervisor' => ['required', 'integer', 'min:1', 'exists:staff,staff_id'],
+            'second_supervisor' => ['nullable', 'integer', 'min:1', 'exists:staff,staff_id'],
+            'contract_type_id' => ['required', 'integer', 'min:1', 'exists:contract_types,contract_type_id'],
+            'duty_station_id' => ['required', 'integer', 'min:1', 'exists:duty_stations,duty_station_id'],
+            'division_id' => ['required', 'integer', 'min:1', 'exists:divisions,division_id'],
+            'unit_id' => ['nullable', 'integer', 'min:1', 'exists:units,unit_id'],
+            'other_associated_divisions' => ['nullable', 'array'],
+            'other_associated_divisions.*' => ['integer', 'distinct', 'min:1', 'exists:divisions,division_id'],
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
+            'status_id' => ['required', 'integer', 'min:1', 'exists:status,status_id'],
+            'comments' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $validated['other_associated_divisions'] = array_values(
+            array_map('intval', (array) ($validated['other_associated_divisions'] ?? []))
+        );
+
+        return $validated;
+    }
+
+    protected function validationErrorResponse(ValidationException $e): JsonResponse
+    {
+        return response()->json([
+            'message' => 'The given data was invalid.',
+            'errors' => $e->errors(),
+        ], 422);
     }
 }

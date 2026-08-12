@@ -43,10 +43,43 @@ export interface StaffListResponse {
 export interface StaffShowResponse {
   data: {
     staff: Record<string, unknown>
-    contracts: Array<Record<string, unknown>>
+    contracts: StaffContractRow[]
     can_manage: boolean
     can_manage_contracts: boolean
   }
+}
+
+export interface StaffContractRow {
+  staff_contract_id: number
+  job_id?: number | null
+  job_name?: string | null
+  job_acting_id?: number | null
+  job_acting?: string | null
+  grade_id?: string | null
+  grade?: string | null
+  contracting_institution_id?: number | null
+  contracting_institution?: string | null
+  funder_id?: number | null
+  funder?: string | null
+  first_supervisor?: number | null
+  first_supervisor_name?: string | null
+  second_supervisor?: number | null
+  second_supervisor_name?: string | null
+  contract_type_id?: number | null
+  contract_type?: string | null
+  duty_station_id?: number | null
+  duty_station_name?: string | null
+  division_id?: number | null
+  division_name?: string | null
+  unit_id?: number | null
+  status_id?: number | null
+  status_label?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  comments?: string | null
+  file_name?: string | null
+  other_associated_divisions?: number[] | string | null
+  [key: string]: unknown
 }
 
 export interface BirthdayRow {
@@ -141,6 +174,25 @@ export interface StaffCreatePayload {
   status_id?: number
 }
 
+export interface StaffContractPayload {
+  job_id: number | ''
+  job_acting_id?: number | '' | null
+  grade_id: string
+  contracting_institution_id: number | ''
+  funder_id: number | ''
+  first_supervisor: number | ''
+  second_supervisor?: number | '' | null
+  contract_type_id: number | ''
+  duty_station_id: number | ''
+  division_id: number | ''
+  unit_id?: number | '' | null
+  other_associated_divisions?: number[]
+  start_date: string
+  end_date: string
+  status_id: number | ''
+  comments?: string
+}
+
 export async function fetchStaffList(params: {
   q?: string
   preset?: StaffPreset
@@ -174,5 +226,25 @@ export async function fetchStaffFormLookups(): Promise<StaffFormLookups> {
 
 export async function createStaff(payload: StaffCreatePayload): Promise<{ staff_id: number; contract_id: number }> {
   const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', payload)
+  return data.data
+}
+
+export async function createContract(
+  staffId: number,
+  payload: StaffContractPayload,
+): Promise<{ contract_id: number }> {
+  const { data } = await api.post<{ data: { contract_id: number } }>(`/api/v1/staff/${staffId}/contracts`, payload)
+  return data.data
+}
+
+export async function updateContract(
+  staffId: number,
+  contractId: number,
+  payload: StaffContractPayload,
+): Promise<{ contract_id: number }> {
+  const { data } = await api.put<{ data: { contract_id: number } }>(
+    `/api/v1/staff/${staffId}/contracts/${contractId}`,
+    payload,
+  )
   return data.data
 }
