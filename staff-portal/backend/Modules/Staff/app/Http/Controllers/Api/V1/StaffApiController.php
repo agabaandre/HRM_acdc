@@ -165,8 +165,8 @@ class StaffApiController extends Controller
                 $r['lname'] ?? '',
                 $r['work_email'] ?? '',
                 $r['division_name'] ?? '',
-                $r['job_name'] ?? '',
-                $r['status_name'] ?? ($r['status_id'] ?? ''),
+                $r['job_name'] ?? ($r['job_acting'] ?? ''),
+                $r['contract_status'] ?? '',
             ];
         }
 

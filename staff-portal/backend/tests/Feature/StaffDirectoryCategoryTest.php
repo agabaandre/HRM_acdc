@@ -55,6 +55,41 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertStringNotContainsString('Alice', $csv);
     }
 
+    public function test_export_csv_uses_contract_status_label(): void
+    {
+        $response = app(StaffApiController::class)->exportCsv(
+            Request::create('/api/v1/staff/export.csv', 'GET'),
+            app(StaffDirectoryService::class),
+            app(CsvExportService::class)
+        );
+
+        ob_start();
+        $response->sendContent();
+        $csv = (string) ob_get_clean();
+
+        $lines = array_values(array_filter(explode("\n", trim($csv))));
+        $this->assertGreaterThan(1, count($lines));
+
+        $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+        $statusIndex = array_search('Status', $header, true);
+        $this->assertNotFalse($statusIndex);
+
+        $alice = null;
+        foreach (array_slice($lines, 1) as $line) {
+            $cols = str_getcsv($line);
+            if (($cols[1] ?? '') === 'Alice') {
+                $alice = $cols;
+                break;
+            }
+        }
+
+        $this->assertNotNull($alice);
+        $this->assertSame('Active', $alice[$statusIndex]);
+        $this->assertNotSame('1', $alice[$statusIndex]);
+        $this->assertSame('Advisor', $alice[array_search('Job', $header, true)]);
+        $this->assertSame('People', $alice[array_search('Division', $header, true)]);
+    }
+
     public function test_export_csv_is_not_clamped_to_list_page_size(): void
     {
         $this->seedExtraMainStaff(101);
