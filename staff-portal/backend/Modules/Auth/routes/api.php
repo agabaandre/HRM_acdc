@@ -19,3 +19,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::get('auth/audit-logs', [AuthAdminApiController::class, 'auditLogs']);
     Route::post('auth/audit-logs/{id}/revert', [AuthAdminApiController::class, 'revertAuditLog']);
 });
+
+Route::middleware('auth:api')->prefix('v1')->group(function (): void {
+    Route::get('oauth/user', [PortalSpaAuthController::class, 'me']);
+});
