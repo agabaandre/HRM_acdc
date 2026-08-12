@@ -26,3 +26,9 @@
 ## Concerns
 - The SPA renew flow reuses `staff/form-lookups` and latest-contract data, so no dedicated `contract-lookups` endpoint was added in this task.
 - Contract PDF upload was not added to the SPA form because it was not part of the requested deliverables for Task 6.
+
+## P2 follow-up: unchanged PUT 404
+- `StaffContractService::update()` treated MySQL `0` affected rows as failure, so saving an existing contract with an identical payload returned HTTP 404.
+- Existence is now checked separately; `update()` still writes the payload, then returns `true` when the row exists. Create-path demotion is unchanged. Update-path conflicting-current still returns 422.
+- Added `test_update_contract_with_identical_data_returns_200` in `tests/Feature/StaffContractApiTest.php`.
+- Verification: `./vendor/bin/phpunit tests/Feature/StaffContractApiTest.php tests/Feature/StaffContractUniquenessTest.php` (8 tests, 35 assertions).

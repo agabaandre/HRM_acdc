@@ -263,18 +263,16 @@ class StaffContractService
             $payload['file_name'] = $this->storePdf($pdf, $staffId, $contractId);
         }
 
-        $ok = (bool) DB::table('staff_contracts')
+        DB::table('staff_contracts')
             ->where('staff_contract_id', $contractId)
             ->update($payload);
 
-        if ($ok) {
-            $this->syncPpaSupervisor($staffId, (int) ($form['first_supervisor'] ?? 0));
-            $this->syncContractStatusFromEndDate($contractId, $staffId);
-            $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $contractId)->value('status_id');
-            $this->markEmailEnabledIfActive($staffId, $statusId);
-        }
+        $this->syncPpaSupervisor($staffId, (int) ($form['first_supervisor'] ?? 0));
+        $this->syncContractStatusFromEndDate($contractId, $staffId);
+        $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $contractId)->value('status_id');
+        $this->markEmailEnabledIfActive($staffId, $statusId);
 
-        return $ok;
+        return true;
     }
 
     public function assertNoConflictingCurrent(int $staffId, ?int $exceptContractId, int $incomingStatusId): void

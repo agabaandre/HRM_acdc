@@ -91,6 +91,41 @@ class StaffContractApiTest extends TestCase
         $this->assertSame('Separated by API update', DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('comments'));
     }
 
+    public function test_update_contract_with_identical_data_returns_200(): void
+    {
+        $start = '2026-01-01';
+        $end = now()->addYear()->toDateString();
+
+        $this->insertContract([
+            'staff_contract_id' => 1000,
+            'staff_id' => 100,
+            'status_id' => 4,
+            'start_date' => $start,
+            'end_date' => $end,
+            'comments' => 'Unchanged save',
+        ]);
+
+        $response = app(StaffApiController::class)->updateContract(
+            100,
+            1000,
+            Request::create('/api/v1/staff/100/contracts/1000', 'PUT', $this->payload([
+                'status_id' => 4,
+                'start_date' => $start,
+                'end_date' => $end,
+                'comments' => 'Unchanged save',
+            ])),
+            app(StaffContractService::class)
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('Contract updated successfully.', $payload['message']);
+        $this->assertSame(1000, (int) $payload['data']['contract_id']);
+        $this->assertSame(4, (int) DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('status_id'));
+        $this->assertSame('Unchanged save', DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('comments'));
+    }
+
     public function test_update_contract_returns_422_json_when_another_current_contract_exists(): void
     {
         $this->insertContract([
