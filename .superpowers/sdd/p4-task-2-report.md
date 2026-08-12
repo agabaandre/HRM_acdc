@@ -20,3 +20,10 @@ Completed.
 
 - The current focused coverage proves the happy path for create/bootstrap, show, and PPA draft save; submit/approve/return/consent are implemented but still need dedicated follow-up tests if deeper workflow regression coverage is wanted.
 - `returnForRevision()` in the shared approval service does not perform its own actor check, so the controller now enforces that workflow permission explicitly before calling it.
+
+## Follow-up: Important API review findings
+
+- `printEntry()` now applies the same synced entry access authorization path as `show()` before rendering the PDF, preventing non-owner/non-supervisor access.
+- `exportCsv()` now scopes role-17 users to their own staff analytics, matching the existing `analytics()` restriction.
+- `returnEntry()` now requires both `ppa_configs.allow_supervisor_return` and permission `83` in addition to the workflow approval check before allowing a supervisor return.
+- Added focused regression coverage in `staff-portal/backend/tests/Feature/PerformanceFormApiTest.php` for PDF access control, role-17 CSV scoping, missing permission `83`, and disabled supervisor-return config.

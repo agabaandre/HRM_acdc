@@ -4,10 +4,15 @@ namespace Tests\Feature;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Modules\Core\Services\CsvExportService;
+use Modules\Core\Services\PdfService;
 use Modules\Performance\Http\Controllers\Api\V1\PerformanceFormApiController;
+use Modules\Performance\Enums\PerformancePhase;
 use Modules\Performance\Services\CompetencyService;
+use Modules\Performance\Services\PerformanceAnalyticsService;
 use Modules\Performance\Services\PerformanceApprovalService;
 use Modules\Performance\Services\PerformanceService;
 use Modules\Performance\Services\PerformanceWorkflowService;
@@ -16,6 +21,7 @@ use Modules\Performance\Services\PpaFormService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Services\SupervisorResolver;
 use Modules\Performance\Support\PerformancePeriod;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class PerformanceFormApiTest extends TestCase
@@ -196,16 +202,178 @@ class PerformanceFormApiTest extends TestCase
         ]);
     }
 
+    public function test_print_entry_requires_same_entry_access_as_show(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-print',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+        ]);
+
+        session()->put($this->portalSession(999, permissions: [74]));
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('You are not allowed to access this entry.');
+
+        try {
+            app(PerformanceFormApiController::class)->printEntry(
+                'ppa-entry-print',
+                Request::create('/api/v1/performance/entries/ppa-entry-print/print.pdf', 'GET', [
+                    'phase' => 'ppa',
+                ]),
+                app(PpaFormService::class),
+                new class extends PdfService
+                {
+                    public function inline(string $htmlBody, string $filename, array $options = []): Response
+                    {
+                        return response('fake-pdf', 200, ['Content-Type' => 'application/pdf']);
+                    }
+                },
+                app(PerformanceWorkflowService::class),
+                app(PerformanceService::class),
+            );
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+
+            throw $e;
+        }
+    }
+
+    public function test_export_csv_restricts_role_17_staff_to_their_own_analytics(): void
+    {
+        session()->put($this->portalSession(100, 17, [74]));
+
+        $analytics = \Mockery::mock(PerformanceAnalyticsService::class);
+        $analytics->shouldReceive('dashboard')
+            ->once()
+            ->withArgs(fn (PerformancePhase $phase, ?int $divisionId, string $period, ?int $restrictStaffId): bool => $phase === PerformancePhase::Ppa
+                && $divisionId === null
+                && $period === 'January-2026-to-December-2026'
+                && $restrictStaffId === 100)
+            ->andReturn([
+                'phase' => 'ppa',
+                'phase_label' => 'PPA',
+                'period' => 'January-2026-to-December-2026',
+                'summary' => [
+                    'total' => 1,
+                    'approved' => 1,
+                    'submitted' => 0,
+                    'draft' => 0,
+                    'without' => 0,
+                ],
+                'by_division' => [
+                    (object) ['label' => 'People', 'value' => 1],
+                ],
+                'trend' => [],
+                'create_url' => null,
+            ]);
+
+        $response = app(PerformanceFormApiController::class)->exportCsv(
+            Request::create('/api/v1/performance/analytics/export.csv', 'GET', [
+                'phase' => 'ppa',
+                'period' => 'January-2026-to-December-2026',
+            ]),
+            $analytics,
+            app(PerformanceService::class),
+            app(CsvExportService::class),
+        );
+
+        ob_start();
+        $response->sendContent();
+        $csv = (string) ob_get_clean();
+
+        $this->assertStringContainsString('Total,1', $csv);
+        $this->assertStringContainsString('People,1', $csv);
+    }
+
+    public function test_return_entry_requires_permission_83(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-return-permission',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+
+        session()->put($this->portalSession(50, permissions: [74]));
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('You are not allowed to return this entry.');
+
+        try {
+            app(PerformanceFormApiController::class)->returnEntry(
+                'ppa-entry-return-permission',
+                Request::create('/api/v1/performance/entries/ppa-entry-return-permission/return', 'POST', [
+                    'phase' => 'ppa',
+                    'comments' => 'Needs more detail.',
+                ]),
+                app(PpaFormService::class),
+                app(PpaContractService::class),
+                app(PpaSettingsService::class),
+                app(CompetencyService::class),
+                app(PerformanceWorkflowService::class),
+                app(PerformanceApprovalService::class),
+                app(PerformanceService::class),
+            );
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+
+            throw $e;
+        }
+    }
+
+    public function test_return_entry_requires_supervisor_return_setting(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-return-setting',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+        DB::table('ppa_configs')->update(['allow_supervisor_return' => 0]);
+
+        session()->put($this->portalSession(50, permissions: [74, 83]));
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionMessage('You are not allowed to return this entry.');
+
+        try {
+            app(PerformanceFormApiController::class)->returnEntry(
+                'ppa-entry-return-setting',
+                Request::create('/api/v1/performance/entries/ppa-entry-return-setting/return', 'POST', [
+                    'phase' => 'ppa',
+                    'comments' => 'Needs more detail.',
+                ]),
+                app(PpaFormService::class),
+                app(PpaContractService::class),
+                app(PpaSettingsService::class),
+                app(CompetencyService::class),
+                app(PerformanceWorkflowService::class),
+                app(PerformanceApprovalService::class),
+                app(PerformanceService::class),
+            );
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+
+            throw $e;
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
-    protected function portalSession(int $staffId): array
+    protected function portalSession(int $staffId, int $roleId = 17, array $permissions = [74]): array
     {
         return [
             'user' => [
                 'staff_id' => $staffId,
-                'role_id' => 17,
-                'permissions' => [74],
+                'role_id' => $roleId,
+                'permissions' => $permissions,
             ],
         ];
     }

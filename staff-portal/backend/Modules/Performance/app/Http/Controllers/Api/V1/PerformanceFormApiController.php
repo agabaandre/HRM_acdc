@@ -272,6 +272,9 @@ class PerformanceFormApiController extends Controller
         if (! $workflow->canActorApprove($entry, $phase, $actorStaffId)) {
             abort(403, 'You are not allowed to return this entry.');
         }
+        if (! $this->allowSupervisorReturn($settings) || ! PortalPermission::can(83)) {
+            abort(403, 'You are not allowed to return this entry.');
+        }
 
         $validated = $request->validate([
             'comments' => 'required|string|max:5000',
@@ -401,7 +404,7 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
         $period = (string) ($request->query('period') ?: $performance->currentPeriodSlug());
         $division = $request->filled('division_id') ? (int) $request->query('division_id') : null;
-        $data = $analytics->dashboard($phase, $division, $period, null);
+        $data = $analytics->dashboard($phase, $division, $period, $this->analyticsRestrictStaffId());
 
         $rows = [
             ['Phase', $data['phase_label']],
@@ -426,15 +429,19 @@ class PerformanceFormApiController extends Controller
         Request $request,
         PpaFormService $forms,
         PdfService $pdf,
+        PerformanceWorkflowService $workflow,
         PerformanceService $performance
     ): Response {
         PortalPermission::authorize(74);
 
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
+        $actorStaffId = $this->actorStaffId();
         $entry = $forms->findEntry($entryId);
         if (! $entry) {
             abort(404, 'Entry not found');
         }
+        $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
+        $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
         $objectives = $forms->decodeObjectives((string) ($entry->objectives ?? ''));
         if ($phase === PerformancePhase::Midterm) {
@@ -972,10 +979,36 @@ class PerformanceFormApiController extends Controller
 
     protected function actorStaffId(): int
     {
-        $user = auth()->user();
-        $session = $user instanceof PortalUser ? $user->toSessionArray() : (session('user') ?? []);
+        $session = $this->actorSession();
 
-        return (int) ($session['staff_id'] ?? ($user instanceof PortalUser ? $user->auth_staff_id : 0));
+        return (int) ($session['staff_id'] ?? 0);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function actorSession(): array
+    {
+        $user = auth()->user();
+
+        if ($user instanceof PortalUser) {
+            return $user->toSessionArray();
+        }
+
+        return session('user') ?? [];
+    }
+
+    protected function analyticsRestrictStaffId(): ?int
+    {
+        $session = $this->actorSession();
+        $roleId = (int) ($session['role_id'] ?? $session['role'] ?? 0);
+
+        return $roleId === 17 ? $this->actorStaffId() : null;
+    }
+
+    protected function allowSupervisorReturn(PpaSettingsService $settings): bool
+    {
+        return (bool) ($settings->settings()->allow_supervisor_return ?? true);
     }
 
     protected function phaseSupervisorValue(?object $entry, PerformancePhase $phase, bool $first): ?int
