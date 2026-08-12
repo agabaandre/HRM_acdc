@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Modules\Core\Services\CsvExportService;
 use Modules\Core\Services\PdfService;
 use Modules\Performance\Http\Controllers\Api\V1\PerformanceFormApiController;
+use Modules\Performance\Http\Controllers\Api\V1\PerformanceHubApiController;
 use Modules\Performance\Enums\PerformancePhase;
 use Modules\Performance\Services\CompetencyService;
 use Modules\Performance\Services\PerformanceAnalyticsService;
@@ -206,6 +207,55 @@ class PerformanceFormApiTest extends TestCase
         $payload = $response->getData(true);
 
         $this->assertFalse($payload['data']['can_return']);
+    }
+
+    public function test_hub_response_exposes_only_spa_edit_urls(): void
+    {
+        session()->put($this->portalSession(100));
+
+        $performance = \Mockery::mock(PerformanceService::class);
+        $performance->shouldReceive('currentPeriodSlug')->once()->andReturn('January-2026-to-December-2026');
+        $performance->shouldReceive('dashboardSummary')->once()->with(null, 'January-2026-to-December-2026', 100)->andReturn([
+            'total' => 1,
+            'approved' => 0,
+            'submitted' => 1,
+            'draft' => 0,
+            'without_ppa' => 0,
+        ]);
+        $performance->shouldReceive('periodOptions')->once()->andReturn(['January-2026-to-December-2026']);
+
+        $approval = \Mockery::mock(PerformanceApprovalService::class);
+        $approval->shouldReceive('pendingActionsFor')->once()->with(100)->andReturn(collect([
+            (object) [
+                'entry_id' => 'entry-1',
+                'staff_id' => 100,
+                'approval_type' => 'ppa',
+            ],
+        ]));
+
+        $ppaSettings = \Mockery::mock(PpaSettingsService::class);
+        $ppaSettings->shouldReceive('workflowSummaryLine')->times(3)->andReturn('Configured');
+        $ppaSettings->shouldReceive('allSubmissionWindowStatuses')->once()->andReturn([
+            'ppa' => ['open' => true],
+            'midterm' => ['open' => false],
+            'endterm' => ['open' => false],
+        ]);
+        $ppaSettings->shouldReceive('isSubmissionOpen')->once()->with(PerformancePhase::Ppa)->andReturn(true);
+
+        $response = app(PerformanceHubApiController::class)->hub(
+            Request::create('/api/v1/performance/hub', 'GET'),
+            $performance,
+            $approval,
+            $ppaSettings,
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('/performance/form/ppa/entry-1/100', $payload['data']['pending'][0]['form_url']);
+        $this->assertArrayNotHasKey('livewire_url', $payload['data']['pending'][0]);
+        $this->assertSame('/performance/create', $payload['data']['create_ppa_url']);
+        $this->assertArrayNotHasKey('create_ppa_livewire_url', $payload['data']);
     }
 
     public function test_put_draft_saves_a_ppa_and_returns_the_saved_payload(): void
