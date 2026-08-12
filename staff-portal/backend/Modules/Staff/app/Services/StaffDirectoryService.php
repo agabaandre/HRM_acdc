@@ -140,12 +140,8 @@ class StaffDirectoryService
      */
     protected function lightQuery(string $search, int|array|null $statusId, string $category): Builder
     {
-        $sub = DB::table('staff_contracts')
-            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
-            ->groupBy('staff_id');
-
         $q = DB::table('staff as s')
-            ->joinSub($sub, 'lc', 'lc.staff_id', '=', 's.staff_id')
+            ->joinSub($this->selectedContractSubquery(), 'lc', 'lc.staff_id', '=', 's.staff_id')
             ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->leftJoin('contract_types as ct', 'ct.contract_type_id', '=', 'sc.contract_type_id');
 
@@ -159,12 +155,8 @@ class StaffDirectoryService
     /** Full row payload — only for the current page of staff IDs. */
     protected function detailQuery(string $category): Builder
     {
-        $sub = DB::table('staff_contracts')
-            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
-            ->groupBy('staff_id');
-
         return DB::table('staff as s')
-            ->joinSub($sub, 'lc', 'lc.staff_id', '=', 's.staff_id')
+            ->joinSub($this->selectedContractSubquery(), 'lc', 'lc.staff_id', '=', 's.staff_id')
             ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->leftJoin('contract_types as ct', 'ct.contract_type_id', '=', 'sc.contract_type_id')
             ->leftJoin('grades as g', 'g.grade_id', '=', 'sc.grade_id')
@@ -211,6 +203,15 @@ class StaffDirectoryService
                 DB::raw("TRIM(CONCAT(COALESCE(sup2.fname,''), ' ', COALESCE(sup2.lname,''))) as second_supervisor_name"),
             ])
             ->when($category !== 'all', fn (Builder $query) => $query->where('ct.category', $category));
+    }
+
+    protected function selectedContractSubquery(): Builder
+    {
+        return DB::table('staff_contracts')
+            ->selectRaw(
+                'staff_id, COALESCE(MAX(CASE WHEN status_id IN (1, 2, 7) THEN staff_contract_id END), MAX(staff_contract_id)) as cid'
+            )
+            ->groupBy('staff_id');
     }
 
     /**

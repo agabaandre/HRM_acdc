@@ -237,19 +237,24 @@ class StaffApiController extends Controller
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
         $exported = $directory->exportRows($search, $statusId, $category);
-        $rows = [['Staff ID', 'First name', 'Last name', 'Email', 'Division', 'Job', 'Status', 'Category']];
+        $selectedColumns = $this->selectedExportColumns($request);
+        $rows = [[
+            'Staff ID',
+            ...array_map(
+                fn (string $column): string => $this->csvColumnDefinitions()[$column]['label'],
+                $selectedColumns
+            ),
+        ]];
+
         foreach ($exported as $item) {
             $r = (array) $item;
-            $rows[] = [
-                $r['staff_id'] ?? '',
-                $r['fname'] ?? '',
-                $r['lname'] ?? '',
-                $r['work_email'] ?? '',
-                $r['division_name'] ?? '',
-                $r['job_name'] ?? ($r['job_acting'] ?? ''),
-                $r['contract_status'] ?? '',
-                $this->humanizeCategory((string) ($r['category'] ?? '')),
-            ];
+            $row = [$r['staff_id'] ?? ''];
+
+            foreach ($selectedColumns as $column) {
+                $row[] = $this->csvColumnValue($column, $r);
+            }
+
+            $rows[] = $row;
         }
 
         return $csv->stream('staff-directory.csv', $rows);
@@ -269,6 +274,96 @@ class StaffApiController extends Controller
             'other_staff' => 'Other staff',
             default => $category,
         };
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function selectedExportColumns(Request $request): array
+    {
+        $defaults = ['photo', 'name', 'work_email', 'job', 'division', 'duty_station', 'contract_type', 'status', 'end_date'];
+        $requested = array_values(array_filter(array_map(
+            static fn (string $column): string => trim($column),
+            explode(',', (string) $request->query('columns', ''))
+        )));
+
+        if ($requested === []) {
+            return $defaults;
+        }
+
+        $definitions = $this->csvColumnDefinitions();
+        $selected = [];
+        foreach ($requested as $column) {
+            if (array_key_exists($column, $definitions) && ! in_array($column, $selected, true)) {
+                $selected[] = $column;
+            }
+        }
+
+        return $selected !== [] ? $selected : $defaults;
+    }
+
+    /**
+     * @return array<string, array{label: string}>
+     */
+    protected function csvColumnDefinitions(): array
+    {
+        return [
+            'photo' => ['label' => 'Photo'],
+            'name' => ['label' => 'Name'],
+            'work_email' => ['label' => 'Work email'],
+            'sap_number' => ['label' => 'SAP'],
+            'job' => ['label' => 'Job'],
+            'division' => ['label' => 'Division'],
+            'duty_station' => ['label' => 'Duty station'],
+            'contract_type' => ['label' => 'Contract type'],
+            'category' => ['label' => 'Category'],
+            'status' => ['label' => 'Status'],
+            'grade' => ['label' => 'Grade'],
+            'start_date' => ['label' => 'Start date'],
+            'end_date' => ['label' => 'End date'],
+            'funder' => ['label' => 'Funder'],
+            'nationality' => ['label' => 'Nationality'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function csvColumnValue(string $column, array $row): string
+    {
+        return match ($column) {
+            'photo' => (string) ($row['photo'] ?? ''),
+            'name' => $this->csvPersonName($row),
+            'work_email' => (string) ($row['work_email'] ?? ''),
+            'sap_number' => (string) ($row['SAPNO'] ?? ''),
+            'job' => (string) (($row['job_name'] ?? '') ?: ($row['job_acting'] ?? '')),
+            'division' => (string) ($row['division_name'] ?? ''),
+            'duty_station' => (string) ($row['duty_station_name'] ?? ''),
+            'contract_type' => (string) ($row['contract_type'] ?? ''),
+            'category' => $this->humanizeCategory((string) ($row['category'] ?? '')),
+            'status' => (string) ($row['contract_status'] ?? ''),
+            'grade' => (string) ($row['grade'] ?? ''),
+            'start_date' => (string) ($row['start_date'] ?? ''),
+            'end_date' => (string) ($row['end_date'] ?? ''),
+            'funder' => (string) ($row['funder'] ?? ''),
+            'nationality' => (string) ($row['nationality'] ?? ''),
+            default => '',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function csvPersonName(array $row): string
+    {
+        $lastName = trim((string) ($row['lname'] ?? ''));
+        $firstName = trim((string) ($row['fname'] ?? ''));
+
+        if ($lastName !== '' && $firstName !== '') {
+            return $lastName.', '.$firstName;
+        }
+
+        return $lastName !== '' ? $lastName : $firstName;
     }
 
     /**

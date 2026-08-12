@@ -177,8 +177,12 @@ async function onExportCsv() {
 watch(q, () => {
   window.clearTimeout(searchTimer)
   searchTimer = window.setTimeout(() => {
+    if (page.value === 1) {
+      void load()
+      return
+    }
+
     page.value = 1
-    void load()
   }, 300)
 })
 

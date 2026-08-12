@@ -73,13 +73,13 @@ class StaffDirectoryCategoryTest extends TestCase
         $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
         $statusIndex = array_search('Status', $header, true);
         $this->assertNotFalse($statusIndex);
-        $categoryIndex = array_search('Category', $header, true);
-        $this->assertNotFalse($categoryIndex);
+        $staffIdIndex = array_search('Staff ID', $header, true);
+        $this->assertNotFalse($staffIdIndex);
 
         $alice = null;
         foreach (array_slice($lines, 1) as $line) {
             $cols = str_getcsv($line);
-            if (($cols[1] ?? '') === 'Alice') {
+            if (($cols[$staffIdIndex] ?? '') === '100') {
                 $alice = $cols;
                 break;
             }
@@ -90,7 +90,74 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertNotSame('1', $alice[$statusIndex]);
         $this->assertSame('Advisor', $alice[array_search('Job', $header, true)]);
         $this->assertSame('People', $alice[array_search('Division', $header, true)]);
-        $this->assertSame('Main staff', $alice[$categoryIndex]);
+    }
+
+    public function test_directory_prefers_current_contract_for_active_main_staff_filters(): void
+    {
+        $this->seedCurrentContractFallbackFixtures();
+
+        $response = app(StaffApiController::class)->index(
+            Request::create('/api/v1/staff', 'GET', [
+                'preset' => 'active',
+                'category' => 'main_staff',
+            ]),
+            app(StaffDirectoryService::class)
+        );
+
+        $payload = $response->getData(true);
+        $staffIds = array_column($payload['data'], 'staff_id');
+
+        $this->assertContains(300, $staffIds);
+        $this->assertNotContains(400, $staffIds);
+
+        $migrated = collect($payload['data'])->firstWhere('staff_id', 300);
+        $this->assertNotNull($migrated);
+        $this->assertSame('Permanent', $migrated['contract_type']);
+        $this->assertSame('main_staff', $migrated['category']);
+        $this->assertSame('Active', $migrated['contract_status']);
+    }
+
+    public function test_directory_falls_back_to_latest_contract_when_no_current_contract_exists(): void
+    {
+        $this->seedCurrentContractFallbackFixtures();
+
+        $response = app(StaffApiController::class)->index(
+            Request::create('/api/v1/staff', 'GET', [
+                'preset' => 'former',
+                'category' => 'other_staff',
+            ]),
+            app(StaffDirectoryService::class)
+        );
+
+        $payload = $response->getData(true);
+        $staffIds = array_column($payload['data'], 'staff_id');
+
+        $this->assertContains(400, $staffIds);
+        $this->assertNotContains(300, $staffIds);
+    }
+
+    public function test_export_csv_honors_selected_columns(): void
+    {
+        $response = app(StaffApiController::class)->exportCsv(
+            Request::create('/api/v1/staff/export.csv', 'GET', ['columns' => 'name,status']),
+            app(StaffDirectoryService::class),
+            app(CsvExportService::class)
+        );
+
+        ob_start();
+        $response->sendContent();
+        $csv = (string) ob_get_clean();
+
+        $lines = array_values(array_filter(explode("\n", trim($csv))));
+        $this->assertGreaterThan(1, count($lines));
+
+        $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
+        $this->assertSame(['Staff ID', 'Name', 'Status'], $header);
+
+        $alice = str_getcsv($lines[1]);
+        $this->assertSame('100', $alice[0] ?? null);
+        $this->assertSame('Main, Alice', $alice[1] ?? null);
+        $this->assertSame('Active', $alice[2] ?? null);
     }
 
     public function test_export_csv_is_not_clamped_to_list_page_size(): void
@@ -229,6 +296,10 @@ class StaffDirectoryCategoryTest extends TestCase
 
         \DB::table('status')->insert([
             ['status_id' => 1, 'status' => 'Active'],
+            ['status_id' => 2, 'status' => 'Due'],
+            ['status_id' => 3, 'status' => 'Expired'],
+            ['status_id' => 4, 'status' => 'Former'],
+            ['status_id' => 7, 'status' => 'Renewal'],
         ]);
 
         \DB::table('staff')->insert([
@@ -297,5 +368,58 @@ class StaffDirectoryCategoryTest extends TestCase
 
         \DB::table('staff')->insert($staff);
         \DB::table('staff_contracts')->insert($contracts);
+    }
+
+    protected function seedCurrentContractFallbackFixtures(): void
+    {
+        \DB::table('staff')->insert([
+            [
+                'staff_id' => 300,
+                'fname' => 'Mara',
+                'lname' => 'Migrated',
+                'photo' => 'mara.jpg',
+                'work_email' => 'mara@example.test',
+            ],
+            [
+                'staff_id' => 400,
+                'fname' => 'Fiona',
+                'lname' => 'Former',
+                'photo' => 'fiona.jpg',
+                'work_email' => 'fiona@example.test',
+            ],
+        ]);
+
+        \DB::table('staff_contracts')->insert([
+            [
+                'staff_contract_id' => 3000,
+                'staff_id' => 300,
+                'contract_type_id' => 1,
+                'division_id' => 1,
+                'job_id' => 1,
+                'status_id' => 1,
+                'start_date' => '2025-01-01',
+                'end_date' => '2025-12-31',
+            ],
+            [
+                'staff_contract_id' => 3001,
+                'staff_id' => 300,
+                'contract_type_id' => 2,
+                'division_id' => 1,
+                'job_id' => 1,
+                'status_id' => 4,
+                'start_date' => '2026-01-01',
+                'end_date' => '2026-06-30',
+            ],
+            [
+                'staff_contract_id' => 4000,
+                'staff_id' => 400,
+                'contract_type_id' => 2,
+                'division_id' => 1,
+                'job_id' => 1,
+                'status_id' => 4,
+                'start_date' => '2026-01-01',
+                'end_date' => '2026-06-30',
+            ],
+        ]);
     }
 }
