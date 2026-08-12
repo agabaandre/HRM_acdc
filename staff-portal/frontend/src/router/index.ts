@@ -167,6 +167,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 17, title: 'Users' },
     },
     {
+      path: '/auth/oauth-clients',
+      name: 'auth-oauth-clients',
+      component: () => import('../pages/auth/OAuthClientsPage.vue'),
+      meta: { requiresAuth: true, permission: 17, title: 'OAuth clients' },
+    },
+    {
       path: '/auth/audit-logs',
       name: 'auth-audit-logs',
       component: () => import('../pages/auth/AuditLogsPage.vue'),

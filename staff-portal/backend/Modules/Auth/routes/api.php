@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Auth\Http\Controllers\Api\PortalSpaAuthController;
 use Modules\Auth\Http\Controllers\Api\SsoController;
 use Modules\Auth\Http\Controllers\Api\V1\AuthAdminApiController;
+use Modules\Auth\Http\Controllers\Api\V1\OAuthClientApiController;
 
 Route::prefix('v1')->group(function (): void {
     Route::post('sso/validate', [SsoController::class, 'validateSsoToken']);
@@ -18,6 +19,9 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function (): void {
     Route::get('auth/users', [AuthAdminApiController::class, 'users']);
     Route::get('auth/audit-logs', [AuthAdminApiController::class, 'auditLogs']);
     Route::post('auth/audit-logs/{id}/revert', [AuthAdminApiController::class, 'revertAuditLog']);
+    Route::get('auth/oauth-clients', [OAuthClientApiController::class, 'index']);
+    Route::post('auth/oauth-clients', [OAuthClientApiController::class, 'store']);
+    Route::delete('auth/oauth-clients/{id}', [OAuthClientApiController::class, 'destroy']);
 });
 
 Route::middleware('auth:api')->prefix('v1')->group(function (): void {

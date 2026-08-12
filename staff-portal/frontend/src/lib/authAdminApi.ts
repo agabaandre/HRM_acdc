@@ -36,6 +36,18 @@ export interface AuditLogRow {
   [key: string]: unknown
 }
 
+export interface OAuthClientRow {
+  id: string
+  name: string
+  redirect_uris: string[]
+  grant_types?: string[]
+  public: boolean
+  plain_secret?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  [key: string]: unknown
+}
+
 export interface PaginatedMeta {
   current_page: number
   last_page: number
@@ -56,6 +68,17 @@ export interface FetchAuditLogsParams {
   date_to?: string
   page?: number
   per_page?: number
+}
+
+function normalizeRedirectUrisInput(value: string[] | string): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => item.trim()).filter(Boolean)
+  }
+
+  return value
+    .split(/[\r\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 export async function fetchAuthUsers(params: {
@@ -80,6 +103,30 @@ export async function fetchAuditLogs(params: FetchAuditLogsParams = {}): Promise
 export async function revertAuditLog(id: number | string): Promise<{ ok: boolean; message: string; [key: string]: unknown }> {
   const { data } = await api.post<{ ok: boolean; message: string; [key: string]: unknown }>(
     `/api/v1/auth/audit-logs/${id}/revert`,
+  )
+  return data
+}
+
+export async function fetchOAuthClients(): Promise<{ data: OAuthClientRow[] }> {
+  const { data } = await api.get<{ data: OAuthClientRow[] }>('/api/v1/auth/oauth-clients')
+  return data
+}
+
+export async function createOAuthClient(payload: {
+  name: string
+  redirect_uris: string[] | string
+  public: boolean
+}): Promise<{ data: OAuthClientRow }> {
+  const { data } = await api.post<{ data: OAuthClientRow }>('/api/v1/auth/oauth-clients', {
+    ...payload,
+    redirect_uris: normalizeRedirectUrisInput(payload.redirect_uris),
+  })
+  return data
+}
+
+export async function revokeOAuthClient(id: string): Promise<{ ok: boolean; message: string; [key: string]: unknown }> {
+  const { data } = await api.delete<{ ok: boolean; message: string; [key: string]: unknown }>(
+    `/api/v1/auth/oauth-clients/${id}`,
   )
   return data
 }
