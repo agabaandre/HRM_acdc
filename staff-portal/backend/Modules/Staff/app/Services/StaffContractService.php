@@ -213,25 +213,27 @@ class StaffContractService
         $payload = $this->buildPayload($form);
         $payload['staff_id'] = $staffId;
 
-        $id = (int) DB::table('staff_contracts')->insertGetId($payload);
-        if ($id < 1) {
-            return null;
-        }
+        return DB::transaction(function () use ($payload, $pdf, $staffId): ?int {
+            $id = (int) DB::table('staff_contracts')->insertGetId($payload);
+            if ($id < 1) {
+                return null;
+            }
 
-        if ($pdf) {
-            $stored = $this->storePdf($pdf, $staffId, $id);
-            DB::table('staff_contracts')->where('staff_contract_id', $id)->update(['file_name' => $stored]);
-        }
+            if ($pdf) {
+                $stored = $this->storePdf($pdf, $staffId, $id);
+                DB::table('staff_contracts')->where('staff_contract_id', $id)->update(['file_name' => $stored]);
+            }
 
-        $this->syncContractStatusFromEndDate($id, $staffId);
-        $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $id)->value('status_id');
-        if (in_array($statusId, self::CURRENT_STATUSES, true)) {
-            $this->demotePreviousOnRenew($staffId, $id);
-        }
+            $this->syncContractStatusFromEndDate($id, $staffId);
+            $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $id)->value('status_id');
+            if (in_array($statusId, self::CURRENT_STATUSES, true)) {
+                $this->demotePreviousOnRenew($staffId, $id);
+            }
 
-        $this->markEmailEnabledIfActive($staffId, $statusId);
+            $this->markEmailEnabledIfActive($staffId, $statusId);
 
-        return $id;
+            return $id;
+        });
     }
 
     public function applyPreviousContractStatus(int $staffId, int $newContractId, int $previousStatusId): void

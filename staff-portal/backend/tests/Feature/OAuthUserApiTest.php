@@ -17,6 +17,7 @@ class OAuthUserApiTest extends TestCase
     {
         parent::setUp();
 
+        $this->configurePassportKeys();
         $this->createTables();
         $this->seedFixtures();
     }
@@ -84,6 +85,25 @@ class OAuthUserApiTest extends TestCase
             'role' => 17,
             'status' => 1,
             'allow_email_login' => 1,
+        ]);
+    }
+
+    protected function configurePassportKeys(): void
+    {
+        $key = openssl_pkey_new([
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+
+        $this->assertTrue(is_resource($key) || $key instanceof \OpenSSLAsymmetricKey);
+        openssl_pkey_export($key, $privateKey);
+        $details = openssl_pkey_get_details($key);
+
+        $this->assertIsArray($details);
+
+        config([
+            'passport.private_key' => $privateKey,
+            'passport.public_key' => $details['key'],
         ]);
     }
 }

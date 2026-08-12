@@ -28,4 +28,4 @@ Because of that, `PortalUser` keeps Sanctum's token trait as the primary impleme
 
 - No change to Microsoft SSO login
 - No change to legacy JWT issuance / validation
-- No client management UI yet
+- OAuth client management remains available through the authenticated admin surface

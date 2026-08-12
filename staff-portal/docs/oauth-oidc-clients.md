@@ -19,6 +19,9 @@ Core Passport endpoints:
 - Token: `POST /staff/staff-portal/backend/oauth/token`
 - Token refresh: `POST /staff/staff-portal/backend/oauth/token/refresh`
 - User info for Passport bearer tokens: `GET /staff/staff-portal/backend/api/v1/oauth/user`
+- OpenID discovery: `GET /staff/staff-portal/backend/.well-known/openid-configuration`
+- OAuth-prefixed discovery: `GET /staff/staff-portal/backend/oauth/.well-known/openid-configuration`
+- JWKS: `GET /staff/staff-portal/backend/oauth/jwks`
 
 Local examples:
 
@@ -26,6 +29,23 @@ Local examples:
 - `http://localhost/staff/staff-portal/backend/oauth/token`
 - `http://localhost/staff/staff-portal/backend/oauth/token/refresh`
 - `http://localhost/staff/staff-portal/backend/api/v1/oauth/user`
+- `http://localhost/staff/staff-portal/backend/.well-known/openid-configuration`
+- `http://localhost/staff/staff-portal/backend/oauth/.well-known/openid-configuration`
+- `http://localhost/staff/staff-portal/backend/oauth/jwks`
+
+## OIDC discovery and JWKS
+
+Laravel Passport 13 in this app provides the OAuth2 authorize/token endpoints, but it does not publish OpenID Connect discovery metadata or a JWKS document on its own here. The backend therefore exposes a minimal companion discovery document and JWKS endpoint so other internal apps can auto-configure against the real Passport endpoints.
+
+Discovery document fields:
+
+- `issuer`: backend base URL
+- `authorization_endpoint`: Passport `/oauth/authorize`
+- `token_endpoint`: Passport `/oauth/token`
+- `userinfo_endpoint`: `GET /api/v1/oauth/user`
+- `jwks_uri`: `GET /oauth/jwks`
+
+This is intended for endpoint discovery and signing-key publication. Token issuance still follows Passport OAuth2 flows already documented above.
 
 ## Current auth split
 

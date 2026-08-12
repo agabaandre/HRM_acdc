@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Database\Schema\Blueprint;
+use RuntimeException;
 use Illuminate\Validation\ValidationException;
 use Modules\Staff\Services\StaffContractService;
 use Tests\TestCase;
@@ -116,6 +117,51 @@ class StaffContractUniquenessTest extends TestCase
         $this->assertSame(6, $statuses[1000]);
         $this->assertSame(3, $statuses[1001]);
         $this->assertSame(1, $statuses[$newContractId]);
+    }
+
+    public function test_creating_a_new_current_contract_rolls_back_when_follow_up_sync_fails(): void
+    {
+        $this->insertContract([
+            'staff_contract_id' => 1000,
+            'staff_id' => 100,
+            'status_id' => 1,
+            'start_date' => '2026-01-01',
+            'end_date' => '2027-01-01',
+        ]);
+
+        $service = new class extends StaffContractService
+        {
+            public function syncContractStatusFromEndDate(int $contractId, int $staffId): void
+            {
+                throw new RuntimeException('sync failed');
+            }
+        };
+
+        try {
+            $service->create(100, $this->contractForm([
+                'status_id' => 1,
+                'start_date' => '2026-08-01',
+                'end_date' => '2027-08-01',
+                'comments' => 'Should roll back',
+            ]));
+
+            $this->fail('Expected create() to rethrow the sync failure.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('sync failed', $e->getMessage());
+        }
+
+        $statuses = \DB::table('staff_contracts')
+            ->where('staff_id', 100)
+            ->orderBy('staff_contract_id')
+            ->pluck('status_id', 'staff_contract_id')
+            ->map(fn ($status) => (int) $status)
+            ->all();
+
+        $this->assertSame([1000 => 1], $statuses);
+        $this->assertSame(
+            0,
+            \DB::table('staff_contracts')->where('comments', 'Should roll back')->count()
+        );
     }
 
     public function test_updating_a_contract_to_current_fails_when_another_current_contract_exists(): void
