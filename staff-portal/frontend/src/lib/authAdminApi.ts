@@ -31,6 +31,7 @@ export interface AuditLogRow {
   new_values?: unknown
   reverted_at?: string | null
   reverted_by_user_id?: number | string | null
+  can_revert?: boolean
   created_at?: string | null
   [key: string]: unknown
 }

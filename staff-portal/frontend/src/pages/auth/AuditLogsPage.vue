@@ -130,7 +130,11 @@ function eventColor(eventType: string | null | undefined): string {
 }
 
 function canRevert(row: AuditLogRow): boolean {
-  return Boolean(row.old_values && !row.reverted_at && row.target_table)
+  if (typeof row.can_revert === 'boolean') {
+    return row.can_revert
+  }
+
+  return Boolean(row.old_values && !row.reverted_at && row.target_table === 'user')
 }
 
 function openDetails(row: AuditLogRow) {
