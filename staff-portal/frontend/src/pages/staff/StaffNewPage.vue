@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import {
   createStaff,
   fetchStaffFormLookups,
@@ -33,6 +34,7 @@ const validationMessage = ref<string | null>(null)
 const lookups = ref<StaffFormLookups | null>(null)
 const serverErrors = ref<FieldErrors>({})
 const clientErrors = ref<FieldErrors>({})
+const contractFile = ref<File | File[] | null>(null)
 
 const titles = ['Dr', 'Prof', 'Rev', 'Mr', 'Mrs', 'Ms']
 const genders = ['Male', 'Female', 'Other']
@@ -78,9 +80,11 @@ const unitOptions = computed<StaffUnitOption[]>(() => {
 watch(
   () => form.division_id,
   () => {
+    // Only clear unit when the new division has units and the current one is not among them.
     if (
       form.unit_id !== '' &&
       form.unit_id != null &&
+      unitOptions.value.length > 0 &&
       !unitOptions.value.some((unit) => Number(unit.unit_id) === Number(form.unit_id))
     ) {
       form.unit_id = ''
@@ -209,38 +213,42 @@ async function onSubmit() {
 
   saving.value = true
   try {
-    const created = await createStaff({
-      SAPNO: form.SAPNO?.trim(),
-      title: form.title.trim(),
-      fname: form.fname.trim(),
-      lname: form.lname.trim(),
-      oname: form.oname?.trim(),
-      date_of_birth: form.date_of_birth,
-      gender: form.gender,
-      nationality_id: Number(form.nationality_id),
-      initiation_date: form.initiation_date,
-      tel_1: form.tel_1.trim(),
-      tel_2: form.tel_2?.trim(),
-      whatsapp: form.whatsapp?.trim(),
-      work_email: form.work_email.trim(),
-      private_email: form.private_email?.trim(),
-      physical_location: form.physical_location?.trim(),
-      job_id: Number(form.job_id),
-      job_acting_id: nullableNumber(form.job_acting_id),
-      grade_id: form.grade_id,
-      contracting_institution_id: Number(form.contracting_institution_id),
-      funder_id: Number(form.funder_id),
-      first_supervisor: Number(form.first_supervisor),
-      second_supervisor: nullableNumber(form.second_supervisor),
-      contract_type_id: Number(form.contract_type_id),
-      duty_station_id: Number(form.duty_station_id),
-      division_id: Number(form.division_id),
-      unit_id: nullableNumber(form.unit_id),
-      other_associated_divisions: (form.other_associated_divisions || []).map(Number),
-      start_date: form.start_date,
-      end_date: form.end_date,
-      comments: form.comments?.trim(),
-    })
+    const pdf = Array.isArray(contractFile.value) ? contractFile.value[0] : contractFile.value
+    const created = await createStaff(
+      {
+        SAPNO: form.SAPNO?.trim(),
+        title: form.title.trim(),
+        fname: form.fname.trim(),
+        lname: form.lname.trim(),
+        oname: form.oname?.trim(),
+        date_of_birth: form.date_of_birth,
+        gender: form.gender,
+        nationality_id: Number(form.nationality_id),
+        initiation_date: form.initiation_date,
+        tel_1: form.tel_1.trim(),
+        tel_2: form.tel_2?.trim(),
+        whatsapp: form.whatsapp?.trim(),
+        work_email: form.work_email.trim(),
+        private_email: form.private_email?.trim(),
+        physical_location: form.physical_location?.trim(),
+        job_id: Number(form.job_id),
+        job_acting_id: nullableNumber(form.job_acting_id),
+        grade_id: form.grade_id,
+        contracting_institution_id: Number(form.contracting_institution_id),
+        funder_id: Number(form.funder_id),
+        first_supervisor: Number(form.first_supervisor),
+        second_supervisor: nullableNumber(form.second_supervisor),
+        contract_type_id: Number(form.contract_type_id),
+        duty_station_id: Number(form.duty_station_id),
+        division_id: Number(form.division_id),
+        unit_id: nullableNumber(form.unit_id),
+        other_associated_divisions: (form.other_associated_divisions || []).map(Number),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        comments: form.comments?.trim(),
+      },
+      pdf ?? null,
+    )
     await router.push(`/staff/${created.staff_id}`)
   } catch (cause) {
     const status = errorStatus(cause)
@@ -265,10 +273,8 @@ onMounted(() => void loadLookups())
 <template>
   <div>
     <PortalPageChrome title="New staff" lede="Create biodata and the first active contract in one step.">
-      <template #actions>
-        <RouterLink to="/staff" style="text-decoration:none">
-          <v-btn size="small" variant="outlined">Directory</v-btn>
-        </RouterLink>
+      <template #tabs>
+        <StaffSubnav />
       </template>
     </PortalPageChrome>
 
@@ -335,10 +341,10 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field
+                  <UDateInput
                     v-model="form.date_of_birth"
-                    type="date"
                     label="Date of birth"
+                    placeholder="Select date of birth"
                     density="comfortable"
                     :error-messages="fieldErrors('date_of_birth')"
                     hide-details="auto"
@@ -357,10 +363,10 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12">
-                  <v-text-field
+                  <UDateInput
                     v-model="form.initiation_date"
-                    type="date"
                     label="Initiation date"
+                    placeholder="Select initiation date"
                     density="comfortable"
                     :error-messages="fieldErrors('initiation_date')"
                     hide-details="auto"
@@ -432,7 +438,7 @@ onMounted(() => void loadLookups())
                   <v-select
                     v-model="form.job_id"
                     :items="lookups.jobs"
-                    item-title="job_name"
+                    :item-title="(item) => String(item.label || item.job_name || '')"
                     item-value="job_id"
                     label="Job"
                     density="comfortable"
@@ -444,7 +450,7 @@ onMounted(() => void loadLookups())
                   <v-select
                     v-model="form.job_acting_id"
                     :items="lookups.jobsActing"
-                    item-title="job_acting"
+                    :item-title="(item) => String(item.label || item.job_acting || '')"
                     item-value="job_acting_id"
                     label="Job acting"
                     density="comfortable"
@@ -492,7 +498,7 @@ onMounted(() => void loadLookups())
                   <v-select
                     v-model="form.contract_type_id"
                     :items="lookups.contractTypes"
-                    item-title="contract_type"
+                    :item-title="(item) => String(item.label || item.contract_type || '')"
                     item-value="contract_type_id"
                     label="Contract type"
                     density="comfortable"
@@ -501,23 +507,25 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field
+                  <UDateInput
                     v-model="form.start_date"
-                    type="date"
                     label="Start date"
+                    placeholder="Select start date"
                     density="comfortable"
                     :error-messages="fieldErrors('start_date')"
                     hide-details="auto"
+                    :max="form.end_date || undefined"
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field
+                  <UDateInput
                     v-model="form.end_date"
-                    type="date"
                     label="End date"
+                    placeholder="Select end date"
                     density="comfortable"
                     :error-messages="fieldErrors('end_date')"
                     hide-details="auto"
+                    :min="form.start_date || undefined"
                   />
                 </v-col>
                 <v-col cols="12">
@@ -531,6 +539,21 @@ onMounted(() => void loadLookups())
                     rows="3"
                     density="comfortable"
                     hide-details="auto"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-file-input
+                    v-model="contractFile"
+                    label="Signed contract (PDF, optional)"
+                    accept="application/pdf,.pdf"
+                    prepend-icon=""
+                    prepend-inner-icon="mdi-file-pdf-box"
+                    show-size
+                    clearable
+                    density="comfortable"
+                    :error-messages="fieldErrors('contract_file')"
+                    hint="Optional scan of the physical signed contract. Max 10MB PDF."
+                    persistent-hint
                   />
                 </v-col>
               </v-row>

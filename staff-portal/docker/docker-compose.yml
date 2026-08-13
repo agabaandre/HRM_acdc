@@ -1,0 +1,40 @@
+# Optional stack for local staff-portal — wire via backend/.env (DB_*, REDIS_*)
+#
+#   cd staff-portal/docker
+#   docker compose up -d
+#
+# Redis only (default). Optional MySQL for isolated local DB:
+#   docker compose --profile bundled-mysql up -d
+#
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${STAFF_PORTAL_REDIS_PORT:-6379}:6379"
+
+  mysql:
+    profiles:
+      - bundled-mysql
+    image: mysql:8.0
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    ports:
+      - "${STAFF_PORTAL_MYSQL_PORT:-33070}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-staff}
+      MYSQL_USER: ${MYSQL_USER:-staff}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-staff}
+    volumes:
+      - staff_portal_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 35s
+
+volumes:
+  staff_portal_mysql: {}

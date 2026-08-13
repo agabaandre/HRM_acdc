@@ -17,7 +17,7 @@ export function readStaffSsoToken(): string | null {
 }
 
 export function appendSsoTokenToUrl(url: string, token: string | null): string {
-  if (!token) {
+  if (!token || /[?&]token=/.test(url)) {
     return url
   }
   const sep = url.includes('?') ? '&' : '?'

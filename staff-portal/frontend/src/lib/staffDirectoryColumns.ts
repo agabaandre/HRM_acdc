@@ -1,55 +1,96 @@
-export const STAFF_DIRECTORY_COLUMNS_STORAGE_KEY = 'staff-portal.staff-directory.columns.v1'
+export const STAFF_DIRECTORY_COLUMNS_STORAGE_KEY = 'staff-portal.staff-directory.columns.v2'
 
 export type StaffDirectoryColumnKey =
+  | 'sap_number'
+  | 'title'
   | 'photo'
   | 'name'
-  | 'work_email'
-  | 'sap_number'
-  | 'job'
-  | 'division'
+  | 'gender'
+  | 'date_of_birth'
+  | 'age'
+  | 'nationality'
+  | 'region'
   | 'duty_station'
+  | 'division'
+  | 'grade'
+  | 'job'
+  | 'initiation_date'
+  | 'start_date'
+  | 'end_date'
+  | 'years_of_tenure'
+  | 'job_acting'
+  | 'first_supervisor'
+  | 'second_supervisor'
+  | 'funder'
+  | 'work_email'
+  | 'telephone'
+  | 'whatsapp'
   | 'contract_type'
   | 'category'
   | 'status'
-  | 'grade'
-  | 'start_date'
-  | 'end_date'
-  | 'funder'
-  | 'nationality'
 
 export interface StaffDirectoryColumnDefinition {
   key: StaffDirectoryColumnKey
   label: string
 }
 
+/** Column catalog — CI3 all_staff order first, then optional extras. */
 export const staffDirectoryColumns: StaffDirectoryColumnDefinition[] = [
-  { key: 'photo', label: 'Photo' },
+  { key: 'sap_number', label: 'SAPNO' },
+  { key: 'title', label: 'Title' },
+  { key: 'photo', label: 'Passport Photo' },
   { key: 'name', label: 'Name' },
-  { key: 'work_email', label: 'Work email' },
-  { key: 'sap_number', label: 'SAP' },
-  { key: 'job', label: 'Job' },
+  { key: 'gender', label: 'Gender' },
+  { key: 'date_of_birth', label: 'Date of Birth' },
+  { key: 'age', label: 'Age' },
+  { key: 'nationality', label: 'Nationality' },
+  { key: 'region', label: 'Region' },
+  { key: 'duty_station', label: 'Duty Station' },
   { key: 'division', label: 'Division' },
-  { key: 'duty_station', label: 'Duty station' },
+  { key: 'grade', label: 'Grade' },
+  { key: 'job', label: 'Job' },
+  { key: 'initiation_date', label: 'Initiation Date' },
+  { key: 'start_date', label: 'Current Contract Start Date' },
+  { key: 'end_date', label: 'Current Contract End Date' },
+  { key: 'years_of_tenure', label: 'Years of Tenure' },
+  { key: 'job_acting', label: 'Acting Job' },
+  { key: 'first_supervisor', label: 'First Supervisor' },
+  { key: 'second_supervisor', label: 'Second Supervisor' },
+  { key: 'funder', label: 'Funder' },
+  { key: 'work_email', label: 'Email' },
+  { key: 'telephone', label: 'Telephone' },
+  { key: 'whatsapp', label: 'WhatsApp' },
   { key: 'contract_type', label: 'Contract type' },
   { key: 'category', label: 'Category' },
   { key: 'status', label: 'Status' },
-  { key: 'grade', label: 'Grade' },
-  { key: 'start_date', label: 'Start date' },
-  { key: 'end_date', label: 'End date' },
-  { key: 'funder', label: 'Funder' },
-  { key: 'nationality', label: 'Nationality' },
 ]
 
+/** Defaults match CI3 `/staff/all_staff` table columns. */
 export const defaultStaffDirectoryColumns: StaffDirectoryColumnKey[] = [
+  'sap_number',
+  'title',
   'photo',
   'name',
-  'work_email',
-  'job',
-  'division',
+  'gender',
+  'date_of_birth',
+  'age',
+  'nationality',
+  'region',
   'duty_station',
-  'contract_type',
-  'status',
+  'division',
+  'grade',
+  'job',
+  'initiation_date',
+  'start_date',
   'end_date',
+  'years_of_tenure',
+  'job_acting',
+  'first_supervisor',
+  'second_supervisor',
+  'funder',
+  'work_email',
+  'telephone',
+  'whatsapp',
 ]
 
 const validColumnKeys = new Set<StaffDirectoryColumnKey>(staffDirectoryColumns.map((column) => column.key))

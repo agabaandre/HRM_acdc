@@ -2,8 +2,8 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { loginUrl } from './auth'
 
 const TOKEN_KEY = 'staff_portal_api_token'
-const API_TIMEOUT_MS = 60_000
-const MAX_TRANSIENT_RETRIES = 2
+const API_TIMEOUT_MS = 30_000
+const MAX_TRANSIENT_RETRIES = 1
 
 type RetryableConfig = InternalAxiosRequestConfig & { __retryCount?: number }
 
@@ -72,7 +72,9 @@ export const api = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: { Accept: 'application/json' },
   timeout: API_TIMEOUT_MS,
-  withCredentials: true,
+  // Bearer tokens are the SPA auth source. Sending cookies into Sanctum's
+  // stateful pipeline can fight the token and bounce the user back to login.
+  withCredentials: false,
 })
 
 api.interceptors.request.use((config) => {
@@ -98,7 +100,7 @@ api.interceptors.response.use(
     if (config && isRetryableError(error)) {
       config.__retryCount = (config.__retryCount ?? 0) + 1
       if (config.__retryCount <= MAX_TRANSIENT_RETRIES) {
-        await sleep(800 * config.__retryCount)
+        await sleep(200 * config.__retryCount)
         return api.request(config)
       }
     }

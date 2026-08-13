@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
 
   const proxyTarget =
-    env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/staff-portal/public'
+    env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/staff-portal/backend'
 
   const base = isProd
     ? (env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/staff-portal/')
@@ -29,8 +29,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist-build',
-      emptyOutDir: false,
+      emptyOutDir: true,
       target: 'es2020',
+      cssCodeSplit: true,
+      sourcemap: false,
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
           manualChunks(id) {

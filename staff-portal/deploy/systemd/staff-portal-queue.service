@@ -1,0 +1,21 @@
+[Unit]
+Description=Africa CDC Staff Portal — Laravel queue worker
+Documentation=file:///var/www/staff/staff-portal/docs/SYSTEMD.md
+PartOf=staff-portal.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=@STAFF_PORTAL_USER@
+Group=@STAFF_PORTAL_GROUP@
+ExecStart=@STAFF_PORTAL_DEPLOY_BIN@/staff-portal-queue.sh
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+UMask=0002
+
+[Install]
+WantedBy=staff-portal.target multi-user.target

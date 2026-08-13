@@ -118,6 +118,11 @@ class Run extends MX_Controller
             Modules::run('jobs/jobs/prune_user_logs_get_access');
         }
 
+        if ($this->tick_match_clock($s['sync_pra_workplan'] ?? false, $hour, $minute, $dow)) {
+            echo "  → sync_pra_workplan\n";
+            Modules::run('jobs/jobs/sync_pra_workplan');
+        }
+
         $apmCacheInterval = isset($s['apm_approver_staff_ids_cache_interval_minutes'])
             ? (int) $s['apm_approver_staff_ids_cache_interval_minutes']
             : 0;

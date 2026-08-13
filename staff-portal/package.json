@@ -2,12 +2,13 @@
   "name": "africa-cdc-staff-portal",
   "private": true,
   "version": "0.1.0",
-  "description": "Orchestrate Laravel API (root/public) + Vue SPA (frontend/) — same pattern as helpdesk",
+  "description": "Root scripts mirroring helpdesk — orchestrate Laravel API (backend/) + Vue SPA (frontend/)",
   "scripts": {
-    "install:all": "composer install && cd frontend && npm install --cache ./.npm-cache --legacy-peer-deps",
-    "dev:api": "php artisan serve --host=127.0.0.1 --port=8081",
+    "install:all": "cd backend && composer install && cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps",
+    "dev:api": "cd backend && php artisan serve --host=127.0.0.1 --port=8081",
     "dev:web": "cd frontend && npm run dev",
-    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web"
+    "dev:all": "npx concurrently -c \"#119a48,#0d7a3a\" \"npm run dev:api\" \"npm run dev:web\" --names=api,web",
+    "build:web": "cd frontend && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

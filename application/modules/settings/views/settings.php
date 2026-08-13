@@ -50,7 +50,7 @@ $settings = [
   ['settings/training_skills', 'Training Skills', 'bx-book'],
   ['settings/regions', 'Regions', 'bx-compass'],
   ['settings/units', 'Units', 'bx-building'],
-  ['settings/ppa_variables', 'PPA Configuration', 'bx-slider-alt']
+  ['staff-portal/settings/performance', 'PPA Configuration', 'bx-slider-alt']
 ];
 ?>
 

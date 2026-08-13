@@ -35,6 +35,9 @@ class PortalUser extends Authenticatable
 
     protected mixed $activeAccessToken = null;
 
+    /** @var list<int|string>|null */
+    protected ?array $resolvedPermissionIds = null;
+
     protected function casts(): array
     {
         return [
@@ -105,7 +108,7 @@ class PortalUser extends Authenticatable
     {
         $this->loadMissing('staff');
         $staff = $this->staff;
-        $permissions = $this->resolvePermissionIds();
+        $permissions = $this->permissionIds();
 
         return [
             'user_id' => $this->user_id,
@@ -123,12 +126,16 @@ class PortalUser extends Authenticatable
     }
 
     /**
-     * Group + per-user permissions (matches CI3 Auth_mdl::user_permissions).
+     * Permission IDs only (no staff / contract hydration).
      *
      * @return list<int|string>
      */
-    protected function resolvePermissionIds(): array
+    public function permissionIds(): array
     {
+        if ($this->resolvedPermissionIds !== null) {
+            return $this->resolvedPermissionIds;
+        }
+
         $perms = [];
 
         if (\App\Support\LegacySchema::has('group_permissions')) {
@@ -148,6 +155,6 @@ class PortalUser extends Authenticatable
             $perms = array_merge($perms, $userPerms);
         }
 
-        return array_values(array_unique($perms, SORT_REGULAR));
+        return $this->resolvedPermissionIds = array_values(array_unique($perms, SORT_REGULAR));
     }
 }

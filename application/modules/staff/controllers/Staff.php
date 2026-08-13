@@ -1399,6 +1399,12 @@ class Staff extends MX_Controller
 	 */
 	public function staff_next_of_kin($csv = false, $pdf = false)
 	{
+		// SPA port: staff-portal Next of Kin (keep CSV/PDF on this endpoint for legacy links).
+		if ((int) $csv !== 1 && (int) $pdf !== 1) {
+			redirect(rtrim(base_url(), '/') . '/staff-portal/staff/next-of-kin');
+			return;
+		}
+
 		$data['module'] = $this->module;
 		$data['title'] = 'Staff Next of Kin';
 		$filters = $this->input->get();
@@ -2067,6 +2073,12 @@ public function check_work_email()
 	{
 		if (!can_access('71')) {
 			show_error('You do not have permission to access Signature Manager.', 403);
+			return;
+		}
+
+		// SPA port: staff-portal Signature Manager (keep CSV/PDF on this endpoint for legacy links).
+		if ((int) $csv !== 1 && (int) $pdf !== 1) {
+			redirect(rtrim(base_url(), '/') . '/staff-portal/staff/signatures');
 			return;
 		}
 

@@ -1,20 +1,134 @@
 <script setup lang="ts">
-import type { PerformanceTrailEntry } from '@/lib/performanceApi'
+import { computed } from 'vue'
+import CbpAvatar from '@cbp/common/CbpAvatar.vue'
+import { resolveAvatarUrl } from '@/lib/api'
+import { toAbsoluteMediaUrl } from '@/lib/personAvatar'
+import type {
+  PerformancePhase,
+  PerformanceSubmissionWindow,
+  PerformanceTrailEntry,
+  PerformanceWorkflowState,
+  PerformanceWorkflowTimelineStep,
+} from '@/lib/performanceApi'
 
-defineProps<{
-  items: PerformanceTrailEntry[]
+const props = withDefaults(
+  defineProps<{
+    phase: PerformancePhase
+    submissionWindow: PerformanceSubmissionWindow | null
+    state: PerformanceWorkflowState | null
+    timeline: PerformanceWorkflowTimelineStep[]
+    items: PerformanceTrailEntry[]
+    canApprove: boolean
+    canReturn: boolean
+    canConsent: boolean
+    comments: string
+    supervisor2Agreement: boolean
+    acceptRating: boolean
+    busy?: boolean
+  }>(),
+  { busy: false },
+)
+
+const emit = defineEmits<{
+  'update:comments': [value: string]
+  'update:supervisor2Agreement': [value: boolean]
+  'update:acceptRating': [value: boolean]
+  approve: []
+  return: []
+  consent: []
 }>()
 
+const stateColor = computed(() => {
+  switch (props.state?.status_key) {
+    case 'approved':
+      return 'success'
+    case 'draft':
+      return 'warning'
+    default:
+      return 'info'
+  }
+})
+
+const showActionArea = computed(
+  () => props.canApprove || props.canReturn || props.canConsent,
+)
+
+const showSecondSupervisorAgreement = computed(
+  () => props.phase === 'endterm' && props.state?.step === 'supervisor_2' && props.canApprove,
+)
+
+type TrailDisplayItem = {
+  key: string
+  staff_id: number | null
+  staff_name: string
+  action: string
+  comments?: string | null
+  created_at?: string | null
+  photo_url?: string | null
+  pending?: boolean
+  step_label?: string
+}
+
+const displayItems = computed<TrailDisplayItem[]>(() => {
+  // API returns newest-first; keep that order.
+  const trail = props.items.map((item, index) => ({
+    key: `trail-${item.staff_id}-${item.action}-${item.created_at || index}`,
+    staff_id: item.staff_id,
+    staff_name: item.staff_name?.trim() || `Staff ${item.staff_id}`,
+    action: item.action,
+    comments: item.comments,
+    created_at: item.created_at,
+    photo_url: item.photo_url,
+    pending: false,
+  }))
+
+  const hasSubmission = trail.some((item) => /submit/i.test(item.action))
+  const submitStep = props.timeline.find((step) => step.key === 'submit')
+
+  // Ensure employee submission exists as the process baseline (oldest / bottom when newest-first).
+  if (!hasSubmission && submitStep) {
+    trail.push({
+      key: 'timeline-submit',
+      staff_id: null,
+      staff_name: submitStep.actor || 'Employee',
+      action: submitStep.status === 'done' || submitStep.status === 'current' ? 'Submitted' : 'Pending submission',
+      comments: null,
+      created_at: null,
+      photo_url: null,
+      pending: submitStep.status !== 'done',
+    })
+  }
+
+  const current = props.timeline.find((step) => step.status === 'current')
+  if (current && current.key !== 'submit' && current.key !== 'approved') {
+    const alreadyShown = trail.some(
+      (item) =>
+        item.pending &&
+        item.staff_name === (current.actor || '—') &&
+        item.action.toLowerCase().includes(current.label.toLowerCase().slice(0, 8)),
+    )
+    if (!alreadyShown) {
+      trail.unshift({
+        key: `timeline-current-${current.key}`,
+        staff_id: null,
+        staff_name: current.actor || '—',
+        action: current.hint || 'In progress',
+        comments: null,
+        created_at: null,
+        photo_url: null,
+        pending: true,
+        step_label: current.label,
+      })
+    }
+  }
+
+  return trail
+})
+
 function formatDate(value: string | null | undefined): string {
-  if (!value) {
-    return '—'
-  }
-
+  if (!value) return '—'
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) {
-    return value
-  }
-
+  if (Number.isNaN(parsed.getTime())) return value
   return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
     month: 'short',
@@ -23,33 +137,227 @@ function formatDate(value: string | null | undefined): string {
     minute: '2-digit',
   }).format(parsed)
 }
+
+function actionColor(action: string, pending?: boolean): string {
+  if (pending) return 'primary'
+  const a = action.toLowerCase()
+  if (a.includes('approv') || a.includes('consent')) return 'success'
+  if (a.includes('return') || a.includes('reject')) return 'error'
+  if (a.includes('submit')) return 'info'
+  return 'secondary'
+}
+
+function photoUrl(item: TrailDisplayItem): string | null {
+  return toAbsoluteMediaUrl(resolveAvatarUrl(String(item.photo_url || '')))
+}
 </script>
 
 <template>
-  <v-card variant="outlined">
-    <v-card-title class="text-h6">Approval Trail</v-card-title>
-    <v-card-text>
-      <v-table density="compact">
-        <thead>
-          <tr>
-            <th>Staff</th>
-            <th>Action</th>
-            <th>Date</th>
-            <th>Comment</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(item, index) in items" :key="`${item.staff_id}-${item.action}-${index}`">
-            <td>{{ item.staff_id }}</td>
-            <td>{{ item.action }}</td>
-            <td>{{ formatDate(item.created_at) }}</td>
-            <td style="white-space: pre-wrap">{{ item.comments || '—' }}</td>
-          </tr>
-          <tr v-if="!items.length">
-            <td colspan="4" class="text-medium-emphasis">No approval activity yet.</td>
-          </tr>
-        </tbody>
-      </v-table>
+  <v-card variant="outlined" class="perf-trail-card h-100 d-flex flex-column">
+    <div class="perf-trail-card__header flex-shrink-0">
+      <div class="d-flex align-center justify-space-between ga-2 flex-wrap perf-trail-card__title">
+        <span class="text-subtitle-1 font-weight-medium">
+          <i class="fa-solid fa-route me-2" style="color: #119a48" aria-hidden="true" />
+          Workflow &amp; approval trail
+        </span>
+        <v-chip
+          :color="stateColor"
+          size="small"
+          :variant="stateColor === 'warning' ? 'flat' : 'tonal'"
+          class="perf-trail-card__state"
+        >
+          {{ state?.label || 'Not started' }}
+        </v-chip>
+      </div>
+      <v-alert
+        v-if="submissionWindow"
+        density="compact"
+        :type="submissionWindow.open ? 'success' : 'warning'"
+        variant="tonal"
+        class="perf-trail-card__window"
+      >
+        <strong>{{ submissionWindow.label }}:</strong> {{ submissionWindow.message }}
+      </v-alert>
+    </div>
+
+    <v-card-text class="perf-trail-card__body d-flex flex-column ga-3 flex-grow-1">
+      <div v-if="showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
+        <v-textarea
+          :model-value="comments"
+          label="Comments"
+          rows="2"
+          auto-grow
+          variant="outlined"
+          density="compact"
+          @update:model-value="emit('update:comments', String($event ?? ''))"
+        />
+
+        <v-checkbox
+          v-if="showSecondSupervisorAgreement"
+          :model-value="supervisor2Agreement"
+          label="I agree with the first supervisor's assessment."
+          hide-details
+          density="compact"
+          @update:model-value="emit('update:supervisor2Agreement', Boolean($event))"
+        />
+
+        <v-checkbox
+          v-if="canConsent"
+          :model-value="acceptRating"
+          label="I accept the end-of-year rating."
+          hide-details
+          density="compact"
+          @update:model-value="emit('update:acceptRating', Boolean($event))"
+        />
+
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
+            v-if="canConsent"
+            color="success"
+            size="small"
+            :loading="busy"
+            @click="emit('consent')"
+          >
+            Record consent
+          </v-btn>
+          <template v-else>
+            <v-btn
+              v-if="canApprove"
+              color="success"
+              size="small"
+              :loading="busy"
+              @click="emit('approve')"
+            >
+              Approve
+            </v-btn>
+            <v-btn
+              v-if="canReturn"
+              color="error"
+              variant="tonal"
+              size="small"
+              :loading="busy"
+              @click="emit('return')"
+            >
+              Return
+            </v-btn>
+          </template>
+        </div>
+      </div>
+
+      <div class="perf-trail-card__scroll">
+        <div v-if="displayItems.length" class="perf-trail-list">
+          <div
+            v-for="item in displayItems"
+            :key="item.key"
+            class="perf-trail-item"
+            :class="{ 'is-pending': item.pending }"
+          >
+            <CbpAvatar
+              size="sm"
+              :name="item.staff_name"
+              :image-url="photoUrl(item)"
+            />
+            <div class="perf-trail-item__body">
+              <div class="d-flex align-center justify-space-between ga-2 flex-wrap">
+                <div class="font-weight-medium">{{ item.staff_name }}</div>
+                <v-chip
+                  size="x-small"
+                  :color="actionColor(item.action, item.pending)"
+                  :variant="item.pending ? 'flat' : 'tonal'"
+                >
+                  {{ item.action }}
+                </v-chip>
+              </div>
+              <div v-if="item.step_label" class="text-caption text-medium-emphasis">
+                {{ item.step_label }}
+              </div>
+              <div class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</div>
+              <div
+                v-if="item.comments"
+                class="text-body-2 mt-1 perf-trail-item__comment"
+              >
+                {{ item.comments }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-body-2 text-medium-emphasis py-2">
+          No approval activity yet. Employee submission will appear here once the form is submitted.
+        </div>
+      </div>
     </v-card-text>
   </v-card>
 </template>
+
+<style scoped>
+/* Override portal-fields overflow:visible so matched-height scroll does not clip the alert. */
+.perf-trail-card {
+  overflow: hidden !important;
+  background: #fff;
+}
+
+.perf-trail-card__header {
+  padding: 1.15rem 1rem 0.9rem;
+  background: #fff;
+  border-bottom: 1px solid rgba(58, 71, 82, 0.08);
+}
+
+.perf-trail-card__title {
+  padding: 0;
+  line-height: 1.35;
+}
+
+.perf-trail-card__state {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.perf-trail-card__window {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.perf-trail-card__body {
+  min-height: 0;
+  overflow: hidden !important;
+  padding-top: 0.85rem !important;
+}
+
+.perf-trail-card__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.perf-trail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.perf-trail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid rgba(58, 71, 82, 0.1);
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.perf-trail-item.is-pending {
+  border-color: rgba(17, 154, 72, 0.28);
+  background: rgba(17, 154, 72, 0.04);
+}
+
+.perf-trail-item__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.perf-trail-item__comment {
+  white-space: pre-wrap;
+  color: rgba(58, 71, 82, 0.85);
+}
+</style>

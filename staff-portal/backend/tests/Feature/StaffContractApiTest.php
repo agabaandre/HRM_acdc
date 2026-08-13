@@ -126,6 +126,35 @@ class StaffContractApiTest extends TestCase
         $this->assertSame('Unchanged save', DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('comments'));
     }
 
+    public function test_update_contract_keeps_existing_unit_id_when_unit_is_blank(): void
+    {
+        $this->insertContract([
+            'staff_contract_id' => 1000,
+            'staff_id' => 100,
+            'status_id' => 1,
+            'unit_id' => 20,
+            'division_id' => 1,
+            'start_date' => '2026-01-01',
+            'end_date' => now()->addYear()->toDateString(),
+            'comments' => 'Has unit 20',
+        ]);
+
+        $response = app(StaffApiController::class)->updateContract(
+            100,
+            1000,
+            Request::create('/api/v1/staff/100/contracts/1000', 'PUT', $this->payload([
+                'unit_id' => null,
+                'division_id' => 1,
+                'comments' => 'Blank unit should keep 20',
+            ])),
+            app(StaffContractService::class)
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(20, (int) DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('unit_id'));
+        $this->assertSame('Blank unit should keep 20', DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('comments'));
+    }
+
     public function test_update_contract_returns_422_json_when_another_current_contract_exists(): void
     {
         $this->insertContract([

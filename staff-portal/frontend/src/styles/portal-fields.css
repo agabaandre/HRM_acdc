@@ -1,0 +1,184 @@
+/**
+ * Persistent outlined field labels — MFL-style notch labels.
+ * Full label text (no truncation) + solid white background that masks
+ * the outline border everywhere in the portal.
+ */
+
+:root {
+  --portal-label-size: 0.775rem;
+  --portal-label-weight: 650;
+  --portal-label-color: #455a64;
+  --portal-label-focus: #37474f;
+  --portal-label-bg: #ffffff;
+  --portal-field-border: #b0bec5;
+  --portal-field-text: #37474f;
+  --portal-placeholder: #90a4ae;
+  /* Match MFL outlined fields (~2.7rem) */
+  --portal-field-min-height: 2.7rem;
+}
+
+/* Do not clip notch labels on cards / filter panels / dialogs */
+.cbp-page-content .v-card,
+.cbp-page-content .v-card-text,
+.cbp-page-content .v-dialog .v-card,
+.cbp-page-content .v-overlay__content,
+.cbp-page-content .portal-staff-filters,
+.cbp-page-content .v-row,
+.cbp-page-content .v-col,
+.cbp-page-content .v-sheet {
+  overflow: visible !important;
+}
+
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field,
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field__field,
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field__outline,
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field__outline__notch {
+  overflow: visible !important;
+}
+
+/* Let the outline notch grow with the full label */
+.cbp-page-content .v-field--variant-outlined .v-field__outline__notch {
+  max-width: none !important;
+}
+
+/*
+ * Floated notch labels: always visible, never truncated, solid white mask.
+ */
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined .v-label.v-field-label--floating,
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined .v-field-label.v-field-label--floating {
+  visibility: visible !important;
+  opacity: 1 !important;
+  font-size: var(--portal-label-size) !important;
+  font-weight: var(--portal-label-weight) !important;
+  color: var(--portal-label-color) !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  line-height: 1.25 !important;
+  max-width: none !important;
+  width: max-content !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  background-color: var(--portal-label-bg) !important;
+  background: var(--portal-label-bg) !important;
+  padding-inline: 0.45rem !important;
+  z-index: 3;
+}
+
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined.v-field--focused .v-label.v-field-label--floating,
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined.v-field--focused .v-field-label.v-field-label--floating {
+  color: var(--portal-label-focus) !important;
+  font-weight: 700 !important;
+  background-color: var(--portal-label-bg) !important;
+  background: var(--portal-label-bg) !important;
+}
+
+/* Hide resting in-field label — notch label is always used */
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined .v-label.v-field-label:not(.v-field-label--floating),
+.cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined .v-field-label:not(.v-field-label--floating) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.cbp-page-content .v-field--variant-outlined .v-field__outline {
+  --v-field-border-opacity: 1;
+  color: var(--portal-field-border);
+}
+
+.cbp-page-content .v-field--variant-outlined:hover .v-field__outline {
+  color: #90a4ae;
+}
+
+.cbp-page-content .v-field--variant-outlined {
+  background-color: #ffffff !important;
+}
+
+/*
+ * Never paint a solid white overlay over field content — that caused the
+ * "white shadow" covering the first line of every textarea.
+ * Background is already on .v-field itself.
+ */
+.cbp-page-content .v-field--variant-outlined .v-field__overlay {
+  background-color: transparent !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Single-line fields only — compact height suited to notch labels */
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined .v-field__input {
+  position: relative;
+  z-index: 1;
+  color: var(--portal-field-text) !important;
+  font-size: 0.9rem;
+  font-weight: 400;
+  min-height: calc(var(--portal-field-min-height) - 2px) !important;
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+}
+
+.cbp-page-content .v-field--variant-outlined .v-field__input::placeholder {
+  color: #78909c !important;
+  font-weight: 400;
+  opacity: 1 !important;
+}
+
+.cbp-page-content .v-input:not(.v-textarea):not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider) .v-field--variant-outlined {
+  --v-input-control-height: var(--portal-field-min-height);
+  --v-field-padding-top: 6px;
+  --v-field-padding-bottom: 4px;
+  min-height: var(--portal-field-min-height) !important;
+}
+
+/*
+ * Textareas: first line fully visible below floating label / top border.
+ */
+.cbp-page-content .v-textarea .v-field--variant-outlined {
+  --v-input-control-height: unset;
+  --v-field-padding-top: 8px;
+  --v-field-padding-bottom: 8px;
+  --v-field-input-padding-top: 0px;
+  --v-field-input-padding-bottom: 0px;
+  min-height: unset !important;
+  overflow: visible !important;
+}
+
+.cbp-page-content .v-textarea .v-field--variant-outlined .v-field__field,
+.cbp-page-content .v-textarea .v-field--variant-outlined .v-field__input {
+  position: relative;
+  z-index: 2;
+  color: var(--portal-field-text) !important;
+  font-size: 0.9rem;
+  font-weight: 400;
+  min-height: unset !important;
+  margin: 0 !important;
+  padding-top: 10px !important;
+  padding-bottom: 8px !important;
+  align-items: flex-start !important;
+  opacity: 1 !important;
+}
+
+.cbp-page-content .v-textarea .v-field--variant-outlined .v-field__input textarea {
+  position: relative;
+  z-index: 2;
+  margin: 0 !important;
+  padding: 2px 0 0 !important;
+  line-height: 1.45 !important;
+  opacity: 1 !important;
+  color: var(--portal-field-text) !important;
+  -webkit-text-fill-color: var(--portal-field-text) !important;
+  background: transparent !important;
+}
+
+.portal-staff-filters .v-field-label--floating,
+.portal-staff-filters .v-label.v-field-label--floating {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field-label--floating,
+html.helpdesk-theme-dark .cbp-page-content .v-label.v-field-label--floating,
+.v-theme--dark .cbp-page-content .v-field-label--floating {
+  background-color: #1e293b !important;
+  background: #1e293b !important;
+}

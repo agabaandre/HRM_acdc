@@ -29,7 +29,10 @@ function toggleColumn(key: StaffDirectoryColumnKey): void {
 <template>
   <v-menu location="bottom end">
     <template #activator="{ props: menuProps }">
-      <v-btn v-bind="menuProps" size="small" variant="outlined">Columns</v-btn>
+      <v-btn v-bind="menuProps" size="small" variant="outlined">
+        <i class="fa-solid fa-table-columns me-2" aria-hidden="true" />
+        Columns
+      </v-btn>
     </template>
 
     <v-card min-width="240" variant="outlined">

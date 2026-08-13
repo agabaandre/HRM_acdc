@@ -111,6 +111,10 @@ export interface PerformanceWorkflowTimelineStep {
 
 export interface PerformanceTrailEntry {
   staff_id: number
+  staff_name?: string | null
+  photo_url?: string | null
+  staff_fname?: string | null
+  staff_lname?: string | null
   action: string
   comments?: string | null
   created_at?: string | null
@@ -162,6 +166,27 @@ export interface PerformanceWorkflowActionInput {
   accept_rating?: boolean
 }
 
+export interface PerformanceSelfActions {
+  staff_id: number
+  entry_id?: string
+  ppa_exists: boolean
+  ppa_approved: boolean
+  midterm_exists?: boolean
+  endterm_exists?: boolean
+  create_ppa_url?: string | null
+  current_ppa_url?: string | null
+  midterm_url?: string | null
+  endterm_url?: string | null
+  midterm_label?: string
+  endterm_label?: string
+  show_create_ppa: boolean
+  show_current_ppa: boolean
+  show_midterm: boolean
+  show_endterm: boolean
+  midterm_window_open?: boolean
+  endterm_window_open?: boolean
+}
+
 export interface PerformanceHubData {
   summary: {
     total: number
@@ -178,7 +203,10 @@ export interface PerformanceHubData {
   workflow_summary: Record<string, string>
   submission_windows: Record<string, { open: boolean; label: string; message: string }>
   ppa_submission_open: boolean
+  midterm_submission_open?: boolean
+  endterm_submission_open?: boolean
   create_ppa_url?: string | null
+  self_actions?: PerformanceSelfActions | null
   my_ppas: {
     data: Array<Record<string, unknown>>
     meta: { current_page: number; last_page: number; total: number }

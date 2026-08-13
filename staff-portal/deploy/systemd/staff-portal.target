@@ -1,0 +1,14 @@
+[Unit]
+Description=Africa CDC Staff Portal (Apache SPA/API + Laravel workers)
+Documentation=file:///var/www/staff/staff-portal/docs/SYSTEMD.md
+After=network-online.target
+Wants=network-online.target
+Wants=staff-portal-queue.service
+Wants=staff-portal-scheduler.timer
+Wants=staff-portal-health.timer
+# Uncomment ONE line for your distro:
+# Wants=apache2.service
+# Wants=httpd.service
+
+[Install]
+WantedBy=multi-user.target

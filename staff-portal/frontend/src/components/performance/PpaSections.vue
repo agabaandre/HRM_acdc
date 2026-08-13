@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type {
-  PerformanceContract,
   PerformanceFormState,
   PerformanceObjective,
   PerformanceSkillCatalogItem,
@@ -9,9 +8,7 @@ import type {
 
 const props = defineProps<{
   form: PerformanceFormState
-  contract: PerformanceContract
   skills: PerformanceSkillCatalogItem[]
-  periodLabel: string
   periodEndYear: number
   readonly: boolean
 }>()
@@ -33,46 +30,6 @@ function objectiveAt(index: number): PerformanceObjective {
 
 <template>
   <div class="d-flex flex-column ga-4">
-    <v-card variant="outlined">
-      <v-card-title class="text-h6">A. Staff Details</v-card-title>
-      <v-card-text>
-        <v-table density="compact">
-          <tbody>
-            <tr>
-              <th class="perf-label">Name</th>
-              <td>{{ [contract.fname, contract.lname].filter(Boolean).join(' ') || '—' }}</td>
-              <th class="perf-label">SAP NO</th>
-              <td>{{ contract.SAPNO || '—' }}</td>
-            </tr>
-            <tr>
-              <th class="perf-label">Position</th>
-              <td>{{ contract.job_name || '—' }}</td>
-              <th class="perf-label">Initiation Date</th>
-              <td>{{ contract.initiation_date || '—' }}</td>
-            </tr>
-            <tr>
-              <th class="perf-label">Division/Directorate</th>
-              <td>{{ contract.division_name || '—' }}</td>
-              <th class="perf-label">Performance Period</th>
-              <td>{{ periodLabel }}</td>
-            </tr>
-            <tr>
-              <th class="perf-label">First Supervisor</th>
-              <td>{{ contract.first_supervisor || form.supervisor_id || '—' }}</td>
-              <th class="perf-label">Second Supervisor</th>
-              <td>{{ contract.second_supervisor || form.supervisor2_id || '—' }}</td>
-            </tr>
-            <tr>
-              <th class="perf-label">Funder</th>
-              <td>{{ contract.funder || '—' }}</td>
-              <th class="perf-label">Contract Type</th>
-              <td>{{ contract.contract_type || '—' }}</td>
-            </tr>
-          </tbody>
-        </v-table>
-      </v-card-text>
-    </v-card>
-
     <v-card variant="outlined">
       <v-card-title class="text-h6">B. Performance Objectives</v-card-title>
       <v-card-subtitle>
@@ -101,13 +58,12 @@ function objectiveAt(index: number): PerformanceObjective {
                 />
               </v-col>
               <v-col cols="12" md="2">
-                <v-text-field
+                <UDateInput
                   v-model="objectiveAt(index).timeline"
-                  :readonly="readonly"
+                  :disabled="readonly"
                   label="Timeline"
-                  type="date"
-                  variant="outlined"
-                  :placeholder="index <= 3 ? `${periodEndYear}-12-31` : ''"
+                  :placeholder="index <= 3 ? `${periodEndYear}-12-31` : 'Select date'"
+                  clearable
                 />
               </v-col>
               <v-col cols="12" md="4">
@@ -206,12 +162,6 @@ function objectiveAt(index: number): PerformanceObjective {
 </template>
 
 <style scoped>
-.perf-label {
-  width: 12rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.68);
-}
-
 .perf-objectives {
   display: flex;
   flex-direction: column;

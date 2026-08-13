@@ -2,6 +2,7 @@
 
 namespace Modules\Settings\Services;
 
+use App\Support\PortalReferenceCache;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -16,8 +17,58 @@ class SettingsLookupService
     public function config(string $table): ?array
     {
         $all = config('settings.lookup-tables', []);
+        $cfg = $all[$table] ?? null;
+        if ($cfg === null) {
+            return null;
+        }
 
-        return $all[$table] ?? null;
+        return $this->resolveSelectOptions($cfg);
+    }
+
+    /**
+     * Expand columns that use options_from → options (value => label).
+     *
+     * @param  array<string, mixed>  $cfg
+     * @return array<string, mixed>
+     */
+    protected function resolveSelectOptions(array $cfg): array
+    {
+        $columns = $cfg['columns'] ?? [];
+        if (! is_array($columns)) {
+            return $cfg;
+        }
+
+        foreach ($columns as $col => $meta) {
+            if (! is_array($meta) || ($meta['type'] ?? '') !== 'select') {
+                continue;
+            }
+            $from = $meta['options_from'] ?? null;
+            if (! is_array($from) || empty($from['table']) || empty($from['value']) || empty($from['label'])) {
+                continue;
+            }
+            $optTable = (string) $from['table'];
+            if (! Schema::hasTable($optTable)) {
+                $columns[$col]['options'] = [];
+                continue;
+            }
+            $valueCol = (string) $from['value'];
+            $labelCol = (string) $from['label'];
+            $orderCol = (string) ($from['order'] ?? $labelCol);
+            $options = [];
+            $rows = DB::table($optTable)->orderBy($orderCol)->get([$valueCol, $labelCol]);
+            foreach ($rows as $row) {
+                $key = (string) ($row->{$valueCol} ?? '');
+                if ($key === '') {
+                    continue;
+                }
+                $options[$key] = (string) ($row->{$labelCol} ?? $key);
+            }
+            $columns[$col]['options'] = $options;
+        }
+
+        $cfg['columns'] = $columns;
+
+        return $cfg;
     }
 
     /**
@@ -39,18 +90,32 @@ class SettingsLookupService
             return new LengthAwarePaginator([], 0, $perPage, $page ?? 1);
         }
 
+        $columns = Schema::getColumnListing($table);
+        $pk = (string) ($cfg['pk'] ?? 'id');
+        if (! in_array($pk, $columns, true)) {
+            $pk = in_array('id', $columns, true) ? 'id' : ($columns[0] ?? 'id');
+        }
+        $order = (string) ($cfg['order'] ?? $pk);
+        if (! in_array($order, $columns, true)) {
+            $order = $pk;
+        }
+
+        $searchable = array_values(array_filter(
+            array_keys($cfg['columns'] ?? []),
+            static fn ($col) => in_array($col, $columns, true),
+        ));
+
         $q = DB::table($table);
-        if ($search !== '') {
+        if ($search !== '' && $searchable !== []) {
             $term = '%'.$search.'%';
-            $q->where(function ($w) use ($cfg, $term): void {
-                foreach (array_keys($cfg['columns']) as $col) {
+            $q->where(function ($w) use ($searchable, $term): void {
+                foreach ($searchable as $col) {
                     $w->orWhere($col, 'like', $term);
                 }
             });
         }
 
-        $pk = $cfg['pk'];
-        $q->orderBy($cfg['order'] ?? $pk);
+        $q->orderBy($order);
 
         return PortalTable::paginateDistinct($q, $table.'.'.$pk, $perPage, $page);
     }
@@ -70,7 +135,12 @@ class SettingsLookupService
             return false;
         }
 
-        return DB::table($table)->insert($payload);
+        $ok = DB::table($table)->insert($payload);
+        if ($ok) {
+            PortalReferenceCache::bustLookup($table);
+        }
+
+        return $ok;
     }
 
     /**
@@ -85,7 +155,12 @@ class SettingsLookupService
 
         $payload = $this->filterPayload($cfg, $data);
 
-        return DB::table($table)->where($cfg['pk'], $id)->update($payload) > 0;
+        $ok = DB::table($table)->where($cfg['pk'], $id)->update($payload) > 0;
+        if ($ok) {
+            PortalReferenceCache::bustLookup($table);
+        }
+
+        return $ok;
     }
 
     public function delete(string $table, int|string $id): bool
@@ -95,7 +170,12 @@ class SettingsLookupService
             return false;
         }
 
-        return DB::table($table)->where($cfg['pk'], $id)->delete() > 0;
+        $ok = DB::table($table)->where($cfg['pk'], $id)->delete() > 0;
+        if ($ok) {
+            PortalReferenceCache::bustLookup($table);
+        }
+
+        return $ok;
     }
 
     /**
@@ -150,7 +230,8 @@ class SettingsLookupService
             } elseif ($type === 'number') {
                 $payload[$col] = $data[$col] === '' || $data[$col] === null ? null : (int) $data[$col];
             } else {
-                $payload[$col] = $data[$col];
+                // Legacy NOT NULL text columns — store blanks as empty strings.
+                $payload[$col] = $data[$col] === null ? '' : $data[$col];
             }
         }
 

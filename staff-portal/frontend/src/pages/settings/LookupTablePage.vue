@@ -72,6 +72,9 @@ function editRow(row: Record<string, unknown>) {
     const cfg = columns.value[col]
     if (cfg?.type === 'checkbox') {
       form[col] = !!row[col]
+    } else if (cfg?.type === 'select') {
+      const raw = row[col]
+      form[col] = raw == null || raw === '' ? '' : String(raw)
     } else {
       form[col] = row[col] ?? ''
     }
@@ -188,6 +191,15 @@ onMounted(() => void load())
                 :items="selectItems(columns[col])"
                 :label="columns[col].label"
                 :required="!!columns[col].required"
+                class="mb-2"
+              />
+              <v-textarea
+                v-else-if="columns[col]?.type === 'textarea'"
+                v-model="form[col]"
+                :label="columns[col].label"
+                :required="!!columns[col].required"
+                rows="2"
+                auto-grow
                 class="mb-2"
               />
               <v-text-field

@@ -40,7 +40,7 @@ Legacy in-repo paths (default for local dev):
   uploads/                         CI3 FCPATH uploads
   apm/storage/app/public/          APM attachments
   helpdesk/backend/storage/app/public/
-  staff-portal/storage/app/public/
+  staff-portal/backend/storage/app/public/
 ```
 
 **Site ID** is derived from `BASE_URL` unless `STAFF_SITE_ID` is set:
@@ -102,7 +102,22 @@ STAFF_FILES_BACKUP_RETENTION_DAYS=30
 
 Scripts live in **`scripts/storage/`**. They **copy** files (legacy originals are kept until you verify the host copy).
 
-### One-time setup
+### One-time setup (staff-portal installer)
+
+```bash
+cd staff-portal
+cp setup.env.example setup.env
+# Edit:
+#   MIGRATE_SHARED_STORAGE=ask   # or true / false
+#   PURGE_CI_UPLOADS_AFTER_MIGRATE=ask
+./setup.sh
+```
+
+Production (`./setup-production.sh`) defaults `MIGRATE_SHARED_STORAGE=true` and migrates CI3 + APM (plus helpdesk/staff-portal when enabled).
+
+Admin UI: **Settings → Shared storage** (`/settings/shared-storage`) — migrate modules, enable host `.env`, and archive legacy `uploads/` after verify.
+
+### Manual scripts
 
 ```bash
 cd /path/to/staff
@@ -118,6 +133,9 @@ DRY_RUN=true ./scripts/storage/migrate-all.sh
 
 # Copy all modules
 ./scripts/storage/migrate-all.sh
+
+# After CI verify: archive legacy uploads/ and symlink to host ci/
+CONFIRM=DELETE_CI_UPLOADS ./scripts/storage/purge-ci-uploads.sh
 ```
 
 ### Per-module scripts
@@ -127,8 +145,9 @@ DRY_RUN=true ./scripts/storage/migrate-all.sh
 | `migrate-ci-uploads.sh` | `uploads/` | `{STAFF_DATA_ROOT}/ci/` |
 | `migrate-apm-uploads.sh` | `apm/storage/app/public/` | `{STAFF_DATA_ROOT}/apm/` |
 | `migrate-helpdesk-uploads.sh` | `helpdesk/backend/storage/app/public/` | `{STAFF_DATA_ROOT}/helpdesk/` |
-| `migrate-staff-portal-uploads.sh` | `staff-portal/storage/app/public/` | `{STAFF_DATA_ROOT}/staff-portal/` |
+| `migrate-staff-portal-uploads.sh` | `staff-portal/backend/storage/app/public/` | `{STAFF_DATA_ROOT}/staff-portal/` |
 | `migrate-all.sh` | Runs all four in order | |
+| `purge-ci-uploads.sh` | Verified host `ci/` → archives legacy `uploads/` + symlink | Requires `CONFIRM=DELETE_CI_UPLOADS` |
 
 ### Platform notes
 

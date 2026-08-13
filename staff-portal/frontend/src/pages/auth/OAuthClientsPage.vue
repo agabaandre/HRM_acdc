@@ -3,18 +3,24 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
-import { createOAuthClient, fetchOAuthClients, revokeOAuthClient, type OAuthClientRow } from '@/lib/authAdminApi'
+import {
+  createOAuthClient,
+  fetchOAuthClients,
+  revokeOAuthClient,
+  updateOAuthClient,
+  type OAuthClientRow,
+} from '@/lib/authAdminApi'
 
 interface OAuthClientForm {
   name: string
-  redirectUris: string
+  redirectUris: string[]
   public: boolean
 }
 
 function defaultForm(): OAuthClientForm {
   return {
     name: '',
-    redirectUris: '',
+    redirectUris: [''],
     public: true,
   }
 }
@@ -25,11 +31,18 @@ const revokingId = ref<string | null>(null)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const rows = ref<OAuthClientRow[]>([])
-const showCreateDialog = ref(false)
+const showDialog = ref(false)
+const editingClient = ref<OAuthClientRow | null>(null)
 const form = ref<OAuthClientForm>(defaultForm())
 const createdClient = ref<OAuthClientRow | null>(null)
 
 const clientCount = computed(() => rows.value.length)
+const dialogTitle = computed(() => (editingClient.value ? 'Edit OAuth client' : 'Create OAuth client'))
+const canSubmit = computed(
+  () =>
+    form.value.name.trim().length > 0 &&
+    form.value.redirectUris.some((uri) => uri.trim().length > 0),
+)
 
 async function load() {
   loading.value = true
@@ -45,13 +58,39 @@ async function load() {
 }
 
 function openCreateDialog() {
+  editingClient.value = null
+  form.value = defaultForm()
   error.value = null
-  showCreateDialog.value = true
+  showDialog.value = true
 }
 
-function closeCreateDialog() {
-  showCreateDialog.value = false
+function openEditDialog(row: OAuthClientRow) {
+  editingClient.value = row
+  form.value = {
+    name: row.name,
+    redirectUris: row.redirect_uris.length ? [...row.redirect_uris] : [''],
+    public: row.public,
+  }
+  error.value = null
+  showDialog.value = true
+}
+
+function closeDialog() {
+  showDialog.value = false
+  editingClient.value = null
   form.value = defaultForm()
+}
+
+function addRedirectUri() {
+  form.value.redirectUris.push('')
+}
+
+function removeRedirectUri(index: number) {
+  if (form.value.redirectUris.length <= 1) {
+    form.value.redirectUris[0] = ''
+    return
+  }
+  form.value.redirectUris.splice(index, 1)
 }
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -61,27 +100,47 @@ function formatTimestamp(value: string | null | undefined): string {
   return parsed.toLocaleString()
 }
 
-async function submitCreate() {
+async function submitForm() {
+  if (!canSubmit.value) {
+    error.value = 'Enter a client name and at least one redirect URL.'
+    return
+  }
+
   saving.value = true
   error.value = null
   success.value = null
 
+  const redirectUris = form.value.redirectUris.map((uri) => uri.trim()).filter(Boolean)
+
   try {
-    const res = await createOAuthClient({
-      name: form.value.name.trim(),
-      redirect_uris: form.value.redirectUris,
-      public: form.value.public,
-    })
+    if (editingClient.value) {
+      const res = await updateOAuthClient(editingClient.value.id, {
+        name: form.value.name.trim(),
+        redirect_uris: redirectUris,
+      })
+      success.value = res.message || 'OAuth client updated.'
+      if (createdClient.value?.id === editingClient.value.id) {
+        createdClient.value = { ...createdClient.value, ...res.data, plain_secret: createdClient.value.plain_secret }
+      }
+    } else {
+      const res = await createOAuthClient({
+        name: form.value.name.trim(),
+        redirect_uris: redirectUris,
+        public: form.value.public,
+      })
+      createdClient.value = res.data
+      success.value = res.data.public
+        ? 'OAuth client created.'
+        : 'OAuth client created. Copy the secret now because it will not be shown again.'
+    }
 
-    createdClient.value = res.data
-    success.value = res.data.public
-      ? 'OAuth client created.'
-      : 'OAuth client created. Copy the secret now because it will not be shown again.'
-
-    closeCreateDialog()
+    closeDialog()
     await load()
   } catch (e) {
-    error.value = apiErrorMessage(e, 'Could not create OAuth client')
+    error.value = apiErrorMessage(
+      e,
+      editingClient.value ? 'Could not update OAuth client' : 'Could not create OAuth client',
+    )
   } finally {
     saving.value = false
   }
@@ -126,7 +185,7 @@ onMounted(() => void load())
     </PortalPageChrome>
 
     <v-alert v-if="success" type="success" variant="tonal" class="mb-3" density="compact">{{ success }}</v-alert>
-    <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
+    <v-alert v-if="error && !showDialog" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
 
     <v-card
       v-if="createdClient"
@@ -142,6 +201,10 @@ onMounted(() => void load())
         <div class="mb-3">
           <div class="text-caption text-medium-emphasis">Client ID</div>
           <pre class="oauth-value">{{ createdClient.id }}</pre>
+        </div>
+        <div v-if="createdClient.redirect_uris?.length" class="mb-3">
+          <div class="text-caption text-medium-emphasis">Redirect URLs</div>
+          <div v-for="uri in createdClient.redirect_uris" :key="uri" class="text-body-2">{{ uri }}</div>
         </div>
         <template v-if="createdClient.plain_secret">
           <div class="mb-2">
@@ -165,8 +228,8 @@ onMounted(() => void load())
       <v-col cols="12" md="8">
         <v-card variant="outlined">
           <v-card-text class="text-body-2">
-            Use public clients for PKCE-based browser or mobile apps. Use confidential clients when the integrator can keep a
-            client secret safely on the server side.
+            Clients can register multiple redirect URLs. Use public clients for PKCE-based browser or mobile apps.
+            Use confidential clients when the integrator can keep a client secret safely on the server side.
           </v-card-text>
         </v-card>
       </v-col>
@@ -182,7 +245,7 @@ onMounted(() => void load())
               <th>Name</th>
               <th>Client ID</th>
               <th>Type</th>
-              <th>Redirect URIs</th>
+              <th>Redirect URLs</th>
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -197,13 +260,16 @@ onMounted(() => void load())
                 </v-chip>
               </td>
               <td>
-                <div v-for="uri in row.redirect_uris" :key="uri" class="text-body-2">
+                <div v-for="uri in row.redirect_uris" :key="uri" class="text-body-2 oauth-uri">
                   {{ uri }}
                 </div>
                 <div v-if="!row.redirect_uris.length" class="text-medium-emphasis">—</div>
               </td>
               <td class="text-no-wrap">{{ formatTimestamp(row.created_at) }}</td>
               <td class="text-no-wrap">
+                <v-btn size="x-small" variant="tonal" class="me-1" @click="openEditDialog(row)">
+                  Edit
+                </v-btn>
                 <v-btn
                   size="x-small"
                   variant="tonal"
@@ -223,10 +289,13 @@ onMounted(() => void load())
       </v-card-text>
     </v-card>
 
-    <v-dialog v-model="showCreateDialog" max-width="760">
+    <v-dialog v-model="showDialog" max-width="760" persistent>
       <v-card>
-        <v-card-title>Create OAuth client</v-card-title>
+        <v-card-title>{{ dialogTitle }}</v-card-title>
         <v-card-text>
+          <v-alert v-if="error && showDialog" type="error" variant="tonal" class="mb-3" density="compact">
+            {{ error }}
+          </v-alert>
           <v-row>
             <v-col cols="12">
               <v-text-field
@@ -234,32 +303,67 @@ onMounted(() => void load())
                 label="Client name"
                 density="compact"
                 placeholder="Helpdesk Web"
+                hide-details="auto"
               />
             </v-col>
             <v-col cols="12">
-              <v-textarea
-                v-model="form.redirectUris"
-                label="Redirect URIs"
-                rows="4"
-                auto-grow
-                placeholder="One URI per line"
-                hint="Paste one callback URI per line."
-                persistent-hint
-              />
+              <div class="d-flex align-center justify-space-between mb-2">
+                <div>
+                  <div class="text-subtitle-2">Redirect URLs</div>
+                  <div class="text-caption text-medium-emphasis">
+                    Add every allowed callback URL for this client.
+                  </div>
+                </div>
+                <v-btn size="small" variant="text" @click="addRedirectUri">
+                  <i class="fa-solid fa-plus me-1" aria-hidden="true" />
+                  Add URL
+                </v-btn>
+              </div>
+              <div
+                v-for="(_uri, index) in form.redirectUris"
+                :key="index"
+                class="d-flex align-center ga-2 mb-2"
+              >
+                <v-text-field
+                  v-model="form.redirectUris[index]"
+                  :label="`Redirect URL ${index + 1}`"
+                  density="compact"
+                  placeholder="https://app.example.test/oauth/callback"
+                  hide-details="auto"
+                  class="flex-grow-1"
+                />
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  :disabled="form.redirectUris.length === 1 && !form.redirectUris[0]"
+                  @click="removeRedirectUri(index)"
+                >
+                  <i class="fa-solid fa-trash" aria-hidden="true" />
+                </v-btn>
+              </div>
             </v-col>
-            <v-col cols="12">
+            <v-col v-if="!editingClient" cols="12">
               <v-checkbox
                 v-model="form.public"
                 label="Public client (PKCE / no client secret)"
                 hide-details
               />
             </v-col>
+            <v-col v-else cols="12">
+              <div class="text-caption text-medium-emphasis">
+                Client type cannot be changed after creation
+                ({{ editingClient.public ? 'public' : 'confidential' }}).
+              </div>
+            </v-col>
           </v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" :disabled="saving" @click="closeCreateDialog">Cancel</v-btn>
-          <v-btn color="primary" :loading="saving" @click="submitCreate">Create client</v-btn>
+          <v-btn variant="text" :disabled="saving" @click="closeDialog">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" :disabled="!canSubmit" @click="submitForm">
+            {{ editingClient ? 'Save changes' : 'Create client' }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -275,5 +379,9 @@ onMounted(() => void load())
   background: rgba(0, 0, 0, 0.08);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.oauth-uri {
+  word-break: break-all;
 }
 </style>

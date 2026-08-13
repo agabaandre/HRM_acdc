@@ -8,6 +8,14 @@ Options -Indexes
     # Set base directory (uncomment & adjust if CodeIgniter is in a subfolder)
     # RewriteBase /your-subfolder/
 
+    # Preserve Authorization for Share + CI APIs (must run before other rules)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Staff Share reference API (APM sync) → Laravel staff-portal (307 keeps method + query)
+    # Keeps CI for other /share/* endpoints (service_requests, validate_session, etc.)
+    RewriteRule ^share/(get_current_staff|divisions|directorates|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/staff-portal/backend/share/$1$2 [R=307,L,QSA]
+
     # Redirect Trailing Slashes...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)/$ /$1 [L,R=301]
@@ -25,10 +33,6 @@ Options -Indexes
 
     # Block access to git and other hidden files
     RedirectMatch 404 /\.git
-
-    # Ensure Authorization header is passed correctly
-    RewriteCond %{HTTP:Authorization} . 
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 </IfModule>
 
 <IfModule !mod_rewrite.c>

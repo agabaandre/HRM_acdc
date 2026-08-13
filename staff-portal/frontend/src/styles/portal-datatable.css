@@ -1,0 +1,80 @@
+/**
+ * Shared data-table chrome — aligned with helpdesk hd-data-table.
+ */
+
+.portal-data-table-card {
+  overflow: hidden;
+  border-radius: 12px !important;
+  background: #fff !important;
+  border: 1px solid #dfe5ef !important;
+  box-shadow:
+    rgba(145, 158, 171, 0.08) 0 8px 16px -4px,
+    rgba(145, 158, 171, 0.12) 0 0 2px 0 !important;
+}
+
+.portal-data-table-card .v-table {
+  background: transparent;
+}
+
+.portal-data-table-card .v-table > .v-table__wrapper > table > thead > tr > th {
+  background: #f8fafc;
+  border-bottom: 1px solid #dfe5ef;
+  font-weight: 600 !important;
+  color: #3a4752 !important;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.portal-data-table-card .v-table > .v-table__wrapper > table > tbody > tr > td {
+  border-bottom: 1px solid rgba(223, 229, 239, 0.85);
+  color: #3a4752;
+  font-size: 0.875rem;
+  vertical-align: middle;
+}
+
+.portal-data-table-card .v-table > .v-table__wrapper > table > tbody > tr:hover > td {
+  background: rgba(13, 122, 58, 0.035);
+}
+
+.portal-dt-row-num {
+  display: inline-block;
+  min-width: 1.5rem;
+  text-align: center;
+  color: #768b9e;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+}
+
+.portal-staff-filters {
+  background: #ffffff;
+  border: 1px solid #dfe5ef;
+  border-radius: 12px;
+  padding: 1.1rem 1.1rem 0.75rem;
+  margin-bottom: 1rem;
+  box-shadow:
+    rgba(145, 158, 171, 0.08) 0 8px 16px -4px,
+    rgba(145, 158, 171, 0.1) 0 0 2px 0;
+}
+
+.portal-staff-filters__hint {
+  font-size: 0.8rem;
+  color: #5f6f7c;
+  margin: 0.15rem 0 0.35rem;
+}
+
+/* Field bodies stay white; placeholders need readable contrast */
+.portal-staff-filters .v-field,
+.portal-staff-filters .v-field__overlay,
+.portal-staff-filters .v-field__field {
+  background-color: #ffffff !important;
+}
+
+.portal-staff-filters .v-field__input,
+.portal-staff-filters .v-select__selection-text {
+  color: #3a4752 !important;
+}
+
+.portal-staff-filters .v-field__input::placeholder {
+  color: #78909c !important;
+  opacity: 1 !important;
+}

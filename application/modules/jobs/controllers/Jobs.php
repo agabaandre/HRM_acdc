@@ -295,6 +295,42 @@ public function cron_register(){
 		]);
 	}
 
+	/**
+	 * Pull Africa CDC PRA public workplan into staff-portal workplan tables.
+	 * Runs: php artisan workplan:sync-pra (staff-portal/backend).
+	 */
+	public function sync_pra_workplan()
+	{
+		$backend = realpath(APPPATH . '../staff-portal/backend');
+		if ($backend === false || !is_dir($backend)) {
+			$msg = 'staff-portal/backend not found relative to APPPATH.';
+			log_message('error', 'sync_pra_workplan: ' . $msg);
+			echo $msg . "\n";
+			return;
+		}
+
+		$php = (defined('PHP_BINARY') && PHP_BINARY) ? PHP_BINARY : 'php';
+		$artisan = $backend . DIRECTORY_SEPARATOR . 'artisan';
+		if (!is_file($artisan)) {
+			$msg = 'artisan not found in ' . $backend;
+			log_message('error', 'sync_pra_workplan: ' . $msg);
+			echo $msg . "\n";
+			return;
+		}
+
+		$cmd = escapeshellarg($php) . ' ' . escapeshellarg($artisan) . ' workplan:sync-pra 2>&1';
+		echo '[' . date('Y-m-d H:i:s') . "] sync_pra_workplan\n";
+		echo "  cwd={$backend}\n";
+		$output = [];
+		$code = 0;
+		exec('cd ' . escapeshellarg($backend) . ' && ' . $cmd, $output, $code);
+		foreach ($output as $line) {
+			echo '  ' . $line . "\n";
+		}
+		echo '  exit=' . (int) $code . "\n";
+		log_message($code === 0 ? 'info' : 'error', 'sync_pra_workplan exit=' . $code);
+	}
+
 //   * * * * * cd /var/www/staff_tracker && php index.php person send_mails. runs every minute.
     public function send_mails()
     {

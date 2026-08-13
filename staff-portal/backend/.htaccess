@@ -1,0 +1,30 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews
+    </IfModule>
+
+    RewriteEngine On
+
+    # Preserve Authorization header so Sanctum Bearer tokens reach PHP.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Map asset-style requests to Laravel public/ (no /public/ in URLs).
+    # Do NOT rewrite API routes, Share OpenAPI, or staff-media/* — those are Laravel routes whose
+    # paths may end in .pdf/.jpg/.png/.yaml; forcing public/ breaks the route (404).
+    RewriteCond %{REQUEST_URI} !/api/ [NC]
+    RewriteCond %{REQUEST_URI} !/share/ [NC]
+    RewriteCond %{REQUEST_URI} !/staff-media/ [NC]
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ server.php [L]
+</IfModule>
+
+ServerSignature Off

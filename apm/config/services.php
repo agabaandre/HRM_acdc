@@ -36,6 +36,8 @@ return [
     ],
 
     'staff_api' => [
+        // Prefer Laravel Share: http://localhost/staff/staff-portal/backend
+        // Legacy CI host (/staff) 307-redirects get_current_staff|divisions|directorates to Laravel.
         'base_url' => env(
             'STAFF_API_INTERNAL_BASE_URL',
             env('BASE_URL', 'http://localhost/staff/')

@@ -2,6 +2,7 @@
 
 namespace Modules\Staff\Services;
 
+use App\Support\PortalReferenceCache;
 use App\Support\StaffContractFile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -17,29 +18,12 @@ class StaffContractService
      */
     public function formLookups(int $excludeStaffId = 0): array
     {
-        $supervisors = DB::table('staff')
-            ->when($excludeStaffId > 0, fn ($q) => $q->where('staff_id', '!=', $excludeStaffId))
-            ->orderBy('lname')
-            ->orderBy('fname')
-            ->select('staff_id', 'fname', 'lname')
-            ->get();
+        $key = PortalReferenceCache::formLookupsKey($excludeStaffId);
 
-        return [
-            'jobs' => DB::table('jobs')->orderBy('job_name')->get(),
-            'jobsActing' => DB::table('jobs_acting')->orderBy('job_acting')->get(),
-            'grades' => DB::table('grades')->orderBy('grade')->get(),
-            'institutions' => DB::table('contracting_institutions')->orderBy('contracting_institution')->get(),
-            'funders' => DB::table('funders')->orderBy('funder')->get(),
-            'contractTypes' => DB::table('contract_types')->orderBy('contract_type')->get(),
-            'dutyStations' => DB::table('duty_stations')->orderBy('duty_station_name')->get(),
-            'divisions' => DB::table('divisions')->orderBy('division_name')->get(),
-            'units' => DB::getSchemaBuilder()->hasTable('units')
-                ? DB::table('units')->orderBy('unit_name')->get()
-                : [],
-            'statuses' => DB::table('status')->orderBy('status_id')->get(),
-            'nationalities' => DB::table('nationalities')->orderBy('nationality')->get(),
-            'supervisors' => $supervisors,
-        ];
+        return PortalReferenceCache::remember(
+            $key,
+            fn () => PortalReferenceCache::buildFormLookups($excludeStaffId)
+        );
     }
 
     /**
@@ -232,6 +216,17 @@ class StaffContractService
 
             $this->markEmailEnabledIfActive($staffId, $statusId);
 
+            $audit = app(StaffAuditTrailService::class);
+            $row = DB::table('staff_contracts')->where('staff_contract_id', $id)->first();
+            $audit->logChange(
+                'contract_create',
+                'staff_contracts',
+                $id,
+                $staffId,
+                [],
+                $audit->contractSnapshot($row),
+            );
+
             return $id;
         });
     }
@@ -255,7 +250,7 @@ class StaffContractService
             return false;
         }
 
-        $payload = $this->buildPayload($form);
+        $payload = $this->buildPayload($form, (int) ($existing->unit_id ?: 1));
         $this->assertNoConflictingCurrent($staffId, $contractId, $this->resolvedStatusId(
             (int) $payload['status_id'],
             (string) $payload['end_date']
@@ -265,6 +260,9 @@ class StaffContractService
             $payload['file_name'] = $this->storePdf($pdf, $staffId, $contractId);
         }
 
+        $audit = app(StaffAuditTrailService::class);
+        $before = $audit->contractSnapshot($existing);
+
         DB::table('staff_contracts')
             ->where('staff_contract_id', $contractId)
             ->update($payload);
@@ -273,6 +271,19 @@ class StaffContractService
         $this->syncContractStatusFromEndDate($contractId, $staffId);
         $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $contractId)->value('status_id');
         $this->markEmailEnabledIfActive($staffId, $statusId);
+
+        $afterRow = DB::table('staff_contracts')->where('staff_contract_id', $contractId)->first();
+        $after = $audit->contractSnapshot($afterRow);
+        if (! $audit->snapshotsEqual($before, $after)) {
+            $audit->logChange(
+                'contract_update',
+                'staff_contracts',
+                $contractId,
+                $staffId,
+                $before,
+                $after,
+            );
+        }
 
         return true;
     }
@@ -336,20 +347,53 @@ class StaffContractService
             return;
         }
 
+        $audit = app(StaffAuditTrailService::class);
+        $uniqueIds = array_values(array_unique($renewedIds));
+        $beforeRows = DB::table('staff_contracts')
+            ->whereIn('staff_contract_id', $uniqueIds)
+            ->get()
+            ->keyBy('staff_contract_id');
+
         DB::table('staff_contracts')
-            ->whereIn('staff_contract_id', array_values(array_unique($renewedIds)))
+            ->whereIn('staff_contract_id', $uniqueIds)
             ->update(['status_id' => 6]);
+
+        foreach ($uniqueIds as $cid) {
+            $old = $beforeRows->get($cid);
+            $new = DB::table('staff_contracts')->where('staff_contract_id', $cid)->first();
+            if (! $old || ! $new) {
+                continue;
+            }
+            $before = $audit->contractSnapshot($old);
+            $after = $audit->contractSnapshot($new);
+            if ($audit->snapshotsEqual($before, $after)) {
+                continue;
+            }
+            $audit->logChange(
+                'contract_update',
+                'staff_contracts',
+                $cid,
+                $staffId,
+                $before,
+                $after,
+            );
+        }
     }
 
     /**
      * @param  array<string, mixed>  $form
      * @return array<string, mixed>
      */
-    private function buildPayload(array $form): array
+    private function buildPayload(array $form, ?int $fallbackUnitId = null): array
     {
         $second = $form['second_supervisor'] ?? null;
         $acting = $form['job_acting_id'] ?? null;
         $unit = $form['unit_id'] ?? null;
+
+        // staff_contracts.unit_id is NOT NULL (default 1). Keep existing on edit when blank.
+        $resolvedUnit = $unit !== '' && $unit !== null
+            ? (int) $unit
+            : (int) ($fallbackUnitId ?: 1);
 
         return [
             'job_id' => (int) $form['job_id'],
@@ -362,7 +406,7 @@ class StaffContractService
             'contract_type_id' => (int) $form['contract_type_id'],
             'duty_station_id' => (int) $form['duty_station_id'],
             'division_id' => (int) $form['division_id'],
-            'unit_id' => $unit !== '' && $unit !== null ? (int) $unit : null,
+            'unit_id' => $resolvedUnit > 0 ? $resolvedUnit : 1,
             'other_associated_divisions' => $this->encodeOtherDivisions($form['other_associated_divisions'] ?? []),
             'start_date' => $form['start_date'],
             'end_date' => $form['end_date'],
@@ -386,11 +430,31 @@ class StaffContractService
             return;
         }
 
-        DB::table('staff')->where('staff_id', $staffId)->update([
+        $old = DB::table('staff')->where('staff_id', $staffId)->first(['email_status', 'email_disabled_by', 'email_disabled_at']);
+        $payload = [
             'email_disabled_by' => 0,
             'email_status' => 1,
             'email_disabled_at' => now(),
-        ]);
+        ];
+        DB::table('staff')->where('staff_id', $staffId)->update($payload);
+
+        if (! $old) {
+            return;
+        }
+        $before = [
+            'email_status' => $old->email_status ?? null,
+            'email_disabled_by' => $old->email_disabled_by ?? null,
+            'email_disabled_at' => $old->email_disabled_at ?? null,
+        ];
+        $after = [
+            'email_status' => 1,
+            'email_disabled_by' => 0,
+            'email_disabled_at' => (string) ($payload['email_disabled_at'] ?? ''),
+        ];
+        $audit = app(StaffAuditTrailService::class);
+        if (! $audit->snapshotsEqual($before, $after) && (int) ($old->email_status ?? 0) !== 1) {
+            $audit->logChange('staff_email_enable', 'staff', $staffId, $staffId, $before, $after);
+        }
     }
 
     private function syncPpaSupervisor(int $staffId, int $supervisorId): void
@@ -399,7 +463,13 @@ class StaffContractService
             return;
         }
 
-        DB::table('ppa_entries')
+        $prev = DB::table('ppa_entries')
+            ->where('staff_id', $staffId)
+            ->whereIn('draft_status', [0, 1])
+            ->orderByDesc('entry_id')
+            ->first();
+
+        $updated = DB::table('ppa_entries')
             ->where('staff_id', $staffId)
             ->whereIn('draft_status', [0, 1])
             ->orderByDesc('entry_id')
@@ -408,6 +478,34 @@ class StaffContractService
                 'supervisor_id' => $supervisorId,
                 'updated_at' => now(),
             ]);
+
+        if ($updated < 1) {
+            return;
+        }
+
+        $before = [
+            'supervisor_id' => $prev->supervisor_id ?? null,
+            'supervisor2_id' => $prev->supervisor2_id ?? null,
+            'scope' => 'ppa_entries where draft_status in (0,1)',
+        ];
+        $after = [
+            'supervisor_id' => $supervisorId,
+            'supervisor2_id' => $prev->supervisor2_id ?? null,
+            'updated_at' => now()->toDateTimeString(),
+            'scope' => 'ppa_entries where draft_status in (0,1)',
+        ];
+        if ((int) ($before['supervisor_id'] ?? 0) === $supervisorId) {
+            return;
+        }
+
+        app(StaffAuditTrailService::class)->logChange(
+            'ppa_supervisors',
+            'ppa_entries',
+            $staffId,
+            $staffId,
+            $before,
+            $after,
+        );
     }
 
     public function syncContractStatusFromEndDate(int $contractId, int $staffId): void

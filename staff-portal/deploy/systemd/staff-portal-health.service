@@ -1,0 +1,11 @@
+[Unit]
+Description=Africa CDC Staff Portal — API health check
+Documentation=file:///var/www/staff/staff-portal/docs/SYSTEMD.md
+PartOf=staff-portal.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=@STAFF_PORTAL_USER@
+Group=@STAFF_PORTAL_GROUP@
+ExecStart=@STAFF_PORTAL_DEPLOY_BIN@/staff-portal-health.sh

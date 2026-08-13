@@ -22,6 +22,8 @@ if (!function_exists('staff_jobs_schedule_defaults')) {
             'apm_approver_staff_ids_cache_interval_minutes' => 60,
             // weekday: PHP date('w') — 0=Sun … 2=Tue … 6=Sat (weekly, not daily).
             'user_logs_prune_get_access'        => ['hour' => 0, 'minute' => 0, 'weekday' => 2],
+            // Midnight PRA workplan pull → staff-portal artisan workplan:sync-pra
+            'sync_pra_workplan'                 => ['hour' => 0, 'minute' => 5],
         ];
     }
 }

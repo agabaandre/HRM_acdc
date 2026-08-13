@@ -2,11 +2,15 @@ export interface PortalNavItem {
   label: string
   to: string
   permission?: number | string
+  /** Show if the user has any of these permissions (OR). */
+  anyPermission?: Array<number | string>
   match?: string[]
   /** primary = always in bar; more = overflow dropdown */
   group?: 'primary' | 'more'
   /** Font Awesome 6 class (CI3 nav equivalents) */
   icon?: string
+  /** SPA module key from Settings → Portal modules */
+  module?: string
 }
 
 /** Page heading icons (Font Awesome) keyed by route path prefix */
@@ -16,11 +20,11 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/dashboard': 'fa-solid fa-house',
   '/staff': 'fa-solid fa-user',
   '/leave': 'fa-solid fa-calendar-check',
+  '/payroll': 'fa-solid fa-money-check-dollar',
   '/performance': 'fa-solid fa-chart-line',
   '/tasks': 'fa-solid fa-list-check',
   '/workplan': 'fa-solid fa-calendar-days',
   '/admanager': 'fa-solid fa-shield-halved',
-  '/reports': 'fa-solid fa-chart-column',
   '/settings': 'fa-solid fa-gear',
   '/permissions': 'fa-solid fa-lock',
   '/auth/users': 'fa-solid fa-users',
@@ -37,17 +41,89 @@ export function pageIconForPath(path: string): string {
   return 'fa-solid fa-file'
 }
 
+/** Staff module nav only — CBP Home is the logo / top-bar “CBP Modules” link, not a primary-nav item. */
 export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
-  { label: 'Home', to: '/', match: ['/', '/home'], group: 'primary', icon: 'fa-solid fa-table-cells' },
-  { label: 'Dashboard', to: '/dashboard', permission: 76, group: 'primary', icon: 'fa-solid fa-house' },
-  { label: 'Staff', to: '/staff', permission: 72, match: ['/staff'], group: 'primary', icon: 'fa-solid fa-user' },
-  { label: 'Leave', to: '/leave', match: ['/leave'], group: 'primary', icon: 'fa-solid fa-calendar-check' },
-  { label: 'Performance', to: '/performance', permission: 74, match: ['/performance'], group: 'primary', icon: 'fa-solid fa-chart-line' },
-  { label: 'Tasks', to: '/tasks', permission: 78, match: ['/tasks'], group: 'primary', icon: 'fa-solid fa-list-check' },
-  { label: 'Workplan', to: '/workplan', permission: 79, match: ['/workplan'], group: 'primary', icon: 'fa-solid fa-calendar-days' },
-  { label: 'AD Manager', to: '/admanager', permission: 77, match: ['/admanager'], group: 'primary', icon: 'fa-solid fa-shield-halved' },
-  { label: 'Reports', to: '/reports', permission: 72, match: ['/reports'], group: 'more', icon: 'fa-solid fa-chart-column' },
-  { label: 'Settings', to: '/settings', permission: 15, match: ['/settings'], group: 'more', icon: 'fa-solid fa-gear' },
+  {
+    label: 'Dashboard',
+    to: '/dashboard',
+    permission: 76,
+    group: 'primary',
+    icon: 'fa-solid fa-house',
+    module: 'dashboard',
+  },
+  {
+    label: 'Staff',
+    to: '/staff',
+    permission: 72,
+    match: ['/staff'],
+    group: 'primary',
+    icon: 'fa-solid fa-user',
+    module: 'staff',
+  },
+  {
+    label: 'Leave',
+    to: '/leave',
+    match: ['/leave'],
+    group: 'primary',
+    icon: 'fa-solid fa-calendar-check',
+    // 37 make + 73 approve + 95/77 view-all + 96/97 admin (HR role also bypasses in nav filter)
+    anyPermission: [37, 73, 95, 96, 97, 77],
+    module: 'leave',
+  },
+  {
+    label: 'Payroll',
+    to: '/payroll',
+    match: ['/payroll'],
+    group: 'primary',
+    icon: 'fa-solid fa-money-check-dollar',
+    anyPermission: [110, 111, 112, 113, 114, 115, 116, 117],
+    module: 'payroll',
+  },
+  {
+    label: 'Performance',
+    to: '/performance',
+    permission: 74,
+    match: ['/performance'],
+    group: 'primary',
+    icon: 'fa-solid fa-chart-line',
+    module: 'performance',
+  },
+  {
+    label: 'Tasks',
+    to: '/tasks/weekly',
+    permission: 75,
+    match: ['/tasks'],
+    group: 'primary',
+    icon: 'fa-solid fa-list-check',
+    module: 'tasks',
+  },
+  {
+    label: 'Workplan',
+    to: '/workplan',
+    permission: 79,
+    match: ['/workplan'],
+    group: 'primary',
+    icon: 'fa-solid fa-calendar-days',
+    module: 'workplan',
+  },
+  {
+    label: 'AD Manager',
+    to: '/admanager/expired',
+    permission: 77,
+    match: ['/admanager'],
+    group: 'primary',
+    icon: 'fa-solid fa-shield-halved',
+    module: 'admanager',
+  },
+  {
+    label: 'Settings',
+    to: '/settings',
+    permission: 15,
+    match: ['/settings'],
+    group: 'more',
+    icon: 'fa-solid fa-gear',
+    module: 'settings',
+  },
   { label: 'Permissions', to: '/permissions', permission: 17, group: 'more', icon: 'fa-solid fa-lock' },
   { label: 'Users', to: '/auth/users', permission: 17, match: ['/auth/users'], group: 'more', icon: 'fa-solid fa-users' },
   { label: 'OAuth clients', to: '/auth/oauth-clients', permission: 17, match: ['/auth/oauth-clients'], group: 'more', icon: 'fa-solid fa-key' },

@@ -13,19 +13,22 @@ class StaffDirectoryService
 {
     /**
      * @param  int|list<int>|null  $statusId
+     * @param  array<string, mixed>  $filters
      */
     public function paginate(
         string $search = '',
         int|array|null $statusId = null,
         int $page = 1,
         int $perPage = 20,
-        string $category = 'main_staff'
+        string $category = 'main_staff',
+        array $filters = [],
     ): LengthAwarePaginator {
         $perPage = min(100, max(10, $perPage));
         $page = max(1, $page);
         $category = $this->normalizeCategory($category);
+        $filters = $this->normalizeFilters($filters);
 
-        $light = $this->lightQuery($search, $statusId, $category);
+        $light = $this->lightQuery($search, $statusId, $category, $filters);
         $total = (int) (clone $light)->count(DB::raw('DISTINCT s.staff_id'));
 
         if ($total === 0) {
@@ -73,17 +76,20 @@ class StaffDirectoryService
 
     /**
      * @param  int|list<int>|null  $statusId
+     * @param  array<string, mixed>  $filters
      */
     public function exportRows(
         string $search = '',
         int|array|null $statusId = null,
         string $category = 'main_staff',
-        int $limit = 5000
+        int $limit = 5000,
+        array $filters = [],
     ): Collection {
         $limit = min(5000, max(1, $limit));
         $category = $this->normalizeCategory($category);
+        $filters = $this->normalizeFilters($filters);
 
-        $ids = $this->lightQuery($search, $statusId, $category)
+        $ids = $this->lightQuery($search, $statusId, $category, $filters)
             ->select('s.staff_id', 's.lname', 's.fname')
             ->groupBy('s.staff_id', 's.lname', 's.fname')
             ->orderBy('s.lname')
@@ -103,15 +109,17 @@ class StaffDirectoryService
     }
 
     /**
+     * @param  array<string, mixed>  $filters
      * @return array<string, int>
      */
-    public function filterCounts(string $search = '', string $category = 'main_staff'): array
+    public function filterCounts(string $search = '', string $category = 'main_staff', array $filters = []): array
     {
         $category = $this->normalizeCategory($category);
-        $cacheKey = 'staff_directory_filter_counts:'.md5($search.'|'.$category);
+        $filters = $this->normalizeFilters($filters);
+        $cacheKey = 'staff_directory_filter_counts:'.md5($search.'|'.$category.'|'.json_encode($filters));
 
-        return Cache::remember($cacheKey, 60, function () use ($search, $category): array {
-            $row = $this->lightQuery($search, null, $category)
+        return Cache::remember($cacheKey, 60, function () use ($search, $category, $filters): array {
+            $row = $this->lightQuery($search, null, $category, $filters)
                 ->selectRaw('
                     COUNT(DISTINCT CASE WHEN sc.status_id IN (1, 2) THEN s.staff_id END) as active_count,
                     COUNT(DISTINCT CASE WHEN sc.status_id = 2 THEN s.staff_id END) as due_count,
@@ -134,11 +142,54 @@ class StaffDirectoryService
     }
 
     /**
+     * Dropdown options for CI3-parity staff filters (Redis-cached).
+     *
+     * @return array<string, mixed>
+     */
+    public function filterOptions(): array
+    {
+        return Cache::remember('staff_portal:staff_filter_options_v1', 300, function (): array {
+            $regions = DB::table('regions')->orderBy('region_name')->get(['id', 'region_name'])
+                ->map(fn ($r) => ['id' => (int) $r->id, 'name' => (string) $r->region_name])
+                ->all();
+
+            $nationalities = DB::table('nationalities')->orderBy('nationality')
+                ->get(['nationality_id', 'nationality', 'region_id'])
+                ->map(fn ($r) => [
+                    'id' => (int) $r->nationality_id,
+                    'name' => (string) $r->nationality,
+                    'region_id' => $r->region_id === null ? null : (int) $r->region_id,
+                ])
+                ->all();
+
+            return [
+                'regions' => $regions,
+                'nationalities' => $nationalities,
+                'divisions' => DB::table('divisions')->orderBy('division_name')->get(['division_id', 'division_name'])
+                    ->map(fn ($r) => ['id' => (int) $r->division_id, 'name' => (string) $r->division_name])->all(),
+                'duty_stations' => DB::table('duty_stations')->orderBy('duty_station_name')->get(['duty_station_id', 'duty_station_name'])
+                    ->map(fn ($r) => ['id' => (int) $r->duty_station_id, 'name' => (string) $r->duty_station_name])->all(),
+                'funders' => DB::table('funders')->orderBy('funder')->get(['funder_id', 'funder'])
+                    ->map(fn ($r) => ['id' => (int) $r->funder_id, 'name' => (string) $r->funder])->all(),
+                'jobs' => DB::table('jobs')->orderBy('job_name')->get(['job_id', 'job_name'])
+                    ->map(fn ($r) => ['id' => (int) $r->job_id, 'name' => (string) $r->job_name])->all(),
+                'grades' => DB::table('grades')->orderBy('grade')->get(['grade_id', 'grade'])
+                    ->map(fn ($r) => ['id' => (int) $r->grade_id, 'name' => (string) $r->grade])->all(),
+                'genders' => [
+                    ['id' => 'Male', 'name' => 'Male'],
+                    ['id' => 'Female', 'name' => 'Female'],
+                ],
+            ];
+        });
+    }
+
+    /**
      * Minimal joins for counts and ID pagination.
      *
      * @param  int|list<int>|null  $statusId
+     * @param  array<string, mixed>  $filters
      */
-    protected function lightQuery(string $search, int|array|null $statusId, string $category): Builder
+    protected function lightQuery(string $search, int|array|null $statusId, string $category, array $filters = []): Builder
     {
         $q = DB::table('staff as s')
             ->joinSub($this->selectedContractSubquery(), 'lc', 'lc.staff_id', '=', 's.staff_id')
@@ -148,6 +199,7 @@ class StaffDirectoryService
         $this->applyStatusFilter($q, $statusId);
         $this->applyCategoryFilter($q, $category);
         $this->applySearchFilter($q, $search);
+        $this->applyAdvancedFilters($q, $filters);
 
         return $q;
     }
@@ -251,6 +303,107 @@ class StaffDirectoryService
         }
 
         $q->where('ct.category', $category);
+    }
+
+    /**
+     * CI3 staff_filters.php parity.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    protected function applyAdvancedFilters(Builder $q, array $filters): void
+    {
+        if (($filters['name'] ?? '') !== '') {
+            $term = '%'.$filters['name'].'%';
+            $q->where(function ($w) use ($term): void {
+                $w->where('s.lname', 'like', $term)
+                    ->orWhere('s.fname', 'like', $term)
+                    ->orWhere('s.oname', 'like', $term);
+            });
+        }
+
+        if (($filters['sapno'] ?? '') !== '') {
+            $q->where('s.SAPNO', 'like', '%'.$filters['sapno'].'%');
+        }
+
+        if (($filters['gender'] ?? '') !== '') {
+            $q->where('s.gender', $filters['gender']);
+        }
+
+        if (($filters['nationality_id'] ?? null) !== null) {
+            $q->where('s.nationality_id', (int) $filters['nationality_id']);
+        }
+
+        if (array_key_exists('region_id', $filters) && $filters['region_id'] !== null) {
+            $regionId = (int) $filters['region_id'];
+            $q->leftJoin('nationalities as n_filter', 'n_filter.nationality_id', '=', 's.nationality_id');
+            if ($regionId === 0) {
+                // Rest of World — null / 0 region on nationality
+                $q->where(function ($w): void {
+                    $w->whereNull('n_filter.region_id')->orWhere('n_filter.region_id', 0);
+                });
+            } else {
+                $q->where('n_filter.region_id', $regionId);
+            }
+        }
+
+        foreach ([
+            'division_id' => 'sc.division_id',
+            'duty_station_id' => 'sc.duty_station_id',
+            'funder_id' => 'sc.funder_id',
+            'job_id' => 'sc.job_id',
+            'grade_id' => 'sc.grade_id',
+        ] as $key => $column) {
+            $ids = $filters[$key] ?? [];
+            if (is_array($ids) && $ids !== []) {
+                $q->whereIn($column, $ids);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    public function normalizeFilters(array $filters): array
+    {
+        $intList = static function (mixed $value): array {
+            if ($value === null || $value === '' || $value === []) {
+                return [];
+            }
+            if (! is_array($value)) {
+                $value = [$value];
+            }
+
+            return array_values(array_unique(array_filter(
+                array_map(static fn ($v) => (int) $v, $value),
+                static fn (int $v) => $v > 0
+            )));
+        };
+
+        $regionRaw = $filters['region_id'] ?? null;
+        $regionId = null;
+        if ($regionRaw !== null && $regionRaw !== '') {
+            $regionId = (int) $regionRaw;
+        }
+
+        $nationalityRaw = $filters['nationality_id'] ?? null;
+
+        return [
+            'name' => trim((string) ($filters['name'] ?? $filters['lname'] ?? '')),
+            'sapno' => trim((string) ($filters['sapno'] ?? $filters['SAPNO'] ?? '')),
+            'gender' => in_array(($filters['gender'] ?? ''), ['Male', 'Female'], true)
+                ? (string) $filters['gender']
+                : '',
+            'region_id' => $regionId,
+            'nationality_id' => ($nationalityRaw !== null && $nationalityRaw !== '')
+                ? (int) $nationalityRaw
+                : null,
+            'division_id' => $intList($filters['division_id'] ?? null),
+            'duty_station_id' => $intList($filters['duty_station_id'] ?? null),
+            'funder_id' => $intList($filters['funder_id'] ?? null),
+            'job_id' => $intList($filters['job_id'] ?? null),
+            'grade_id' => $intList($filters['grade_id'] ?? null),
+        ];
     }
 
     protected function normalizeCategory(string $category): string

@@ -3,8 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import PerformanceApprovalTrail from '@/components/performance/PerformanceApprovalTrail.vue'
-import PerformanceWorkflowCard from '@/components/performance/PerformanceWorkflowCard.vue'
+import PerformanceStaffDetailsCard from '@/components/performance/PerformanceStaffDetailsCard.vue'
 import PpaSections from '@/components/performance/PpaSections.vue'
 import ReviewSections from '@/components/performance/ReviewSections.vue'
 import { openApiPdf } from '@/lib/exportDownload'
@@ -28,6 +29,8 @@ const router = useRouter()
 
 const loading = ref(false)
 const busy = ref(false)
+const pdfLoading = ref(false)
+const includeTrail = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const payload = ref<PerformanceFormPayload | null>(null)
@@ -89,7 +92,7 @@ const submissionCommentLabel = computed(() =>
   activePhase.value === 'ppa' ? 'Comments for Approval' : 'Comments for Submission',
 )
 
-const phaseTabs = computed(() => {
+const phaseTabs = computed<PortalPillNavItem[]>(() => {
   if (!payload.value || !isPersisted.value) {
     return []
   }
@@ -99,31 +102,37 @@ const phaseTabs = computed(() => {
     staffId: String(payload.value.entry.staff_id),
   }
 
-  return [
+  const tabs: PortalPillNavItem[] = [
     {
+      key: 'ppa',
       label: 'PPA',
-      value: 'ppa',
+      icon: 'fa-solid fa-flag',
       to: { name: 'performance-form', params: { ...baseParams, phase: 'ppa' as const } },
+      active: activePhase.value === 'ppa',
     },
-    ...(payload.value.midterm_exists || activePhase.value === 'midterm'
-      ? [
-          {
-            label: 'Midterm',
-            value: 'midterm',
-            to: { name: 'performance-form', params: { ...baseParams, phase: 'midterm' as const } },
-          },
-        ]
-      : []),
-    ...(payload.value.endterm_exists || activePhase.value === 'endterm'
-      ? [
-          {
-            label: 'Endterm',
-            value: 'endterm',
-            to: { name: 'performance-form', params: { ...baseParams, phase: 'endterm' as const } },
-          },
-        ]
-      : []),
   ]
+
+  if (payload.value.midterm_exists || activePhase.value === 'midterm') {
+    tabs.push({
+      key: 'midterm',
+      label: 'Midterm',
+      icon: 'fa-solid fa-chart-simple',
+      to: { name: 'performance-form', params: { ...baseParams, phase: 'midterm' as const } },
+      active: activePhase.value === 'midterm',
+    })
+  }
+
+  if (payload.value.endterm_exists || activePhase.value === 'endterm') {
+    tabs.push({
+      key: 'endterm',
+      label: 'Endterm',
+      icon: 'fa-solid fa-flag-checkered',
+      to: { name: 'performance-form', params: { ...baseParams, phase: 'endterm' as const } },
+      active: activePhase.value === 'endterm',
+    })
+  }
+
+  return tabs
 })
 
 const submissionComments = computed({
@@ -460,12 +469,17 @@ async function openPdf(): Promise<void> {
     return
   }
 
+  pdfLoading.value = true
+  error.value = null
   try {
-    await openApiPdf(`/api/v1/performance/entries/${payload.value.entry.entry_id}/print.pdf`, {
+    await openApiPdf(`/api/v1/performance/entries/${payload.value.entry.entry_id}/print`, {
       phase: activePhase.value,
+      with_trail: includeTrail.value ? 1 : 0,
     })
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not open PDF')
+  } finally {
+    pdfLoading.value = false
   }
 }
 
@@ -485,21 +499,11 @@ watch(
       lede="Performance planning and reviews in the SPA."
     >
       <template #tabs>
-        <v-tabs
+        <PortalPillSubnav
           v-if="phaseTabs.length"
-          :model-value="activePhase"
-          color="primary"
-          density="compact"
-        >
-          <v-tab
-            v-for="tab in phaseTabs"
-            :key="tab.value"
-            :value="tab.value"
-            :to="tab.to"
-          >
-            {{ tab.label }}
-          </v-tab>
-        </v-tabs>
+          :items="phaseTabs"
+          aria-label="Performance phases"
+        />
       </template>
 
       <template #actions>
@@ -507,17 +511,27 @@ watch(
           :to="{ path: '/performance', query: { tab: 'my', period: currentPeriod || undefined } }"
           style="text-decoration:none"
         >
-          <v-btn size="small" variant="outlined">Back to hub</v-btn>
+          <v-btn size="small" variant="outlined" class="perf-export-btn">Back to hub</v-btn>
         </RouterLink>
-        <v-btn
-          v-if="payload && !isCreate"
-          size="small"
-          variant="text"
-          class="ms-2"
-          @click="openPdf"
-        >
-          PDF
-        </v-btn>
+        <template v-if="payload && !isCreate">
+          <v-checkbox
+            v-model="includeTrail"
+            density="compact"
+            hide-details
+            class="ms-2 perf-trail-check"
+            label="Include approval trail"
+          />
+          <v-btn
+            size="small"
+            variant="outlined"
+            class="ms-2 perf-export-btn"
+            prepend-icon="mdi-file-pdf-box"
+            :loading="pdfLoading"
+            @click="openPdf"
+          >
+            PDF
+          </v-btn>
+        </template>
       </template>
     </PortalPageChrome>
 
@@ -544,58 +558,25 @@ watch(
         PPA must be approved before this review can be completed.
       </v-alert>
 
-      <v-row dense>
-        <v-col cols="12" lg="8">
-          <PpaSections
-            v-if="activePhase === 'ppa'"
+      <div class="perf-form-top mb-4">
+        <div class="perf-form-top__details">
+          <PerformanceStaffDetailsCard
             :form="form"
             :contract="payload.contract"
-            :skills="payload.catalogs.skills"
             :period-label="payload.period_label"
-            :period-end-year="payload.period_end_year"
-            :readonly="readonly"
+            :title="activePhase === 'ppa' ? 'A. Staff Details' : 'A. Personal Details'"
+            :initiation-label="activePhase === 'ppa' ? 'Initiation Date' : 'In this Position Since'"
+            :division-label="activePhase === 'ppa' ? 'Division/Directorate' : 'Directorate/Department'"
+            :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
           />
-
-          <ReviewSections
-            v-else-if="!showReviewGate"
-            :phase="activePhase"
-            :form="form"
-            :contract="payload.contract"
-            :skills="payload.catalogs.skills"
-            :competency-groups="payload.catalogs.competency_groups"
-            :competency-labels="payload.catalogs.competency_labels"
-            :period-label="payload.period_label"
-            :readonly="readonly"
-          />
-
-          <v-card
-            v-if="canSave"
-            variant="outlined"
-            class="mt-4"
-          >
-            <v-card-title class="text-h6">F. Staff Submission / Sign Off</v-card-title>
-            <v-card-text>
-              <v-textarea
-                v-model="submissionComments"
-                :label="submissionCommentLabel"
-                rows="3"
-                auto-grow
-                variant="outlined"
-              />
-            </v-card-text>
-            <v-card-actions class="px-4 pb-4">
-              <v-btn color="warning" :loading="busy" @click="saveDraftAction">Save Draft</v-btn>
-              <v-btn color="success" :loading="busy" @click="submitAction">Submit</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-col>
-
-        <v-col cols="12" lg="4">
-          <PerformanceWorkflowCard
+        </div>
+        <div class="perf-form-top__trail">
+          <PerformanceApprovalTrail
             :phase="activePhase"
             :submission-window="payload.submission_window"
             :state="payload.workflow.state"
             :timeline="payload.workflow.timeline"
+            :items="payload.workflow.trail"
             :can-approve="canApprove"
             :can-return="canReturn"
             :can-consent="canConsent"
@@ -610,13 +591,94 @@ watch(
             @return="returnAction"
             @consent="consentAction"
           />
+        </div>
+      </div>
 
-          <PerformanceApprovalTrail
-            class="mt-4"
-            :items="payload.workflow.trail"
+      <PpaSections
+        v-if="activePhase === 'ppa'"
+        :form="form"
+        :skills="payload.catalogs.skills"
+        :period-end-year="payload.period_end_year"
+        :readonly="readonly"
+      />
+
+      <ReviewSections
+        v-else-if="!showReviewGate"
+        :phase="activePhase"
+        :form="form"
+        :skills="payload.catalogs.skills"
+        :competency-groups="payload.catalogs.competency_groups"
+        :competency-labels="payload.catalogs.competency_labels"
+        :readonly="readonly"
+      />
+
+      <v-card
+        v-if="canSave"
+        variant="outlined"
+        class="mt-4"
+      >
+        <v-card-title class="text-h6">F. Staff Submission / Sign Off</v-card-title>
+        <v-card-text>
+          <v-textarea
+            v-model="submissionComments"
+            :label="submissionCommentLabel"
+            rows="3"
+            auto-grow
+            variant="outlined"
           />
-        </v-col>
-      </v-row>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-btn color="warning" :loading="busy" @click="saveDraftAction">Save Draft</v-btn>
+          <v-btn color="success" :loading="busy" @click="submitAction">Submit</v-btn>
+        </v-card-actions>
+      </v-card>
     </template>
   </div>
 </template>
+
+<style scoped>
+.perf-export-btn {
+  background: #ffffff !important;
+}
+
+.perf-trail-check {
+  margin: 0;
+  align-self: center;
+}
+
+.perf-trail-check :deep(.v-label) {
+  font-size: 0.8rem;
+  color: #3a4752;
+}
+
+.perf-form-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 1280px) {
+  /* Section A sets row height (+~25%); trail matches and scrolls overflow. */
+  .perf-form-top {
+    grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+    align-items: stretch;
+  }
+
+  .perf-form-top__details :deep(.perf-staff-details) {
+    min-height: 22.5rem;
+  }
+
+  .perf-form-top__trail {
+    height: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .perf-form-top__trail :deep(.perf-trail-card) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+  }
+}
+</style>

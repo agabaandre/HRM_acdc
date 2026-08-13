@@ -20,18 +20,26 @@ Route::middleware('web')->group(function () use ($spa): void {
 
     Route::get('login', LoginForm::class)->name('login')->middleware('guest');
 
-    Route::middleware('guest')->prefix('auth/microsoft')->group(function (): void {
+    // Do NOT wrap Microsoft OAuth in `guest`. A leftover web session would bounce
+    // authenticated users to the SPA home (no Sanctum token) → instant login flicker.
+    Route::prefix('auth/microsoft')->group(function (): void {
         Route::get('/', [MicrosoftAuthController::class, 'redirect'])->name('auth.microsoft.redirect');
         Route::get('callback', [MicrosoftAuthController::class, 'callback'])->name('auth.microsoft.callback');
     });
 
-    Route::post('logout', function () {
-        auth()->logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+    Route::match(['get', 'post'], 'logout', function () {
+        if (auth()->check()) {
+            auth()->logout();
+        }
+        if (request()->hasSession()) {
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+        }
 
-        return redirect()->route('login');
-    })->name('auth.logout')->middleware('auth');
+        $spa = rtrim((string) config('staff-portal.spa_url', '/staff/staff-portal/'), '/');
+
+        return redirect()->away($spa.'/login');
+    })->name('auth.logout');
 
     Route::get('sso/callback', [SsoController::class, 'acceptSsoRedirect'])->name('auth.sso.callback');
 

@@ -1,0 +1,330 @@
+/**
+ * Staff Portal shell overlay — Approach 1 (A–E polish).
+ * Loaded after helpdesk-lib cbp-finance-layout.css; does not fork shared CSS.
+ */
+
+:root,
+html.helpdesk-theme-light,
+html.helpdesk-theme-dark {
+  --portal-topbar-h: 60px;
+  --portal-nav-h: 60px;
+  --portal-chrome-top: calc(var(--portal-topbar-h) + var(--portal-nav-h));
+  --portal-content-pad-x: 1rem;
+  --portal-content-pad-y: 1.25rem;
+  --portal-focus-ring: 0 0 0 2px rgba(255, 255, 255, 0.55), 0 0 0 4px rgba(17, 154, 72, 0.65);
+}
+
+@media (min-width: 900px) {
+  :root,
+  html.helpdesk-theme-light,
+  html.helpdesk-theme-dark {
+    --portal-content-pad-x: 1.5rem;
+    --portal-content-pad-y: 1.5rem;
+  }
+}
+
+/* Sticky offset: keep page body clear of fixed topbar + nav */
+.cbp-page-wrapper {
+  margin-top: var(--portal-chrome-top);
+  padding-left: var(--portal-content-pad-x);
+  padding-right: var(--portal-content-pad-x);
+  padding-bottom: 1.5rem;
+}
+
+.cbp-page-content {
+  padding: var(--portal-content-pad-y) 0;
+}
+
+/* Primary nav: no wrap on desktop; overflow goes to More */
+@media (min-width: 1200px) {
+  .cbp-nav-links {
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .cbp-nav-link {
+    padding-inline: 0.75rem;
+  }
+}
+
+/* Touch / focus (ui-ux-pro-max) */
+.cbp-nav-link:focus-visible,
+.cbp-nav-dd-toggle:focus-visible,
+.cbp-nav-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--portal-focus-ring);
+  position: relative;
+  z-index: 1;
+}
+
+.cbp-nav-dd-item:focus-visible {
+  outline: 2px solid #119a48;
+  outline-offset: -2px;
+}
+
+@media (max-width: 1199px) {
+  .cbp-nav-link,
+  .cbp-nav-dd-toggle,
+  .cbp-nav-dd-item {
+    min-height: 44px;
+  }
+}
+
+/* Active tab: background only (no white bottom border / inset underline) */
+@media (min-width: 1200px) {
+  .cbp-nav-link.router-link-active,
+  .cbp-nav-dd-toggle.router-link-active {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 1199px) {
+  .cbp-nav-link.router-link-active {
+    box-shadow: inset 3px 0 0 #119a48;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cbp-nav-links,
+  .cbp-nav-link {
+    transition: none !important;
+  }
+}
+
+/* Content frame breathing room inside white/dark cards feel */
+.hd-content-frame__body {
+  min-width: 0;
+}
+
+/*
+ * Outlined Vuetify cards are transparent by default and blend into the
+ * page wash (#eef5f9). Force solid white cards + readable body text.
+ * Do NOT set VCard color="surface" — that paints text white on white.
+ */
+.v-application .v-card,
+.cbp-page-content .v-card,
+.v-application .v-sheet:not(.v-btn):not(.v-chip):not(.v-toolbar):not(.v-alert):not(.perf-kpi),
+.cbp-page-content .v-sheet:not(.v-btn):not(.v-chip):not(.v-toolbar):not(.v-alert):not(.perf-kpi) {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #3a4752 !important;
+}
+
+/* Colored analytics KPI sheets keep their gradient + light text */
+.v-application .v-sheet.perf-kpi,
+.cbp-page-content .v-sheet.perf-kpi {
+  background: var(--perf-kpi-bg, #119a48) !important;
+  color: #ffffff !important;
+}
+
+.v-application .v-card--variant-outlined,
+.cbp-page-content .v-card--variant-outlined {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  border-color: #dfe5ef !important;
+  color: #3a4752 !important;
+}
+
+.v-application .v-card .v-card-title,
+.v-application .v-card .v-card-text,
+.v-application .v-card .v-card-subtitle,
+.cbp-page-content .v-card .v-card-title,
+.cbp-page-content .v-card .v-card-text {
+  color: inherit;
+}
+
+html.helpdesk-theme-dark .v-application .v-card,
+html.helpdesk-theme-dark .cbp-page-content .v-card,
+.v-theme--dark .v-card {
+  background-color: #1e293b !important;
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* Filter / toolbar panels — same white card treatment as content cards */
+.cbp-page-content .portal-staff-filters,
+.cbp-page-content .portal-staff-filters.v-card,
+.cbp-page-content .portal-staff-filters.v-sheet {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  border: 1px solid #dfe5ef !important;
+  border-radius: 12px !important;
+  box-shadow:
+    rgba(145, 158, 171, 0.08) 0 8px 16px -4px,
+    rgba(145, 158, 171, 0.1) 0 0 2px 0 !important;
+  color: #3a4752 !important;
+}
+
+/*
+ * Tonal chips/alerts: high-contrast fills so status badges stay readable on white cards.
+ * Vuetify tonal + bright theme colors (mint/yellow) was nearly invisible.
+ */
+.v-theme--light .v-chip.v-chip--variant-tonal.text-warning,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-warning {
+  color: #92400e !important;
+  background-color: #fef3c7 !important;
+  caret-color: #92400e;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-success,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-success {
+  color: #065f2c !important;
+  background-color: #d1fae5 !important;
+  caret-color: #065f2c;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-error,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-error {
+  color: #9f1239 !important;
+  background-color: #ffe4e6 !important;
+  caret-color: #9f1239;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-primary,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-primary {
+  color: #065f2c !important;
+  background-color: #e8f6ee !important;
+  caret-color: #065f2c;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-info,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-info {
+  color: #075985 !important;
+  background-color: #e0f2fe !important;
+  caret-color: #075985;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-warning .v-chip__underlay,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-success .v-chip__underlay,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-error .v-chip__underlay,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-primary .v-chip__underlay,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-info .v-chip__underlay,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-warning .v-alert__underlay,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-success .v-alert__underlay,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-error .v-alert__underlay,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-primary .v-alert__underlay,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-info .v-alert__underlay {
+  opacity: 0 !important;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-warning,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-success,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-error,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-primary,
+.v-theme--light .v-chip.v-chip--variant-tonal.text-info {
+  --v-theme-overlay-multiplier: 0;
+  font-weight: 650;
+  border: 1px solid transparent;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal.text-warning {
+  border-color: rgba(180, 83, 9, 0.3);
+}
+.v-theme--light .v-chip.v-chip--variant-tonal.text-success {
+  border-color: rgba(6, 95, 44, 0.28);
+}
+.v-theme--light .v-chip.v-chip--variant-tonal.text-error {
+  border-color: rgba(159, 18, 57, 0.28);
+}
+.v-theme--light .v-chip.v-chip--variant-tonal.text-primary {
+  border-color: rgba(13, 122, 58, 0.28);
+}
+.v-theme--light .v-chip.v-chip--variant-tonal.text-info {
+  border-color: rgba(7, 89, 133, 0.28);
+}
+
+.v-theme--light .v-alert.v-alert--variant-tonal.text-warning .v-alert__content,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-warning .v-alert__content strong {
+  color: #78350f !important;
+  font-weight: 600;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-success .v-alert__content,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-success .v-alert__content strong {
+  color: #065f2c !important;
+  font-weight: 600;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-error .v-alert__content,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-error .v-alert__content strong {
+  color: #9f1239 !important;
+  font-weight: 600;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-primary .v-alert__content,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-primary .v-alert__content strong {
+  color: #065f2c !important;
+  font-weight: 600;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-info .v-alert__content,
+.v-theme--light .v-alert.v-alert--variant-tonal.text-info .v-alert__content strong {
+  color: #075985 !important;
+  font-weight: 600;
+}
+
+.v-theme--light .v-alert.v-alert--variant-tonal.text-warning .v-icon {
+  color: #b45309 !important;
+  opacity: 1 !important;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-success .v-icon {
+  color: #0d7a3a !important;
+  opacity: 1 !important;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-error .v-icon {
+  color: #e11d48 !important;
+  opacity: 1 !important;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-primary .v-icon {
+  color: #0d7a3a !important;
+  opacity: 1 !important;
+}
+.v-theme--light .v-alert.v-alert--variant-tonal.text-info .v-icon {
+  color: #0284c7 !important;
+  opacity: 1 !important;
+}
+
+/* Default / uncolored tonal chips (e.g. Renewed) */
+.v-theme--light .v-chip.v-chip--variant-tonal:not(.text-warning):not(.text-success):not(.text-error):not(.text-primary):not(.text-info):not(.text-secondary) {
+  color: #334155 !important;
+  background-color: #e2e8f0 !important;
+  border: 1px solid rgba(51, 65, 85, 0.22);
+  font-weight: 650;
+}
+
+.v-theme--light .v-chip.v-chip--variant-tonal:not(.text-warning):not(.text-success):not(.text-error):not(.text-primary):not(.text-info):not(.text-secondary) .v-chip__underlay {
+  opacity: 0 !important;
+}
+
+/*
+ * Content links: color affordance only (no underline), matching portal UI.
+ * Exclude buttons, nav chrome, and tabs.
+ */
+.cbp-page-content a:not(.v-btn):not(.v-tab):not(.cbp-nav-link):not(.cbp-nav-dd-item):not(.cbp-nav-dd-toggle),
+.v-application .cbp-page-content a:not(.v-btn):not(.v-tab):not(.cbp-nav-link):not(.cbp-nav-dd-item):not(.cbp-nav-dd-toggle) {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.cbp-page-content a:not(.v-btn):not(.v-tab):not(.cbp-nav-link):not(.cbp-nav-dd-item):not(.cbp-nav-dd-toggle):hover,
+.v-application .cbp-page-content a:not(.v-btn):not(.v-tab):not(.cbp-nav-link):not(.cbp-nav-dd-item):not(.cbp-nav-dd-toggle):hover {
+  color: rgb(var(--v-theme-primary-darken-1));
+  text-decoration: none;
+}
+
+/*
+ * VCardActions provides VBtn variant="text" by default, so color="primary"
+ * looks like bare green label. Force filled primary actions in card footers.
+ */
+.v-application .v-card-actions > .v-btn.v-btn--variant-text.text-primary,
+.cbp-page-content .v-card-actions > .v-btn.v-btn--variant-text.text-primary {
+  background-color: rgb(var(--v-theme-primary)) !important;
+  color: #fff !important;
+  padding-inline: 16px;
+  min-width: 64px;
+}
+
+.v-application .v-card-actions > .v-btn.v-btn--variant-flat.bg-primary,
+.v-application .v-card-actions > .v-btn.v-btn--variant-elevated.bg-primary,
+.cbp-page-content .v-card-actions > .v-btn.v-btn--variant-flat.bg-primary,
+.cbp-page-content .v-card-actions > .v-btn.v-btn--variant-elevated.bg-primary {
+  background-color: rgb(var(--v-theme-primary)) !important;
+  color: #fff !important;
+}

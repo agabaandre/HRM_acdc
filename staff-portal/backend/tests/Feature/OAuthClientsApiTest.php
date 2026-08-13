@@ -125,6 +125,52 @@ class OAuthClientsApiTest extends TestCase
         $this->assertNull(DB::table('oauth_clients')->where('id', $clientId)->value('secret'));
     }
 
+    public function test_update_replaces_name_and_multiple_redirect_uris(): void
+    {
+        $this->insertClient([
+            'id' => '66666666-6666-6666-6666-666666666666',
+            'name' => 'Legacy App',
+            'secret' => null,
+            'redirect_uris' => json_encode(['https://legacy.example.test/callback'], JSON_THROW_ON_ERROR),
+            'grant_types' => json_encode(['authorization_code', 'refresh_token'], JSON_THROW_ON_ERROR),
+            'revoked' => false,
+        ]);
+
+        $response = app(OAuthClientApiController::class)->update(
+            Request::create(
+                '/api/v1/auth/oauth-clients/66666666-6666-6666-6666-666666666666',
+                'PUT',
+                [
+                    'name' => 'Legacy App Updated',
+                    'redirect_uris' => [
+                        'https://legacy.example.test/oauth/callback',
+                        'https://legacy.example.test/oauth/complete',
+                        'http://localhost:5173/auth/callback',
+                    ],
+                ]
+            ),
+            '66666666-6666-6666-6666-666666666666',
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('Legacy App Updated', $payload['data']['name']);
+        $this->assertSame([
+            'https://legacy.example.test/oauth/callback',
+            'https://legacy.example.test/oauth/complete',
+            'http://localhost:5173/auth/callback',
+        ], $payload['data']['redirect_uris']);
+
+        $stored = json_decode(
+            (string) DB::table('oauth_clients')->where('id', '66666666-6666-6666-6666-666666666666')->value('redirect_uris'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        $this->assertSame($payload['data']['redirect_uris'], $stored);
+    }
+
     public function test_store_requires_permission_17(): void
     {
         session()->put('user.permissions', [15]);
@@ -193,12 +239,16 @@ class OAuthClientsApiTest extends TestCase
     {
         $listRoute = app('router')->getRoutes()->match(Request::create('/api/v1/auth/oauth-clients', 'GET'));
         $storeRoute = app('router')->getRoutes()->match(Request::create('/api/v1/auth/oauth-clients', 'POST'));
+        $updateRoute = app('router')->getRoutes()->match(
+            Request::create('/api/v1/auth/oauth-clients/11111111-1111-1111-1111-111111111111', 'PUT')
+        );
         $destroyRoute = app('router')->getRoutes()->match(
             Request::create('/api/v1/auth/oauth-clients/11111111-1111-1111-1111-111111111111', 'DELETE')
         );
 
         $this->assertSame('api/v1/auth/oauth-clients', $listRoute->uri());
         $this->assertSame('api/v1/auth/oauth-clients', $storeRoute->uri());
+        $this->assertSame('api/v1/auth/oauth-clients/{id}', $updateRoute->uri());
         $this->assertSame('api/v1/auth/oauth-clients/{id}', $destroyRoute->uri());
     }
 

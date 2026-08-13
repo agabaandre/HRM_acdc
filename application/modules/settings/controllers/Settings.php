@@ -451,30 +451,8 @@ public function sysvariables()
 
 public function ppa_variables()
 {
-    $data['title'] = "PPA Configuration";
-    $data['uptitle'] = "PPA Configuration";
-    $data['module'] = 'settings';
-    $data['view'] = "ppa_variables";
-
-    $postdata = $this->input->post();
-
-   
-    unset($postdata['africacdc_csrf_cookie'], $postdata['africacdc_csrf_token']);
-
-    $data['setting'] = $this->settings_mdl->get_ppa();
-
-    if ($this->input->post()) {
-        $res = $this->settings_mdl->update_ppa_variables($postdata);
-        if ($res) {
-            $msg = ['msg' => 'Successfully Saved', 'type' => 'success'];
-        } else {
-            $msg = ['msg' => 'Failed', 'type' => 'error'];
-        }
-        Modules::run('utility/setFlash', $msg);
-        redirect('settings/ppa_variables');
-    } else {
-        echo Modules::run('templates/main', $data);
-    }
+    // Migrated to staff-portal Performance settings (month windows + day overrides).
+    redirect(rtrim(base_url(), '/') . '/staff-portal/settings/performance');
 }
 
 /**
@@ -655,16 +633,11 @@ public function force_generate_short_names() {
 
 	public function cbp_modules()
 	{
-		$this->load->model('cbp_modules_mdl');
-		$data['module'] = $this->module;
-		$data['title'] = 'CBP modules';
-		$data['table_exists'] = $this->cbp_modules_mdl->table_exists();
-		$data['modules'] = $data['table_exists'] ? $this->cbp_modules_mdl->get_all_ordered() : [];
-		$data['next_sort_order'] = $data['table_exists'] ? $this->cbp_modules_mdl->next_sort_order() : 100;
-		$data['icon_options'] = $this->cbp_fa_icon_options();
-		$data['resolver_options'] = Cbp_modules_mdl::target_resolver_labels();
-		$data['next_permission_id_hint'] = $data['table_exists'] ? $this->cbp_modules_mdl->next_permission_id_hint() : 1;
-		render('cbp_modules', $data);
+		$spa = rtrim((string) (getenv('STAFF_PORTAL_SPA_URL') ?: ($_ENV['STAFF_PORTAL_SPA_URL'] ?? '')), '/');
+		if ($spa === '') {
+			$spa = rtrim(base_url(), '/') . '/staff-portal';
+		}
+		redirect($spa . '/settings/lookup/cbp_modules');
 	}
 
 	public function cbp_modules_save()
@@ -814,6 +787,10 @@ public function force_generate_short_names() {
 				'label' => 'Prune user_logs GET access rows',
 				'route' => 'jobs/jobs/prune_user_logs_get_access',
 			],
+			'sync_pra_workplan' => [
+				'label' => 'Sync PRA workplan',
+				'route' => 'jobs/jobs/sync_pra_workplan',
+			],
 		];
 	}
 
@@ -869,6 +846,10 @@ public function force_generate_short_names() {
 				'label' => 'Prune user_logs GET access',
 				'help' => 'Weekly (default Tuesday 00:00): deletes user_logs rows where http_method is GET. Keeps POST/structured audit rows. Disable in audit_log.php (prune_get_access_logs_enabled) to block deletes even if scheduled.',
 				'weekday_select' => true,
+			],
+			'sync_pra_workplan' => [
+				'label' => 'Sync PRA workplan',
+				'help' => 'Daily (default 00:05): pulls Africa CDC PRA public workplan (tier 3/4) into staff-portal workplan tables. Division codes map via division_short_name / PRA_WORKPLAN_DIVISION_ALIASES (e.g. MIS→DHIS).',
 			],
 		];
 		$data['instant_jobs'] = $this->staff_jobs_instant_definitions();

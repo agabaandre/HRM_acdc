@@ -37,9 +37,13 @@ if [[ -f apm/artisan ]]; then
 fi
 
 echo "==> Staff portal: clear caches"
-if [[ -f staff-portal/artisan ]]; then
+if [[ -f staff-portal/backend/artisan ]]; then
+  (cd staff-portal/backend && php artisan view:clear && php artisan cache:clear)
+elif [[ -f staff-portal/artisan ]]; then
   (cd staff-portal && php artisan view:clear && php artisan cache:clear)
 fi
+# Prefer full re-deploy when available:
+#   (cd staff-portal && ./setup-production.sh --skip-systemd)
 
 echo "==> Done. Deployed commit: $(git rev-parse --short HEAD)"
 echo "    Verify APM header:"

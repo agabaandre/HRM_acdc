@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Services\CsvExportService;
@@ -383,12 +384,16 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
         $period = (string) ($request->query('period') ?: $performance->currentPeriodSlug());
         $division = $request->filled('division_id') ? (int) $request->query('division_id') : null;
+        $funder = $request->filled('funder_id') ? (int) $request->query('funder_id') : null;
 
         return response()->json([
-            'data' => $analytics->dashboard($phase, $division, $period, $restrictStaff),
+            'data' => $analytics->dashboard($phase, $division, $period, $restrictStaff, $funder),
             'meta' => [
                 'periods' => $performance->periodOptions(),
                 'divisions' => DB::table('divisions')->orderBy('division_name')->get(['division_id', 'division_name']),
+                'funders' => Schema::hasTable('funders')
+                    ? DB::table('funders')->orderBy('funder')->get(['funder_id', 'funder'])
+                    : [],
             ],
         ]);
     }
@@ -404,21 +409,31 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
         $period = (string) ($request->query('period') ?: $performance->currentPeriodSlug());
         $division = $request->filled('division_id') ? (int) $request->query('division_id') : null;
-        $data = $analytics->dashboard($phase, $division, $period, $this->analyticsRestrictStaffId());
+        $funder = $request->filled('funder_id') ? (int) $request->query('funder_id') : null;
+        $data = $analytics->dashboard($phase, $division, $period, $this->analyticsRestrictStaffId(), $funder);
 
         $rows = [
             ['Phase', $data['phase_label']],
             ['Period', $data['period']],
             ['Total', $data['summary']['total']],
             ['Approved', $data['summary']['approved']],
-            ['Submitted', $data['summary']['submitted']],
+            ['Submitted / pending', $data['summary']['submitted']],
             ['Draft', $data['summary']['draft']],
             ['Without', $data['summary']['without']],
+            ['PDPs', $data['summary']['pdps'] ?? 0],
+            ['Require calibration', $data['summary']['require_calibration'] ?? 0],
+            ['Avg approval days', $data['avg_approval_days'] ?? 0],
+            ['Avg score', $data['avg_score'] ?? ''],
             [],
             ['Division', 'Count'],
         ];
         foreach ($data['by_division'] as $row) {
-            $rows[] = [$row->label ?? '', $row->value ?? 0];
+            $rows[] = [$row['name'] ?? ($row->name ?? ''), $row['y'] ?? ($row->y ?? 0)];
+        }
+        $rows[] = [];
+        $rows[] = ['Contract type', 'Count'];
+        foreach ($data['by_contract'] ?? [] as $row) {
+            $rows[] = [$row['name'] ?? '', $row['y'] ?? 0];
         }
 
         return $csv->stream('performance-'.$phase->value.'-dashboard.csv', $rows);
@@ -430,11 +445,14 @@ class PerformanceFormApiController extends Controller
         PpaFormService $forms,
         PdfService $pdf,
         PerformanceWorkflowService $workflow,
-        PerformanceService $performance
+        PerformanceApprovalService $approval,
+        PpaContractService $contracts,
+        SupervisorResolver $supervisors,
     ): Response {
         PortalPermission::authorize(74);
 
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
+        $withTrail = $request->boolean('with_trail');
         $actorStaffId = $this->actorStaffId();
         $entry = $forms->findEntry($entryId);
         if (! $entry) {
@@ -452,17 +470,96 @@ class PerformanceFormApiController extends Controller
         }
 
         $staff = DB::table('staff')->where('staff_id', $entry->staff_id)->first();
+        $contractId = (int) ($entry->staff_contract_id ?? 0);
+        $contract = $contractId > 0
+            ? ($contracts->forContract($contractId) ?? $contracts->forStaff((int) $entry->staff_id))
+            : $contracts->forStaff((int) $entry->staff_id);
+        if (! $contract) {
+            $contract = $contracts->emptyContractStub($contractId);
+            if ($staff) {
+                $contract->fname = $staff->fname ?? '';
+                $contract->lname = $staff->lname ?? '';
+                $contract->SAPNO = $staff->SAPNO ?? '';
+            }
+        }
+
+        $supervisor1Id = match ($phase) {
+            PerformancePhase::Midterm => (int) ($entry->midterm_supervisor_1 ?? $entry->supervisor_id ?? 0),
+            PerformancePhase::Endterm => (int) ($entry->endterm_supervisor_1 ?? $entry->supervisor_id ?? 0),
+            default => (int) ($entry->supervisor_id ?? $contract->first_supervisor ?? 0),
+        };
+        $supervisor2Id = match ($phase) {
+            PerformancePhase::Midterm => (int) ($entry->midterm_supervisor_2 ?? $entry->supervisor2_id ?? 0),
+            PerformancePhase::Endterm => (int) ($entry->endterm_supervisor_2 ?? $entry->supervisor2_id ?? 0),
+            default => (int) ($entry->supervisor2_id ?? $contract->second_supervisor ?? 0),
+        };
+
+        $skillsMap = [];
+        foreach ($forms->trainingSkills() as $skill) {
+            $skillsMap[(int) ($skill->id ?? 0)] = (string) ($skill->skill ?? '');
+        }
+        $selectedSkills = json_decode((string) ($entry->required_skills ?? '[]'), true);
+        if (! is_array($selectedSkills)) {
+            $selectedSkills = [];
+        }
+        $skillsLabel = implode(', ', array_values(array_filter(array_map(
+            fn ($id) => $skillsMap[(int) $id] ?? '',
+            $selectedSkills,
+        ))));
+
+        $draftCol = $phase->draftStatusColumn();
+        $draftStatus = (int) ($entry->{$draftCol} ?? 1);
+        $watermark = null;
+        if ($draftStatus !== 2) {
+            $watermark = $draftStatus === 1 ? 'DRAFT' : 'PENDING APPROVAL';
+        }
+
+        $logoCandidates = [
+            base_path('../../assets/images/AU_CDC_Logo-800.png'),
+            base_path('../assets/images/AU_CDC_Logo-800.png'),
+            public_path('images/AU_CDC_Logo-800.png'),
+        ];
+        $logoSrc = null;
+        foreach ($logoCandidates as $path) {
+            if (is_string($path) && is_file($path)) {
+                $logoSrc = $path;
+                break;
+            }
+        }
+
         $html = view('performance::pdf.entry', [
             'entry' => $entry,
             'staff' => $staff,
+            'contract' => $contract,
             'phase' => $phase,
             'objectives' => $objectives,
+            'withTrail' => $withTrail,
+            'trail' => $withTrail ? $approval->trail($entryId, $phase)->reverse()->values() : collect(),
+            'supervisor1Name' => $supervisors->staffName($supervisor1Id ?: null),
+            'supervisor2Name' => $supervisors->staffName($supervisor2Id ?: null),
+            'skillsLabel' => $skillsLabel,
+            'logoSrc' => $logoSrc,
             'generatedAt' => now()->toDateTimeString(),
         ])->render();
 
-        return $pdf->inline($html, 'performance-'.$phase->value.'-'.$entryId.'.pdf', [
-            'title' => $phase->label().' — '.$entry->performance_period,
-            'landscape' => true,
+        $fileLabel = match ($phase) {
+            PerformancePhase::Midterm => 'Midterm',
+            PerformancePhase::Endterm => 'Endterm',
+            default => 'PPA',
+        };
+
+        $documentUrl = url('/api/v1/performance/entries/'.$entryId.'/print.pdf')
+            .'?phase='.urlencode($phase->value)
+            .($withTrail ? '&with_trail=1' : '');
+
+        return $pdf->inline($html, $fileLabel.'-'.$entryId.($withTrail ? '-trail' : '').'.pdf', [
+            'title' => $fileLabel.' — '.$entry->performance_period,
+            'landscape' => false,
+            // Body template already has the CI3 logo/tagline header — skip PdfService header to avoid duplication.
+            'header' => false,
+            'document_url' => $documentUrl,
+            'generated_by' => (string) (session('user.name') ?? ''),
+            'watermark_text' => $watermark ?? '',
         ]);
     }
 

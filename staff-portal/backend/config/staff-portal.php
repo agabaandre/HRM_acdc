@@ -53,4 +53,13 @@ return [
         'batches_table' => env('DB_QUEUE_BATCHES_TABLE', 'sp_job_batches'),
         'failed_table' => env('DB_QUEUE_FAILED_TABLE', 'sp_failed_jobs'),
     ],
+
+    /*
+    | Reference / dropdown cache (Redis via CACHE_STORE) — same idea as helpdesk
+    | HELPDESK_REFERENCE_CACHE_TTL + TicketReadCache.
+    */
+    'reference_data_cache_ttl' => (int) env('STAFF_PORTAL_REFERENCE_CACHE_TTL', 300),
+    'read_cache_enabled' => filter_var(env('STAFF_PORTAL_READ_CACHE_ENABLED', true), FILTER_VALIDATE_BOOL),
+    'read_cache_ttl' => (int) env('STAFF_PORTAL_READ_CACHE_TTL', 60),
+    'read_cache_store' => env('STAFF_PORTAL_READ_CACHE_STORE'),
 ];

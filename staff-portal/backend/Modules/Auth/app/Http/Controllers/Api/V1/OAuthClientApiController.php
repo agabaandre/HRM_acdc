@@ -65,6 +65,37 @@ class OAuthClientApiController extends Controller
         ], 201);
     }
 
+    public function update(Request $request, string $id): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        $client = $this->clients->findActive($id);
+        abort_if(! $client, 404, 'OAuth client not found.');
+        abort_if($this->isPersonalAccessClient($client), 404, 'OAuth client not found.');
+
+        $payload = [
+            'name' => trim((string) $request->input('name', $client->name)),
+            'redirect_uris' => $this->normalizeRedirectUris(
+                $request->input('redirect_uris', $request->input('redirect', $client->redirect_uris)),
+            ),
+        ];
+
+        Validator::make($payload, [
+            'name' => ['required', 'string', 'max:255'],
+            'redirect_uris' => ['required', 'array', 'min:1'],
+            'redirect_uris.*' => ['required', 'url', 'max:2048'],
+        ])->validate();
+
+        $this->clients->update($client, $payload['name'], $payload['redirect_uris']);
+
+        $fresh = $this->clients->findActive($id) ?? $client->fresh();
+
+        return response()->json([
+            'message' => 'OAuth client updated.',
+            'data' => $this->serializeClient($fresh),
+        ]);
+    }
+
     public function destroy(string $id): JsonResponse
     {
         PortalPermission::authorize(17);
@@ -117,7 +148,9 @@ class OAuthClientApiController extends Controller
         return [
             'id' => $client->getKey(),
             'name' => $client->name,
-            'redirect_uris' => $client->redirect_uris,
+            'redirect_uris' => array_values(array_filter(
+                array_map('strval', is_array($client->redirect_uris) ? $client->redirect_uris : []),
+            )),
             'grant_types' => $client->grant_types,
             'public' => ! $client->confidential(),
             'created_at' => $client->created_at?->toJSON(),

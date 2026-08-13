@@ -8,54 +8,146 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Audit\Services\AuditLogRevertService;
+use Modules\Auth\Services\AuthUserAdminService;
+use Modules\Auth\Services\PortalImpersonationService;
 use Modules\Core\Support\PortalPermission;
-use Modules\Core\Support\PortalTable;
 
 class AuthAdminApiController extends Controller
 {
-    public function users(Request $request): JsonResponse
+    public function users(Request $request, AuthUserAdminService $users): JsonResponse
     {
         PortalPermission::authorize(17);
 
-        $q = DB::table('user as u')
-            ->leftJoin('staff as s', 's.staff_id', '=', 'u.auth_staff_id')
-            ->leftJoin('user_groups as ug', 'ug.id', '=', 'u.role')
-            ->select(
-                'u.user_id',
-                'u.name',
-                'u.status',
-                'u.role',
-                'u.auth_staff_id',
-                'ug.group_name',
-                's.work_email',
-                DB::raw("TRIM(CONCAT(COALESCE(s.fname,''), ' ', COALESCE(s.lname,''))) as staff_name")
-            )
-            ->orderBy('u.name');
+        return response()->json($users->paginate([
+            'q' => $request->query('q'),
+            'group_id' => $request->query('group_id'),
+            'status' => $request->query('status'),
+            'page' => $request->query('page', 1),
+            'per_page' => $request->query('per_page', 20),
+        ]));
+    }
 
-        if ($request->filled('q')) {
-            $term = '%'.$request->query('q').'%';
-            $q->where(function ($w) use ($term): void {
-                $w->where('u.name', 'like', $term)
-                    ->orWhere('s.work_email', 'like', $term)
-                    ->orWhere('s.fname', 'like', $term)
-                    ->orWhere('s.lname', 'like', $term);
-            });
+    public function userGroups(AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        return response()->json(['data' => $users->groups()]);
+    }
+
+    public function updateUser(int $id, Request $request, AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        $payload = $request->validate([
+            'name' => ['sometimes', 'string', 'max:50'],
+            'role' => ['sometimes', 'integer', 'min:1', 'exists:user_groups,id'],
+            'status' => ['sometimes', 'integer', 'in:0,1'],
+            'allow_email_login' => ['sometimes', 'integer', 'in:0,1'],
+        ]);
+
+        try {
+            $row = $users->update($id, $payload);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $paginator = PortalTable::paginateDistinct(
-            $q,
-            'u.user_id',
-            min(100, max(10, (int) $request->query('per_page', 20))),
-            max(1, (int) $request->query('page', 1))
-        );
+        return response()->json(['data' => $row, 'message' => 'User updated.']);
+    }
+
+    public function blockUser(int $id, AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        try {
+            $message = $users->block($id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
+    public function unblockUser(int $id, AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        try {
+            $message = $users->unblock($id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
+    public function resetPassword(int $id, AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        try {
+            $message = $users->resetPassword($id);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
+    public function setAllowEmailLogin(int $id, Request $request, AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        $validated = $request->validate([
+            'allow_email_login' => ['required', 'integer', 'in:0,1'],
+        ]);
+
+        try {
+            $message = $users->setAllowEmailLogin($id, (int) $validated['allow_email_login'] === 1);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => $message]);
+    }
+
+    public function bulkCreateUsers(AuthUserAdminService $users): JsonResponse
+    {
+        PortalPermission::authorize(17);
+        $result = $users->bulkCreate();
+
+        return response()->json($result);
+    }
+
+    public function impersonate(int $id, PortalImpersonationService $impersonation): JsonResponse
+    {
+        PortalPermission::authorize(17);
+
+        try {
+            $payload = $impersonation->impersonate($id);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json([
-            'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'total' => $paginator->total(),
-            ],
+            'message' => 'You are now impersonating '.$payload['user']['name'].'.',
+            ...$payload,
+        ]);
+    }
+
+    public function revertImpersonation(PortalImpersonationService $impersonation): JsonResponse
+    {
+        // Allowed while impersonating even if the target lacks permission 17.
+        try {
+            $payload = $impersonation->revert();
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'You have returned to your admin session.',
+            ...$payload,
         ]);
     }
 

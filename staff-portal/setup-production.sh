@@ -1,0 +1,305 @@
+#!/usr/bin/env bash
+#
+# Staff Portal — single production deploy script (beside Staff at /staff/staff-portal/).
+#
+# First time on a server:
+#   cp setup.env.example setup.env
+#   nano setup.env          # production URLs, MySQL, JWT_SECRET (or leave blank to inherit from ../.env)
+#   ./setup-production.sh
+#
+# Re-deploy after git pull:
+#   ./setup-production.sh
+#
+# Options:
+#   --skip-migrate    Skip php artisan migrate / module:migrate
+#   --skip-build      Skip npm run build
+#   --skip-systemd    Skip systemd install/restart
+#   --skip-optimize   Skip config/route/view cache
+#   --with-demo-seed  Run DatabaseSeeder (NOT for production)
+#   -h, --help        Show help
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+# shellcheck source=scripts/lib/paths.sh
+source "$ROOT/scripts/lib/paths.sh"
+staff_paths_resolve_from_module "$ROOT"
+
+SETUP_ENV="${STAFF_PORTAL_SETUP_ENV:-$ROOT/setup.env}"
+BACKEND="$ROOT/backend"
+FRONTEND="$ROOT/frontend"
+
+SKIP_MIGRATE=0
+SKIP_BUILD=0
+SKIP_SYSTEMD=0
+SKIP_OPTIMIZE=0
+WITH_DEMO_SEED=0
+
+usage() {
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-migrate) SKIP_MIGRATE=1 ;;
+        --skip-build) SKIP_BUILD=1 ;;
+        --skip-systemd) SKIP_SYSTEMD=1 ;;
+        --skip-optimize) SKIP_OPTIMIZE=1 ;;
+        --with-demo-seed) WITH_DEMO_SEED=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+    esac
+    shift
+done
+
+# shellcheck source=scripts/lib/dotenv.sh
+source "$ROOT/scripts/lib/dotenv.sh"
+
+log() { printf '==> %s\n' "$*"; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+if [[ ! -f "$SETUP_ENV" ]]; then
+    if [[ -f "$ROOT/setup.env.example" ]]; then
+        cp "$ROOT/setup.env.example" "$SETUP_ENV"
+        die "Created $SETUP_ENV — set production URLs, DB_* and JWT_SECRET, then re-run: ./setup-production.sh"
+    fi
+    die "Missing $SETUP_ENV — copy setup.env.example and configure it first."
+fi
+
+export STAFF_PORTAL_SETUP_ENV="$SETUP_ENV"
+dotenv_load_file "$SETUP_ENV"
+
+if [[ -n "${PHP_BIN:-}" && ! -x "$PHP_BIN" ]]; then
+    PHP_BIN="$(command -v php 2>/dev/null || true)"
+fi
+
+APP_ENV=production
+APP_DEBUG=false
+export STAFF_PORTAL_PRODUCTION_SETUP=1
+
+INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-auto}"
+STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
+STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-www-data}"
+PHP_BIN="${PHP_BIN:-/usr/bin/php}"
+VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-/staff/staff-portal/backend}"
+VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-/staff/staff-portal/}"
+
+if [[ ! -x "$PHP_BIN" ]]; then
+    PHP_BIN="$(command -v php || true)"
+fi
+[[ -n "$PHP_BIN" ]] || die "PHP not found — set PHP_BIN in setup.env"
+
+command -v composer >/dev/null 2>&1 || die "composer not found on PATH"
+command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
+
+# Composer disables plugins as root unless allowed — breaks Modules\* autoload (merge-plugin).
+if [[ "$(id -u)" -eq 0 ]]; then
+    export COMPOSER_ALLOW_SUPERUSER=1
+    warn "running as root — COMPOSER_ALLOW_SUPERUSER=1 so module autoload plugins stay enabled"
+fi
+
+chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/dev/null || true
+chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
+
+export APP_ENV APP_DEBUG STAFF_PORTAL_PRODUCTION_SETUP
+
+log "Configuring backend .env from setup.env (production URLs auto-resolved when localhost)"
+"$ROOT/scripts/configure-env.sh"
+
+BACKEND_ENV="$BACKEND/.env"
+
+jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
+if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
+    die "JWT_SECRET is not set. Add it to setup.env or ensure $STAFF_ROOT/.env has JWT_SECRET (must match APM/Helpdesk)."
+fi
+
+if [[ "${DB_CONNECTION:-mysql}" == "mysql" ]]; then
+    for key in DB_HOST DB_DATABASE DB_USERNAME; do
+        val="$(dotenv_get "$BACKEND_ENV" "$key" 2>/dev/null || true)"
+        [[ -n "$val" ]] || die "MySQL $key is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_HOST / DB_USER"
+    done
+    db_pass="$(dotenv_get "$BACKEND_ENV" DB_PASSWORD 2>/dev/null || true)"
+    if [[ -z "$db_pass" ]]; then
+        die "MySQL DB_PASSWORD is not set — set it in setup.env or ensure $STAFF_ROOT/.env has DB_PASS"
+    fi
+fi
+
+log "Installing PHP dependencies (production)"
+(
+    cd "$BACKEND"
+    composer install --no-dev --optimize-autoloader --no-interaction
+    composer dump-autoload -o --no-interaction
+)
+
+if ! (
+    cd "$BACKEND"
+    php -r 'require "vendor/autoload.php"; exit(class_exists("Modules\\AdManager\\Providers\\AdManagerServiceProvider") ? 0 : 1);'
+); then
+    die "Modules autoload missing (merge-plugin). Re-run as non-root, or: cd backend && COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload -o"
+fi
+
+if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
+    log "Generating Laravel APP_KEY"
+    (cd "$BACKEND" && "$PHP_BIN" artisan key:generate --no-interaction)
+fi
+if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
+    log "Running database migrations"
+    (cd "$BACKEND" && "$PHP_BIN" artisan migrate --force --no-interaction)
+    log "Running module migrations"
+    (cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force --no-interaction) || \
+      (cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force)
+else
+    log "Skipping migrations (--skip-migrate)"
+fi
+
+log "Storage link"
+(cd "$BACKEND" && "$PHP_BIN" artisan storage:link --no-interaction 2>/dev/null || true)
+
+if [[ "$WITH_DEMO_SEED" -eq 1 ]]; then
+    warn "Running DatabaseSeeder (demo data — not for production)"
+    (cd "$BACKEND" && "$PHP_BIN" artisan db:seed --force --no-interaction)
+fi
+
+if [[ "$SKIP_BUILD" -eq 0 ]]; then
+    log "Building frontend (Vite production)"
+    PROD_ENV="$FRONTEND/.env.production.local"
+    VITE_ENV_PREEXISTED=0
+    [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
+    dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_API_BASE_URL \
+        "$VITE_STAFF_PORTAL_API_BASE_URL" "$VITE_ENV_PREEXISTED"
+    dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH \
+        "$VITE_STAFF_PORTAL_BASE_PATH" "$VITE_ENV_PREEXISTED"
+    if [[ -d "$FRONTEND/dist-build" ]] && ! [[ -w "$FRONTEND/dist-build" ]]; then
+        warn "frontend/dist-build is not writable — fixing ownership for $(id -un)"
+        if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist-build" 2>/dev/null; then
+            :
+        elif command -v sudo >/dev/null 2>&1 && sudo chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist-build"; then
+            :
+        else
+            die "Cannot write to $FRONTEND/dist-build — run: sudo chown -R \$(whoami) $FRONTEND/dist-build"
+        fi
+    fi
+    (
+        cd "$FRONTEND"
+        if [[ -f package-lock.json ]]; then
+            if ! npm ci --cache ./.npm-cache --legacy-peer-deps; then
+                warn "npm ci failed (stale lock?) — running npm install --legacy-peer-deps"
+                npm install --cache ./.npm-cache --legacy-peer-deps
+            fi
+        else
+            npm install --cache ./.npm-cache --legacy-peer-deps
+        fi
+        npm run build
+    )
+    [[ -f "$FRONTEND/dist-build/index.html" ]] || die "Frontend build failed — missing frontend/dist-build/index.html"
+else
+    log "Skipping frontend build (--skip-build)"
+fi
+
+if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
+    log "Caching Laravel config / routes / views"
+    (
+        cd "$BACKEND"
+        "$PHP_BIN" artisan config:clear --no-interaction
+        "$PHP_BIN" artisan config:cache --no-interaction
+        "$PHP_BIN" artisan route:cache --no-interaction
+        "$PHP_BIN" artisan view:cache --no-interaction
+    )
+fi
+
+# Resolve web-server ownership (Linux www-data vs macOS Homebrew _www).
+group_exists() {
+    getent group "$1" >/dev/null 2>&1 || id -g "$1" >/dev/null 2>&1
+}
+if ! id -u "$STAFF_PORTAL_USER" >/dev/null 2>&1; then
+    if id -u _www >/dev/null 2>&1; then
+        STAFF_PORTAL_USER="_www"
+    else
+        STAFF_PORTAL_USER="$(id -un)"
+    fi
+fi
+if ! group_exists "$STAFF_PORTAL_GROUP"; then
+    if group_exists _www; then
+        STAFF_PORTAL_GROUP="_www"
+    else
+        STAFF_PORTAL_GROUP="$(id -gn)"
+    fi
+fi
+
+log "Fixing storage permissions ($STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP)"
+fix_perms() {
+    local target="$1"
+    mkdir -p "$target"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        chown -R "$STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP" "$target" || warn "chown failed for $target"
+        chmod -R ug+rwx "$target" || warn "chmod failed for $target"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo chown -R "$STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP" "$target" || warn "chown failed for $target"
+        sudo chmod -R ug+rwx "$target" || warn "chmod failed for $target"
+    else
+        warn "Not root and no sudo — ensure $target is writable by the web server user"
+        chmod -R ug+rwx "$target" 2>/dev/null || true
+    fi
+}
+fix_perms "$BACKEND/storage"
+fix_perms "$BACKEND/bootstrap/cache"
+
+if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
+    log "Installing / restarting systemd (queue + scheduler)"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed — run: sudo $ROOT/scripts/install-systemd.sh"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo STAFF_PORTAL_SETUP_ENV="$SETUP_ENV" "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed"
+    else
+        warn "Skipping systemd (no root/sudo). Run queue manually: cd backend && php artisan queue:work database"
+    fi
+else
+    log "Skipping systemd (--skip-systemd)"
+fi
+
+log "Shared file storage (CI3 + APM → host path outside git)"
+chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
+# Production defaults to migrate when unset; set MIGRATE_SHARED_STORAGE=false to skip.
+export MIGRATE_SHARED_STORAGE="${MIGRATE_SHARED_STORAGE:-true}"
+"$ROOT/scripts/migrate-shared-storage.sh" || warn "Shared storage migration skipped or failed — see docs/STORAGE.md"
+
+dotenv_load_file "$BACKEND_ENV"
+HEALTH_PATH="${STAFF_PORTAL_HEALTH_URL:-}"
+if [[ -z "$HEALTH_PATH" ]]; then
+  HEALTH_PATH="$(dotenv_get "$BACKEND_ENV" APP_URL 2>/dev/null || true)/up"
+fi
+SPA_URL="$(dotenv_get "$BACKEND_ENV" STAFF_PORTAL_SPA_URL 2>/dev/null || true)"
+[[ -z "$SPA_URL" ]] && SPA_URL="${STAFF_PORTAL_SPA_URL:-}"
+
+log "Smoke tests"
+if [[ -n "$HEALTH_PATH" ]]; then
+    if curl -fsS --max-time 15 "$HEALTH_PATH" >/dev/null 2>&1; then
+        printf '    API health OK: %s\n' "$HEALTH_PATH"
+    else
+        warn "API health check failed: $HEALTH_PATH (Apache may need a reload, or URL is only reachable externally)"
+    fi
+fi
+if [[ -n "$SPA_URL" ]]; then
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${SPA_URL%/}/" 2>/dev/null || echo '000')"
+    if [[ "$code" == "200" ]]; then
+        printf '    SPA OK: %s/\n' "${SPA_URL%/}"
+    else
+        warn "SPA returned HTTP $code for ${SPA_URL%/}/ — confirm Apache serves staff-portal/.htaccess"
+    fi
+fi
+
+echo ""
+echo "Staff Portal production setup complete."
+echo "  SPA:     ${SPA_URL:-/staff/staff-portal/}"
+echo "  API:     ${APP_URL:-}/up"
+echo ""
+echo "Post-deploy:"
+echo "  1. systemctl status staff-portal-queue.service staff-portal-scheduler.timer"
+echo "  2. Confirm SPA login + Microsoft SSO (STAFF_PORTAL_SPA_ENABLED=true)"
+echo "  3. JWT_SECRET must match APM / Helpdesk / Staff CI"
+echo ""
+echo "Re-deploy after git pull:  ./setup-production.sh"
+echo "Skip slow steps:           ./setup-production.sh --skip-build"

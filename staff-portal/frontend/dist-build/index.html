@@ -4,20 +4,41 @@
     <meta charset="UTF-8" />
     <link id="app-favicon" rel="icon" type="image/png" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Icon fonts: deferred so they never block first paint / login. -->
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
+    </noscript>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
     />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
+    />
+    <!-- Highcharts + Mermaid are lazy-loaded only on pages that need them. -->
     <title>Africa CDC · Staff Portal</title>
     <style>
       #portal-boot-loader {
@@ -45,12 +66,12 @@
       }
       @keyframes sp-spin { to { transform: rotate(360deg); } }
     </style>
-    <script type="module" crossorigin src="/staff/staff-portal/assets/index-DYilDA9x.js"></script>
+    <script type="module" crossorigin src="/staff/staff-portal/assets/index-BOt_Lv3W.js"></script>
     <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/http-WsEjtSl1.js">
-    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vue-vendor-BpuYrlBM.js">
-    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vuetify-b4bvVaWZ.js">
-    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/vuetify-Dcftei5X.css">
-    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/index-Ce8dib5c.css">
+    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vue-vendor-BNc23Cq9.js">
+    <link rel="modulepreload" crossorigin href="/staff/staff-portal/assets/vuetify-b-fmjLSx.js">
+    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/vuetify-BiSxbhaU.css">
+    <link rel="stylesheet" crossorigin href="/staff/staff-portal/assets/index-qcX6zYsv.css">
   </head>
   <body>
     <div id="portal-boot-loader" aria-live="polite" role="status">

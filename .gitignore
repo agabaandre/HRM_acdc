@@ -11,6 +11,7 @@ application/cache/*
 !application/logs/.htaccess
 /vendor/
 node_modules
+.superpowers
 /Afcdc theme/
 
 # Exclude uploads from Git (use STAFF_DATA_ROOT in production — see docs/STORAGE.md)

@@ -1,8 +1,17 @@
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
     RewriteEngine On
 
-    # Laravel API + web auth (Microsoft SSO, spa-bridge, legacy Livewire)
-    RewriteRule ^public(/|$) - [L]
+    # Legacy Laravel public/ URLs → backend/ (Helpdesk-style, no /public in path)
+    # e.g. /staff/staff-portal/public/auth/microsoft → /staff/staff-portal/backend/auth/microsoft
+    RewriteRule ^public/(.*)$ backend/$1 [R=301,L]
+    RewriteRule ^public$ backend/ [R=301,L]
+
+    # Laravel API + web auth (Microsoft SSO, spa-bridge, Livewire)
+    RewriteRule ^backend(/|$) - [L]
 
     # Real files at staff-portal root (README, etc.)
     RewriteCond %{REQUEST_FILENAME} -f
@@ -16,3 +25,5 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>
+
+ServerSignature Off

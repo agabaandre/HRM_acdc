@@ -210,7 +210,7 @@ final class StaffStorage
             ],
             [
                 'module' => self::MODULE_STAFF_PORTAL,
-                'source' => $repoRoot.DIRECTORY_SEPARATOR.'staff-portal'.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+                'source' => $repoRoot.DIRECTORY_SEPARATOR.'staff-portal'.DIRECTORY_SEPARATOR.'backend'.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
                 'destination' => self::hostDataRoot().DIRECTORY_SEPARATOR.self::MODULE_STAFF_PORTAL,
             ],
         ];
@@ -224,7 +224,7 @@ final class StaffStorage
             self::MODULE_CI => $repoRoot.DIRECTORY_SEPARATOR.'uploads',
             self::MODULE_APM => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'apm').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
             self::MODULE_HELPDESK => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'helpdesk'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
-            self::MODULE_STAFF_PORTAL => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'staff-portal').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+            self::MODULE_STAFF_PORTAL => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'staff-portal'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
             default => $repoRoot.DIRECTORY_SEPARATOR.'uploads',
         };
     }

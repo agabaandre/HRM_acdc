@@ -1,12 +1,16 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import vuetify from '@cbp/helpdesk-lib/plugins/vuetify'
+import vuetify from './plugins/vuetify'
 import { registerUiComponents } from '@cbp/ui/register'
 import '@cbp/helpdesk-lib/styles/app-preloader.css'
 import '@cbp/helpdesk-lib/styles/vuetify-overrides.css'
 import '@cbp/helpdesk-lib/styles/helpdesk-forms.css'
 import '@cbp/helpdesk-lib/style.css'
 import '@cbp/helpdesk-lib/styles/cbp-finance-layout.css'
+import './styles/portal-shell.css'
+import './styles/portal-fields.css'
+import './styles/portal-datatable.css'
+import './styles/toast.css'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
@@ -28,11 +32,16 @@ async function bootstrap() {
 
   const auth = useAuthStore(pinia)
 
-  if (getStoredToken() && !auth.me) {
-    try {
-      await auth.fetchMe()
-    } catch {
-      auth.invalidateSession()
+  // Never block first paint on /me. Session cache hydrates instantly; otherwise
+  // start the request and let the router guard await the shared in-flight promise.
+  // Do not invalidate the session on background failure — the router handles 401s.
+  if (getStoredToken()) {
+    if (auth.me) {
+      auth.refreshMeInBackground()
+    } else {
+      void auth.fetchMe().catch(() => {
+        /* router guard / API interceptor clear invalid sessions */
+      })
     }
   }
 

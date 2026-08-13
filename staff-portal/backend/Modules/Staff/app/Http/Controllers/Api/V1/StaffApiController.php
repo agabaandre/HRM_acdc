@@ -3,11 +3,20 @@
 namespace Modules\Staff\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\PortalReadCache;
+use App\Support\PortalReferenceCache;
+use App\Support\StaffContractFile;
+use App\Support\StaffPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Modules\Auth\Models\PortalUser;
+use Modules\Core\Services\PdfService;
+use Modules\Staff\Services\StaffAuditTrailService;
 use Modules\Staff\Services\StaffContractService;
 use Modules\Staff\Services\StaffCreateService;
 use Modules\Staff\Services\StaffDirectoryService;
@@ -33,7 +42,12 @@ class StaffApiController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $created = $creator->create($this->validatedStorePayload($request));
+        $created = $creator->create(
+            $this->validatedStorePayload($request),
+            $this->optionalContractPdf($request)
+        );
+        PortalReferenceCache::bustFormLookups();
+        PortalReadCache::bust('staff');
 
         return response()->json([
             'data' => $created,
@@ -61,21 +75,56 @@ class StaffApiController extends Controller
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(100, max(10, (int) $request->query('per_page', 20)));
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
+        $filters = $directory->normalizeFilters($this->staffFilterInput($request));
 
-        $paginator = $directory->paginate($search, $statusId, $page, $perPage, $category);
-
-        return response()->json([
-            'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'filter_counts' => $directory->filterCounts($search, $category),
-                'preset' => $preset,
-                'category' => $category,
-            ],
+        $user = auth()->user();
+        $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
+        $cacheKey = PortalReadCache::key('staff', 'directory', $userId, [
+            'preset' => $preset,
+            'q' => $search,
+            'page' => $page,
+            'per_page' => $perPage,
+            'category' => $category,
+            'filters' => $filters,
         ]);
+
+        $payload = PortalReadCache::remember($cacheKey, function () use (
+            $directory,
+            $search,
+            $statusId,
+            $page,
+            $perPage,
+            $category,
+            $preset,
+            $filters,
+        ): array {
+            $paginator = $directory->paginate($search, $statusId, $page, $perPage, $category, $filters);
+
+            return [
+                'data' => $paginator->items(),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'filter_counts' => $directory->filterCounts($search, $category, $filters),
+                    'preset' => $preset,
+                    'category' => $category,
+                    'filters' => $filters,
+                ],
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    public function filterOptions(StaffDirectoryService $directory): JsonResponse
+    {
+        if (! StaffAccess::canViewDirectory()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        return response()->json(['data' => $directory->filterOptions()]);
     }
 
     public function show(int $staff, StaffProfileService $profiles): JsonResponse
@@ -89,13 +138,99 @@ class StaffApiController extends Controller
             return response()->json(['message' => 'Staff not found.'], 404);
         }
 
+        $contracts = array_map(function (object $contract): object {
+            $file = trim((string) ($contract->file_name ?? ''));
+            $contract->contract_file_url = $file !== '' ? StaffContractFile::url($file) : null;
+            $contract->has_signed_contract = StaffContractFile::exists($file !== '' ? $file : null);
+
+            return $contract;
+        }, $profiles->contracts($staff));
+
+        $staffPayload = (array) $row;
+        $photo = trim((string) ($staffPayload['photo'] ?? ''));
+        $staffPayload['photo_url'] = StaffPhoto::url($photo !== '' ? $photo : null);
+        $dob = trim((string) ($staffPayload['date_of_birth'] ?? ''));
+        $staffPayload['age'] = $this->ageFromDob($dob);
+        $nok = json_decode((string) ($staffPayload['next_of_kin_json'] ?? '[]'), true);
+        $staffPayload['next_of_kin'] = $this->presentNextOfKin(is_array($nok) ? $nok : []);
+
         return response()->json([
             'data' => [
-                'staff' => $row,
-                'contracts' => $profiles->contracts($staff),
+                'staff' => $staffPayload,
+                'contracts' => $contracts,
                 'can_manage' => StaffAccess::canManageStaff(),
                 'can_manage_contracts' => StaffAccess::canManageContracts(),
             ],
+        ]);
+    }
+
+    public function auditTrail(int $staff, Request $request, StaffAuditTrailService $audit, StaffProfileService $profiles): JsonResponse
+    {
+        if (! StaffAccess::canViewProfile($staff)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (! $profiles->find($staff)) {
+            return response()->json(['message' => 'Staff not found.'], 404);
+        }
+
+        $limit = min(200, max(1, (int) $request->query('limit', 100)));
+
+        return response()->json([
+            'data' => $audit->trailForStaff($staff, $limit),
+            'meta' => [
+                'structured_columns' => $audit->structuredColumnsActive(),
+                'limit' => $limit,
+            ],
+        ]);
+    }
+
+    public function updateBiodata(int $staff, Request $request, StaffProfileService $profiles): JsonResponse
+    {
+        if (! StaffAccess::canManageStaff()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (! $profiles->find($staff)) {
+            return response()->json(['message' => 'Staff not found.'], 404);
+        }
+
+        $data = $request->validate([
+            'SAPNO' => ['nullable', 'string', 'max:50'],
+            'title' => ['required', 'string', 'max:20'],
+            'fname' => ['required', 'string', 'max:100'],
+            'lname' => ['required', 'string', 'max:100'],
+            'oname' => ['nullable', 'string', 'max:100'],
+            'date_of_birth' => ['required', 'date'],
+            'gender' => ['required', 'string', 'in:Male,Female,Other'],
+            'nationality_id' => ['required', 'integer', 'min:1', 'exists:nationalities,nationality_id'],
+            'initiation_date' => ['required', 'date'],
+            'tel_1' => ['required', 'string', 'max:50'],
+            'tel_2' => ['nullable', 'string', 'max:50'],
+            'whatsapp' => ['nullable', 'string', 'max:50'],
+            'work_email' => ['required', 'email', 'max:150'],
+            'private_email' => ['nullable', 'email', 'max:150'],
+            'physical_location' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if (! $profiles->updateBiodata($staff, $data)) {
+            return response()->json(['message' => 'Could not update biodata.'], 500);
+        }
+
+        PortalReadCache::bust('staff');
+
+        $row = $profiles->find($staff);
+        $staffPayload = (array) $row;
+        $photo = trim((string) ($staffPayload['photo'] ?? ''));
+        $staffPayload['photo_url'] = StaffPhoto::url($photo !== '' ? $photo : null);
+        $dob = trim((string) ($staffPayload['date_of_birth'] ?? ''));
+        $staffPayload['age'] = $this->ageFromDob($dob);
+        $nok = json_decode((string) ($staffPayload['next_of_kin_json'] ?? '[]'), true);
+        $staffPayload['next_of_kin'] = $this->presentNextOfKin(is_array($nok) ? $nok : []);
+
+        return response()->json([
+            'data' => ['staff' => $staffPayload],
+            'message' => 'Biodata updated successfully.',
         ]);
     }
 
@@ -110,10 +245,16 @@ class StaffApiController extends Controller
         }
 
         try {
-            $contractId = $contracts->create($staff, $this->validatedContractPayload($request));
+            $contractId = $contracts->create(
+                $staff,
+                $this->validatedContractPayload($request),
+                $this->optionalContractPdf($request)
+            );
         } catch (ValidationException $e) {
             return $this->validationErrorResponse($e);
         }
+
+        PortalReadCache::bust('staff');
 
         return response()->json([
             'data' => [
@@ -134,7 +275,12 @@ class StaffApiController extends Controller
         }
 
         try {
-            $updated = $contracts->update($contractId, $staff, $this->validatedContractPayload($request));
+            $updated = $contracts->update(
+                $contractId,
+                $staff,
+                $this->validatedContractPayload($request),
+                $this->optionalContractPdf($request)
+            );
         } catch (ValidationException $e) {
             return $this->validationErrorResponse($e);
         }
@@ -142,6 +288,8 @@ class StaffApiController extends Controller
         if (! $updated) {
             return response()->json(['message' => 'Contract not found.'], 404);
         }
+
+        PortalReadCache::bust('staff');
 
         return response()->json([
             'data' => [
@@ -151,36 +299,116 @@ class StaffApiController extends Controller
         ]);
     }
 
-    public function birthdays(): JsonResponse
+    public function birthdays(Request $request): JsonResponse
     {
         if (! StaffAccess::canViewDirectory() && ! \Modules\Core\Support\PortalPermission::can(41)) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $month = (int) date('n');
-        $rows = DB::table('staff as s')
-            ->leftJoin('staff_contracts as sc', function ($j): void {
-                $j->on('sc.staff_id', '=', 's.staff_id')
-                    ->whereIn('sc.status_id', [1, 2]);
-            })
+        $range = strtolower(trim((string) $request->query('range', 'today')));
+        if (! in_array($range, ['today', 'tomorrow', 'next_7', 'next_30'], true)) {
+            $range = 'today';
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $from = $today;
+        $to = match ($range) {
+            'tomorrow' => $today->modify('+1 day'),
+            'next_7' => $today->modify('+7 days'),
+            'next_30' => $today->modify('+30 days'),
+            default => $today,
+        };
+        $fromMmdd = $from->format('m-d');
+        $toMmdd = $to->format('m-d');
+        // MySQL DATE_FORMAT; tolerate legacy YYYY-MM-DD / datetime DOB values.
+        $dobMmdd = "DATE_FORMAT(s.date_of_birth, '%m-%d')";
+
+        $latestContractSub = DB::table('staff_contracts')
+            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
+            ->groupBy('staff_id');
+
+        $q = DB::table('staff as s')
+            ->joinSub($latestContractSub, 'lc', 'lc.staff_id', '=', 's.staff_id')
+            ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->leftJoin('divisions as d', 'd.division_id', '=', 'sc.division_id')
+            ->leftJoin('jobs as j', 'j.job_id', '=', 'sc.job_id')
+            ->leftJoin('grades as g', 'g.grade_id', '=', 'sc.grade_id')
+            ->whereIn('sc.status_id', [1, 2, 7])
             ->whereNotNull('s.date_of_birth')
-            ->whereRaw('MONTH(s.date_of_birth) = ?', [$month])
-            ->orderByRaw('DAY(s.date_of_birth)')
+            ->where('s.date_of_birth', '!=', '0000-00-00')
+            ->where('s.date_of_birth', 'not like', '0000-00-00%');
+
+        if ($range === 'today' || $range === 'tomorrow') {
+            $q->whereRaw("{$dobMmdd} = ?", [$range === 'today' ? $fromMmdd : $toMmdd]);
+        } elseif ($fromMmdd <= $toMmdd) {
+            $q->whereRaw("{$dobMmdd} BETWEEN ? AND ?", [$fromMmdd, $toMmdd]);
+        } else {
+            // Year wrap (e.g. Dec 20 → Jan 19).
+            $q->where(function ($w) use ($dobMmdd, $fromMmdd, $toMmdd): void {
+                $w->whereRaw("{$dobMmdd} >= ?", [$fromMmdd])
+                    ->orWhereRaw("{$dobMmdd} <= ?", [$toMmdd]);
+            });
+        }
+
+        $rows = $q
+            ->orderByRaw($dobMmdd)
             ->orderBy('s.lname')
+            ->orderBy('s.fname')
             ->select(
                 's.staff_id',
+                's.title',
                 's.fname',
                 's.lname',
+                's.oname',
                 's.date_of_birth',
+                's.gender',
                 's.work_email',
-                'd.division_name'
+                's.photo',
+                'd.division_name',
+                'j.job_name',
+                'g.grade',
             )
-            ->distinct()
-            ->limit(200)
-            ->get();
+            ->limit(500)
+            ->get()
+            ->map(function ($row) use ($today) {
+                $dob = (string) ($row->date_of_birth ?? '');
+                $age = null;
+                $nextBirthday = null;
+                try {
+                    $dobObj = new \DateTimeImmutable($dob);
+                    $next = $dobObj->setDate(
+                        (int) $today->format('Y'),
+                        (int) $dobObj->format('m'),
+                        (int) $dobObj->format('d'),
+                    );
+                    if ($next < $today) {
+                        $next = $next->modify('+1 year');
+                    }
+                    $nextBirthday = $next->format('Y-m-d');
+                    // Age they turn / turned on that birthday date.
+                    $age = (int) $next->format('Y') - (int) $dobObj->format('Y');
+                } catch (\Throwable) {
+                    // leave age null
+                }
 
-        return response()->json(['data' => $rows]);
+                $arr = (array) $row;
+                $arr['age'] = $age;
+                $arr['next_birthday'] = $nextBirthday;
+
+                return $arr;
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'data' => $rows,
+            'meta' => [
+                'range' => $range,
+                'from' => $from->format('Y-m-d'),
+                'to' => $to->format('Y-m-d'),
+                'total' => count($rows),
+            ],
+        ]);
     }
 
     public function dataQuality(): JsonResponse
@@ -194,18 +422,25 @@ class StaffApiController extends Controller
         })->count();
         $missingDob = DB::table('staff')->whereNull('date_of_birth')->count();
         $missingSap = DB::table('staff')->where(function ($q): void {
-            $q->whereNull('sap_number')->orWhere('sap_number', '');
+            $q->whereNull('SAPNO')->orWhere('SAPNO', '');
         })->count();
 
         $sample = DB::table('staff as s')
             ->where(function ($q): void {
                 $q->whereNull('s.work_email')->orWhere('s.work_email', '')
                     ->orWhereNull('s.date_of_birth')
-                    ->orWhereNull('s.sap_number')->orWhere('s.sap_number', '');
+                    ->orWhereNull('s.SAPNO')->orWhere('s.SAPNO', '');
             })
             ->orderBy('s.lname')
             ->limit(50)
-            ->get(['s.staff_id', 's.fname', 's.lname', 's.work_email', 's.date_of_birth', 's.sap_number']);
+            ->get([
+                's.staff_id',
+                's.fname',
+                's.lname',
+                's.work_email',
+                's.date_of_birth',
+                DB::raw('s.SAPNO as sap_number'),
+            ]);
 
         return response()->json([
             'data' => [
@@ -236,19 +471,23 @@ class StaffApiController extends Controller
         };
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
-        $exported = $directory->exportRows($search, $statusId, $category);
+        $filters = $directory->normalizeFilters($this->staffFilterInput($request));
+        $exported = $directory->exportRows($search, $statusId, $category, 5000, $filters);
         $selectedColumns = $this->selectedExportColumns($request);
+        $definitions = $this->csvColumnDefinitions();
         $rows = [[
-            'Staff ID',
+            '#',
             ...array_map(
-                fn (string $column): string => $this->csvColumnDefinitions()[$column]['label'],
+                static fn (string $column): string => $definitions[$column]['label'],
                 $selectedColumns
             ),
         ]];
 
+        $n = 0;
         foreach ($exported as $item) {
             $r = (array) $item;
-            $row = [$r['staff_id'] ?? ''];
+            $n++;
+            $row = [$n];
 
             foreach ($selectedColumns as $column) {
                 $row[] = $this->csvColumnValue($column, $r);
@@ -258,6 +497,88 @@ class StaffApiController extends Controller
         }
 
         return $csv->stream('staff-directory.csv', $rows);
+    }
+
+    public function exportPdf(Request $request, StaffDirectoryService $directory, PdfService $pdf): Response
+    {
+        if (! StaffAccess::canViewDirectory()) {
+            abort(403);
+        }
+
+        $preset = (string) $request->query('preset', 'active');
+        $statusId = match ($preset) {
+            'due' => 2,
+            'expired' => 3,
+            'former' => 4,
+            'renewal' => 7,
+            'all' => null,
+            default => [1, 2],
+        };
+        $search = (string) $request->query('q', '');
+        $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
+        $filters = $directory->normalizeFilters($this->staffFilterInput($request));
+        $exported = $directory->exportRows($search, $statusId, $category, 2000, $filters);
+        $selectedColumns = $this->selectedExportColumns($request);
+        $definitions = $this->csvColumnDefinitions();
+        $colCount = count($selectedColumns) + 1;
+        $fontSize = $colCount > 18 ? '7px' : ($colCount > 12 ? '8px' : '9px');
+
+        $headerCells = '<th>#</th>';
+        foreach ($selectedColumns as $column) {
+            $headerCells .= '<th>'.e($definitions[$column]['label']).'</th>';
+        }
+
+        $rowsHtml = '';
+        $n = 0;
+        foreach ($exported as $item) {
+            $r = (array) $item;
+            $n++;
+            $rowsHtml .= '<tr><td>'.$n.'</td>';
+            foreach ($selectedColumns as $column) {
+                $rowsHtml .= '<td>'.e($this->csvColumnValue($column, $r)).'</td>';
+            }
+            $rowsHtml .= '</tr>';
+        }
+
+        if ($rowsHtml === '') {
+            $rowsHtml = '<tr><td colspan="'.$colCount.'" align="center">No staff found for the selected filters.</td></tr>';
+        }
+
+        $html = '<h2 style="margin:0 0 8px;color:#2c3e50;">Staff directory</h2>
+            <p style="margin:0 0 12px;color:#768B9E;font-size:11px;">Preset: '.e($preset)
+            .' · Category: '.e($this->humanizeCategory($category))
+            .' · '.$n.' record(s)</p>
+            <table width="100%" cellpadding="3" cellspacing="0" border="1" style="border-collapse:collapse;font-size:'.$fontSize.';">
+              <thead>
+                <tr style="background:#f8fafc;">'.$headerCells.'</tr>
+              </thead>
+              <tbody>'.$rowsHtml.'</tbody>
+            </table>';
+
+        return $pdf->inline($html, 'staff-directory.pdf', [
+            'title' => 'Staff Directory',
+            'document_url' => url('/staff/staff-portal/staff'),
+            'landscape' => true,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function staffFilterInput(Request $request): array
+    {
+        return [
+            'name' => $request->query('name', $request->query('lname')),
+            'sapno' => $request->query('sapno', $request->query('SAPNO')),
+            'gender' => $request->query('gender'),
+            'region_id' => $request->query('region_id'),
+            'nationality_id' => $request->query('nationality_id'),
+            'division_id' => $request->query('division_id'),
+            'duty_station_id' => $request->query('duty_station_id'),
+            'funder_id' => $request->query('funder_id'),
+            'job_id' => $request->query('job_id'),
+            'grade_id' => $request->query('grade_id'),
+        ];
     }
 
     protected function normalizeCategory(string $category): string
@@ -281,7 +602,32 @@ class StaffApiController extends Controller
      */
     protected function selectedExportColumns(Request $request): array
     {
-        $defaults = ['photo', 'name', 'work_email', 'job', 'division', 'duty_station', 'contract_type', 'status', 'end_date'];
+        $defaults = [
+            'sap_number',
+            'title',
+            'photo',
+            'name',
+            'gender',
+            'date_of_birth',
+            'age',
+            'nationality',
+            'region',
+            'duty_station',
+            'division',
+            'grade',
+            'job',
+            'initiation_date',
+            'start_date',
+            'end_date',
+            'years_of_tenure',
+            'job_acting',
+            'first_supervisor',
+            'second_supervisor',
+            'funder',
+            'work_email',
+            'telephone',
+            'whatsapp',
+        ];
         $requested = array_values(array_filter(array_map(
             static fn (string $column): string => trim($column),
             explode(',', (string) $request->query('columns', ''))
@@ -308,21 +654,33 @@ class StaffApiController extends Controller
     protected function csvColumnDefinitions(): array
     {
         return [
-            'photo' => ['label' => 'Photo'],
+            'sap_number' => ['label' => 'SAPNO'],
+            'title' => ['label' => 'Title'],
+            'photo' => ['label' => 'Passport Photo'],
             'name' => ['label' => 'Name'],
-            'work_email' => ['label' => 'Work email'],
-            'sap_number' => ['label' => 'SAP'],
-            'job' => ['label' => 'Job'],
+            'gender' => ['label' => 'Gender'],
+            'date_of_birth' => ['label' => 'Date of Birth'],
+            'age' => ['label' => 'Age'],
+            'nationality' => ['label' => 'Nationality'],
+            'region' => ['label' => 'Region'],
+            'duty_station' => ['label' => 'Duty Station'],
             'division' => ['label' => 'Division'],
-            'duty_station' => ['label' => 'Duty station'],
+            'grade' => ['label' => 'Grade'],
+            'job' => ['label' => 'Job'],
+            'initiation_date' => ['label' => 'Initiation Date'],
+            'start_date' => ['label' => 'Current Contract Start Date'],
+            'end_date' => ['label' => 'Current Contract End Date'],
+            'years_of_tenure' => ['label' => 'Years of Tenure'],
+            'job_acting' => ['label' => 'Acting Job'],
+            'first_supervisor' => ['label' => 'First Supervisor'],
+            'second_supervisor' => ['label' => 'Second Supervisor'],
+            'funder' => ['label' => 'Funder'],
+            'work_email' => ['label' => 'Email'],
+            'telephone' => ['label' => 'Telephone'],
+            'whatsapp' => ['label' => 'WhatsApp'],
             'contract_type' => ['label' => 'Contract type'],
             'category' => ['label' => 'Category'],
             'status' => ['label' => 'Status'],
-            'grade' => ['label' => 'Grade'],
-            'start_date' => ['label' => 'Start date'],
-            'end_date' => ['label' => 'End date'],
-            'funder' => ['label' => 'Funder'],
-            'nationality' => ['label' => 'Nationality'],
         ];
     }
 
@@ -332,21 +690,33 @@ class StaffApiController extends Controller
     protected function csvColumnValue(string $column, array $row): string
     {
         return match ($column) {
+            'sap_number' => (string) ($row['SAPNO'] ?? ''),
+            'title' => (string) ($row['title'] ?? ''),
             'photo' => (string) ($row['photo'] ?? ''),
             'name' => $this->csvPersonName($row),
-            'work_email' => (string) ($row['work_email'] ?? ''),
-            'sap_number' => (string) ($row['SAPNO'] ?? ''),
-            'job' => (string) (($row['job_name'] ?? '') ?: ($row['job_acting'] ?? '')),
-            'division' => (string) ($row['division_name'] ?? ''),
+            'gender' => (string) ($row['gender'] ?? ''),
+            'date_of_birth' => (string) ($row['date_of_birth'] ?? ''),
+            'age' => $this->yearsFromDate($row['date_of_birth'] ?? null),
+            'nationality' => (string) ($row['nationality'] ?? ''),
+            'region' => (string) ($row['region_name'] ?? ''),
             'duty_station' => (string) ($row['duty_station_name'] ?? ''),
+            'division' => (string) ($row['division_name'] ?? ''),
+            'grade' => (string) ($row['grade'] ?? ''),
+            'job' => (string) ($row['job_name'] ?? ''),
+            'initiation_date' => (string) ($row['initiation_date'] ?? ''),
+            'start_date' => (string) ($row['start_date'] ?? ''),
+            'end_date' => (string) ($row['end_date'] ?? ''),
+            'years_of_tenure' => $this->yearsFromDate($row['initiation_date'] ?? null),
+            'job_acting' => (string) ($row['job_acting'] ?? ''),
+            'first_supervisor' => trim((string) ($row['first_supervisor_name'] ?? '')),
+            'second_supervisor' => trim((string) ($row['second_supervisor_name'] ?? '')),
+            'funder' => (string) ($row['funder'] ?? ''),
+            'work_email' => (string) ($row['work_email'] ?? ''),
+            'telephone' => trim(trim((string) ($row['tel_1'] ?? '')).' '.trim((string) ($row['tel_2'] ?? ''))),
+            'whatsapp' => (string) ($row['whatsapp'] ?? ''),
             'contract_type' => (string) ($row['contract_type'] ?? ''),
             'category' => $this->humanizeCategory((string) ($row['category'] ?? '')),
             'status' => (string) ($row['contract_status'] ?? ''),
-            'grade' => (string) ($row['grade'] ?? ''),
-            'start_date' => (string) ($row['start_date'] ?? ''),
-            'end_date' => (string) ($row['end_date'] ?? ''),
-            'funder' => (string) ($row['funder'] ?? ''),
-            'nationality' => (string) ($row['nationality'] ?? ''),
             default => '',
         };
     }
@@ -356,14 +726,30 @@ class StaffApiController extends Controller
      */
     protected function csvPersonName(array $row): string
     {
-        $lastName = trim((string) ($row['lname'] ?? ''));
-        $firstName = trim((string) ($row['fname'] ?? ''));
+        $parts = array_filter([
+            trim((string) ($row['lname'] ?? '')),
+            trim((string) ($row['fname'] ?? '')),
+            trim((string) ($row['oname'] ?? '')),
+        ], static fn (string $part): bool => $part !== '');
 
-        if ($lastName !== '' && $firstName !== '') {
-            return $lastName.', '.$firstName;
+        return implode(' ', $parts);
+    }
+
+    protected function yearsFromDate(mixed $value): string
+    {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return '';
         }
 
-        return $lastName !== '' ? $lastName : $firstName;
+        try {
+            $start = new \DateTimeImmutable(substr($raw, 0, 10));
+            $today = new \DateTimeImmutable('today');
+
+            return (string) $start->diff($today)->y;
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /**
@@ -457,6 +843,70 @@ class StaffApiController extends Controller
         );
 
         return $validated;
+    }
+
+    protected function optionalContractPdf(Request $request): ?UploadedFile
+    {
+        $request->validate([
+            'contract_file' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        ]);
+
+        $file = $request->file('contract_file');
+
+        return $file instanceof UploadedFile ? $file : null;
+    }
+
+    protected function ageFromDob(string $dob): ?int
+    {
+        if ($dob === '' || strtotime($dob) === false) {
+            return null;
+        }
+        try {
+            $born = new \DateTimeImmutable($dob);
+            $today = new \DateTimeImmutable('today');
+
+            return (int) $born->diff($today)->y;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  list<mixed>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function presentNextOfKin(array $rows): array
+    {
+        $names = [];
+        if (DB::getSchemaBuilder()->hasTable('kin_relationship_types')) {
+            $names = DB::table('kin_relationship_types')
+                ->pluck('relationship_name', 'kin_relationship_id')
+                ->map(fn ($n) => (string) $n)
+                ->all();
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $relId = (int) ($row['relationship_id'] ?? 0);
+            $name = trim((string) ($row['name'] ?? ''));
+            $phone = trim((string) ($row['phone'] ?? ''));
+            $email = trim((string) ($row['email'] ?? ''));
+            if ($name === '' && $phone === '' && $email === '' && $relId < 1) {
+                continue;
+            }
+            $out[] = [
+                'name' => $name,
+                'relationship_id' => $relId,
+                'relationship_name' => $relId > 0 ? ($names[$relId] ?? '') : '',
+                'phone' => $phone,
+                'email' => $email,
+            ];
+        }
+
+        return $out;
     }
 
     protected function validationErrorResponse(ValidationException $e): JsonResponse
