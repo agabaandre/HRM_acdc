@@ -5,24 +5,23 @@
 
     RewriteEngine On
 
-    # Legacy Laravel public/ URLs → backend/
+    # ---- Hard exclusions (never SPA-fallback these) ----
+    RewriteRule ^backend(?:/|$) - [L]
+    RewriteRule ^assets(?:/|$) - [L]
+    RewriteRule ^public-spa(?:/|$) - [L]
+    RewriteRule ^frontend(?:/|$) - [L]
+
+    # Legacy /public/ URLs → backend/
     RewriteRule ^public/(.*)$ backend/$1 [R=301,L]
     RewriteRule ^public$ backend/ [R=301,L]
 
-    # Laravel API + web auth
-    RewriteRule ^backend(/|$) - [L]
-
-    # Real files win (published index.html + assets/ from setup-production)
+    # Real files win (published index.html from scripts/publish-spa.sh)
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Fallback: Vite dist-build (same pattern as helpdesk)
-    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
-    RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
-
-    # Vue Router SPA fallback
+    # Vue Router client routes → published index.html
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ frontend/dist-build/index.html [L]
+    RewriteRule ^ index.html [L]
 </IfModule>
 
 <IfModule mod_mime.c>

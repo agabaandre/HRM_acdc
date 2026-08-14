@@ -17,8 +17,9 @@
 /frontend/node_modules
 /frontend/.npm-cache
 /frontend/.env.production.local
-# Published Vite output at staff-portal root (setup-production.sh)
+# Published Vite output at staff-portal root (scripts/publish-spa.sh)
 /assets
+/public-spa
 /index.html
 *.log
 Thumbs.db

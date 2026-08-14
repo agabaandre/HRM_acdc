@@ -278,32 +278,13 @@ fi
 
 # Publish Vite build at staff-portal root so Apache serves real files.
 # Parent CodeIgniter .htaccess rewrites missing paths to index.php (HTTP 500).
-publish_spa_assets() {
-    local dist="$FRONTEND/dist-build"
-    local dest_assets="$ROOT/assets"
-    local dest_index="$ROOT/index.html"
-    if [[ ! -d "$dist/assets" || ! -f "$dist/index.html" ]]; then
-        warn "No complete $dist — skip SPA publish (run without --skip-build)"
-        return 0
-    fi
-    log "Publishing SPA → $ROOT/index.html + $dest_assets"
-    rm -rf "$dest_assets"
-    cp -a "$dist/assets" "$dest_assets"
-    cp -f "$dist/index.html" "$dest_index"
-    # Copy other hashed/static root files from dist (favicon, etc.) when present
-    local f
-    for f in "$dist"/*; do
-        [[ -f "$f" ]] || continue
-        case "$(basename "$f")" in
-            index.html) continue ;;
-            *) cp -f "$f" "$ROOT/$(basename "$f")" ;;
-        esac
-    done
-    chmod -R a+rX "$dest_assets" "$dist" 2>/dev/null || true
-    chmod a+r "$dest_index" 2>/dev/null || true
-    printf '    published index.html + %s asset files\n' "$(find "$dest_assets" -type f | wc -l | tr -d ' ')"
-}
-publish_spa_assets
+if [[ -x "$ROOT/scripts/publish-spa.sh" ]]; then
+    chmod +x "$ROOT/scripts/publish-spa.sh"
+    "$ROOT/scripts/publish-spa.sh" "$FRONTEND/dist-build" \
+        || warn "publish-spa.sh failed — SPA assets may 500 until fixed"
+else
+    warn "missing scripts/publish-spa.sh"
+fi
 
 if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     log "Caching Laravel config / routes / views"
