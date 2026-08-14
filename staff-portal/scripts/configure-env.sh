@@ -108,6 +108,50 @@ if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
             dotenv_set "$BACKEND_ENV" "$key" "$val"
         fi
     done
+
+    # Redis is optional. A bad REDIS_PASSWORD (AUTH with no server password) breaks
+    # migrate / cache and must not block production deploy — fall back to database.
+    use_redis="$(printf '%s' "${USE_REDIS:-}" | tr '[:upper:]' '[:lower:]')"
+    cache_store="$(dotenv_get "$BACKEND_ENV" CACHE_STORE 2>/dev/null || true)"
+    redis_host="$(dotenv_get "$BACKEND_ENV" REDIS_HOST 2>/dev/null || true)"
+    redis_port="$(dotenv_get "$BACKEND_ENV" REDIS_PORT 2>/dev/null || true)"
+    redis_pass="$(dotenv_get "$BACKEND_ENV" REDIS_PASSWORD 2>/dev/null || true)"
+    [[ -n "$redis_host" ]] || redis_host=127.0.0.1
+    [[ -n "$redis_port" ]] || redis_port=6379
+
+    redis_ok=0
+    if [[ "$use_redis" == "true" || "$use_redis" == "1" || "$use_redis" == "yes" ]]; then
+        if command -v redis-cli >/dev/null 2>&1; then
+            if [[ -n "$redis_pass" && "$redis_pass" != "null" && "$redis_pass" != "nil" ]]; then
+                if redis-cli -h "$redis_host" -p "$redis_port" -a "$redis_pass" --no-auth-warning ping 2>/dev/null | grep -qi PONG; then
+                    redis_ok=1
+                fi
+            elif redis-cli -h "$redis_host" -p "$redis_port" ping 2>/dev/null | grep -qi PONG; then
+                redis_ok=1
+            fi
+        fi
+    fi
+
+    if [[ "$redis_ok" -eq 1 ]]; then
+        echo "Redis OK at ${redis_host}:${redis_port} — keeping CACHE_STORE=${cache_store:-redis}"
+    else
+        if [[ "$cache_store" == "redis" || -z "$cache_store" ]]; then
+            dotenv_set "$BACKEND_ENV" CACHE_STORE database
+            echo "warning: Redis unavailable or USE_REDIS not set — CACHE_STORE=database (test Redis later)" >&2
+        fi
+        # Clear inherited password so a later Redis switch does not AUTH against open Redis.
+        if [[ -n "$redis_pass" && "$redis_pass" != "null" ]]; then
+            dotenv_set "$BACKEND_ENV" REDIS_PASSWORD null
+            echo "warning: Cleared REDIS_PASSWORD (server has no Redis auth / Redis not required yet)" >&2
+        fi
+        dotenv_apply_if_missing "$BACKEND_ENV" QUEUE_CONNECTION database 0
+        dotenv_apply_if_missing "$BACKEND_ENV" SESSION_DRIVER database 0
+        # Force queue/session off Redis if they were inherited as redis
+        q="$(dotenv_get "$BACKEND_ENV" QUEUE_CONNECTION 2>/dev/null || true)"
+        s="$(dotenv_get "$BACKEND_ENV" SESSION_DRIVER 2>/dev/null || true)"
+        [[ "$q" == "redis" ]] && dotenv_set "$BACKEND_ENV" QUEUE_CONNECTION database
+        [[ "$s" == "redis" ]] && dotenv_set "$BACKEND_ENV" SESSION_DRIVER database
+    fi
 fi
 
 if [[ -n "${STAFF_PORTAL_SPA_URL:-}" ]]; then

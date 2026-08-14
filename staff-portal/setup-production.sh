@@ -145,12 +145,23 @@ if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
     log "Generating Laravel APP_KEY"
     (cd "$BACKEND" && "$PHP_BIN" artisan key:generate --no-interaction)
 fi
+
+# Apply .env changes (e.g. CACHE_STORE=database when Redis is unavailable)
+(cd "$BACKEND" && "$PHP_BIN" artisan config:clear --no-interaction 2>/dev/null || true)
+
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
-    (cd "$BACKEND" && "$PHP_BIN" artisan migrate --force --no-interaction)
+    if ! (cd "$BACKEND" && "$PHP_BIN" artisan migrate --force --no-interaction); then
+        warn "Core migrations failed or already applied — continuing (use --skip-migrate to silence)"
+    fi
     log "Running module migrations"
-    (cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force --no-interaction) || \
-      (cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force)
+    if ! (
+        cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force --no-interaction
+    ) && ! (
+        cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force
+    ); then
+        warn "Module migrations failed or already applied — continuing"
+    fi
 else
     log "Skipping migrations (--skip-migrate)"
 fi

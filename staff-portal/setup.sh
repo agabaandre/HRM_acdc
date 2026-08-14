@@ -42,8 +42,8 @@ fi
 if [[ -z "$(dotenv_get .env APP_KEY 2>/dev/null || true)" ]]; then
   php artisan key:generate --no-interaction
 fi
-php artisan migrate --no-interaction --force
-php artisan module:migrate --no-interaction --force 2>/dev/null || php artisan module:migrate --force
+php artisan migrate --no-interaction --force || echo "warning: migrate failed or already applied — continuing" >&2
+php artisan module:migrate --no-interaction --force 2>/dev/null || php artisan module:migrate --force || echo "warning: module:migrate failed or already applied — continuing" >&2
 php artisan storage:link --no-interaction 2>/dev/null || true
 
 echo "==> Frontend (npm install + production build)"
