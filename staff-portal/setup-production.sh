@@ -276,6 +276,32 @@ else
     log "Skipping frontend build (--skip-build)"
 fi
 
+# Publish Vite assets at staff-portal/assets so Apache serves real files
+# (RewriteCond -f). Internal rewrite into frontend/dist-build often returns
+# HTTP 500 + text/html under Alias / Options -FollowSymLinks hosts.
+publish_spa_assets() {
+    local dist="$FRONTEND/dist-build"
+    local dest="$ROOT/assets"
+    if [[ ! -d "$dist/assets" ]]; then
+        warn "No $dist/assets — skip SPA asset publish (run without --skip-build)"
+        return 0
+    fi
+    log "Publishing SPA assets → $dest"
+    rm -rf "$dest"
+    # Prefer a real copy: FollowSymLinks is often disabled → symlink = HTTP 500
+    if cp -a "$dist/assets" "$dest"; then
+        chmod -R a+rX "$dest" "$dist" 2>/dev/null || true
+    else
+        die "Could not publish SPA assets to $dest"
+    fi
+    local sample
+    sample="$(find "$dest" -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) | head -n 1 || true)"
+    if [[ -n "$sample" ]]; then
+        printf '    published %s (%s files)\n' "$dest" "$(find "$dest" -type f | wc -l | tr -d ' ')"
+    fi
+}
+publish_spa_assets
+
 if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     log "Caching Laravel config / routes / views"
     # nwidart modules register views paths; empty dirs are not in git — create them
@@ -372,6 +398,16 @@ if [[ -n "$SPA_URL" ]]; then
         printf '    SPA OK: %s/\n' "${SPA_URL%/}"
     else
         warn "SPA returned HTTP $code for ${SPA_URL%/}/ — confirm Apache serves staff-portal/.htaccess"
+    fi
+    asset_sample="$(find "$ROOT/assets" -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) 2>/dev/null | head -n 1 || true)"
+    if [[ -n "$asset_sample" ]]; then
+        asset_name="$(basename "$asset_sample")"
+        asset_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${SPA_URL%/}/assets/${asset_name}" 2>/dev/null || echo '000')"
+        if [[ "$asset_code" == "200" ]]; then
+            printf '    SPA assets OK: %s/assets/%s\n' "${SPA_URL%/}" "$asset_name"
+        else
+            warn "SPA asset HTTP $asset_code for ${SPA_URL%/}/assets/${asset_name} — check permissions / .htaccess Options"
+        fi
     fi
 fi
 

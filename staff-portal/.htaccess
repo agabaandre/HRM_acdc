@@ -3,6 +3,10 @@
         Options -MultiViews -Indexes
     </IfModule>
 
+    # Allow serving published SPA assets/ (and dist-build) on hosts that
+    # disable FollowSymLinks globally — missing Options often yields HTTP 500.
+    Options +FollowSymLinks
+
     RewriteEngine On
 
     # Legacy Laravel public/ URLs → backend/ (Helpdesk-style, no /public in path)
@@ -13,17 +17,28 @@
     # Laravel API + web auth (Microsoft SSO, spa-bridge, Livewire)
     RewriteRule ^backend(/|$) - [L]
 
-    # Real files at staff-portal root (README, etc.)
+    # Real files at staff-portal root (incl. published assets/ from setup-production)
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Built SPA assets
+    # Built SPA assets — only rewrite when not already a real file at this root
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
     # Vue Router fallback
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ frontend/dist-build/index.html [L]
+</IfModule>
+
+# Ensure JS/CSS are not negotiated as text/html when something else fails
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+    AddType application/javascript .mjs
+    AddType image/svg+xml .svg
+    AddType font/woff2 .woff2
 </IfModule>
 
 ServerSignature Off

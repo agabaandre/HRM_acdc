@@ -17,5 +17,7 @@
 /frontend/node_modules
 /frontend/.npm-cache
 /frontend/.env.production.local
+# Published copy of dist-build/assets (created by setup-production.sh)
+/assets
 *.log
 Thumbs.db
