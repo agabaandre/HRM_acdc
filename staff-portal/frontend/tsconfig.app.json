@@ -23,10 +23,10 @@
     "types": ["vite/client"],
     "paths": {
       "@/*": ["./src/*"],
-      "@cbp/ui/*": ["../../helpdesk/frontend/src/components/ui/*"],
-      "@cbp/common/*": ["../../helpdesk/frontend/src/components/common/*"],
-      "@cbp/layout/*": ["../../helpdesk/frontend/src/components/layout/*"],
-      "@cbp/helpdesk-lib/*": ["../../helpdesk/frontend/src/*"]
+      "@cbp/ui/*": ["./src/cbp/ui/*"],
+      "@cbp/common/*": ["./src/cbp/common/*"],
+      "@cbp/layout/*": ["./src/cbp/layout/*"],
+      "@cbp/helpdesk-lib/*": ["./src/cbp/*"]
     },
     "noUnusedLocals": true,
     "noUnusedParameters": true,

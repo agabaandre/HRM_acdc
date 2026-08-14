@@ -1,0 +1,798 @@
+/**
+ * System-wide dark mode — surfaces, chrome, tables, reports, tools.
+ * Loaded last so it beats hard-coded light hex in component CSS.
+ */
+
+html.helpdesk-theme-dark {
+  color-scheme: dark;
+  --hd-surface: #1e293b;
+  --hd-surface-2: #0f172a;
+  --hd-surface-elevated: #243044;
+  --hd-text: #f1f5f9;
+  --hd-text-secondary: #cbd5e1;
+  --hd-text-muted: #94a3b8;
+  --hd-link: #4ade80;
+  --hd-link-hover: #86efac;
+  --hd-accent-soft: rgba(74, 222, 128, 0.16);
+}
+
+/* ── Layout / cards ─────────────────────────────────────────────── */
+html.helpdesk-theme-dark .cbp-card {
+  background: var(--hd-surface) !important;
+  color: var(--hd-text) !important;
+  box-shadow: var(--hd-shadow-card, 0 12px 36px rgba(2, 6, 23, 0.45));
+}
+
+html.helpdesk-theme-dark .cbp-view-title,
+html.helpdesk-theme-dark .cbp-settings-page-title,
+html.helpdesk-theme-dark .cbp-breadcrumb {
+  color: var(--hd-text-secondary);
+}
+
+html.helpdesk-theme-dark .cbp-breadcrumb a {
+  color: var(--hd-link);
+}
+
+html.helpdesk-theme-dark .v-application .v-card.elevation-10,
+html.helpdesk-theme-dark .v-application .withbg.v-card,
+html.helpdesk-theme-dark .v-theme--dark .v-card.elevation-10,
+html.helpdesk-theme-dark .v-theme--dark .withbg.v-card {
+  background: var(--hd-surface) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th,
+html.helpdesk-theme-dark .v-application .v-data-table .v-data-table__th,
+html.helpdesk-theme-dark .v-application .v-data-table .v-data-table-header__content {
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .v-application .v-data-table .v-table > .v-table__wrapper > table > tbody > tr > td,
+html.helpdesk-theme-dark .v-application .v-data-table .v-data-table__td {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .v-field__input,
+html.helpdesk-theme-dark .v-label,
+html.helpdesk-theme-dark .v-select__selection-text,
+html.helpdesk-theme-dark .v-autocomplete__selection-text {
+  color: var(--hd-text) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .v-field .v-label--floating,
+html.helpdesk-theme-dark .v-field--active .v-label {
+  color: var(--hd-text-muted) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .v-field__input::placeholder,
+html.helpdesk-theme-dark input::placeholder,
+html.helpdesk-theme-dark textarea::placeholder {
+  color: var(--hd-text-muted) !important;
+  opacity: 0.85 !important;
+}
+
+html.helpdesk-theme-dark .v-application .v-field--variant-outlined .v-field__outline {
+  color: rgba(148, 163, 184, 0.55) !important;
+}
+
+html.helpdesk-theme-dark .hd-v-form-field__label,
+html.helpdesk-theme-dark .hd-v-form-field__desc {
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .hd-btn--outline,
+html.helpdesk-theme-dark .v-btn--variant-outlined {
+  color: var(--hd-text) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+/* ── Data table cell primitives ─────────────────────────────────── */
+html.helpdesk-theme-dark .hd-dt-row-num {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-ticket-link,
+html.helpdesk-theme-dark .hd-dt-ticket-num,
+html.helpdesk-theme-dark a.hd-dt-ticket-link {
+  color: var(--hd-link) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-ticket-link:hover,
+html.helpdesk-theme-dark a.hd-dt-ticket-link:hover {
+  color: var(--hd-link-hover) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-subject-link,
+html.helpdesk-theme-dark .hd-dt-subject-text,
+html.helpdesk-theme-dark a.hd-dt-subject-link {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-subject-link:hover,
+html.helpdesk-theme-dark a.hd-dt-subject-link:hover {
+  color: var(--hd-link-hover) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-person,
+html.helpdesk-theme-dark .hd-dt-person-name {
+  color: var(--hd-text) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-wrap,
+html.helpdesk-theme-dark .hd-dt-created,
+html.helpdesk-theme-dark time.hd-dt-created {
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-category {
+  color: var(--hd-text-secondary) !important;
+  background: rgba(148, 163, 184, 0.18) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-activity,
+html.helpdesk-theme-dark .hd-dt-truncate--muted,
+html.helpdesk-theme-dark .hd-dt-truncate--updated,
+html.helpdesk-theme-dark .hd-dt-empty,
+html.helpdesk-theme-dark .hd-dt-empty-msg,
+html.helpdesk-theme-dark .hd-dt-loading,
+html.helpdesk-theme-dark .table-count,
+html.helpdesk-theme-dark .muted {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .hd-data-table-card .table-count strong {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-col-filter {
+  color: var(--hd-text) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-col-filter::placeholder {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .hd-dt-col-head__title {
+  color: var(--hd-text-secondary) !important;
+}
+
+/* ── Reports page ───────────────────────────────────────────────── */
+html.helpdesk-theme-dark .report-tab {
+  background: var(--hd-surface-2) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .report-tab:hover {
+  background: var(--hd-surface-elevated) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .report-tab--on {
+  background: var(--hd-accent-soft) !important;
+  border-color: #22c55e !important;
+  color: #bbf7d0 !important;
+}
+
+html.helpdesk-theme-dark .reports-filters,
+html.helpdesk-theme-dark .hd-filter-panel {
+  background: linear-gradient(180deg, #1e293b 0%, #152033 100%) !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .reports-filters__title,
+html.helpdesk-theme-dark .hd-filter-panel__toggle {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .reports-filters__head,
+html.helpdesk-theme-dark .hd-filter-panel__toggle {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+html.helpdesk-theme-dark .hd-filter-panel__badge {
+  background: rgba(74, 222, 128, 0.18);
+  color: #86efac;
+}
+
+html.helpdesk-theme-dark .tile,
+html.helpdesk-theme-dark .kpi {
+  background: linear-gradient(145deg, #1e293b 0%, #152033 100%) !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.35) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tile .n,
+html.helpdesk-theme-dark .n,
+html.helpdesk-theme-dark .kpi-value {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tile .l,
+html.helpdesk-theme-dark .l,
+html.helpdesk-theme-dark .tile-sub,
+html.helpdesk-theme-dark .kpi-label {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .tile-icon {
+  background: rgba(148, 163, 184, 0.18) !important;
+}
+
+html.helpdesk-theme-dark .tile-total {
+  --tile-soft: rgba(148, 163, 184, 0.18);
+}
+html.helpdesk-theme-dark .tile-open,
+html.helpdesk-theme-dark .tile-pending {
+  --tile-soft: rgba(59, 130, 246, 0.22);
+}
+html.helpdesk-theme-dark .tile-awaiting {
+  --tile-soft: rgba(168, 85, 247, 0.22);
+}
+html.helpdesk-theme-dark .tile-resolved {
+  --tile-soft: rgba(22, 163, 74, 0.22);
+}
+html.helpdesk-theme-dark .tile-closed {
+  --tile-soft: rgba(100, 116, 139, 0.22);
+}
+
+html.helpdesk-theme-dark .report-tools .v-btn--variant-outlined,
+html.helpdesk-theme-dark .report-tools__btn.v-btn--variant-outlined {
+  background: rgba(30, 41, 59, 0.9) !important;
+  color: var(--hd-text) !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+html.helpdesk-theme-dark h2 {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .is-list li,
+html.helpdesk-theme-dark .is-table th,
+html.helpdesk-theme-dark .is-table td {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  color: var(--hd-text-secondary);
+}
+
+/* ── Tools pages (licenses, IS, IT assets, software requests) ───── */
+html.helpdesk-theme-dark .tools-page .tabs {
+  border-bottom-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .tab {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .tab.active {
+  color: var(--hd-link) !important;
+  border-bottom-color: var(--hd-link) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .kpi-card {
+  background: var(--hd-surface) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.3) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .kpi-label,
+html.helpdesk-theme-dark .tools-page .form-intro,
+html.helpdesk-theme-dark .tools-page .sub,
+html.helpdesk-theme-dark .tools-page .muted,
+html.helpdesk-theme-dark .tools-page .cat-strip-label,
+html.helpdesk-theme-dark .tools-page .empty,
+html.helpdesk-theme-dark .tools-page .empty-small {
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .kpi-value {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .text-success {
+  color: #4ade80 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .text-warning {
+  color: #fbbf24 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .text-danger {
+  color: #f87171 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .alert-card {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-left-color: #f59e0b !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .alert-title {
+  color: #fcd34d !important;
+}
+
+html.helpdesk-theme-dark .tools-page .data-table th,
+html.helpdesk-theme-dark .tools-page .data-table td {
+  border-bottom-color: rgba(148, 163, 184, 0.2) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .data-table thead th {
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .data-table tbody tr:hover {
+  background: rgba(51, 65, 85, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .table-wrap.cbp-card,
+html.helpdesk-theme-dark .tools-page .cat-strip.cbp-card,
+html.helpdesk-theme-dark .tools-page .alert-card.cbp-card {
+  background: var(--hd-surface) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .status-active {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #6ee7b7 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .status-warning {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fcd34d !important;
+}
+
+html.helpdesk-theme-dark .tools-page .status-expired {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .cat-chip {
+  background: rgba(22, 163, 74, 0.18) !important;
+  color: #86efac !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .lang-chip {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge {
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: var(--hd-text-secondary) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge-ok {
+  background: rgba(22, 163, 74, 0.22) !important;
+  color: #86efac !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge-warn {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #fcd34d !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge-info {
+  background: rgba(59, 130, 246, 0.22) !important;
+  color: #93c5fd !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge-danger {
+  background: rgba(239, 68, 68, 0.22) !important;
+  color: #fca5a5 !important;
+}
+
+html.helpdesk-theme-dark .tools-page .badge-muted {
+  background: rgba(148, 163, 184, 0.18) !important;
+  color: var(--hd-text-muted) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .module-row,
+html.helpdesk-theme-dark .tools-page .hint-panel {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--hd-text-secondary);
+}
+
+html.helpdesk-theme-dark .tools-page .module-add {
+  border-top-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+html.helpdesk-theme-dark .tools-page .form-header h3 {
+  color: var(--hd-text) !important;
+}
+
+/* ── Generic light-surface leftovers ────────────────────────────── */
+html.helpdesk-theme-dark .hd-action-card,
+html.helpdesk-theme-dark .hd-kb-card.v-card {
+  background: var(--hd-surface) !important;
+  color: var(--hd-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.helpdesk-theme-dark .hd-action-title {
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .hd-action-desc {
+  color: var(--hd-text-muted) !important;
+}
+
+/* Home knowledge base accordion — hard hex so white rows cannot win */
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel,
+html.helpdesk-theme-dark .hd-home .kb-panels .v-expansion-panel {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel--active {
+  background: #152033 !important;
+  background-color: #152033 !important;
+  border-color: rgba(74, 222, 128, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title__overlay,
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-question,
+html.helpdesk-theme-dark .hd-kb-card .kb-question-wrap,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-expansion-panel-title__icon {
+  color: #f1f5f9 !important;
+  opacity: 1 !important;
+}
+
+/* Title row must not keep the light surface — that hides the question text */
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-home .kb-panels .v-expansion-panel-title {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel--active > .v-expansion-panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-panels .v-expansion-panel--active > .v-expansion-panel-title {
+  background: #152033 !important;
+  background-color: #152033 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-expansion-panel-title__overlay {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text,
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-text__wrapper,
+html.helpdesk-theme-dark .hd-kb-card .kb-panel-text,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-body,
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-plain {
+  background: transparent !important;
+  color: #cbd5e1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-expansion-panel-title .v-icon {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-category-chip.v-chip,
+html.helpdesk-theme-dark .hd-kb-card .v-chip.kb-category-chip {
+  background: rgba(74, 222, 128, 0.2) !important;
+  color: #bbf7d0 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-title {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-lede,
+html.helpdesk-theme-dark .hd-kb-card .panel-title,
+html.helpdesk-theme-dark .hd-kb-card .kb-empty,
+html.helpdesk-theme-dark .hd-kb-foot {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-manage-link {
+  color: #86efac !important;
+  border-color: rgba(74, 222, 128, 0.4) !important;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-manage-link:hover {
+  background: rgba(74, 222, 128, 0.16) !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .kb-answer-body a,
+html.helpdesk-theme-dark .hd-kb-more-link {
+  color: #4ade80 !important;
+}
+
+html.helpdesk-theme-dark .hd-kb-card .v-divider {
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+/* KB edit modal (custom backdrop, not UModal) */
+html.helpdesk-theme-dark .kb-modal {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+html.helpdesk-theme-dark .kb-modal-title {
+  color: #f1f5f9 !important;
+}
+html.helpdesk-theme-dark .kb-modal-head,
+html.helpdesk-theme-dark .kb-modal-foot {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+html.helpdesk-theme-dark .kb-modal .hd-v-form-field__label,
+html.helpdesk-theme-dark .kb-modal .v-label {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-inline-link-btn {
+  color: #4ade80 !important;
+}
+
+/* ── General settings cards / toggle rows ───────────────────────── */
+html.helpdesk-theme-dark article.settings-card,
+html.helpdesk-theme-dark .settings-grid .settings-card {
+  background: #1e293b !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-row {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-copy,
+html.helpdesk-theme-dark .settings-card .toggle-copy strong {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .toggle-hint,
+html.helpdesk-theme-dark .settings-card .card-lede,
+html.helpdesk-theme-dark .settings-card .cleanup-msg {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .settings-card .card-head h3,
+html.helpdesk-theme-dark .settings-card .cleanup-title {
+  color: #f1f5f9 !important;
+}
+
+/* ── Ticket detail (cards, resolve, description, comments) ──────── */
+html.helpdesk-theme-dark .detail-body.cbp-card,
+html.helpdesk-theme-dark .cbp-card.detail-body {
+  background: var(--hd-surface) !important;
+  color: var(--hd-text) !important;
+}
+
+html.helpdesk-theme-dark .person-card {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .person-card .plabel,
+html.helpdesk-theme-dark .person-card .field-hint,
+html.helpdesk-theme-dark .person-card .pemail {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .person-card .pname,
+html.helpdesk-theme-dark .person-card .pname time {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .person-card .v-field {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .person-card .v-field__input,
+html.helpdesk-theme-dark .person-card .v-select__selection-text,
+html.helpdesk-theme-dark .person-card .v-autocomplete__selection-text {
+  color: #f1f5f9 !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .person-card .v-field--variant-outlined .v-field__outline {
+  color: rgba(148, 163, 184, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .person-card .wm-pill.wm-onsite {
+  background: rgba(74, 222, 128, 0.18) !important;
+  color: #bbf7d0 !important;
+  border-color: rgba(74, 222, 128, 0.4) !important;
+}
+
+html.helpdesk-theme-dark .person-card .wm-pill.wm-remote {
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #bae6fd !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+
+html.helpdesk-theme-dark .detail-body .html,
+html.helpdesk-theme-dark .detail-body .pre,
+html.helpdesk-theme-dark .desc .html,
+html.helpdesk-theme-dark .desc .pre {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .detail-body .html a,
+html.helpdesk-theme-dark .desc .html a {
+  color: #4ade80 !important;
+}
+
+html.helpdesk-theme-dark .detail-body .html table th,
+html.helpdesk-theme-dark .detail-body .html table td,
+html.helpdesk-theme-dark .desc .html table th,
+html.helpdesk-theme-dark .desc .html table td {
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .detail-body .html table th,
+html.helpdesk-theme-dark .desc .html table th {
+  background: #1e293b !important;
+}
+
+html.helpdesk-theme-dark .resolve {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .resolve .h3,
+html.helpdesk-theme-dark .detail-body .h3,
+html.helpdesk-theme-dark .comments-section .h3 {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .resolve .muted,
+html.helpdesk-theme-dark .resolve .small,
+html.helpdesk-theme-dark .detail-body .muted {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .resbox {
+  background: rgba(74, 222, 128, 0.1) !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .resbox .h3,
+html.helpdesk-theme-dark .resbox .res,
+html.helpdesk-theme-dark .resbox .res-html {
+  color: #bbf7d0 !important;
+}
+
+html.helpdesk-theme-dark .resbox .res-html blockquote {
+  color: #86efac !important;
+  border-left-color: #4ade80 !important;
+}
+
+html.helpdesk-theme-dark .resbox .res-html pre,
+html.helpdesk-theme-dark .resbox .res-html code {
+  background: rgba(15, 23, 42, 0.65) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .resbox .res-html a {
+  color: #86efac !important;
+}
+
+html.helpdesk-theme-dark .attach-link {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .attach-delete {
+  background: rgba(127, 29, 29, 0.25) !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+  color: #fecaca !important;
+}
+
+html.helpdesk-theme-dark .comments-section {
+  border-top-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html.helpdesk-theme-dark .comments-empty {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .comments-count {
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .comment-item .cbody,
+html.helpdesk-theme-dark .cbody {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .comment-time,
+html.helpdesk-theme-dark .meta {
+  color: #94a3b8 !important;
+}
+
+html.helpdesk-theme-dark .composer-label {
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .composer-input {
+  background: #0f172a !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .subj-inline {
+  color: #cbd5e1 !important;
+}
+
+html.helpdesk-theme-dark .pill {
+  background: rgba(148, 163, 184, 0.22) !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .pill.low {
+  background: rgba(59, 130, 246, 0.22) !important;
+  color: #bfdbfe !important;
+}
+
+html.helpdesk-theme-dark .closed-banner {
+  background: rgba(251, 191, 36, 0.12) !important;
+  border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+html.helpdesk-theme-dark .closed-banner--resolved,
+html.helpdesk-theme-dark .closed-banner--follow-up {
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.45) 0%, rgba(22, 101, 52, 0.35) 100%) !important;
+  border-color: rgba(74, 222, 128, 0.4) !important;
+}
+
+html.helpdesk-theme-dark .closed-banner-title,
+html.helpdesk-theme-dark .closed-banner--resolved .closed-banner-title {
+  color: #bbf7d0 !important;
+}
+
+html.helpdesk-theme-dark .closed-banner-text,
+html.helpdesk-theme-dark .closed-banner--resolved .closed-banner-text,
+html.helpdesk-theme-dark .closed-banner--follow-up .closed-banner-text {
+  color: #d1fae5 !important;
+}
+
+html.helpdesk-theme-dark .resolve-modal {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+html.helpdesk-theme-dark .resolve-modal-title {
+  color: #f1f5f9 !important;
+}
+
+html.helpdesk-theme-dark .resolve-modal-head,
+html.helpdesk-theme-dark .resolve-modal-foot {
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}

@@ -3,7 +3,7 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vuetify from 'vite-plugin-vuetify'
 
-const helpdeskSrc = path.resolve(__dirname, '../../helpdesk/frontend/src')
+const cbpSrc = path.resolve(__dirname, 'src/cbp')
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -21,10 +21,10 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
-        '@cbp/ui': path.join(helpdeskSrc, 'components/ui'),
-        '@cbp/common': path.join(helpdeskSrc, 'components/common'),
-        '@cbp/layout': path.join(helpdeskSrc, 'components/layout'),
-        '@cbp/helpdesk-lib': helpdeskSrc,
+        '@cbp/ui': path.join(cbpSrc, 'ui'),
+        '@cbp/common': path.join(cbpSrc, 'common'),
+        '@cbp/layout': path.join(cbpSrc, 'layout'),
+        '@cbp/helpdesk-lib': cbpSrc,
       },
     },
     build: {

@@ -1,0 +1,232 @@
+/* Vuetify + Helpdesk layout integration */
+.w-full {
+  width: 100%;
+}
+
+/* Shared border tokens — match MaterialPro / data-table dividers */
+:root,
+html.helpdesk-theme-light {
+  --hd-line: #dfe5ef;
+  --hd-line-subtle: rgba(223, 229, 239, 0.75);
+  --hd-border: var(--hd-line);
+  --hd-shadow-card:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0;
+}
+
+html.helpdesk-theme-dark {
+  --hd-line: rgba(148, 163, 184, 0.2);
+  --hd-line-subtle: rgba(148, 163, 184, 0.12);
+  --hd-border: var(--hd-line);
+}
+
+.v-application {
+  --hd-line: rgba(var(--v-border-color), var(--v-border-opacity));
+  --hd-line-subtle: rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.65));
+  --hd-border: var(--hd-line);
+  font-family: var(--font-sans, Arial, Roboto, sans-serif);
+}
+
+/* Outlined surfaces — light borders like data tables */
+.v-application .v-card--variant-outlined,
+.v-application .v-sheet--variant-outlined,
+.v-application .v-list--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-divider {
+  border-color: var(--hd-line) !important;
+  opacity: 1;
+}
+
+.v-application .v-btn--variant-outlined {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-field--variant-outlined .v-field__outline {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined .v-field__outline {
+  --v-field-border-width: 1.5px;
+}
+
+.v-application .hd-v-input .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-select-menu .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-application .hd-v-textarea .v-field--variant-outlined.v-field--focused .v-field__outline {
+  color: rgba(17, 154, 72, 0.75) !important;
+}
+
+.v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th,
+.v-application .v-data-table .v-table > .v-table__wrapper > table > tbody > tr > td {
+  border-color: var(--hd-line) !important;
+}
+
+.v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  font-weight: 600 !important;
+  color: #3a4752 !important;
+}
+
+html.helpdesk-theme-dark .v-application .v-data-table .v-table > .v-table__wrapper > table > thead > tr > th {
+  color: #cbd5e1 !important;
+}
+
+.v-application .v-data-table .v-data-table__th,
+.v-application .v-data-table .v-data-table-header__content {
+  font-weight: 600 !important;
+}
+
+.v-application .v-data-table .v-data-table-footer {
+  border-top-color: var(--hd-line) !important;
+}
+
+.hd-v-card.v-card {
+  border: none !important;
+  box-shadow: var(--hd-shadow-card) !important;
+  border-radius: 12px !important;
+}
+
+/* Soft MaterialPro elevation for elevated cards */
+.v-application .v-card.elevation-10,
+.v-application .withbg.v-card {
+  background: #fff;
+  box-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0 !important;
+}
+
+.v-theme--dark .v-card.elevation-10,
+.v-theme--dark .withbg.v-card,
+html.helpdesk-theme-dark .v-application .v-card.elevation-10,
+html.helpdesk-theme-dark .v-application .withbg.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    rgba(0, 0, 0, 0.28) 0 12px 24px -4px,
+    rgba(0, 0, 0, 0.35) 0 0 2px 0 !important;
+}
+
+/* Match button anatomy to compact outlined fields — https://vuetifyjs.com/en/components/buttons/#anatomy */
+.v-application .hd-v-btn.v-btn {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-small {
+  height: 32px;
+  min-height: 32px;
+  padding-inline: 12px;
+  font-size: 0.8125rem;
+}
+
+.v-application .hd-v-btn.v-btn--size-large,
+.v-application .hd-v-btn.v-btn--size-x-large {
+  height: var(--v-input-control-height, 40px);
+  min-height: var(--v-input-control-height, 40px);
+  padding-inline: 16px;
+  font-size: 0.875rem;
+}
+
+.v-application .hd-v-btn.hd-v-btn--auto {
+  height: auto;
+  min-height: unset;
+}
+
+/* Tighter form fields — https://vuetifyjs.com/en/components/color-inputs/#usage */
+.hd-v-input .v-field,
+.hd-v-select .v-field,
+.hd-v-select-menu .v-field,
+.hd-v-color-input .v-field,
+.hd-v-textarea .v-field {
+  border-radius: 4px;
+}
+
+/*
+ * Fields with placeholders keep the outline label floated on the notch
+ * so it never sits inside the control on top of the placeholder text.
+ */
+.hd-v-input--persist-label .v-field .v-field-label--floating,
+.hd-v-input--persist-label.v-input .v-label.v-field-label--floating {
+  visibility: visible;
+  opacity: 1;
+}
+
+.hd-v-input--persist-label .v-field:not(.v-field--focused):not(.v-field--dirty) .v-field-label:not(.v-field-label--floating) {
+  /* Hide the in-field resting label; the floated notch label remains via :active */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.hd-v-form-field {
+  width: 100%;
+}
+
+.hd-form .hd-v-form-field,
+.hd-form--grid .hd-v-form-field {
+  margin-bottom: 0;
+}
+
+.hd-form-actions {
+  align-items: center;
+}
+
+.hd-form-toolbar,
+.hd-search-form {
+  align-items: center;
+}
+
+.hd-filter-panel .v-field {
+  background: transparent;
+}
+
+/* Modals — solid surface (dialogs may teleport outside .v-application) */
+.hd-v-modal.v-card {
+  background: #ffffff !important;
+  border: 1px solid var(--hd-line) !important;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.18) !important;
+  color: #0f172a;
+}
+
+html.helpdesk-theme-dark .hd-v-modal.v-card {
+  background: #1e293b !important;
+  color: #e2e8f0;
+  box-shadow: 0 16px 48px rgba(2, 6, 23, 0.55) !important;
+}
+
+.hd-v-modal .v-card-title,
+.hd-v-modal .v-card-text,
+.hd-v-modal .v-card-actions {
+  background: transparent !important;
+}
+
+.hd-v-dialog .v-overlay__scrim {
+  background: rgba(15, 23, 42, 0.45) !important;
+}
+
+html.helpdesk-theme-dark .hd-v-dialog .v-overlay__scrim {
+  background: rgba(2, 6, 23, 0.65) !important;
+}
+
+/* Checkbox custom labels (e.g. division picker on settings/general) */
+.hd-v-checkbox .v-label {
+  opacity: 1 !important;
+  color: #0f172a !important;
+}
+
+.hd-v-checkbox .v-label * {
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .hd-v-checkbox .v-label {
+  color: #e2e8f0 !important;
+}
+
+/* Inline form rows: field + button share baseline */
