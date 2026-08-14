@@ -5,23 +5,18 @@
 
     RewriteEngine On
 
-    # ---- Hard exclusions (never SPA-fallback these) ----
+    # Laravel API / auth
     RewriteRule ^backend(?:/|$) - [L]
-    RewriteRule ^assets(?:/|$) - [L]
-    RewriteRule ^public-spa(?:/|$) - [L]
-    RewriteRule ^frontend(?:/|$) - [L]
 
-    # Legacy /public/ URLs → backend/
-    RewriteRule ^public/(.*)$ backend/$1 [R=301,L]
-    RewriteRule ^public$ backend/ [R=301,L]
+    # Hashed Vite assets → PHP static sender (works even when -f rewrite fails)
+    RewriteRule ^assets/([^/]+)$ spa-static.php?f=$1 [L,QSA]
 
-    # Real files win (published index.html from scripts/publish-spa.sh)
+    # Real files (published index.html, public-spa, etc.)
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Vue Router client routes → published index.html
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.html [L]
+    # Vue Router → spa-static.php (serves index.html, no-cache)
+    RewriteRule ^ spa-static.php [L,QSA]
 </IfModule>
 
 <IfModule mod_mime.c>
@@ -30,6 +25,13 @@
     AddType application/javascript .mjs
     AddType image/svg+xml .svg
     AddType font/woff2 .woff2
+</IfModule>
+
+# Do not cache the HTML shell (forces new hashed asset URLs after deploy)
+<IfModule mod_headers.c>
+    <Files "index.html">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </Files>
 </IfModule>
 
 ServerSignature Off

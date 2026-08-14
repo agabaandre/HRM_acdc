@@ -5,44 +5,54 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Set base directory (uncomment & adjust if CodeIgniter is in a subfolder)
-    # RewriteBase /your-subfolder/
-
     # Preserve Authorization for Share + CI APIs (must run before other rules)
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Never send SPA / Laravel apps through CodeIgniter front controller.
-    # Missing asset files were rewritten to index.php → HTTP 500 + text/html MIME.
+    # ------------------------------------------------------------------
+    # Staff Portal SPA — MUST run before CodeIgniter index.php catch-all.
+    # Missing Vite assets were rewritten to CI → HTTP 500 + text/html MIME.
+    # Use REQUEST_URI so this works with Alias /staff → <repo>.
+    # ------------------------------------------------------------------
+    RewriteCond %{REQUEST_URI} /staff-portal/assets/([^/]+)$ [NC]
+    RewriteRule ^.*$ staff-portal/spa-static.php?f=%1 [L,QSA]
+
+    RewriteCond %{REQUEST_URI} /staff-portal/backend(/|$) [NC]
+    RewriteRule ^.*$ - [L]
+
+    RewriteCond %{REQUEST_URI} /staff-portal(/|$) [NC]
+    RewriteCond %{REQUEST_URI} !/staff-portal/backend [NC]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^.*$ staff-portal/spa-static.php [L,QSA]
+
+    # Helpdesk / finance / apm — never send to CodeIgniter
+    RewriteCond %{REQUEST_URI} /(helpdesk|finance|apm)(/|$) [NC]
+    RewriteRule ^.*$ - [L]
+
+    # Relative-URI fallback (DocumentRoot = repo root, no /staff prefix in URI)
+    RewriteRule ^staff-portal/assets/([^/]+)$ staff-portal/spa-static.php?f=$1 [L,QSA]
+    RewriteRule ^staff-portal/backend(/|$) - [L]
     RewriteRule ^(staff-portal|helpdesk|finance|apm)(/|$) - [L]
 
-    # Staff Share reference API (APM sync) → Laravel staff-portal (307 keeps method + query)
-    # Keeps CI for other /share/* endpoints (service_requests, validate_session, etc.)
+    # Staff Share reference API (APM sync) → Laravel staff-portal
     RewriteRule ^share/(get_current_staff|divisions|directorates|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/staff-portal/backend/share/$1$2 [R=307,L,QSA]
 
     # Redirect Trailing Slashes...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)/$ /$1 [L,R=301]
 
-    # Remove index.php from URLs
+    # CodeIgniter front controller (staff CI only)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php/$1 [L]
 
-    # Prevent direct access to system & application directories
     RewriteRule ^(system|application|logs)/ - [F,L]
-
-    # Protect .env and other sensitive files
     RewriteRule (^|/)\.env - [F,L]
-
-    # Block access to git and other hidden files
     RedirectMatch 404 /\.git
 </IfModule>
 
 <IfModule !mod_rewrite.c>
-    # Fallback if mod_rewrite is not available
     ErrorDocument 404 index.php
 </IfModule>
 
-# Disable server signature for security
 ServerSignature Off
