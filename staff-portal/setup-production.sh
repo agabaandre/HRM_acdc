@@ -258,15 +258,18 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
     fi
     (
         cd "$FRONTEND"
+        # Build needs vite / @vitejs/plugin-vue / typescript (devDependencies).
+        # NODE_ENV=production would skip them and break `npm run build`.
+        export NODE_ENV=development
         if [[ -f package-lock.json ]]; then
-            if ! npm ci --cache ./.npm-cache --legacy-peer-deps; then
-                warn "npm ci failed (stale lock?) — running npm install --legacy-peer-deps"
-                npm install --cache ./.npm-cache --legacy-peer-deps
+            if ! npm ci --include=dev --cache ./.npm-cache --legacy-peer-deps; then
+                warn "npm ci failed (stale lock?) — running npm install --include=dev"
+                npm install --include=dev --cache ./.npm-cache --legacy-peer-deps
             fi
         else
-            npm install --cache ./.npm-cache --legacy-peer-deps
+            npm install --include=dev --cache ./.npm-cache --legacy-peer-deps
         fi
-        npm run build
+        NODE_ENV=production npm run build
     )
     [[ -f "$FRONTEND/dist-build/index.html" ]] || die "Frontend build failed — missing frontend/dist-build/index.html"
 else
