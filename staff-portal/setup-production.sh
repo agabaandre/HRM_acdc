@@ -111,6 +111,45 @@ log "Configuring backend .env from setup.env (production URLs auto-resolved when
 
 BACKEND_ENV="$BACKEND/.env"
 
+# Hard-disable Redis for production unless USE_REDIS=true and Redis responds.
+# Inherited REDIS_PASSWORD from staff CI .env causes: AUTH called without any password
+# configured — and that must never abort migrate / deploy.
+staff_portal_disable_redis_unless_ready() {
+    local use_redis host port pass
+    use_redis="$(printf '%s' "${USE_REDIS:-}" | tr '[:upper:]' '[:lower:]')"
+    host="$(dotenv_get "$BACKEND_ENV" REDIS_HOST 2>/dev/null || true)"
+    port="$(dotenv_get "$BACKEND_ENV" REDIS_PORT 2>/dev/null || true)"
+    pass="$(dotenv_get "$BACKEND_ENV" REDIS_PASSWORD 2>/dev/null || true)"
+    [[ -n "$host" ]] || host=127.0.0.1
+    [[ -n "$port" ]] || port=6379
+
+    local redis_ok=0
+    if [[ "$use_redis" == "true" || "$use_redis" == "1" || "$use_redis" == "yes" ]] \
+        && command -v redis-cli >/dev/null 2>&1; then
+        if [[ -n "$pass" && "$pass" != "null" && "$pass" != "nil" ]]; then
+            if redis-cli -h "$host" -p "$port" -a "$pass" --no-auth-warning ping 2>/dev/null | grep -qi PONG; then
+                redis_ok=1
+            fi
+        elif redis-cli -h "$host" -p "$port" ping 2>/dev/null | grep -qi PONG; then
+            redis_ok=1
+        fi
+    fi
+
+    if [[ "$redis_ok" -eq 1 ]]; then
+        log "Redis OK — leaving CACHE_STORE / REDIS_* as configured"
+        return 0
+    fi
+
+    warn "Redis not required / not ready — forcing database cache, queue, session (test Redis later)"
+    dotenv_set "$BACKEND_ENV" CACHE_STORE database
+    dotenv_set "$BACKEND_ENV" QUEUE_CONNECTION database
+    dotenv_set "$BACKEND_ENV" SESSION_DRIVER database
+    dotenv_set "$BACKEND_ENV" REDIS_PASSWORD null
+    rm -f "$BACKEND/bootstrap/cache/config.php" \
+        "$BACKEND/bootstrap/cache/config.php.tmp" 2>/dev/null || true
+}
+staff_portal_disable_redis_unless_ready
+
 jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
     die "JWT_SECRET is not set. Add it to setup.env or ensure $STAFF_ROOT/.env has JWT_SECRET (must match APM/Helpdesk)."
@@ -141,25 +180,49 @@ if ! (
     die "Modules autoload missing (merge-plugin). Re-run as non-root, or: cd backend && COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload -o"
 fi
 
+# Drop cached config so REDIS_PASSWORD / CACHE_STORE changes always apply
+rm -f "$BACKEND/bootstrap/cache/config.php" 2>/dev/null || true
+
+# Env overrides beat stale .env / config cache.
+# CACHE_STORE=array during setup: database cache table may not exist yet; Redis may AUTH-fail.
+artisan_safe() {
+    (
+        cd "$BACKEND"
+        env \
+            CACHE_STORE=array \
+            QUEUE_CONNECTION=sync \
+            SESSION_DRIVER=array \
+            REDIS_PASSWORD= \
+            "$PHP_BIN" artisan "$@"
+    )
+}
+
 if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" ]]; then
     log "Generating Laravel APP_KEY"
-    (cd "$BACKEND" && "$PHP_BIN" artisan key:generate --no-interaction)
+    artisan_safe key:generate --no-interaction || true
 fi
 
-# Apply .env changes (e.g. CACHE_STORE=database when Redis is unavailable)
-(cd "$BACKEND" && "$PHP_BIN" artisan config:clear --no-interaction 2>/dev/null || true)
+(cd "$BACKEND" && "$PHP_BIN" artisan config:clear --no-interaction 2>/dev/null || true) || true
 
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
-    if ! (cd "$BACKEND" && "$PHP_BIN" artisan migrate --force --no-interaction); then
+    set +e
+    artisan_safe migrate --force --no-interaction
+    migrate_rc=$?
+    set -e
+    if [[ "$migrate_rc" -ne 0 ]]; then
         warn "Core migrations failed or already applied — continuing (use --skip-migrate to silence)"
     fi
     log "Running module migrations"
-    if ! (
-        cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force --no-interaction
-    ) && ! (
-        cd "$BACKEND" && "$PHP_BIN" artisan module:migrate --force
-    ); then
+    set +e
+    artisan_safe module:migrate --force --no-interaction
+    module_rc=$?
+    if [[ "$module_rc" -ne 0 ]]; then
+        artisan_safe module:migrate --force
+        module_rc=$?
+    fi
+    set -e
+    if [[ "$module_rc" -ne 0 ]]; then
         warn "Module migrations failed or already applied — continuing"
     fi
 else
@@ -167,11 +230,11 @@ else
 fi
 
 log "Storage link"
-(cd "$BACKEND" && "$PHP_BIN" artisan storage:link --no-interaction 2>/dev/null || true)
+artisan_safe storage:link --no-interaction 2>/dev/null || true
 
 if [[ "$WITH_DEMO_SEED" -eq 1 ]]; then
     warn "Running DatabaseSeeder (demo data — not for production)"
-    (cd "$BACKEND" && "$PHP_BIN" artisan db:seed --force --no-interaction)
+    artisan_safe db:seed --force --no-interaction || warn "db:seed failed — continuing"
 fi
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
