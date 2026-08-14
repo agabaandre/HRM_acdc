@@ -278,12 +278,19 @@ fi
 
 if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     log "Caching Laravel config / routes / views"
+    # nwidart modules register views paths; empty dirs are not in git — create them
+    # so `view:cache` does not abort deploy.
+    while IFS= read -r -d '' mod_dir; do
+        mkdir -p "$mod_dir/resources/views"
+    done < <(find "$BACKEND/Modules" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     (
         cd "$BACKEND"
         "$PHP_BIN" artisan config:clear --no-interaction
         "$PHP_BIN" artisan config:cache --no-interaction
         "$PHP_BIN" artisan route:cache --no-interaction
-        "$PHP_BIN" artisan view:cache --no-interaction
+        if ! "$PHP_BIN" artisan view:cache --no-interaction; then
+            warn "view:cache failed — continuing (app runs without precompiled views)"
+        fi
     )
 fi
 
