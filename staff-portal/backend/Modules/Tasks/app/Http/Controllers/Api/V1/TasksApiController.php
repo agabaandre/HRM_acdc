@@ -40,7 +40,7 @@ class TasksApiController extends Controller
             $divisionId = $this->resolveDivisionId(request());
             $base = $this->weeklyBaseQuery();
             $this->applyWeeklyFilters($base, $divisionId, null, null, null, null, null, '');
-            $stats = $this->buildStats((clone $base)->get(['w.status', 'w.end_date']));
+            $stats = $this->buildStatsFromQuery(clone $base);
         }
 
         if (Schema::hasTable('workplan_tasks')) {
@@ -113,8 +113,7 @@ class TasksApiController extends Controller
             $base = $this->weeklyBaseQuery();
             $this->applyWeeklyFilters($base, $divisionId, $staffId, $status, $startDate, $endDate, $specificId, $q);
 
-            $statRows = (clone $base)->get(['w.status', 'w.end_date']);
-            $stats = $this->buildStats($statRows);
+            $stats = $this->buildStatsFromQuery(clone $base);
 
             $select = [
                 'w.activity_id',
@@ -142,7 +141,7 @@ class TasksApiController extends Controller
             $rows = (clone $base)
                 ->orderByRaw('CASE WHEN w.status = 1 THEN 1 ELSE 0 END DESC')
                 ->orderByDesc('w.start_date')
-                ->limit(500)
+                ->limit(200)
                 ->get($select);
 
             $staffNameMap = $this->staffNameMap($rows->pluck('staff_id')->all());
@@ -180,29 +179,30 @@ class TasksApiController extends Controller
             });
         }
 
-        $staffList = $divisionId > 0 ? $this->staffListForDivision($divisionId) : collect();
-        $financialYear = $this->currentFinancialYear();
-        $specificActivities = $divisionId > 0
-            ? $this->specificActivitiesForDivision($divisionId, $financialYear)
-            : collect();
+        $includeMeta = $request->boolean('include_meta', true);
+        $meta = [
+            'division_id' => $divisionId,
+            'financial_year' => $this->currentFinancialYear(),
+            'source' => 'work_plan_weekly_tasks',
+            'ingested_from' => 'PRA specific_activities → work_planner_tasks → work_plan_weekly_tasks',
+            'status_options' => collect(self::STATUS_LABELS)
+                ->map(fn ($label, $value) => ['value' => $value, 'title' => $label])
+                ->values(),
+            'stats' => $stats,
+        ];
+
+        if ($includeMeta) {
+            $financialYear = $meta['financial_year'];
+            $meta['staff'] = $divisionId > 0 ? $this->staffListForDivision($divisionId) : collect();
+            $meta['specific_activities'] = $divisionId > 0
+                ? $this->specificActivitiesForDivision($divisionId, $financialYear)
+                : collect();
+            $meta['divisions'] = $this->cachedDivisions();
+        }
 
         return response()->json([
             'data' => $tasks,
-            'meta' => [
-                'division_id' => $divisionId,
-                'financial_year' => $financialYear,
-                'source' => 'work_plan_weekly_tasks',
-                'ingested_from' => 'PRA specific_activities → work_planner_tasks → work_plan_weekly_tasks',
-                'staff' => $staffList,
-                'specific_activities' => $specificActivities,
-                'status_options' => collect(self::STATUS_LABELS)
-                    ->map(fn ($label, $value) => ['value' => $value, 'title' => $label])
-                    ->values(),
-                'stats' => $stats,
-                'divisions' => DB::table('divisions')
-                    ->orderBy('division_name')
-                    ->get(['division_id', 'division_name', 'division_short_name']),
-            ],
+            'meta' => $meta,
         ]);
     }
 
@@ -398,6 +398,47 @@ class TasksApiController extends Controller
     }
 
     /**
+     * Aggregate stats in SQL — avoid loading every matching row into PHP.
+     *
+     * @return array{
+     *   total: int,
+     *   pending: int,
+     *   completed: int,
+     *   carried_forward: int,
+     *   cancelled: int,
+     *   overdue: int,
+     *   execution_rate: float
+     * }
+     */
+    protected function buildStatsFromQuery(Builder $base): array
+    {
+        $today = now()->toDateString();
+        $row = (clone $base)
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN w.status = 1 THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN w.status = 2 THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN w.status = 3 THEN 1 ELSE 0 END) as carried_forward,
+                SUM(CASE WHEN w.status = 4 THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN w.end_date IS NOT NULL AND w.end_date < ? AND w.status IN (1, 3) THEN 1 ELSE 0 END) as overdue
+            ', [$today])
+            ->first();
+
+        $total = (int) ($row->total ?? 0);
+        $completed = (int) ($row->completed ?? 0);
+
+        return [
+            'total' => $total,
+            'pending' => (int) ($row->pending ?? 0),
+            'completed' => $completed,
+            'carried_forward' => (int) ($row->carried_forward ?? 0),
+            'cancelled' => (int) ($row->cancelled ?? 0),
+            'overdue' => (int) ($row->overdue ?? 0),
+            'execution_rate' => $total > 0 ? round(($completed / $total) * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
      * @param  \Illuminate\Support\Collection<int, object>  $rows
      * @return array{
      *   total: int,
@@ -445,6 +486,23 @@ class TasksApiController extends Controller
     }
 
     /**
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    protected function cachedDivisions()
+    {
+        if (! Schema::hasTable('divisions')) {
+            return collect();
+        }
+
+        return \App\Support\PortalReadCache::remember(
+            'staff_portal:tasks:divisions_v1',
+            fn () => DB::table('divisions')
+                ->orderBy('division_name')
+                ->get(['division_id', 'division_name', 'division_short_name']),
+        );
+    }
+
+    /**
      * Specific activities for a division, limited to the current (or given) financial year.
      *
      * @return \Illuminate\Support\Collection<int, object>
@@ -473,7 +531,7 @@ class TasksApiController extends Controller
             ->where('wt.division_id', $divisionId)
             ->where('wt.year', $year)
             ->orderBy('pt.activity_name')
-            ->limit(1000)
+            ->limit(300)
             ->get($cols);
     }
 

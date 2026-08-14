@@ -49,6 +49,10 @@ const q = ref('')
 
 const page = ref(1)
 const perPage = ref(25)
+/** Avoid re-fetch when we only sync divisionId from API meta. */
+const suppressFilterWatch = ref(false)
+const metaReady = ref(false)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const addOpen = ref(false)
 const editOpen = ref(false)
@@ -176,7 +180,8 @@ function filterSubtitle(): string {
   return bits.join(' · ')
 }
 
-async function load() {
+async function load(opts: { includeMeta?: boolean } = {}) {
+  const includeMeta = opts.includeMeta ?? !metaReady.value
   loading.value = true
   error.value = null
   try {
@@ -188,18 +193,26 @@ async function load() {
       end_date: endDate.value,
       work_planner_tasks_id: specificId.value,
       q: q.value || undefined,
+      include_meta: includeMeta,
     })
     rows.value = res.data
-    divisions.value = res.meta.divisions || []
-    staffOptions.value = res.meta.staff || []
-    specificActivities.value = res.meta.specific_activities || []
+    if (includeMeta) {
+      divisions.value = res.meta.divisions || []
+      staffOptions.value = res.meta.staff || []
+      specificActivities.value = res.meta.specific_activities || []
+      statusOptions.value = res.meta.status_options || []
+      metaReady.value = true
+    }
     if (res.meta.financial_year != null && String(res.meta.financial_year) !== '') {
       financialYear.value = String(res.meta.financial_year)
     }
-    statusOptions.value = res.meta.status_options || []
     stats.value = res.meta.stats || stats.value
     if (divisionId.value == null && res.meta.division_id) {
+      suppressFilterWatch.value = true
       divisionId.value = res.meta.division_id
+      queueMicrotask(() => {
+        suppressFilterWatch.value = false
+      })
     }
     page.value = 1
   } catch (e) {
@@ -222,13 +235,15 @@ function setThisWeek() {
   endDate.value = iso(friday)
 }
 
+// Default filter = current week (set before watches so mount does not double-fetch).
+setThisWeek()
+
 function clearFilters() {
   staffId.value = null
   status.value = null
-  startDate.value = null
-  endDate.value = null
   specificId.value = null
   q.value = ''
+  setThisWeek()
 }
 
 function openAdd() {
@@ -368,15 +383,30 @@ function statusColor(row: WeeklyTaskRow): string {
 }
 
 watch(divisionId, () => {
+  if (suppressFilterWatch.value) return
   specificId.value = null
   staffId.value = null
+  metaReady.value = false
 })
 
 watch(
-  [divisionId, staffId, status, startDate, endDate, specificId, q],
-  () => void load(),
+  [divisionId, staffId, status, startDate, endDate, specificId],
+  () => {
+    if (suppressFilterWatch.value) return
+    void load({ includeMeta: !metaReady.value })
+  },
 )
-onMounted(() => void load())
+
+watch(q, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    void load({ includeMeta: false })
+  }, 300)
+})
+
+onMounted(() => {
+  void load({ includeMeta: true })
+})
 </script>
 
 <template>

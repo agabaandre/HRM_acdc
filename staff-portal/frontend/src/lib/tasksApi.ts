@@ -92,6 +92,8 @@ export interface WeeklyTaskFilters {
   end_date?: string | null
   work_planner_tasks_id?: number | null
   q?: string | null
+  /** When false, skip heavy dropdown payloads (staff / activities / divisions). */
+  include_meta?: boolean
 }
 
 export async function fetchTasksHub(): Promise<TasksHubData> {
@@ -117,6 +119,7 @@ export async function fetchWeeklyTasks(params: WeeklyTaskFilters = {}): Promise<
       end_date: params.end_date || undefined,
       work_planner_tasks_id: params.work_planner_tasks_id || undefined,
       q: params.q || undefined,
+      include_meta: params.include_meta === false ? 0 : 1,
     },
   })
   return data
