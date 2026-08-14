@@ -1,4 +1,5 @@
 import { api } from './api'
+import { cachedGet, clearApiCache } from './apiCache'
 
 export interface AuthUserRow {
   user_id: number
@@ -111,8 +112,16 @@ export async function fetchAuthUsers(params: {
 }
 
 export async function fetchAuthUserGroups(): Promise<AuthUserGroup[]> {
-  const { data } = await api.get<{ data: AuthUserGroup[] }>('/api/v1/auth/user-groups')
+  const data = await cachedGet<{ data: AuthUserGroup[] }>(
+    'auth:user-groups',
+    '/api/v1/auth/user-groups',
+    5 * 60_000,
+  )
   return data.data
+}
+
+export function invalidateAuthAdminCaches(): void {
+  clearApiCache('auth:user-groups')
 }
 
 export async function updateAuthUser(

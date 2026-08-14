@@ -11,6 +11,9 @@ final class LegacySchema
     /** @var array<string, bool> */
     private static array $tableExists = [];
 
+    /** @var array<string, bool> */
+    private static array $columnExists = [];
+
     public static function has(string $table): bool
     {
         if (array_key_exists($table, self::$tableExists)) {
@@ -30,5 +33,25 @@ final class LegacySchema
         }
 
         return self::$tableExists[$table] = (bool) $cached;
+    }
+
+    public static function hasColumn(string $table, string $column): bool
+    {
+        $key = $table.'.'.$column;
+        if (array_key_exists($key, self::$columnExists)) {
+            return self::$columnExists[$key];
+        }
+
+        try {
+            $cached = Cache::remember(
+                'legacy_schema_has_col:'.$key,
+                now()->addHours(6),
+                static fn (): bool => Schema::hasColumn($table, $column),
+            );
+        } catch (Throwable) {
+            $cached = Schema::hasColumn($table, $column);
+        }
+
+        return self::$columnExists[$key] = (bool) $cached;
     }
 }

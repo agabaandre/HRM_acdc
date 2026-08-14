@@ -3,11 +3,13 @@
 namespace Modules\Auth\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\LegacySchema;
+use App\Support\PortalReadCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Modules\Audit\Services\AuditLogRevertService;
+use Modules\Auth\Models\PortalUser;
 use Modules\Auth\Services\AuthUserAdminService;
 use Modules\Auth\Services\PortalImpersonationService;
 use Modules\Core\Support\PortalPermission;
@@ -18,13 +20,27 @@ class AuthAdminApiController extends Controller
     {
         PortalPermission::authorize(17);
 
-        return response()->json($users->paginate([
+        $filters = [
             'q' => $request->query('q'),
             'group_id' => $request->query('group_id'),
             'status' => $request->query('status'),
             'page' => $request->query('page', 1),
             'per_page' => $request->query('per_page', 20),
-        ]));
+        ];
+
+        $user = $request->user();
+        $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
+        $cacheKey = PortalReadCache::key('permissions', 'auth_users', $userId, [
+            'q' => (string) ($filters['q'] ?? ''),
+            'group_id' => (string) ($filters['group_id'] ?? ''),
+            'status' => (string) ($filters['status'] ?? ''),
+            'page' => (int) $filters['page'],
+            'per_page' => (int) $filters['per_page'],
+        ]);
+
+        $payload = PortalReadCache::remember($cacheKey, fn () => $users->paginate($filters));
+
+        return response()->json($payload);
     }
 
     public function userGroups(AuthUserAdminService $users): JsonResponse
@@ -155,7 +171,7 @@ class AuthAdminApiController extends Controller
     {
         PortalPermission::authorize(17);
 
-        if (! Schema::hasTable('user_logs')) {
+        if (! LegacySchema::has('user_logs')) {
             return response()->json([
                 'data' => [],
                 'meta' => [
@@ -169,12 +185,12 @@ class AuthAdminApiController extends Controller
             ]);
         }
 
-        $hasHttpMethodColumn = Schema::hasColumn('user_logs', 'http_method');
-        $hasEventTypeColumn = Schema::hasColumn('user_logs', 'event_type');
-        $hasRequestUriColumn = Schema::hasColumn('user_logs', 'request_uri');
-        $hasTargetTableColumn = Schema::hasColumn('user_logs', 'target_table');
-        $hasTargetIdColumn = Schema::hasColumn('user_logs', 'target_id');
-        $dateColumn = Schema::hasColumn('user_logs', 'created_at') ? 'l.created_at' : 'l.date_loged_in';
+        $hasHttpMethodColumn = LegacySchema::hasColumn('user_logs', 'http_method');
+        $hasEventTypeColumn = LegacySchema::hasColumn('user_logs', 'event_type');
+        $hasRequestUriColumn = LegacySchema::hasColumn('user_logs', 'request_uri');
+        $hasTargetTableColumn = LegacySchema::hasColumn('user_logs', 'target_table');
+        $hasTargetIdColumn = LegacySchema::hasColumn('user_logs', 'target_id');
+        $dateColumn = LegacySchema::hasColumn('user_logs', 'created_at') ? 'l.created_at' : 'l.date_loged_in';
         $search = trim((string) ($request->query('search', $request->query('q', ''))));
 
         $q = DB::table('user_logs as l')

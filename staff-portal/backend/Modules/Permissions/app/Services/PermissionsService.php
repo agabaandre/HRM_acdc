@@ -182,28 +182,26 @@ class PermissionsService
         int $perPage = 20,
         ?int $page = null
     ): LengthAwarePaginator {
-        // Subquery avoids GROUP BY + DISTINCT count bug (was returning total=1).
-        $customCounts = DB::table('user_permissions')
-            ->selectRaw('user_id, COUNT(DISTINCT permission_id) as custom_permission_count')
-            ->groupBy('user_id');
+        $perPage = min(100, max(5, $perPage));
+        $page = $page ?? max(1, (int) request()->input('page', 1));
 
         $q = DB::table('user as u')
             ->leftJoin('user_groups as ug', 'ug.id', '=', 'u.role')
-            ->leftJoinSub($customCounts, 'upc', 'upc.user_id', '=', 'u.user_id')
             ->select(
                 'u.user_id',
                 'u.name',
                 'u.role',
                 'ug.group_name',
-                DB::raw('COALESCE(upc.custom_permission_count, 0) as custom_permission_count')
             )
             ->orderBy('u.name');
 
         if ($search !== '') {
             $term = '%'.$search.'%';
-            $q->where(function ($w) use ($term): void {
-                $w->where('u.name', 'like', $term)
-                    ->orWhere('u.user_id', 'like', $term);
+            $q->where(function ($w) use ($term, $search): void {
+                $w->where('u.name', 'like', $term);
+                if (ctype_digit($search)) {
+                    $w->orWhere('u.user_id', (int) $search);
+                }
             });
         }
 
@@ -211,7 +209,34 @@ class PermissionsService
             $q->where('u.role', $groupId);
         }
 
-        return PortalTable::paginateDistinct($q, 'u.user_id', $perPage, $page);
+        $total = (clone $q)->count('u.user_id');
+        $items = (clone $q)->forPage($page, $perPage)->get();
+
+        $ids = $items->pluck('user_id')->map(fn ($id) => (int) $id)->all();
+        $customCounts = [];
+        if ($ids !== []) {
+            $customCounts = DB::table('user_permissions')
+                ->whereIn('user_id', $ids)
+                ->selectRaw('user_id, COUNT(DISTINCT permission_id) as custom_permission_count')
+                ->groupBy('user_id')
+                ->pluck('custom_permission_count', 'user_id')
+                ->all();
+        }
+
+        $mapped = $items->map(function ($row) use ($customCounts) {
+            $arr = (array) $row;
+            $arr['custom_permission_count'] = (int) ($customCounts[$row->user_id] ?? 0);
+
+            return (object) $arr;
+        });
+
+        return new LengthAwarePaginator(
+            $mapped,
+            $total,
+            $perPage,
+            $page,
+            PortalTable::paginationOptions()
+        );
     }
 
     /**

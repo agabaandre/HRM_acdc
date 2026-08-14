@@ -3,10 +3,12 @@
 namespace Modules\Permissions\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\PortalReadCache;
 use App\Support\PortalReferenceCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Modules\Auth\Models\PortalUser;
 use Modules\Core\Support\PortalPermission;
 use Modules\Permissions\Services\PermissionsService;
 
@@ -23,22 +25,31 @@ class PermissionsApiController extends Controller
     {
         PortalPermission::authorize(17);
 
-        $catalog = $this->catalogPayload();
-        $groups = $this->permissions->groupsWithUserCounts();
-        $groupId = $request->filled('group_id')
-            ? (int) $request->query('group_id')
-            : (int) ($groups[0]['id'] ?? 0);
+        $requestedGroupId = $request->filled('group_id') ? (int) $request->query('group_id') : 0;
+        $user = $request->user();
+        $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
+        $cacheKey = PortalReadCache::key('permissions', 'bootstrap', $userId, [
+            'group_id' => $requestedGroupId,
+        ]);
 
-        return response()->json([
-            'data' => [
+        $payload = PortalReadCache::remember($cacheKey, function () use ($requestedGroupId): array {
+            $catalog = $this->catalogPayload();
+            $groups = $this->permissions->groupsWithUserCounts();
+            $groupId = $requestedGroupId > 0
+                ? $requestedGroupId
+                : (int) ($groups[0]['id'] ?? 0);
+
+            return [
                 'catalog' => $catalog,
                 'groups' => $groups,
                 'selected_group_id' => $groupId > 0 ? $groupId : null,
                 'permission_ids' => $groupId > 0
                     ? $this->permissions->groupPermissionIds($groupId)
                     : [],
-            ],
-        ]);
+            ];
+        });
+
+        return response()->json(['data' => $payload]);
     }
 
     public function catalog(): JsonResponse
@@ -95,6 +106,7 @@ class PermissionsApiController extends Controller
         ]);
 
         $this->permissions->assignGroupPermissions($id, $validated['permission_ids'] ?? []);
+        PortalReadCache::bust('permissions');
 
         return response()->json(['message' => 'Group permissions saved.']);
     }
@@ -109,6 +121,8 @@ class PermissionsApiController extends Controller
         if (! $this->permissions->createGroup($validated['group_name'])) {
             return response()->json(['message' => 'Could not create group (name may already exist).'], 422);
         }
+
+        PortalReadCache::bust('permissions');
 
         return response()->json(['message' => 'Group created.'], 201);
     }
@@ -171,6 +185,7 @@ class PermissionsApiController extends Controller
         ]);
 
         $this->permissions->assignUserPermissions($id, $validated['permission_ids'] ?? []);
+        PortalReadCache::bust('permissions');
 
         return response()->json(['message' => 'User permissions saved.']);
     }
@@ -179,6 +194,7 @@ class PermissionsApiController extends Controller
     {
         PortalPermission::authorize(17);
         $this->permissions->copyGroupPermissionsToUser($id);
+        PortalReadCache::bust('permissions');
 
         return response()->json([
             'message' => 'Group permissions copied to user.',
@@ -199,6 +215,8 @@ class PermissionsApiController extends Controller
         if (! $this->permissions->createPermission($validated['name'], $validated['definition'])) {
             return response()->json(['message' => 'Could not create permission (invalid or duplicate name).'], 422);
         }
+
+        PortalReadCache::bust('permissions');
 
         return response()->json(['message' => 'Permission created.'], 201);
     }

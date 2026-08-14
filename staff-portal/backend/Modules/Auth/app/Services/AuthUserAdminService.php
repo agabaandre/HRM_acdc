@@ -2,10 +2,11 @@
 
 namespace Modules\Auth\Services;
 
+use App\Support\LegacySchema;
+use App\Support\PortalReadCache;
 use App\Support\StaffPhoto;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Modules\Audit\Services\AuditLogService;
 use Modules\Core\Support\PortalTable;
 use Modules\Staff\Services\StaffPortalAccountService;
@@ -111,14 +112,19 @@ class AuthUserAdminService
      */
     public function groups(): array
     {
-        return DB::table('user_groups')
-            ->orderBy('group_name')
-            ->get(['id', 'group_name'])
-            ->map(fn ($row) => [
-                'id' => (int) $row->id,
-                'group_name' => (string) $row->group_name,
-            ])
-            ->all();
+        return PortalReadCache::remember(
+            PortalReadCache::key('permissions', 'user_groups', 0),
+            static function (): array {
+                return DB::table('user_groups')
+                    ->orderBy('group_name')
+                    ->get(['id', 'group_name'])
+                    ->map(fn ($row) => [
+                        'id' => (int) $row->id,
+                        'group_name' => (string) $row->group_name,
+                    ])
+                    ->all();
+            }
+        );
     }
 
     /**
@@ -158,6 +164,8 @@ class AuthUserAdminService
 
         $this->audit->logRecordChange('updated', 'user', $userId, $before, $after);
 
+        PortalReadCache::bust(['permissions', 'staff']);
+
         return $this->presentRow($afterRow);
     }
 
@@ -177,7 +185,7 @@ class AuthUserAdminService
         if (! $existing) {
             throw new \InvalidArgumentException('User not found.');
         }
-        if (! Schema::hasColumn('user', 'allow_email_login')) {
+        if (! LegacySchema::hasColumn('user', 'allow_email_login')) {
             throw new \RuntimeException('Column user.allow_email_login is missing.');
         }
 
@@ -185,6 +193,7 @@ class AuthUserAdminService
         $before = ['allow_email_login' => (int) ($existing['allow_email_login'] ?? 0)];
         DB::table('user')->where('user_id', $userId)->update(['allow_email_login' => $value]);
         $this->audit->logRecordChange('updated', 'user', $userId, $before, ['allow_email_login' => $value]);
+        PortalReadCache::bust(['permissions', 'staff']);
 
         return $allow
             ? 'Email/password sign-in enabled for this user.'
@@ -202,7 +211,7 @@ class AuthUserAdminService
         $update = [
             'password' => password_hash($defaultPassword, PASSWORD_ARGON2ID),
         ];
-        if (Schema::hasColumn('user', 'isChanged')) {
+        if (LegacySchema::hasColumn('user', 'isChanged')) {
             $update['isChanged'] = 0;
         }
 
@@ -236,6 +245,9 @@ class AuthUserAdminService
         }
         $after = DB::table('user')->whereIn('auth_staff_id', $staffIds)->count();
         $created = max(0, $after - $before);
+        if ($created > 0) {
+            PortalReadCache::bust(['permissions', 'staff']);
+        }
 
         return [
             'created' => $created,
@@ -278,12 +290,12 @@ class AuthUserAdminService
 
     private function hasAllowEmailLoginColumn(): bool
     {
-        return $this->hasAllowEmailLogin ??= Schema::hasColumn('user', 'allow_email_login');
+        return $this->hasAllowEmailLogin ??= LegacySchema::hasColumn('user', 'allow_email_login');
     }
 
     private function hasCreatedAtColumn(): bool
     {
-        return $this->hasCreatedAt ??= Schema::hasColumn('user', 'created_at');
+        return $this->hasCreatedAt ??= LegacySchema::hasColumn('user', 'created_at');
     }
 
     /**
@@ -329,6 +341,7 @@ class AuthUserAdminService
         $before = ['status' => (int) ($existing['status'] ?? 0)];
         DB::table('user')->where('user_id', $userId)->update(['status' => $status]);
         $this->audit->logRecordChange('updated', 'user', $userId, $before, ['status' => $status]);
+        PortalReadCache::bust(['permissions', 'staff']);
 
         return $message;
     }

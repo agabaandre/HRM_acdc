@@ -31,13 +31,26 @@ final class StaffPhoto
         return is_file($path) && @getimagesize($path) !== false;
     }
 
-    public static function url(?string $filename): ?string
+    /**
+     * Public photo URL. By default skips disk/getimagesize checks so list endpoints stay fast;
+     * pass $verifyReadable=true when a missing file must not be linked.
+     */
+    public static function url(?string $filename, bool $verifyReadable = false): ?string
     {
-        if (! self::exists($filename)) {
+        if ($filename === null || trim($filename) === '') {
             return null;
         }
 
-        return route('staff.media.photo', ['filename' => basename($filename)]);
+        $safe = basename(str_replace('\\', '/', $filename));
+        if ($safe === '' || $safe === '.' || $safe === '..') {
+            return null;
+        }
+
+        if ($verifyReadable && ! self::exists($filename)) {
+            return null;
+        }
+
+        return route('staff.media.photo', ['filename' => $safe]);
     }
 
     public static function initials(string $fname, string $lname): string

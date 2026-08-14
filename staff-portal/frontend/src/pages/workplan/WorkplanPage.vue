@@ -24,6 +24,13 @@ const year = ref<number | null>(2026)
 const metaMessage = ref<string | null>(null)
 const page = ref(1)
 const perPage = ref(25)
+const total = ref(0)
+const lastPage = ref(1)
+const metaReady = ref(false)
+
+let searchTimer: number | undefined
+let loadSeq = 0
+let suppressPageWatch = false
 
 const divisionItems = computed(() => [
   { title: 'All divisions', value: null as number | null },
@@ -36,12 +43,6 @@ const divisionItems = computed(() => [
 ])
 
 const queryShowId = computed(() => Number(route.query.id || route.query.show) || null)
-const total = computed(() => rows.value.length)
-const lastPage = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
-const pagedRows = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return rows.value.slice(start, start + perPage.value)
-})
 
 const exportHeaders = ['Activity', 'Broad activity', 'Division', 'Code', 'Year', 'Outcome', 'Sub-activities']
 
@@ -57,7 +58,9 @@ function exportCells(row: WorkplanRow): (string | number)[] {
   ]
 }
 
-async function load() {
+async function load(opts: { includeMeta?: boolean } = {}) {
+  const seq = ++loadSeq
+  const includeMeta = opts.includeMeta ?? !metaReady.value
   loading.value = true
   error.value = null
   try {
@@ -65,17 +68,38 @@ async function load() {
       q: q.value || undefined,
       division_id: divisionId.value,
       year: year.value,
+      page: page.value,
+      per_page: perPage.value,
+      include_meta: includeMeta,
     })
+    if (seq !== loadSeq) return
     rows.value = res.data
-    divisions.value = res.meta.divisions || []
+    suppressPageWatch = true
+    page.value = res.meta.current_page || page.value
+    suppressPageWatch = false
+    lastPage.value = res.meta.last_page || 1
+    total.value = res.meta.total ?? res.data.length
     praConfigured.value = !!res.meta.pra_configured
     metaMessage.value = res.meta.message || null
-    page.value = 1
+    if (includeMeta && res.meta.divisions) {
+      divisions.value = res.meta.divisions
+      metaReady.value = true
+    }
   } catch (e) {
+    if (seq !== loadSeq) return
     error.value = apiErrorMessage(e, 'Could not load workplans')
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
+}
+
+function resetToFirstPageAndLoad() {
+  if (page.value !== 1) {
+    suppressPageWatch = true
+    page.value = 1
+    suppressPageWatch = false
+  }
+  void load()
 }
 
 async function onSyncPra() {
@@ -94,7 +118,8 @@ async function onSyncPra() {
       division: divisionCode,
     })
     success.value = res.message
-    await load()
+    metaReady.value = false
+    await load({ includeMeta: true })
   } catch (e) {
     error.value = apiErrorMessage(e, 'PRA sync failed')
   } finally {
@@ -108,7 +133,7 @@ function openShow(id: number) {
 
 function onPerPage(v: number) {
   perPage.value = v
-  page.value = 1
+  resetToFirstPageAndLoad()
 }
 
 function onExportCsv() {
@@ -133,13 +158,24 @@ watch(queryShowId, (id) => {
   if (id) void router.replace({ path: `/workplan/${id}` })
 })
 
-watch([q, divisionId, year], () => void load())
+watch(q, () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => resetToFirstPageAndLoad(), 250)
+})
+
+watch([divisionId, year], () => resetToFirstPageAndLoad())
+
+watch(page, () => {
+  if (suppressPageWatch) return
+  void load()
+})
+
 onMounted(() => {
   if (queryShowId.value) {
     void router.replace({ path: `/workplan/${queryShowId.value}` })
     return
   }
-  void load()
+  void load({ includeMeta: true })
 })
 </script>
 
@@ -217,7 +253,7 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr
-            v-for="(row, index) in pagedRows"
+            v-for="(row, index) in rows"
             :key="row.id"
             style="cursor:pointer"
             @click="openShow(row.id)"
@@ -239,7 +275,7 @@ onMounted(() => {
             <td>{{ row.intermediate_outcome || '—' }}</td>
             <td>{{ row.sub_activity_count ?? 0 }}</td>
           </tr>
-          <tr v-if="!pagedRows.length">
+          <tr v-if="!rows.length">
             <td colspan="6" class="text-medium-emphasis text-center py-6">No workplan activities.</td>
           </tr>
         </tbody>

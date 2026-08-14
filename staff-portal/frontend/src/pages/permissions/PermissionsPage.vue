@@ -218,7 +218,18 @@ watch(selectedGroupId, () => {
   if (mode.value === 'group') void loadAssignments()
 })
 
-watch([userSearch, userGroupFilter, userPage], () => {
+let userSearchTimer: number | undefined
+
+watch(userSearch, () => {
+  if (mode.value !== 'user') return
+  window.clearTimeout(userSearchTimer)
+  userSearchTimer = window.setTimeout(() => {
+    userPage.value = 1
+    void loadUsers()
+  }, 250)
+})
+
+watch([userGroupFilter, userPage], () => {
   if (mode.value === 'user') void loadUsers()
 })
 

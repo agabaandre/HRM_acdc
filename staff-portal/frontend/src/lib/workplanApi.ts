@@ -30,7 +30,11 @@ export interface WorkplanListResponse {
     source?: string
     message?: string
     pra_configured?: boolean
-    divisions: WorkplanDivisionOption[]
+    divisions?: WorkplanDivisionOption[]
+    current_page?: number
+    last_page?: number
+    per_page?: number
+    total?: number
   }
 }
 
@@ -49,12 +53,18 @@ export async function fetchWorkplans(params: {
   q?: string
   division_id?: number | null
   year?: number | null
+  page?: number
+  per_page?: number
+  include_meta?: boolean
 } = {}): Promise<WorkplanListResponse> {
   const { data } = await api.get<WorkplanListResponse>('/api/v1/workplans', {
     params: {
       q: params.q || undefined,
       division_id: params.division_id || undefined,
       year: params.year || undefined,
+      page: params.page || undefined,
+      per_page: params.per_page || undefined,
+      include_meta: params.include_meta === false ? 0 : 1,
     },
   })
   return data
