@@ -16,11 +16,44 @@ class LeaveRequestService
         protected LeavePolicyService $policy,
     ) {}
 
+    public function minNoticeDays(): int
+    {
+        return max(0, (int) $this->policy->get('application_min_notice_days', 7));
+    }
+
+    public function earliestAllowedStartDate(): string
+    {
+        return now()->startOfDay()->addDays($this->minNoticeDays())->toDateString();
+    }
+
+    public function assertApplicationDates(string $start, string $end): void
+    {
+        $startDate = \Carbon\Carbon::parse($start)->startOfDay();
+        $endDate = \Carbon\Carbon::parse($end)->startOfDay();
+        if ($endDate->lt($startDate)) {
+            throw new \InvalidArgumentException('End date must be on or after the start date.');
+        }
+
+        $earliest = \Carbon\Carbon::parse($this->earliestAllowedStartDate())->startOfDay();
+        if ($startDate->lt($earliest)) {
+            $days = $this->minNoticeDays();
+            if ($days > 0) {
+                throw new \InvalidArgumentException(
+                    "Leave must start at least {$days} days from today. The earliest start date is {$earliest->toDateString()}."
+                );
+            }
+
+            throw new \InvalidArgumentException('Leave start date cannot be in the past.');
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
     public function submit(array $data, ?UploadedFile $document = null): StaffLeave
     {
+        $this->assertApplicationDates((string) $data['start_date'], (string) $data['end_date']);
+
         $staffId = (int) $data['staff_id'];
         $leaveTypeId = (int) $data['leave_id'];
         $requestedDays = (int) $data['requested_days'];

@@ -724,6 +724,17 @@ html.helpdesk-theme-dark .cbp-theme-btn.active {
   margin: 0;
 }
 
+.cbp-page-footer a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.cbp-page-footer a:hover {
+  color: #119a48;
+}
+
 .cbp-breadcrumb {
   font-size: 0.82rem;
   color: #6c757d;

@@ -35,6 +35,7 @@ class LeavePolicyService
             'paternity_max_periods' => 4,
             'calendar_year_start_month' => 1,
             'working_days_per_week' => 5,
+            'application_min_notice_days' => 7,
         ];
     }
 

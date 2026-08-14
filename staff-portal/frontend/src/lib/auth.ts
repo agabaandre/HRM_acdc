@@ -1,9 +1,16 @@
 /** Laravel login + Microsoft SSO entry (web routes on the API host). */
 
-function resolveApiPublicBase(): string {
+export function apiPublicBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_STAFF_PORTAL_API_BASE_URL as string | undefined
   if (fromEnv && fromEnv.trim() !== '') {
-    return fromEnv.trim().replace(/\/$/, '')
+    const base = fromEnv.trim().replace(/\/$/, '')
+    if (base.startsWith('http://') || base.startsWith('https://')) {
+      return base
+    }
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${base.startsWith('/') ? base : `/${base}`}`
+    }
+    return base
   }
   if (typeof window !== 'undefined') {
     const { protocol, host } = window.location
@@ -11,6 +18,16 @@ function resolveApiPublicBase(): string {
   }
   return '/staff/staff-portal/backend'
 }
+
+function resolveApiPublicBase(): string {
+  return apiPublicBaseUrl()
+}
+
+/** Public Swagger UI for the Share / staff API. */
+export function apiDocsUrl(): string {
+  return `${apiPublicBaseUrl()}/share/docs`
+}
+
 
 /** SPA login URL (never bounce through Laravel Livewire /login). */
 export function loginUrl(): string {

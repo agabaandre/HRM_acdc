@@ -168,6 +168,16 @@ export function invalidateLeaveTypesCache(): void {
   clearApiCache('leave:types')
 }
 
+export interface LeaveApplyRules {
+  min_notice_days: number
+  earliest_start_date: string
+}
+
+export async function fetchLeaveApplyRules(): Promise<LeaveApplyRules> {
+  const { data } = await api.get<{ data: LeaveApplyRules }>('/api/v1/leave/apply-rules')
+  return data.data
+}
+
 export async function fetchWorkingDays(start_date: string, end_date: string): Promise<number> {
   const { data } = await api.post<{ data: { requested_days: number } }>(
     '/api/v1/leave/working-days',

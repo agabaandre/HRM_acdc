@@ -8,9 +8,11 @@ import { useAuthStore } from '@/stores/auth'
 import {
   fetchActiveLeaveTypes,
   fetchBalanceForType,
+  fetchLeaveApplyRules,
   fetchSupportingOfficers,
   fetchWorkingDays,
   submitLeaveRequest,
+  type LeaveApplyRules,
   type LeaveBalanceDto,
   type LeaveSupportingOfficer,
   type LeaveTypeDto,
@@ -21,6 +23,7 @@ const router = useRouter()
 
 const types = ref<LeaveTypeDto[]>([])
 const officers = ref<LeaveSupportingOfficer[]>([])
+const applyRules = ref<LeaveApplyRules>({ min_notice_days: 7, earliest_start_date: '' })
 const leaveId = ref<number | null>(null)
 const startDate = ref('')
 const endDate = ref('')
@@ -55,6 +58,18 @@ const officerOptions = computed(() =>
 const selectedType = computed(() => types.value.find((t) => t.leave_id === leaveId.value) ?? null)
 const documentRequired = computed(() => Boolean(selectedType.value?.requires_medical_certificate))
 const documentAccept = '.pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg'
+const minStartDate = computed(() => applyRules.value.earliest_start_date || todayIso())
+const minEndDate = computed(() => {
+  if (startDate.value && startDate.value > minStartDate.value) return startDate.value
+  return minStartDate.value
+})
+const dateHint = computed(() => {
+  const days = applyRules.value.min_notice_days
+  if (days > 0) {
+    return `Earliest start is ${minStartDate.value} (${days}-day notice). Past dates are not allowed.`
+  }
+  return 'Past dates are not allowed.'
+})
 const documentHint = computed(() =>
   documentRequired.value
     ? 'Medical certificate required for this leave type. PDF or image, max 2MB.'
@@ -83,16 +98,29 @@ function filterOfficers(
   return hay.includes(q)
 }
 
+function todayIso(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 async function loadFormMeta() {
   loading.value = true
   error.value = null
   try {
-    const [leaveTypes, supportingOfficers] = await Promise.all([
+    const [leaveTypes, supportingOfficers, rules] = await Promise.all([
       fetchActiveLeaveTypes(),
       fetchSupportingOfficers(),
+      fetchLeaveApplyRules().catch(() => ({
+        min_notice_days: 7,
+        earliest_start_date: todayIso(),
+      })),
     ])
     types.value = leaveTypes
     officers.value = supportingOfficers
+    applyRules.value = rules
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load leave form')
   } finally {
@@ -167,6 +195,13 @@ async function onSubmit() {
   }
   if (!startDate.value || !endDate.value) {
     error.value = 'Select start and end dates.'
+    return
+  }
+  if (startDate.value < minStartDate.value) {
+    error.value =
+      applyRules.value.min_notice_days > 0
+        ? `Leave must start at least ${applyRules.value.min_notice_days} days from today. The earliest start date is ${minStartDate.value}.`
+        : 'Leave start date cannot be in the past.'
     return
   }
   if (!requestedDays.value || requestedDays.value < 1) {
@@ -263,6 +298,7 @@ onMounted(() => {
                 v-model="startDate"
                 label="Start date"
                 placeholder="Select start date"
+                :min="minStartDate"
                 :max="endDate || undefined"
               />
             </v-col>
@@ -271,7 +307,7 @@ onMounted(() => {
                 v-model="endDate"
                 label="End date"
                 placeholder="Select end date"
-                :min="startDate || undefined"
+                :min="minEndDate"
               />
             </v-col>
             <v-col cols="12" sm="4">
@@ -285,6 +321,9 @@ onMounted(() => {
                 hint="Calculated from the date range; you can adjust if needed."
                 persistent-hint
               />
+            </v-col>
+            <v-col cols="12">
+              <div class="text-caption text-medium-emphasis">{{ dateHint }}</div>
             </v-col>
           </v-row>
         </v-card-text>

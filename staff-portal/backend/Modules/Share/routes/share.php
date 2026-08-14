@@ -17,11 +17,7 @@ use Modules\Share\Http\Middleware\AuthenticateShareApi;
  *   GET /share/docs
  */
 Route::prefix('share')->group(function (): void {
-    Route::get('/', fn () => response()->json([
-        'message' => 'Africa CDC Staff Share API',
-        'docs' => url('/share/docs'),
-        'openapi' => url('/share/openapi.yaml'),
-    ]));
+    Route::get('/', fn () => redirect('/share/docs'));
 
     Route::get('docs', [ShareReferenceApiController::class, 'docs']);
     Route::get('openapi.yaml', [ShareReferenceApiController::class, 'openapi']);

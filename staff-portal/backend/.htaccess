@@ -9,6 +9,11 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Bare /backend/ has no DirectoryIndex content except index.php — if Indexes
+    # are off and rewrite skips directories, Apache returns 403. Route the
+    # directory root through Laravel (same outcome as helpdesk's index.php).
+    RewriteRule ^$ index.php [L]
+
     RewriteCond %{REQUEST_FILENAME} -d [OR]
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]

@@ -8,6 +8,7 @@ import PortalPrimaryNav from '@/components/organisms/PortalPrimaryNav.vue'
 import CbpPageFooter from '@cbp/layout/CbpPageFooter.vue'
 import CbpThemeSwitch from '@cbp/layout/CbpThemeSwitch.vue'
 import { useAuthStore } from '@/stores/auth'
+import { apiDocsUrl } from '@/lib/auth'
 
 defineProps<{
   showChrome?: boolean
@@ -20,6 +21,7 @@ const theme = ref<'dark' | 'light'>('light')
 const THEME_KEY = 'staff-portal.theme'
 
 const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? 'Staff' : null))
+const apiHref = computed(() => apiDocsUrl())
 
 /** CBP launcher home matches CI3 `/home/index` — top bar only, no staff primary nav. */
 const isCbpHome = computed(() => route.name === 'home' || route.path === '/')
@@ -67,7 +69,7 @@ if (stored === 'light' || stored === 'dark') {
         </div>
       </div>
     </div>
-    <CbpPageFooter v-if="!isCbpHome" />
+    <CbpPageFooter v-if="!isCbpHome" product="" :api-href="apiHref" />
   </div>
   <div v-else class="hd-content-frame hd-content-frame--full">
     <div class="hd-content-frame__body">

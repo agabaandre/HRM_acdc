@@ -28,7 +28,15 @@ class LeaveSettingsController extends Controller
             'policy' => 'required|array',
         ]);
 
-        $policy->save($data['policy']);
+        $policyPayload = $data['policy'];
+        if (array_key_exists('application_min_notice_days', $policyPayload)) {
+            $policyPayload['application_min_notice_days'] = max(
+                0,
+                (int) $policyPayload['application_min_notice_days']
+            );
+        }
+
+        $policy->save($policyPayload);
 
         return response()->json([
             'message' => 'Leave policy and accumulation rules saved.',

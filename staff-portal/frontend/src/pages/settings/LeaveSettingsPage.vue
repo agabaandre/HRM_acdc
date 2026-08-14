@@ -209,6 +209,20 @@ onMounted(async () => {
             </v-col>
           </v-row>
 
+          <h3 class="text-h6 text-primary mb-3 mt-4">Leave applications</h3>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model.number="policy.application_min_notice_days"
+                type="number"
+                min="0"
+                label="Minimum notice (calendar days)"
+                hint="Staff must apply this many days before leave starts. Past dates are never allowed. Default: 7."
+                persistent-hint
+              />
+            </v-col>
+          </v-row>
+
           <h3 class="text-h6 text-primary mb-3 mt-4">Maternity &amp; paternity</h3>
           <v-row>
             <v-col cols="12" md="3">

@@ -17,6 +17,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('leave/requests/{id}/decide', [LeaveApprovalController::class, 'decide'])
         ->whereNumber('id');
     Route::get('leave/types', [LeaveMetaController::class, 'types']);
+    Route::get('leave/apply-rules', [LeaveMetaController::class, 'applyRules']);
     Route::post('leave/working-days', [LeaveMetaController::class, 'workingDays']);
     Route::get('leave/balance-for-type', [LeaveMetaController::class, 'balanceForType']);
     Route::get('leave/supporting-officers', [LeaveMetaController::class, 'supportingOfficers']);

@@ -49,7 +49,7 @@ class LeaveRequestController extends Controller
 
         $validated = $request->validate([
             'leave_id' => 'required|integer|min:1',
-            'start_date' => 'required|date',
+            'start_date' => 'required|date|after_or_equal:today',
             'end_date' => 'required|date|after_or_equal:start_date',
             'requested_days' => 'required|integer|min:1',
             'email_leave' => 'required|email',

@@ -25,6 +25,16 @@ class LeaveMetaController extends Controller
         ]);
     }
 
+    public function applyRules(LeaveRequestService $requests): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'min_notice_days' => $requests->minNoticeDays(),
+                'earliest_start_date' => $requests->earliestAllowedStartDate(),
+            ],
+        ]);
+    }
+
     public function workingDays(Request $request, LeaveRequestService $requests): JsonResponse
     {
         $validated = $request->validate([
