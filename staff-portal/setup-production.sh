@@ -84,8 +84,35 @@ INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-auto}"
 STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
 STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-www-data}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
-VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-/staff/staff-portal/backend}"
-VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-/staff/staff-portal/}"
+
+# URL prefix follows the parent folder name for demo deploys:
+#   .../demo_staff/staff-portal → /demo_staff/staff-portal/
+#   .../staff/staff-portal     → /staff/staff-portal/
+staff_portal_web_prefix() {
+    local parent
+    parent="$(basename "$(cd "$ROOT/.." && pwd)")"
+    if [[ "$parent" == "demo_staff" ]]; then
+        printf '/demo_staff'
+    else
+        printf '/staff'
+    fi
+}
+WEB_PREFIX="$(staff_portal_web_prefix)"
+# Always align Vite paths to this deploy (stale .env.production.local was pointing
+# /demo_staff HTML at /staff/staff-portal/assets → 500s on the wrong tree).
+VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/staff-portal/backend}"
+VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-${WEB_PREFIX}/staff-portal/}"
+# If setup.env still has /staff/... but we are under demo_staff, override.
+if [[ "$WEB_PREFIX" == "/demo_staff" ]]; then
+    case "${VITE_STAFF_PORTAL_BASE_PATH}" in
+        /staff/*)
+            VITE_STAFF_PORTAL_BASE_PATH="/demo_staff/staff-portal/"
+            VITE_STAFF_PORTAL_API_BASE_URL="/demo_staff/staff-portal/backend"
+            warn "Deploy path is demo_staff — forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH}"
+            ;;
+    esac
+fi
+log "Vite base: ${VITE_STAFF_PORTAL_BASE_PATH}  API: ${VITE_STAFF_PORTAL_API_BASE_URL}"
 
 if [[ ! -x "$PHP_BIN" ]]; then
     PHP_BIN="$(command -v php || true)"
@@ -240,12 +267,11 @@ fi
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
     log "Building frontend (Vite production)"
     PROD_ENV="$FRONTEND/.env.production.local"
-    VITE_ENV_PREEXISTED=0
-    [[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
-    dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_API_BASE_URL \
-        "$VITE_STAFF_PORTAL_API_BASE_URL" "$VITE_ENV_PREEXISTED"
-    dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH \
-        "$VITE_STAFF_PORTAL_BASE_PATH" "$VITE_ENV_PREEXISTED"
+    # Always rewrite Vite public paths for this deploy (do not keep stale /staff/ values
+    # when serving under /demo_staff/).
+    dotenv_set "$PROD_ENV" VITE_STAFF_PORTAL_API_BASE_URL "$VITE_STAFF_PORTAL_API_BASE_URL"
+    dotenv_set "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH"
+    log "Wrote $PROD_ENV (base=${VITE_STAFF_PORTAL_BASE_PATH})"
     if [[ -d "$FRONTEND/dist-build" ]] && ! [[ -w "$FRONTEND/dist-build" ]]; then
         warn "frontend/dist-build is not writable — fixing ownership for $(id -un)"
         if chown -R "$(id -un):$(id -gn)" "$FRONTEND/dist-build" 2>/dev/null; then

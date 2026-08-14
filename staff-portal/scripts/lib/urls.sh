@@ -12,8 +12,16 @@ fi
 source "$_LIB_DIR/staff-portal-urls.sh"
 
 staff_portal_resolve_production_urls() {
-    local staff_base origin
+    local staff_base origin mount
     [[ "${APP_ENV:-}" == "production" ]] || return 0
+
+    # Detect /demo_staff vs /staff from filesystem (…/demo_staff/staff-portal).
+    mount="/staff"
+    if [[ -n "${PORTAL_ROOT:-}" && "$(basename "$(cd "$PORTAL_ROOT/.." && pwd)")" == "demo_staff" ]]; then
+        mount="/demo_staff"
+    elif [[ -n "${STAFF_ROOT:-}" && "$(basename "$STAFF_ROOT")" == "demo_staff" ]]; then
+        mount="/demo_staff"
+    fi
 
     if url_needs_resolve "${APP_URL:-}" || url_needs_resolve "${BASE_URL:-}" \
         || url_needs_resolve "${STAFF_PORTAL_SPA_URL:-}" \
@@ -24,30 +32,34 @@ staff_portal_resolve_production_urls() {
         staff_base="${staff_base%/}/"
         origin="${staff_base%/staff/}"
         origin="${origin%/}"
+        # Prefer filesystem mount for SPA/API paths when under demo_staff
+        if [[ "$mount" == "/demo_staff" ]]; then
+            staff_base="${origin}/demo_staff/"
+        fi
 
         if url_needs_resolve "${BASE_URL:-}"; then
             BASE_URL="$staff_base"
         fi
         if url_needs_resolve "${STAFF_PORTAL_SPA_URL:-}"; then
-            STAFF_PORTAL_SPA_URL="${origin}/staff/staff-portal/"
+            STAFF_PORTAL_SPA_URL="${origin}${mount}/staff-portal/"
         fi
         if url_needs_resolve "${APP_URL:-}"; then
-            APP_URL="${origin}/staff/staff-portal/backend"
+            APP_URL="${origin}${mount}/staff-portal/backend"
         fi
         if url_needs_resolve "${STAFF_PORTAL_BASE_URL:-}"; then
-            STAFF_PORTAL_BASE_URL="${origin}/staff/staff-portal/backend/"
+            STAFF_PORTAL_BASE_URL="${origin}${mount}/staff-portal/backend/"
         fi
         if url_needs_resolve "${STAFF_PORTAL_HEALTH_URL:-}"; then
-            STAFF_PORTAL_HEALTH_URL="${origin}/staff/staff-portal/backend/up"
+            STAFF_PORTAL_HEALTH_URL="${origin}${mount}/staff-portal/backend/up"
         fi
         if url_needs_resolve "${APM_BASE_URL:-}"; then
             APM_BASE_URL="${origin}/staff/apm"
         fi
-        if [[ -z "${VITE_STAFF_PORTAL_API_BASE_URL:-}" ]]; then
-            VITE_STAFF_PORTAL_API_BASE_URL="/staff/staff-portal/backend"
+        if [[ -z "${VITE_STAFF_PORTAL_API_BASE_URL:-}" || "$mount" == "/demo_staff" ]]; then
+            VITE_STAFF_PORTAL_API_BASE_URL="${mount}/staff-portal/backend"
         fi
-        if [[ -z "${VITE_STAFF_PORTAL_BASE_PATH:-}" ]]; then
-            VITE_STAFF_PORTAL_BASE_PATH="/staff/staff-portal/"
+        if [[ -z "${VITE_STAFF_PORTAL_BASE_PATH:-}" || "$mount" == "/demo_staff" ]]; then
+            VITE_STAFF_PORTAL_BASE_PATH="${mount}/staff-portal/"
         fi
     fi
 }

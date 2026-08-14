@@ -14,13 +14,14 @@ Options -Indexes
     # Missing Vite assets were rewritten to CI → HTTP 500 + text/html MIME.
     # Use REQUEST_URI so this works with Alias /staff → <repo>.
     # ------------------------------------------------------------------
-    RewriteCond %{REQUEST_URI} /staff-portal/assets/([^/]+)$ [NC]
-    RewriteRule ^.*$ staff-portal/spa-static.php?f=%1 [L,QSA]
+    # Staff Portal under /staff/… or /demo_staff/…
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal/assets/([^/]+)$ [NC]
+    RewriteRule ^.*$ staff-portal/spa-static.php?f=%2 [L,QSA]
 
-    RewriteCond %{REQUEST_URI} /staff-portal/backend(/|$) [NC]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal/backend(/|$) [NC]
     RewriteRule ^.*$ - [L]
 
-    RewriteCond %{REQUEST_URI} /staff-portal(/|$) [NC]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal(/|$) [NC]
     RewriteCond %{REQUEST_URI} !/staff-portal/backend [NC]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^.*$ staff-portal/spa-static.php [L,QSA]
