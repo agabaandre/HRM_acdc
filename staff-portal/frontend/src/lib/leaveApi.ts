@@ -186,6 +186,21 @@ export async function fetchWorkingDays(start_date: string, end_date: string): Pr
   return data.data.requested_days
 }
 
+/** Client-side working days (Mon–Fri), matching LeaveRequestService::workingDaysBetween. */
+export function workingDaysBetween(start_date: string, end_date: string): number {
+  const start = new Date(`${start_date}T00:00:00`)
+  const end = new Date(`${end_date}T00:00:00`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return 0
+  }
+  let days = 0
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const weekday = d.getDay()
+    if (weekday !== 0 && weekday !== 6) days += 1
+  }
+  return Math.max(1, days)
+}
+
 export async function fetchBalanceForType(leave_id: number): Promise<LeaveBalanceDto> {
   const { data } = await api.get<{ data: LeaveBalanceDto }>('/api/v1/leave/balance-for-type', {
     params: { leave_id },
@@ -266,11 +281,11 @@ export async function fetchLeavePlan(year?: number): Promise<{
   data: LeavePlanDto
   meta: { year: number; year_options: number[] }
 }> {
-  const { data } = await api.get<{
+  const y = year ?? new Date().getFullYear()
+  return cachedGet<{
     data: LeavePlanDto
     meta: { year: number; year_options: number[] }
-  }>('/api/v1/leave/plans', { params: year ? { year } : undefined })
-  return data
+  }>('leave:plan', '/api/v1/leave/plans', 45_000, { year: y })
 }
 
 export async function saveLeavePlanDraft(
@@ -281,6 +296,7 @@ export async function saveLeavePlanDraft(
     `/api/v1/leave/plans/${id}`,
     payload,
   )
+  clearApiCache('leave:plan')
   return data
 }
 
@@ -290,6 +306,7 @@ export async function submitLeavePlan(
   const { data } = await api.post<{ message: string; data: LeavePlanDto }>(
     `/api/v1/leave/plans/${id}/submit`,
   )
+  clearApiCache('leave:plan')
   return data
 }
 

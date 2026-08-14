@@ -325,6 +325,9 @@ function hasVisibleData(): boolean {
 }
 
 async function loadTab() {
+  // Plan tab is owned by LeavePlanPanel — do not touch parent loading chrome.
+  if (tab.value === 'plan') return
+
   const seq = ++loadSeq
   const keepPaint = hasVisibleData()
   if (!keepPaint) loading.value = true
@@ -341,8 +344,6 @@ async function loadTab() {
       }
     } else if (tab.value === 'requests') {
       await loadRequests()
-    } else if (tab.value === 'plan') {
-      // LeavePlanPanel loads its own data.
     } else {
       const res = await fetchLeaveApprovals()
       if (seq !== loadSeq) return

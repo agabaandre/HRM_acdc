@@ -2,14 +2,18 @@
 
 namespace Modules\Leave\Services;
 
+use App\Support\LegacySchema;
+use App\Support\PortalReadCache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Modules\Leave\Models\StaffLeavePlan;
 use Modules\Leave\Models\StaffLeavePlanEntry;
 use RuntimeException;
 
 class LeavePlanService
 {
+    /** @var object{leave_id: int|string, leave_name: string, code?: string|null}|false|null */
+    protected object|false|null $annualTypeMemo = null;
+
     public function __construct(
         protected LeaveRequestService $requests,
         protected LeaveBalanceService $balances,
@@ -17,8 +21,8 @@ class LeavePlanService
 
     public function tablesReady(): bool
     {
-        return Schema::hasTable('staff_leave_plans')
-            && Schema::hasTable('staff_leave_plan_entries');
+        return LegacySchema::has('staff_leave_plans')
+            && LegacySchema::has('staff_leave_plan_entries');
     }
 
     /**
@@ -36,7 +40,7 @@ class LeavePlanService
             ->first();
 
         if ($plan) {
-            return $plan->load(['entries.leaveType']);
+            return $plan->load(['entries']);
         }
 
         $plan = StaffLeavePlan::query()->create([
@@ -46,7 +50,7 @@ class LeavePlanService
             'notes' => null,
         ]);
 
-        return $plan->load(['entries.leaveType']);
+        return $plan->load(['entries']);
     }
 
     /**
@@ -56,13 +60,33 @@ class LeavePlanService
      */
     public function resolveAnnualLeaveType(): ?object
     {
-        return DB::table('leave_types')
-            ->where(function ($q): void {
-                $q->where('leave_name', 'like', '%annual%')
-                    ->orWhere('code', 'like', '%annual%');
-            })
-            ->orderBy('leave_id')
-            ->first();
+        if ($this->annualTypeMemo !== null) {
+            return $this->annualTypeMemo === false ? null : $this->annualTypeMemo;
+        }
+
+        $cached = PortalReadCache::remember(
+            PortalReadCache::key('leave', 'annual_type', 0),
+            function (): ?object {
+                return DB::table('leave_types')
+                    ->where(function ($q): void {
+                        $q->where('leave_name', 'like', '%annual%')
+                            ->orWhere('code', 'like', '%annual%');
+                    })
+                    ->orderBy('leave_id')
+                    ->first();
+            }
+        );
+
+        if ($cached === null) {
+            $this->annualTypeMemo = false;
+
+            return null;
+        }
+
+        // Cache may hydrate as array depending on store.
+        $this->annualTypeMemo = is_array($cached) ? (object) $cached : $cached;
+
+        return $this->annualTypeMemo;
     }
 
     /**
@@ -70,7 +94,7 @@ class LeavePlanService
      */
     public function present(StaffLeavePlan $plan, int $staffId): array
     {
-        $plan->loadMissing(['entries.leaveType']);
+        $plan->loadMissing(['entries']);
         $readonly = ! $plan->isDraft();
         $annualType = $this->resolveAnnualLeaveType();
         $annualLeaveId = $annualType ? (int) $annualType->leave_id : null;
@@ -87,7 +111,10 @@ class LeavePlanService
             'sort_order' => (int) $e->sort_order,
         ])->values()->all();
 
-        $plannedTotal = collect($entries)->sum('planned_days');
+        $plannedTotal = 0.0;
+        foreach ($entries as $entry) {
+            $plannedTotal += (float) $entry['planned_days'];
+        }
 
         $balanceHint = null;
         if ($annualType) {
@@ -183,7 +210,7 @@ class LeavePlanService
             $plan->save();
         });
 
-        return $plan->fresh(['entries.leaveType']);
+        return $plan->fresh(['entries']);
     }
 
     public function submit(StaffLeavePlan $plan, int $userId): StaffLeavePlan
@@ -202,6 +229,6 @@ class LeavePlanService
         $plan->submitted_by_user_id = $userId;
         $plan->save();
 
-        return $plan->fresh(['entries.leaveType']);
+        return $plan->fresh(['entries']);
     }
 }

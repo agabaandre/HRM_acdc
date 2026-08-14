@@ -3,6 +3,7 @@
 namespace Modules\Leave\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\PortalReadCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\PortalUser;
@@ -38,19 +39,32 @@ class LeavePlanController extends Controller
             return response()->json(['message' => 'Invalid plan year.'], 422);
         }
 
+        $user = $request->user();
+        $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
+        $cacheKey = PortalReadCache::key('leave', 'plan', $userId, [
+            'staff_id' => $staffId,
+            'year' => $year,
+        ]);
+
+        $yearOptions = $this->yearOptions();
+
         try {
-            $plan = $plans->getOrCreateForStaff($staffId, $year);
+            $payload = PortalReadCache::remember($cacheKey, function () use ($plans, $staffId, $year, $yearOptions): array {
+                $plan = $plans->getOrCreateForStaff($staffId, $year);
+
+                return [
+                    'data' => $plans->present($plan, $staffId),
+                    'meta' => [
+                        'year' => $year,
+                        'year_options' => $yearOptions,
+                    ],
+                ];
+            });
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json([
-            'data' => $plans->present($plan, $staffId),
-            'meta' => [
-                'year' => $year,
-                'year_options' => $this->yearOptions(),
-            ],
-        ]);
+        return response()->json($payload);
     }
 
     public function update(Request $request, int $id, LeavePlanService $plans): JsonResponse
@@ -90,6 +104,8 @@ class LeavePlanController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        PortalReadCache::bust('leave');
+
         return response()->json([
             'message' => 'Leave plan draft saved.',
             'data' => $plans->present($plan, $staffId),
@@ -120,6 +136,8 @@ class LeavePlanController extends Controller
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        PortalReadCache::bust('leave');
 
         return response()->json([
             'message' => 'Leave plan submitted. It can no longer be edited.',

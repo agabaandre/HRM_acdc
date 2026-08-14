@@ -6,6 +6,9 @@ use Modules\Leave\Models\LeavePolicySetting;
 
 class LeavePolicyService
 {
+    /** @var array<string, mixed>|null */
+    protected ?array $cachedAll = null;
+
     /**
      * Default Africa CDC leave policy (from HR leave module specification).
      *
@@ -44,6 +47,10 @@ class LeavePolicyService
      */
     public function all(): array
     {
+        if ($this->cachedAll !== null) {
+            return $this->cachedAll;
+        }
+
         $stored = LeavePolicySetting::query()
             ->pluck('setting_value', 'setting_key')
             ->map(fn ($v) => is_array($v) ? $v : [])
@@ -58,7 +65,7 @@ class LeavePolicyService
             }
         }
 
-        return array_merge($this->defaults(), $flat);
+        return $this->cachedAll = array_merge($this->defaults(), $flat);
     }
 
     public function get(string $key, mixed $default = null): mixed
@@ -77,5 +84,6 @@ class LeavePolicyService
                 ['setting_value' => ['value' => $value]]
             );
         }
+        $this->cachedAll = null;
     }
 }

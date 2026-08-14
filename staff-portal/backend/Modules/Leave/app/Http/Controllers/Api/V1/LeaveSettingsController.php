@@ -3,6 +3,7 @@
 namespace Modules\Leave\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\PortalReadCache;
 use App\Support\PortalReferenceCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,8 @@ class LeaveSettingsController extends Controller
         }
 
         $policy->save($policyPayload);
+
+        PortalReadCache::bust('leave');
 
         return response()->json([
             'message' => 'Leave policy and accumulation rules saved.',

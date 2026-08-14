@@ -97,7 +97,7 @@ class LeaveBalanceService
             ->where('staff_id', $staffId)
             ->whereIn('leave_id', $typeIds)
             ->where('overall_status', 'Approved')
-            ->whereYear('start_date', $year)
+            ->whereBetween('start_date', ["{$year}-01-01", "{$year}-12-31"])
             ->selectRaw('leave_id, COALESCE(SUM(requested_days), 0) as total')
             ->groupBy('leave_id')
             ->pluck('total', 'leave_id');
@@ -106,7 +106,7 @@ class LeaveBalanceService
             ->where('staff_id', $staffId)
             ->whereIn('leave_id', $typeIds)
             ->where('overall_status', 'Pending')
-            ->whereYear('start_date', $year)
+            ->whereBetween('start_date', ["{$year}-01-01", "{$year}-12-31"])
             ->selectRaw('leave_id, COALESCE(SUM(requested_days), 0) as total')
             ->groupBy('leave_id')
             ->pluck('total', 'leave_id');
@@ -244,7 +244,7 @@ class LeaveBalanceService
             ->where('staff_id', $staffId)
             ->where('leave_id', $leaveTypeId)
             ->where('overall_status', 'Approved')
-            ->whereYear('start_date', $year)
+            ->whereBetween('start_date', ["{$year}-01-01", "{$year}-12-31"])
             ->sum('requested_days');
     }
 
@@ -254,7 +254,7 @@ class LeaveBalanceService
             ->where('staff_id', $staffId)
             ->where('leave_id', $leaveTypeId)
             ->where('overall_status', 'Pending')
-            ->whereYear('start_date', $year)
+            ->whereBetween('start_date', ["{$year}-01-01", "{$year}-12-31"])
             ->sum('requested_days');
     }
 

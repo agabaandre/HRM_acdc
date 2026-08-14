@@ -3,9 +3,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import {
   fetchLeavePlan,
-  fetchWorkingDays,
   saveLeavePlanDraft,
   submitLeavePlan,
+  workingDaysBetween,
   type LeavePlanDto,
   type LeavePlanEntryInput,
 } from '@/lib/leaveApi'
@@ -80,14 +80,10 @@ async function load() {
   }
 }
 
-async function recalcDays(index: number) {
+function recalcDays(index: number) {
   const row = rows.value[index]
   if (!row?.start_date || !row?.end_date || row.start_date > row.end_date) return
-  try {
-    row.planned_days = await fetchWorkingDays(row.start_date, row.end_date)
-  } catch {
-    /* keep manual value */
-  }
+  row.planned_days = workingDaysBetween(row.start_date, row.end_date)
 }
 
 function addRow() {
