@@ -65,6 +65,7 @@ class LeaveSettingsController extends Controller
         $data = $this->validatedType($request);
         $type = LeaveType::query()->create($data + ['is_active' => true]);
         PortalReferenceCache::bustLeaveTypes();
+        PortalReadCache::bust('leave');
 
         return response()->json([
             'message' => 'Leave type created.',
@@ -79,6 +80,7 @@ class LeaveSettingsController extends Controller
         $type = LeaveType::query()->findOrFail($leaveId);
         $type->update($this->validatedType($request));
         PortalReferenceCache::bustLeaveTypes();
+        PortalReadCache::bust('leave');
 
         return response()->json([
             'message' => 'Leave type updated.',
