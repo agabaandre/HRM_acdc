@@ -17,7 +17,8 @@
 /frontend/node_modules
 /frontend/.npm-cache
 /frontend/.env.production.local
-# Published copy of dist-build/assets (created by setup-production.sh)
+# Published Vite output at staff-portal root (setup-production.sh)
 /assets
+/index.html
 *.log
 Thumbs.db

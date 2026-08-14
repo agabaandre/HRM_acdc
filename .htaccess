@@ -12,6 +12,10 @@ Options -Indexes
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # Never send SPA / Laravel apps through CodeIgniter front controller.
+    # Missing asset files were rewritten to index.php → HTTP 500 + text/html MIME.
+    RewriteRule ^(staff-portal|helpdesk|finance|apm)(/|$) - [L]
+
     # Staff Share reference API (APM sync) → Laravel staff-portal (307 keeps method + query)
     # Keeps CI for other /share/* endpoints (service_requests, validate_session, etc.)
     RewriteRule ^share/(get_current_staff|divisions|directorates|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/staff-portal/backend/share/$1$2 [R=307,L,QSA]

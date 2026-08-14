@@ -276,29 +276,32 @@ else
     log "Skipping frontend build (--skip-build)"
 fi
 
-# Publish Vite assets at staff-portal/assets so Apache serves real files
-# (RewriteCond -f). Internal rewrite into frontend/dist-build often returns
-# HTTP 500 + text/html under Alias / Options -FollowSymLinks hosts.
+# Publish Vite build at staff-portal root so Apache serves real files.
+# Parent CodeIgniter .htaccess rewrites missing paths to index.php (HTTP 500).
 publish_spa_assets() {
     local dist="$FRONTEND/dist-build"
-    local dest="$ROOT/assets"
-    if [[ ! -d "$dist/assets" ]]; then
-        warn "No $dist/assets — skip SPA asset publish (run without --skip-build)"
+    local dest_assets="$ROOT/assets"
+    local dest_index="$ROOT/index.html"
+    if [[ ! -d "$dist/assets" || ! -f "$dist/index.html" ]]; then
+        warn "No complete $dist — skip SPA publish (run without --skip-build)"
         return 0
     fi
-    log "Publishing SPA assets → $dest"
-    rm -rf "$dest"
-    # Prefer a real copy: FollowSymLinks is often disabled → symlink = HTTP 500
-    if cp -a "$dist/assets" "$dest"; then
-        chmod -R a+rX "$dest" "$dist" 2>/dev/null || true
-    else
-        die "Could not publish SPA assets to $dest"
-    fi
-    local sample
-    sample="$(find "$dest" -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) | head -n 1 || true)"
-    if [[ -n "$sample" ]]; then
-        printf '    published %s (%s files)\n' "$dest" "$(find "$dest" -type f | wc -l | tr -d ' ')"
-    fi
+    log "Publishing SPA → $ROOT/index.html + $dest_assets"
+    rm -rf "$dest_assets"
+    cp -a "$dist/assets" "$dest_assets"
+    cp -f "$dist/index.html" "$dest_index"
+    # Copy other hashed/static root files from dist (favicon, etc.) when present
+    local f
+    for f in "$dist"/*; do
+        [[ -f "$f" ]] || continue
+        case "$(basename "$f")" in
+            index.html) continue ;;
+            *) cp -f "$f" "$ROOT/$(basename "$f")" ;;
+        esac
+    done
+    chmod -R a+rX "$dest_assets" "$dist" 2>/dev/null || true
+    chmod a+r "$dest_index" 2>/dev/null || true
+    printf '    published index.html + %s asset files\n' "$(find "$dest_assets" -type f | wc -l | tr -d ' ')"
 }
 publish_spa_assets
 
