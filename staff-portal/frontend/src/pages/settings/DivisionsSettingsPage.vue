@@ -274,7 +274,7 @@ async function onDelete(row: DivisionRow) {
   }
 }
 
-const exportHeaders = ['ID', 'Name', 'Short name', 'Category', 'Directorate', 'Head', 'Active']
+const exportHeaders = ['ID', 'Name', 'Short name', 'Category', 'Directorate', 'Director', 'Head', 'Active']
 
 function rowToExport(r: DivisionRow): (string | number)[] {
   return [
@@ -283,6 +283,7 @@ function rowToExport(r: DivisionRow): (string | number)[] {
     r.division_short_name ?? '',
     r.category ?? '',
     r.directorate_name ?? '',
+    r.director_name ?? '',
     r.division_head_name ?? '',
     r.is_active ? 'Yes' : 'No',
   ]
