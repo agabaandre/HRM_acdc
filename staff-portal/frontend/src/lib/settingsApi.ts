@@ -186,7 +186,7 @@ export async function fetchDivisionsSettings(params: { q?: string; page?: number
       last_page: number
       per_page: number
       total: number
-      directorates: Array<{ id: number; name: string }>
+      directorates: Array<{ id: number; name: string; director_id?: number | null }>
       categories: string[]
     }
   }>('/api/v1/settings/divisions', { params })

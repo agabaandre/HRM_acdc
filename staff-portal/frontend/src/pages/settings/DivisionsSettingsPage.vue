@@ -39,7 +39,7 @@ type DivForm = {
 const emptyForm = (): DivForm => ({
   division_name: '',
   division_short_name: '',
-  category: 'Technical',
+  category: 'Programs',
   directorate_id: null,
   is_active: true,
   division_head: null,
@@ -64,18 +64,20 @@ const perPage = ref(25)
 const total = ref(0)
 const rows = ref<DivisionRow[]>([])
 const staffOptions = ref<StaffOpt[]>([])
-const directorateOptions = ref<{ title: string; value: number }[]>([])
-const categoryOptions = ref<string[]>(['Technical', 'Support'])
+const directorateOptions = ref<{ title: string; value: number; director_id: number | null }[]>([])
+const categoryOptions = ref<string[]>(['Programs', 'Operations', 'Other'])
 const createExpanded = ref(false)
 const dialogOpen = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<DivForm>(emptyForm())
+let suppressDirectorWatch = false
 
 const headers = [
   { title: 'Name', key: 'division_name', sortable: false },
   { title: 'Short', key: 'division_short_name', sortable: false },
   { title: 'Category', key: 'category', sortable: false },
   { title: 'Directorate', key: 'directorate_name', sortable: false },
+  { title: 'Director', key: 'director_name', sortable: false },
   { title: 'Head', key: 'division_head_name', sortable: false },
   { title: 'Active', key: 'is_active', sortable: false, width: 90 },
   { title: '', key: 'actions', sortable: false, width: 120, align: 'end' as const },
@@ -87,6 +89,24 @@ const categorySelectItems = computed(() =>
 
 const dialogTitle = computed(() => (editingId.value ? 'Edit division' : 'New division'))
 
+const resolvedDirectorateLabel = computed(() => {
+  if (!form.directorate_id) {
+    return form.director_id
+      ? 'No directorate linked to this director yet'
+      : 'Set when a director is selected'
+  }
+  const match = directorateOptions.value.find((d) => d.value === form.directorate_id)
+  return match?.title || `Directorate #${form.directorate_id}`
+})
+
+function resolveDirectorateFromDirector(directorId: number | null) {
+  if (!directorId) {
+    form.directorate_id = null
+    return
+  }
+  const match = directorateOptions.value.find((d) => d.director_id === directorId)
+  form.directorate_id = match?.value ?? null
+}
 function staffFilter(itemTitle: string, queryText: string, item: unknown): boolean {
   const raw = (item as { raw?: StaffOpt })?.raw
   const hay = `${raw?.title ?? itemTitle} ${raw?.email ?? ''} ${raw?.value ?? ''}`.toLowerCase()
@@ -100,11 +120,15 @@ function ensureStaffOption(id: number | null | undefined, name?: string | null) 
 }
 
 function fillForm(row?: DivisionRow | null) {
+  suppressDirectorWatch = true
   Object.assign(form, emptyForm())
-  if (!row) return
+  if (!row) {
+    suppressDirectorWatch = false
+    return
+  }
   form.division_name = row.division_name
   form.division_short_name = row.division_short_name ?? ''
-  form.category = row.category || categoryOptions.value[0] || 'Technical'
+  form.category = row.category || categoryOptions.value[0] || 'Programs'
   form.directorate_id = row.directorate_id ?? null
   form.is_active = !!row.is_active
   form.division_head = row.division_head ?? null
@@ -125,6 +149,11 @@ function fillForm(row?: DivisionRow | null) {
   ensureStaffOption(row.director_id, row.director_name)
   ensureStaffOption(row.head_oic_id, row.head_oic_name)
   ensureStaffOption(row.director_oic_id, row.director_oic_name)
+  // Prefer link via director when available.
+  if (form.director_id) {
+    resolveDirectorateFromDirector(form.director_id)
+  }
+  suppressDirectorWatch = false
 }
 
 function toPayload(): DivisionFormPayload {
@@ -170,6 +199,7 @@ async function load() {
     directorateOptions.value = (res.meta.directorates || []).map((d) => ({
       title: d.name,
       value: d.id,
+      director_id: d.director_id ?? null,
     }))
     if (res.meta.categories?.length) {
       categoryOptions.value = res.meta.categories
@@ -201,10 +231,6 @@ async function onSave(fromCreatePanel = false) {
     toast.warning('Division name is required.', 'Divisions')
     return
   }
-  if (!form.directorate_id) {
-    toast.warning('Directorate is required.', 'Divisions')
-    return
-  }
   if (!form.division_head || !form.focal_person || !form.finance_officer || !form.admin_assistant) {
     toast.warning(
       'Head, focal person, finance officer and admin assistant are required.',
@@ -212,6 +238,8 @@ async function onSave(fromCreatePanel = false) {
     )
     return
   }
+  // Keep directorate in sync with director before save (backend also resolves).
+  resolveDirectorateFromDirector(form.director_id)
   saving.value = true
   try {
     const payload = toPayload()
@@ -293,6 +321,14 @@ async function onExportExcel() {
   }
 }
 
+watch(
+  () => form.director_id,
+  (directorId) => {
+    if (suppressDirectorWatch) return
+    resolveDirectorateFromDirector(directorId)
+  },
+)
+
 watch([page, perPage], () => {
   void load()
 })
@@ -321,7 +357,7 @@ onMounted(async () => {
     <div class="d-flex flex-wrap align-center justify-space-between ga-3 mb-4">
       <CbpPageHeading
         title="Divisions"
-        subtitle="Manage divisions, directorate links, and responsible officers (CI3 parity)."
+        subtitle="Manage divisions and officers. Directorate is optional and filled from the selected director."
       />
       <div class="d-flex flex-wrap ga-2">
         <RouterLink to="/settings" style="text-decoration: none">
@@ -392,13 +428,32 @@ onMounted(async () => {
               />
             </v-col>
             <v-col cols="12" md="6">
-              <v-select
-                v-model="form.directorate_id"
-                :items="directorateOptions"
-                label="Directorate *"
+              <v-autocomplete
+                v-model="form.director_id"
+                :items="staffOptions"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
+                label="Director (optional)"
+                placeholder="Search staff…"
                 density="compact"
                 hide-details="auto"
                 clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                :model-value="resolvedDirectorateLabel"
+                label="Directorate (from director)"
+                density="compact"
+                hide-details="auto"
+                readonly
                 class="bg-white"
               />
             </v-col>
@@ -473,26 +528,6 @@ onMounted(async () => {
                 item-value="value"
                 :custom-filter="staffFilter"
                 label="Admin assistant *"
-                placeholder="Search staff…"
-                density="compact"
-                hide-details="auto"
-                clearable
-                auto-select-first
-                class="bg-white"
-              >
-                <template #item="{ props: itemProps, item }">
-                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
-                </template>
-              </v-autocomplete>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-autocomplete
-                v-model="form.director_id"
-                :items="staffOptions"
-                item-title="title"
-                item-value="value"
-                :custom-filter="staffFilter"
-                label="Director (optional)"
                 placeholder="Search staff…"
                 density="compact"
                 hide-details="auto"
@@ -649,7 +684,34 @@ onMounted(async () => {
               <v-select v-model="form.category" :items="categorySelectItems" label="Category *" density="compact" hide-details="auto" class="bg-white" />
             </v-col>
             <v-col cols="12" md="6">
-              <v-select v-model="form.directorate_id" :items="directorateOptions" label="Directorate *" density="compact" hide-details="auto" clearable class="bg-white" />
+              <v-autocomplete
+                v-model="form.director_id"
+                :items="staffOptions"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
+                label="Director (optional)"
+                placeholder="Search staff…"
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                :model-value="resolvedDirectorateLabel"
+                label="Directorate (from director)"
+                density="compact"
+                hide-details="auto"
+                readonly
+                class="bg-white"
+              />
             </v-col>
             <v-col cols="12" md="6" class="d-flex align-center">
               <v-switch v-model="form.is_active" label="Active" color="primary" hide-details density="compact" />
@@ -722,26 +784,6 @@ onMounted(async () => {
                 item-value="value"
                 :custom-filter="staffFilter"
                 label="Admin assistant *"
-                placeholder="Search staff…"
-                density="compact"
-                hide-details="auto"
-                clearable
-                auto-select-first
-                class="bg-white"
-              >
-                <template #item="{ props: itemProps, item }">
-                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
-                </template>
-              </v-autocomplete>
-            </v-col>
-            <v-col cols="12" md="4">
-              <v-autocomplete
-                v-model="form.director_id"
-                :items="staffOptions"
-                item-title="title"
-                item-value="value"
-                :custom-filter="staffFilter"
-                label="Director (optional)"
                 placeholder="Search staff…"
                 density="compact"
                 hide-details="auto"

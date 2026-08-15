@@ -282,9 +282,16 @@ class OrgUnitsSettingsController extends Controller
             'director_oic_id' => ['nullable', 'integer', $staffExists],
             'director_oic_start_date' => ['nullable', 'date'],
             'director_oic_end_date' => ['nullable', 'date', 'after_or_equal:director_oic_start_date'],
+            // Optional; when director_id is set, directorate is resolved from directorates.director_id.
             'directorate_id' => ['nullable', 'integer', Rule::exists('directorates', 'id')],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        $directorId = $this->nullableInt($validated['director_id'] ?? null);
+        $directorateId = $this->resolveDirectorateIdFromDirector(
+            $directorId,
+            $this->nullableInt($validated['directorate_id'] ?? null),
+        );
 
         return [
             'division_name' => trim((string) $validated['division_name']),
@@ -294,18 +301,73 @@ class OrgUnitsSettingsController extends Controller
             'focal_person' => (int) $validated['focal_person'],
             'finance_officer' => (int) $validated['finance_officer'],
             'admin_assistant' => (int) $validated['admin_assistant'],
-            'director_id' => $this->nullableInt($validated['director_id'] ?? null),
+            'director_id' => $directorId,
             'head_oic_id' => $this->nullableInt($validated['head_oic_id'] ?? null),
             'head_oic_start_date' => $this->nullableDate($validated['head_oic_start_date'] ?? null),
             'head_oic_end_date' => $this->nullableDate($validated['head_oic_end_date'] ?? null),
             'director_oic_id' => $this->nullableInt($validated['director_oic_id'] ?? null),
             'director_oic_start_date' => $this->nullableDate($validated['director_oic_start_date'] ?? null),
             'director_oic_end_date' => $this->nullableDate($validated['director_oic_end_date'] ?? null),
-            'directorate_id' => $this->nullableInt($validated['directorate_id'] ?? null),
+            'directorate_id' => $directorateId,
             'is_active' => array_key_exists('is_active', $validated)
                 ? (! empty($validated['is_active']) ? 1 : 0)
                 : 1,
         ];
+    }
+
+    /**
+     * Prefer the directorate that already lists this staff as director.
+     * Divisions without a director stay unlinked (directorate optional).
+     */
+    protected function resolveDirectorateIdFromDirector(?int $directorId, ?int $fallbackDirectorateId): ?int
+    {
+        if ($directorId === null) {
+            return null;
+        }
+
+        if (
+            Schema::hasTable('directorates')
+            && Schema::hasColumn('directorates', 'director_id')
+        ) {
+            $resolved = DB::table('directorates')
+                ->where('director_id', $directorId)
+                ->orderBy('id')
+                ->value('id');
+
+            if ($resolved) {
+                return (int) $resolved;
+            }
+        }
+
+        // Director not assigned on any directorate yet — keep optional explicit link if provided.
+        return $fallbackDirectorateId;
+    }
+
+    /**
+     * @return list<array{id: int, name: string, director_id: int|null}>
+     */
+    protected function directorateOptions(): array
+    {
+        if (! Schema::hasTable('directorates')) {
+            return [];
+        }
+
+        $hasDirector = Schema::hasColumn('directorates', 'director_id');
+        $cols = $hasDirector ? ['id', 'name', 'director_id'] : ['id', 'name'];
+
+        return DB::table('directorates')
+            ->orderBy('name')
+            ->get($cols)
+            ->map(function ($d) use ($hasDirector) {
+                $directorId = $hasDirector && isset($d->director_id) ? (int) $d->director_id : 0;
+
+                return [
+                    'id' => (int) $d->id,
+                    'name' => (string) $d->name,
+                    'director_id' => $directorId > 0 ? $directorId : null,
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -359,22 +421,6 @@ class OrgUnitsSettingsController extends Controller
             'director_oic_start_date' => $this->nullableDate($row->director_oic_start_date ?? null),
             'director_oic_end_date' => $this->nullableDate($row->director_oic_end_date ?? null),
         ];
-    }
-
-    /**
-     * @return list<array{id: int, name: string}>
-     */
-    protected function directorateOptions(): array
-    {
-        if (! Schema::hasTable('directorates')) {
-            return [];
-        }
-
-        return DB::table('directorates')
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($d) => ['id' => (int) $d->id, 'name' => (string) $d->name])
-            ->all();
     }
 
     protected function staffName(?string $lname, ?string $fname): ?string
