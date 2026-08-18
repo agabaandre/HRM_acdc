@@ -19,8 +19,14 @@ class CbpModulesNav
         string $excludeModuleKey = '',
         string $activeModuleKey = '',
     ): array {
-        $spaUrl = rtrim((string) config('staff-portal.spa_url', '/staff/staff-portal/'), '/').'/';
-        $legacyBase = rtrim((string) config('staff-portal.legacy_base_url', 'http://localhost/staff/'), '/');
+        $spaUrl = rtrim(self::publicBase(
+            (string) config('staff-portal.spa_url', '/staff/staff-portal/'),
+            '/staff/staff-portal/',
+        ), '/').'/';
+        $legacyBase = rtrim(self::publicBase(
+            (string) config('staff-portal.legacy_base_url', '/staff/'),
+            '/staff/',
+        ), '/');
         $path = trim($portalPath, '/');
         $homeActive = $activeModuleKey === '' && ($path === '' || $path === 'home');
 
@@ -114,7 +120,10 @@ class CbpModulesNav
     public static function resolveHref(object $row, array $session, int $roleId = 0): ?string
     {
         $resolver = (string) ($row->target_resolver ?? 'codeigniter');
-        $legacyBase = rtrim((string) config('staff-portal.legacy_base_url', 'http://localhost/staff/'), '/');
+        $legacyBase = rtrim(self::publicBase(
+            (string) config('staff-portal.legacy_base_url', '/staff/'),
+            '/staff/',
+        ), '/');
 
         if ($resolver === 'codeigniter') {
             $path = (string) $row->base_url;
@@ -169,7 +178,10 @@ class CbpModulesNav
         }
 
         // Other CI routes still live under the legacy staff mount.
-        $legacyBase = rtrim((string) config('staff-portal.legacy_base_url', 'http://localhost/staff/'), '/');
+        $legacyBase = rtrim(self::publicBase(
+            (string) config('staff-portal.legacy_base_url', '/staff/'),
+            '/staff/',
+        ), '/');
 
         return $legacyBase.'/'.$ciPath;
     }
@@ -199,7 +211,7 @@ class CbpModulesNav
         $prod = trim((string) ($row->base_url_production ?? ''), '/');
         if ($prod !== '') {
             if (preg_match('#^https?://#i', $prod)) {
-                return rtrim($prod, '/');
+                return self::rewriteAbsoluteIfForeignHost(rtrim($prod, '/'));
             }
 
             return $scheme.'://'.$host.'/'.$prod;
@@ -227,6 +239,83 @@ class CbpModulesNav
         $url = rtrim($url, '/');
         if ($url === '' || preg_match('#^https?:/?$#i', $url)) {
             return null;
+        }
+
+        return self::rewriteAbsoluteIfForeignHost($url);
+    }
+
+    /**
+     * Turn configured APP/SPA/legacy URLs into same-origin paths.
+     * Production .env often still has http://localhost/...; cards must follow the live host.
+     */
+    protected static function publicBase(string $configured, string $fallbackPath): string
+    {
+        $fallbackPath = '/'.ltrim($fallbackPath, '/');
+        $configured = trim($configured);
+
+        if ($configured === '') {
+            return rtrim($fallbackPath, '/');
+        }
+
+        if (! preg_match('#^https?://#i', $configured)) {
+            return rtrim('/'.ltrim($configured, '/'), '/') ?: rtrim($fallbackPath, '/');
+        }
+
+        $parts = parse_url($configured);
+        $cfgHost = (string) ($parts['host'] ?? '');
+        $path = (string) ($parts['path'] ?? '');
+        if ($path === '' || $path === '/') {
+            $path = $fallbackPath;
+        }
+
+        $reqHost = '';
+        try {
+            $reqHost = (string) request()->getHost();
+        } catch (\Throwable) {
+            $reqHost = '';
+        }
+
+        $cfgIsLocal = $cfgHost !== '' && (str_contains($cfgHost, 'localhost') || str_contains($cfgHost, '127.0.0.1'));
+        $reqIsLocal = $reqHost !== '' && (str_contains($reqHost, 'localhost') || str_contains($reqHost, '127.0.0.1'));
+
+        if ($cfgIsLocal && ! $reqIsLocal) {
+            return rtrim($path, '/') ?: rtrim($fallbackPath, '/');
+        }
+
+        if ($reqHost !== '' && $cfgHost !== '' && strcasecmp($cfgHost, $reqHost) !== 0 && ! $reqIsLocal) {
+            return rtrim($path, '/') ?: rtrim($fallbackPath, '/');
+        }
+
+        if ($cfgHost === $reqHost || $reqHost === '') {
+            return rtrim($path, '/') ?: rtrim($fallbackPath, '/');
+        }
+
+        return rtrim($configured, '/');
+    }
+
+    /**
+     * Drop localhost (or other foreign) hosts from absolute URLs when the request is on production.
+     */
+    protected static function rewriteAbsoluteIfForeignHost(string $url): string
+    {
+        if (! preg_match('#^https?://#i', $url)) {
+            return $url;
+        }
+
+        $host = (string) (parse_url($url, PHP_URL_HOST) ?: '');
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?: '/');
+        $reqHost = '';
+        try {
+            $reqHost = (string) request()->getHost();
+        } catch (\Throwable) {
+            $reqHost = '';
+        }
+
+        $urlIsLocal = $host !== '' && (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1'));
+        $reqIsLocal = $reqHost !== '' && (str_contains($reqHost, 'localhost') || str_contains($reqHost, '127.0.0.1'));
+
+        if ($urlIsLocal && ! $reqIsLocal) {
+            return rtrim($path, '/') ?: '/';
         }
 
         return $url;
