@@ -23,6 +23,8 @@ const props = withDefaults(
     clearable?: boolean
     /** Prefer stacked UFormField label; hide floating Vuetify label. */
     hideDetailsLabel?: boolean
+    /** Skip local filtering when the parent filters items (e.g. directory API search). */
+    noFilter?: boolean
   }>(),
   {
     items: () => [],
@@ -32,6 +34,7 @@ const props = withDefaults(
     valueKey: 'value',
     clearable: true,
     hideDetailsLabel: false,
+    noFilter: false,
   },
 )
 
@@ -47,6 +50,13 @@ const prependIcon = computed(() => mapLucideIcon(props.icon))
 const persistFloatLabel = computed(
   () => Boolean(props.placeholder?.trim()) && !props.hideDetailsLabel && Boolean(fieldLabel.value),
 )
+
+function filterItems(_value: string, query: string, item?: { raw?: SelectItem; title?: string }): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const title = String(item?.raw?.label ?? item?.title ?? '').toLowerCase()
+  return title.includes(q)
+}
 </script>
 
 <template>
@@ -67,7 +77,8 @@ const persistFloatLabel = computed(
     :chips="multiple"
     closable-chips
     density="compact"
-    no-filter
+    :no-filter="noFilter"
+    :custom-filter="noFilter ? undefined : filterItems"
     :active="persistFloatLabel ? true : undefined"
     :persistent-placeholder="persistFloatLabel"
     class="hd-v-select-menu w-full"

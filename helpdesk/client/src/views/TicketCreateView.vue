@@ -588,6 +588,7 @@ async function submit() {
               v-model:search="staffSearch"
               :items="staffSelectItems"
               searchable
+              no-filter
               :disabled="busy || !!refErr"
               placeholder="Search name, email, or duty station…"
               class="w-full"
