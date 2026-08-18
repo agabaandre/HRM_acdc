@@ -2,7 +2,11 @@
 
 namespace Modules\Staff\Services;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
+use Staff\Shared\StaffStorage;
 
 class StaffProfileService
 {
@@ -51,6 +55,11 @@ class StaffProfileService
             'physical_location' => $this->blankToEmpty($data['physical_location'] ?? null),
         ];
 
+        if (array_key_exists('next_of_kin', $data) && Schema::hasColumn('staff', 'next_of_kin_json')) {
+            $nok = $this->normalizeOptionalNextOfKin((array) ($data['next_of_kin'] ?? []));
+            $payload['next_of_kin_json'] = json_encode($nok, JSON_UNESCAPED_UNICODE);
+        }
+
         $updated = DB::table('staff')->where('staff_id', $staffId)->update($payload) !== false;
         if (! $updated) {
             return false;
@@ -67,6 +76,143 @@ class StaffProfileService
         return true;
     }
 
+    /**
+     * Store passport biodata page (image or PDF) for a staff record.
+     *
+     * @return array{filename: string, passport_url: string|null, passport_is_pdf: bool}
+     */
+    public function storePassport(int $staffId, UploadedFile $file): array
+    {
+        if ($staffId < 1 || ! DB::table('staff')->where('staff_id', $staffId)->exists()) {
+            throw ValidationException::withMessages(['passport' => ['Staff not found.']]);
+        }
+        if (! Schema::hasColumn('staff', 'passport_biodata_page')) {
+            throw ValidationException::withMessages([
+                'passport' => ['Passport biodata is not available on this installation.'],
+            ]);
+        }
+
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        $ext = strtolower($file->getClientOriginalExtension() ?: '');
+        $ok = str_starts_with($mime, 'image/')
+            || $mime === 'application/pdf'
+            || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'], true);
+        if (! $ok || $file->getSize() > 4096 * 1024) {
+            throw ValidationException::withMessages([
+                'passport' => ['Passport biodata must be an image or PDF up to 4MB.'],
+            ]);
+        }
+        if ($ext === '') {
+            $ext = $mime === 'application/pdf' ? 'pdf' : 'jpg';
+        }
+
+        $staff = DB::table('staff')->where('staff_id', $staffId)->first(['fname', 'lname']);
+        $base = preg_replace(
+            '/[^a-zA-Z0-9_\-.]/',
+            '',
+            str_replace(' ', '_', trim(($staff->lname ?? '').'_'.($staff->fname ?? '')))
+        ) ?: 'staff';
+        $filename = substr((string) $base, 0, 40).'_passport_'.time().'.'.$ext;
+        $dir = StaffStorage::ciPath('staff/passport_biodata');
+        $this->storeUploadedFile($file, $dir, $filename);
+        DB::table('staff')->where('staff_id', $staffId)->update(['passport_biodata_page' => $filename]);
+
+        return [
+            'filename' => $filename,
+            'passport_url' => $this->passportUrl($filename),
+            'passport_is_pdf' => strtolower(pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf',
+        ];
+    }
+
+    public function passportUrl(?string $filename): ?string
+    {
+        if ($filename === null || trim($filename) === '') {
+            return null;
+        }
+        $safe = basename(str_replace('\\', '/', $filename));
+
+        return route('staff.media.passport', ['filename' => $safe]);
+    }
+
+    /**
+     * Optional next-of-kin for HR create/edit: empty rows allowed; partial rows must be complete.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array{name: string, relationship_id: int, phone: string, email: string}>
+     */
+    public function normalizeOptionalNextOfKin(array $rows): array
+    {
+        $this->assertOptionalNextOfKin($rows);
+
+        $out = [];
+        foreach (array_slice(array_values($rows), 0, 2) as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            $rid = (int) ($row['relationship_id'] ?? 0);
+            $phone = trim((string) ($row['phone'] ?? ''));
+            $email = trim((string) ($row['email'] ?? ''));
+            if ($name === '' && $rid <= 0 && $phone === '' && $email === '') {
+                continue;
+            }
+            $out[] = [
+                'name' => $name,
+                'relationship_id' => $rid,
+                'phone' => $phone,
+                'email' => $email,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    public function assertOptionalNextOfKin(array $rows): void
+    {
+        foreach (array_slice(array_values($rows), 0, 2) as $i => $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            $rid = (int) ($row['relationship_id'] ?? 0);
+            $phone = trim((string) ($row['phone'] ?? ''));
+            $email = trim((string) ($row['email'] ?? ''));
+            $any = $name !== '' || $rid > 0 || $phone !== '' || $email !== '';
+            if (! $any) {
+                continue;
+            }
+            $label = $i === 0 ? 'primary' : 'secondary';
+            if ($name === '' || $rid <= 0) {
+                throw ValidationException::withMessages([
+                    "next_of_kin.{$i}" => ["Next of kin ({$label}): enter full name and relationship, or clear the row."],
+                ]);
+            }
+            if ($phone === '') {
+                throw ValidationException::withMessages([
+                    "next_of_kin.{$i}.phone" => ["Next of kin ({$label}): phone is required when the row is used."],
+                ]);
+            }
+            if ($email === '') {
+                throw ValidationException::withMessages([
+                    "next_of_kin.{$i}.email" => ["Next of kin ({$label}): email is required when the row is used."],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    public function kinRelationshipTypes(): array
+    {
+        if (! Schema::hasTable('kin_relationship_types')) {
+            return [];
+        }
+
+        return DB::table('kin_relationship_types')
+            ->orderBy('relationship_name')
+            ->get(['kin_relationship_id as id', 'relationship_name as name'])
+            ->map(fn ($row) => ['id' => (int) $row->id, 'name' => (string) $row->name])
+            ->all();
+    }
+
     private function blankToEmpty(mixed $value): string
     {
         if ($value === null) {
@@ -74,6 +220,38 @@ class StaffProfileService
         }
 
         return trim((string) $value);
+    }
+
+    protected function storeUploadedFile(UploadedFile $file, string $dir, string $filename): void
+    {
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if (! is_dir($dir) || ! is_writable($dir)) {
+            throw ValidationException::withMessages([
+                'passport' => ['Upload directory is not writable. Contact an administrator.'],
+            ]);
+        }
+        $target = rtrim($dir, '/\\').DIRECTORY_SEPARATOR.$filename;
+        $source = $file->getRealPath();
+        if (! is_string($source) || $source === '') {
+            throw ValidationException::withMessages([
+                'passport' => ['Could not read the uploaded file.'],
+            ]);
+        }
+        if (@copy($source, $target)) {
+            @chmod($target, 0644);
+
+            return;
+        }
+        try {
+            $file->move($dir, $filename);
+            @chmod($target, 0644);
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'passport' => ['Could not save the uploaded file. Please try again.'],
+            ]);
+        }
     }
 
     /**

@@ -3,7 +3,6 @@
 namespace Modules\Settings\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Support\StaffPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,14 +21,8 @@ class OrgUnitsSettingsController extends Controller
         PortalPermission::authorize(15);
 
         $q = trim((string) $request->query('q', ''));
-        $hasPhoto = Schema::hasColumn('staff', 'photo');
-        $select = ['staff_id', 'fname', 'lname', 'work_email'];
-        if ($hasPhoto) {
-            $select[] = 'photo';
-        }
-
         $query = DB::table('staff')
-            ->select($select)
+            ->select(['staff_id', 'fname', 'lname', 'work_email'])
             ->orderBy('lname')
             ->orderBy('fname');
 
@@ -44,16 +37,11 @@ class OrgUnitsSettingsController extends Controller
             });
         }
 
-        $rows = $query->limit(2000)->get()->map(function ($s) use ($hasPhoto) {
-            $photo = $hasPhoto ? trim((string) ($s->photo ?? '')) : '';
-
-            return [
-                'staff_id' => (int) $s->staff_id,
-                'name' => trim(($s->lname ?? '').' '.($s->fname ?? '')) ?: ('#'.$s->staff_id),
-                'email' => $s->work_email,
-                'photo_url' => $photo !== '' ? StaffPhoto::url($photo) : null,
-            ];
-        });
+        $rows = $query->limit(2000)->get()->map(fn ($s) => [
+            'staff_id' => (int) $s->staff_id,
+            'name' => trim(($s->lname ?? '').' '.($s->fname ?? '')) ?: ('#'.$s->staff_id),
+            'email' => $s->work_email,
+        ]);
 
         return response()->json(['data' => $rows]);
     }

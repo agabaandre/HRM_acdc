@@ -57,10 +57,25 @@ class PayrollRunService
         $period = $run->period()->firstOrFail();
         $settings = $this->settings->current();
 
+        $payService = app(StaffPayService::class);
         $staffPays = PayrollStaffPay::query()
             ->where('pay_status', 'active')
             ->whereIn('staff_id', $this->eligibility->activeStaffIdSubquery())
-            ->get();
+            ->get()
+            ->groupBy('staff_id')
+            ->map(function ($rows) use ($payService) {
+                $staffId = (int) $rows->first()->staff_id;
+                $currentId = $payService->currentContractId($staffId);
+                if ($currentId) {
+                    $match = $rows->firstWhere('staff_contract_id', $currentId);
+                    if ($match) {
+                        return $match;
+                    }
+                }
+
+                return $rows->sortByDesc('id')->first();
+            })
+            ->values();
         $taxWageTypeId = PayrollWageType::query()->where('code', 'TAX')->value('id');
         $loanWageTypeId = PayrollWageType::query()->where('code', 'LOAN_DED')->value('id');
         $basicWageTypeId = PayrollWageType::query()->where('code', 'BASIC')->value('id');
@@ -243,6 +258,10 @@ class PayrollRunService
         $wageItems = PayrollStaffWageItem::query()
             ->with('wageType')
             ->where('staff_id', $pay->staff_id)
+            ->when(
+                $pay->staff_contract_id,
+                fn ($q) => $q->where('staff_contract_id', $pay->staff_contract_id),
+            )
             ->where('is_active', true)
             ->where(function ($q) use ($periodStart): void {
                 $q->whereNull('start_date')->orWhereDate('start_date', '<=', $periodStart->copy()->endOfMonth()->toDateString());

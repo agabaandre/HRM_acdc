@@ -87,7 +87,7 @@ INSERT IGNORE INTO `cbp_modules` (
 ),
 (
   'helpdesk_itsm',
-  'Service Desk',
+  'Help Desk',
   'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
   'helpdesk',
   NULL,

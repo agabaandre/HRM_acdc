@@ -4,10 +4,12 @@ namespace Modules\Payroll\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Modules\Payroll\Models\PayrollStaffPay;
 use Modules\Payroll\Models\PayrollStaffWageItem;
 use Modules\Payroll\Models\PayrollWageType;
+use Modules\Staff\Services\StaffContractService;
 
 class StaffPayService
 {
@@ -19,7 +21,7 @@ class StaffPayService
 
     public function directory(): Collection
     {
-        return DB::table('payroll_staff_pay as p')
+        $rows = DB::table('payroll_staff_pay as p')
             ->join('staff as s', 's.staff_id', '=', 'p.staff_id')
             ->whereIn('p.staff_id', $this->eligibility->activeStaffIdSubquery())
             ->select([
@@ -31,17 +33,118 @@ class StaffPayService
             ->orderBy('s.lname')
             ->orderBy('s.fname')
             ->orderBy('p.staff_id')
-            ->get()
-            ->map(function ($row) {
+            ->get();
+
+        return $rows
+            ->groupBy('staff_id')
+            ->map(function (Collection $group) {
+                $staffId = (int) $group->first()->staff_id;
+                $currentId = $this->currentContractId($staffId);
+                $row = null;
+                if ($currentId) {
+                    $row = $group->firstWhere('staff_contract_id', $currentId);
+                }
+                if (! $row) {
+                    $row = $group->sortByDesc('id')->first();
+                }
                 $row->staff_name = trim(preg_replace('/\s+/', ' ', (string) $row->staff_name)) ?: null;
 
                 return $row;
-            });
+            })
+            ->values();
+    }
+
+    public function currentContractId(int $staffId): ?int
+    {
+        if ($staffId < 1 || ! Schema::hasTable('staff_contracts')) {
+            return null;
+        }
+
+        $row = DB::table('staff_contracts')
+            ->where('staff_id', $staffId)
+            ->whereIn('status_id', StaffContractService::CURRENT_STATUSES)
+            ->orderByDesc('staff_contract_id')
+            ->first();
+
+        if ($row) {
+            return (int) $row->staff_contract_id;
+        }
+
+        $latest = DB::table('staff_contracts')
+            ->where('staff_id', $staffId)
+            ->orderByDesc('staff_contract_id')
+            ->value('staff_contract_id');
+
+        return $latest ? (int) $latest : null;
+    }
+
+    public function previousContractId(int $staffId, int $exceptContractId): ?int
+    {
+        if ($staffId < 1 || ! Schema::hasTable('staff_contracts')) {
+            return null;
+        }
+
+        $id = DB::table('staff_contracts')
+            ->where('staff_id', $staffId)
+            ->where('staff_contract_id', '!=', $exceptContractId)
+            ->orderByDesc('staff_contract_id')
+            ->value('staff_contract_id');
+
+        return $id ? (int) $id : null;
+    }
+
+    public function getForContract(int $staffId, int $contractId): ?PayrollStaffPay
+    {
+        return PayrollStaffPay::query()
+            ->where('staff_id', $staffId)
+            ->where('staff_contract_id', $contractId)
+            ->first();
     }
 
     public function get(int $staffId): ?PayrollStaffPay
     {
-        return PayrollStaffPay::query()->where('staff_id', $staffId)->first();
+        $contractId = $this->currentContractId($staffId);
+        if ($contractId) {
+            $match = $this->getForContract($staffId, $contractId);
+            if ($match) {
+                return $match;
+            }
+        }
+
+        return PayrollStaffPay::query()
+            ->where('staff_id', $staffId)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * @return array{
+     *   staff: array{staff_id: int, staff_name: ?string, sap_number: ?string, work_email: ?string}|null,
+     *   pay: ?PayrollStaffPay,
+     *   wage_items: Collection,
+     *   staff_contract_id: ?int,
+     *   inherited_from_contract_id: ?int,
+     *   needs_verification: bool
+     * }
+     */
+    public function bundle(int $staffId): array
+    {
+        $contractId = $this->currentContractId($staffId);
+        $pay = $this->get($staffId);
+        $needsVerification = (bool) ($pay?->inherited_unverified);
+        $inheritedFrom = null;
+        if ($needsVerification && $pay?->staff_contract_id) {
+            $inheritedFrom = $this->previousContractId($staffId, (int) $pay->staff_contract_id);
+        }
+
+        return [
+            'staff' => $this->staffIdentity($staffId),
+            'pay' => $pay,
+            'wage_items' => $this->wageItems($staffId, $contractId ?? ($pay?->staff_contract_id ? (int) $pay->staff_contract_id : null)),
+            'staff_contract_id' => $contractId ?? ($pay?->staff_contract_id ? (int) $pay->staff_contract_id : null),
+            'inherited_from_contract_id' => $inheritedFrom,
+            'needs_verification' => $needsVerification,
+        ];
     }
 
     /**
@@ -74,7 +177,7 @@ class StaffPayService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function upsert(int $staffId, array $data): PayrollStaffPay
+    public function upsert(int $staffId, array $data, ?int $contractId = null): PayrollStaffPay
     {
         if (! DB::table('staff')->where('staff_id', $staffId)->exists()) {
             throw ValidationException::withMessages(['staff_id' => 'Staff record not found.']);
@@ -82,11 +185,25 @@ class StaffPayService
 
         $this->eligibility->assertActiveStaff($staffId);
 
+        $contractId = $contractId
+            ?? (isset($data['staff_contract_id']) ? (int) $data['staff_contract_id'] : null)
+            ?? $this->currentContractId($staffId);
+
+        if (! $contractId) {
+            throw ValidationException::withMessages([
+                'staff_contract_id' => 'Payroll must be linked to a staff contract.',
+            ]);
+        }
+
         $settings = $this->settings->current();
         $currency = strtoupper((string) ($data['currency'] ?? $settings->default_currency));
         $enabled = $settings->enabled_currencies ?? [$settings->default_currency];
         if (! in_array($currency, $enabled, true)) {
             throw ValidationException::withMessages(['currency' => 'Currency is not enabled in payroll settings.']);
+        }
+
+        if (! array_key_exists('basic_salary', $data) || $data['basic_salary'] === null || $data['basic_salary'] === '') {
+            throw ValidationException::withMessages(['basic_salary' => 'Basic salary is required.']);
         }
 
         $status = (string) ($data['pay_status'] ?? 'active');
@@ -96,17 +213,19 @@ class StaffPayService
 
         $payload = [
             'staff_id' => $staffId,
+            'staff_contract_id' => $contractId,
             'currency' => $currency,
-            'basic_salary' => (float) ($data['basic_salary'] ?? 0),
+            'basic_salary' => (float) $data['basic_salary'],
             'bank_name' => $data['bank_name'] ?? null,
             'bank_account' => $data['bank_account'] ?? null,
             'bank_branch' => $data['bank_branch'] ?? null,
             'tax_identifier' => $data['tax_identifier'] ?? null,
             'pay_status' => $status,
             'notes' => $data['notes'] ?? null,
+            'inherited_unverified' => false,
         ];
 
-        $existing = $this->get($staffId);
+        $existing = $this->getForContract($staffId, $contractId);
         if ($existing) {
             $before = $existing->toArray();
             $existing->update($payload);
@@ -121,14 +240,30 @@ class StaffPayService
         return $row;
     }
 
-    public function wageItems(int $staffId): Collection
+    public function wageItems(int $staffId, ?int $contractId = null): Collection
     {
-        return PayrollStaffWageItem::query()
+        $contractId ??= $this->currentContractId($staffId);
+        $query = PayrollStaffWageItem::query()
             ->with('wageType')
-            ->where('staff_id', $staffId)
-            ->orderByDesc('is_active')
-            ->orderBy('id')
-            ->get();
+            ->where('staff_id', $staffId);
+
+        if ($contractId) {
+            $hasScoped = PayrollStaffWageItem::query()
+                ->where('staff_id', $staffId)
+                ->where('staff_contract_id', $contractId)
+                ->exists();
+
+            if ($hasScoped) {
+                $query->where('staff_contract_id', $contractId);
+            } else {
+                $query->where(function ($q) use ($contractId): void {
+                    $q->where('staff_contract_id', $contractId)
+                        ->orWhereNull('staff_contract_id');
+                });
+            }
+        }
+
+        return $query->orderByDesc('is_active')->orderBy('id')->get();
     }
 
     /**
@@ -142,6 +277,16 @@ class StaffPayService
 
         $this->eligibility->assertActiveStaff($staffId);
 
+        $contractId = isset($data['staff_contract_id'])
+            ? (int) $data['staff_contract_id']
+            : $this->currentContractId($staffId);
+
+        if (! $contractId) {
+            throw ValidationException::withMessages([
+                'staff_contract_id' => 'Wage items must be linked to a staff contract.',
+            ]);
+        }
+
         $type = PayrollWageType::query()->findOrFail((int) $data['wage_type_id']);
         if (! $type->is_active) {
             throw ValidationException::withMessages(['wage_type_id' => 'Wage type is inactive.']);
@@ -149,6 +294,7 @@ class StaffPayService
 
         $item = PayrollStaffWageItem::query()->create([
             'staff_id' => $staffId,
+            'staff_contract_id' => $contractId,
             'wage_type_id' => $type->id,
             'amount' => $data['amount'] ?? null,
             'percent' => $data['percent'] ?? null,
@@ -190,5 +336,73 @@ class StaffPayService
         $id = (int) $item->id;
         $item->delete();
         $this->audit->log('staff_wage_item.delete', 'payroll_staff_wage_items', $id, $before, null);
+    }
+
+    public function inheritFromPreviousContract(int $staffId, int $newContractId): ?PayrollStaffPay
+    {
+        if (! Schema::hasTable('payroll_staff_pay') || $staffId < 1 || $newContractId < 1) {
+            return null;
+        }
+
+        if ($this->getForContract($staffId, $newContractId)) {
+            return null;
+        }
+
+        $previousContractId = $this->previousContractId($staffId, $newContractId);
+        if (! $previousContractId) {
+            return null;
+        }
+
+        $source = $this->getForContract($staffId, $previousContractId)
+            ?? PayrollStaffPay::query()->where('staff_id', $staffId)->orderByDesc('id')->first();
+
+        if (! $source) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($staffId, $newContractId, $previousContractId, $source) {
+            $pay = PayrollStaffPay::query()->create([
+                'staff_id' => $staffId,
+                'staff_contract_id' => $newContractId,
+                'currency' => $source->currency,
+                'basic_salary' => $source->basic_salary,
+                'bank_name' => $source->bank_name,
+                'bank_account' => $source->bank_account,
+                'bank_branch' => $source->bank_branch,
+                'tax_identifier' => $source->tax_identifier,
+                'pay_status' => $source->pay_status,
+                'notes' => $source->notes,
+                'inherited_unverified' => true,
+            ]);
+
+            $items = PayrollStaffWageItem::query()
+                ->where('staff_id', $staffId)
+                ->get();
+
+            $scoped = $items->where('staff_contract_id', $previousContractId);
+            $toClone = $scoped->isNotEmpty()
+                ? $scoped
+                : $items->whereNull('staff_contract_id');
+
+            foreach ($toClone as $item) {
+                PayrollStaffWageItem::query()->create([
+                    'staff_id' => $staffId,
+                    'staff_contract_id' => $newContractId,
+                    'wage_type_id' => $item->wage_type_id,
+                    'amount' => $item->amount,
+                    'percent' => $item->percent,
+                    'currency' => $item->currency,
+                    'start_date' => $item->start_date,
+                    'end_date' => $item->end_date,
+                    'is_active' => $item->is_active,
+                ]);
+            }
+
+            $this->audit->log('staff_pay.inherit', 'payroll_staff_pay', (int) $pay->id, [
+                'from_contract_id' => $previousContractId,
+            ], $pay->toArray());
+
+            return $pay;
+        });
     }
 }

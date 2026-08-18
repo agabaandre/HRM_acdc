@@ -4,14 +4,18 @@ import { RouterLink, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
+import { fetchPayrollSettings } from '@/lib/payrollApi'
+import { PAYROLL_PERMS } from '@/lib/payrollPermissions'
 import {
   createStaff,
   fetchStaffFormLookups,
   type StaffCreatePayload,
   type StaffFormLookups,
+  type StaffNextOfKinInput,
   type StaffSupervisorOption,
   type StaffUnitOption,
 } from '@/lib/staffApi'
+import { useAuthStore } from '@/stores/auth'
 
 type FieldErrors = Record<string, string[]>
 type ApiFailure = {
@@ -25,6 +29,7 @@ type ApiFailure = {
 }
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -35,10 +40,51 @@ const lookups = ref<StaffFormLookups | null>(null)
 const serverErrors = ref<FieldErrors>({})
 const clientErrors = ref<FieldErrors>({})
 const contractFile = ref<File | File[] | null>(null)
+const passportFile = ref<File | File[] | null>(null)
+const nextOfKin = ref<StaffNextOfKinInput[]>([
+  { name: '', relationship_id: '', phone: '', email: '' },
+  { name: '', relationship_id: '', phone: '', email: '' },
+])
+const includePay = ref(false)
+const payCurrencies = ref<string[]>(['USD'])
+const payForm = reactive({
+  currency: 'USD',
+  basic_salary: null as number | null,
+  bank_name: '',
+  bank_account: '',
+  bank_branch: '',
+  tax_identifier: '',
+  pay_status: 'active',
+  notes: '',
+})
+const payStatusItems = [
+  { title: 'Active', value: 'active' },
+  { title: 'Held', value: 'held' },
+  { title: 'Terminated', value: 'terminated' },
+]
+
+const canManagePay = computed(() => {
+  if (!auth.isModuleEnabled('payroll')) return false
+  const roleId = Number(auth.me?.profile?.role_id || 0)
+  const isHr = !!auth.me?.profile?.is_hr || roleId === 20 || roleId === 22
+  return (
+    isHr ||
+    !!auth.me?.profile?.is_system_admin ||
+    roleId === 10 ||
+    auth.hasPermission(PAYROLL_PERMS.MANAGE_STAFF_PAY) ||
+    auth.hasPermission(17)
+  )
+})
 
 const titles = ['Dr', 'Prof', 'Rev', 'Mr', 'Mrs', 'Ms']
 const genders = ['Male', 'Female', 'Other']
 
+const kinItems = computed(() =>
+  (lookups.value?.kin_relationship_types || []).map((k) => ({
+    title: k.name,
+    value: k.id,
+  })),
+)
 const form = reactive<StaffCreatePayload>({
   SAPNO: '',
   title: '',
@@ -171,6 +217,12 @@ function validate(): boolean {
     addError(errors, 'end_date', 'End date must be later than start date.')
   }
 
+  if (includePay.value && canManagePay.value) {
+    if (payForm.basic_salary == null || Number.isNaN(Number(payForm.basic_salary))) {
+      addError(errors, 'pay.basic_salary', 'Basic salary is required when setting up payroll.')
+    }
+  }
+
   clientErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -185,7 +237,19 @@ async function loadLookups() {
   forbidden.value = false
   error.value = null
   try {
-    lookups.value = await fetchStaffFormLookups()
+    const tasks: Promise<unknown>[] = [fetchStaffFormLookups()]
+    if (canManagePay.value) {
+      tasks.push(fetchPayrollSettings())
+    }
+    const results = await Promise.all(tasks)
+    lookups.value = results[0] as StaffFormLookups
+    if (canManagePay.value && results[1]) {
+      const settings = results[1] as Awaited<ReturnType<typeof fetchPayrollSettings>>
+      payCurrencies.value = settings.enabled_currencies?.length
+        ? settings.enabled_currencies
+        : [settings.default_currency]
+      payForm.currency = settings.default_currency || payCurrencies.value[0] || 'USD'
+    }
   } catch (cause) {
     if (errorStatus(cause) === 403) {
       markForbidden(apiErrorMessage(cause, 'You do not have permission to create staff.'))
@@ -214,6 +278,7 @@ async function onSubmit() {
   saving.value = true
   try {
     const pdf = Array.isArray(contractFile.value) ? contractFile.value[0] : contractFile.value
+    const passport = Array.isArray(passportFile.value) ? passportFile.value[0] : passportFile.value
     const created = await createStaff(
       {
         SAPNO: form.SAPNO?.trim(),
@@ -246,8 +311,23 @@ async function onSubmit() {
         start_date: form.start_date,
         end_date: form.end_date,
         comments: form.comments?.trim(),
+        next_of_kin: nextOfKin.value,
+        ...(includePay.value && canManagePay.value
+          ? {
+              pay: {
+                currency: payForm.currency,
+                basic_salary: Number(payForm.basic_salary),
+                bank_name: payForm.bank_name || null,
+                bank_account: payForm.bank_account || null,
+                bank_branch: payForm.bank_branch || null,
+                tax_identifier: payForm.tax_identifier || null,
+                pay_status: payForm.pay_status,
+                notes: payForm.notes || null,
+              },
+            }
+          : {}),
       },
-      pdf ?? null,
+      { contractFile: pdf ?? null, passportFile: passport ?? null },
     )
     await router.push(`/staff/${created.staff_id}`)
   } catch (cause) {
@@ -425,6 +505,166 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
               </v-row>
+            </v-card-text>
+          </v-card>
+
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>Passport biodata (optional)</v-card-title>
+            <v-card-text>
+              <v-file-input
+                v-model="passportFile"
+                label="Passport biodata page"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,application/pdf"
+                prepend-icon="mdi-card-account-details-outline"
+                show-size
+                density="comfortable"
+                hint="Image or PDF, max 4MB"
+                persistent-hint
+                :error-messages="fieldErrors('passport')"
+                hide-details="auto"
+              />
+            </v-card-text>
+          </v-card>
+
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>Next of kin (optional)</v-card-title>
+            <v-card-text>
+              <div v-for="(row, idx) in nextOfKin" :key="idx" class="mb-4">
+                <div class="text-caption text-medium-emphasis mb-1">
+                  {{ idx === 0 ? 'Primary' : 'Secondary' }}
+                </div>
+                <v-row density="compact">
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model="row.name"
+                      label="Full name"
+                      density="comfortable"
+                      :error-messages="fieldErrors(`next_of_kin.${idx}`)"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="row.relationship_id"
+                      :items="kinItems"
+                      label="Relationship"
+                      clearable
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model="row.phone"
+                      label="Phone"
+                      density="comfortable"
+                      :error-messages="fieldErrors(`next_of_kin.${idx}.phone`)"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model="row.email"
+                      label="Email"
+                      type="email"
+                      density="comfortable"
+                      :error-messages="fieldErrors(`next_of_kin.${idx}.email`)"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                </v-row>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-if="canManagePay" variant="outlined" class="mb-4">
+            <v-card-title>Payroll (optional)</v-card-title>
+            <v-card-text>
+              <v-switch
+                v-model="includePay"
+                label="Set up basic pay now"
+                color="primary"
+                density="compact"
+                hide-details
+                class="mb-3"
+              />
+              <template v-if="includePay">
+                <p class="text-caption text-medium-emphasis mb-3">
+                  Linked to the new contract on save. Basic salary is required; currency defaults from payroll
+                  settings.
+                </p>
+                <v-row dense>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="payForm.currency"
+                      :items="payCurrencies"
+                      label="Currency"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model.number="payForm.basic_salary"
+                      label="Basic salary"
+                      type="number"
+                      density="comfortable"
+                      :error-messages="fieldErrors('pay.basic_salary')"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="payForm.pay_status"
+                      :items="payStatusItems"
+                      label="Pay status"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model="payForm.tax_identifier"
+                      label="Tax ID"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="payForm.bank_name"
+                      label="Bank name"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="payForm.bank_account"
+                      label="Account"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="payForm.bank_branch"
+                      label="Branch"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                  <v-col cols="12">
+                    <v-textarea
+                      v-model="payForm.notes"
+                      label="Notes"
+                      rows="2"
+                      density="comfortable"
+                      hide-details="auto"
+                    />
+                  </v-col>
+                </v-row>
+              </template>
             </v-card-text>
           </v-card>
         </v-col>

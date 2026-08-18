@@ -114,7 +114,7 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('HELPDESK_MAIL_BRAND_NAME', 'Africa CDC Service Desk')),
+        'name' => env('MAIL_FROM_NAME', env('HELPDESK_MAIL_BRAND_NAME', 'Africa CDC Help Desk')),
     ],
 
 ];

@@ -7,7 +7,7 @@ withDefaults(
     apiHref?: string | null
   }>(),
   {
-    product: 'Service Desk',
+    product: '',
     apiHref: null,
   },
 )

@@ -167,11 +167,11 @@ const unitSlug = computed(() => {
   return typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null
 })
 
-const scopeLabel = computed(() => data.value?.scope?.label ?? (unitSlug.value ? 'Service Desk' : 'All business units'))
+const scopeLabel = computed(() => data.value?.scope?.label ?? (unitSlug.value ? 'Help Desk' : 'All business units'))
 const brandTitle = computed(() =>
   data.value?.scope?.mode === 'unit'
     ? `Africa CDC · ${scopeLabel.value}`
-    : 'Africa CDC · Service Desk',
+    : 'Africa CDC · Help Desk',
 )
 const brandSub = computed(() =>
   data.value?.scope?.mode === 'unit'
@@ -469,7 +469,7 @@ onUnmounted(() => {
   if (categorySlideTimer) window.clearInterval(categorySlideTimer)
   document.documentElement.classList.remove('screen-mode')
   document.body.classList.remove('screen-mode')
-  document.title = 'Africa CDC · Service Desk'
+  document.title = 'Africa CDC · Help Desk'
 })
 </script>
 

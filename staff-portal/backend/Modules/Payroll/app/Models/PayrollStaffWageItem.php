@@ -10,12 +10,20 @@ class PayrollStaffWageItem extends Model
     protected $table = 'payroll_staff_wage_items';
 
     protected $fillable = [
-        'staff_id', 'wage_type_id', 'amount', 'percent', 'currency',
-        'start_date', 'end_date', 'is_active',
+        'staff_id',
+        'staff_contract_id',
+        'wage_type_id',
+        'amount',
+        'percent',
+        'currency',
+        'start_date',
+        'end_date',
+        'is_active',
     ];
 
     protected $casts = [
         'staff_id' => 'integer',
+        'staff_contract_id' => 'integer',
         'amount' => 'decimal:2',
         'percent' => 'decimal:4',
         'start_date' => 'date',

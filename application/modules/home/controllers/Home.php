@@ -263,7 +263,7 @@ class Home extends MX_Controller
 			$helpdeskUrl = $scheme . '://' . $host . '/' . $spaPath;
 			$settings[] = [
 				'href' => $helpdeskUrl,
-				'label' => 'Service Desk',
+				'label' => 'Help Desk',
 				'icon' => 'fa-headset',
 				'absolute' => true,
 				'desc' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as Finance).',

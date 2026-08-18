@@ -126,7 +126,7 @@ onMounted(() => {
       Pull FAQs from <strong>APM</strong> (Approvals Management &amp; Staff Portal categories at
       <a href="https://cbp.africacdc.org/staff/apm/faq" target="_blank" rel="noopener noreferrer">/staff/apm/faq</a>)
       and from other systems that expose the same JSON export format. Ingested articles feed
-      <strong>Ask Service Desk</strong> and the home-page knowledge base.
+      <strong>Ask Help Desk</strong> and the home-page knowledge base.
     </p>
 
     <p v-if="!exportConfigured" class="warn" role="status">

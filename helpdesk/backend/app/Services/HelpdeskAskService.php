@@ -123,7 +123,7 @@ class HelpdeskAskService
         }
 
         return [
-            'answer' => 'I could not find a matching FAQ for your question. A Service Desk agent can investigate further.',
+            'answer' => 'I could not find a matching FAQ for your question. A Help Desk agent can investigate further.',
             'steps' => [
                 'Note any error messages, screenshots, or when the problem started.',
                 'Try signing out and back in to the Staff portal if the issue affects access.',

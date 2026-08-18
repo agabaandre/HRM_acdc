@@ -122,8 +122,8 @@ class PublicScreenController extends Controller
         }
 
         $label = $unit->slug === 'it-mis'
-            ? 'IT Service Desk'
-            : trim($unit->name).' · Service Desk';
+            ? 'IT Help Desk'
+            : trim($unit->name).' · Help Desk';
 
         return [
             'mode' => 'unit',
@@ -151,8 +151,8 @@ class PublicScreenController extends Controller
                 'name' => $u->name,
                 'slug' => $u->slug,
                 'screen_label' => $u->slug === 'it-mis'
-                    ? 'IT Service Desk'
-                    : trim($u->name).' · Service Desk',
+                    ? 'IT Help Desk'
+                    : trim($u->name).' · Help Desk',
             ])
             ->values()
             ->all();

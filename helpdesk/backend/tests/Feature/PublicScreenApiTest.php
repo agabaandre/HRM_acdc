@@ -647,7 +647,7 @@ class PublicScreenApiTest extends TestCase
         $itScreen = $this->getJson('/api/v1/public/screen?business_unit=it-mis');
         $itScreen->assertOk();
         $itScreen->assertJsonPath('data.scope.mode', 'unit');
-        $itScreen->assertJsonPath('data.scope.label', 'IT Service Desk');
+        $itScreen->assertJsonPath('data.scope.label', 'IT Help Desk');
         $itScreen->assertJsonPath('data.scope.business_unit.slug', 'it-mis');
         $itScreen->assertJsonPath('data.volumes.open', 1);
         $itScreen->assertJsonPath('data.volumes.in_progress', 1);
@@ -656,7 +656,7 @@ class PublicScreenApiTest extends TestCase
         $hrScreen = $this->getJson('/api/v1/public/screen?business_unit=human-resource');
         $hrScreen->assertOk();
         $hrScreen->assertJsonPath('data.scope.mode', 'unit');
-        $hrScreen->assertJsonPath('data.scope.label', 'Human Resource · Service Desk');
+        $hrScreen->assertJsonPath('data.scope.label', 'Human Resource · Help Desk');
         $hrScreen->assertJsonPath('data.volumes.open', 1);
         $hrScreen->assertJsonPath('data.volumes.in_progress', 0);
         $hrScreen->assertJsonPath('data.volumes.total_active', 1);
@@ -664,7 +664,7 @@ class PublicScreenApiTest extends TestCase
         $units = $this->getJson('/api/v1/public/screen/units');
         $units->assertOk();
         $labels = collect($units->json('data'))->pluck('screen_label', 'slug');
-        $this->assertSame('IT Service Desk', $labels->get('it-mis'));
-        $this->assertSame('Human Resource · Service Desk', $labels->get('human-resource'));
+        $this->assertSame('IT Help Desk', $labels->get('it-mis'));
+        $this->assertSame('Human Resource · Help Desk', $labels->get('human-resource'));
     }
 }

@@ -4,6 +4,7 @@ namespace Modules\Staff\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 class StaffCreateService
@@ -17,9 +18,9 @@ class StaffCreateService
      * @param  array<string, mixed>  $data
      * @return array{staff_id: int, contract_id: int}
      */
-    public function create(array $data, ?UploadedFile $contractPdf = null): array
+    public function create(array $data, ?UploadedFile $contractPdf = null, ?UploadedFile $passport = null): array
     {
-        return DB::transaction(function () use ($data, $contractPdf): array {
+        return DB::transaction(function () use ($data, $contractPdf, $passport): array {
             $staffPayload = $this->staffPayload($data);
             $staffId = (int) DB::table('staff')->insertGetId($staffPayload);
             if ($staffId < 1) {
@@ -29,9 +30,32 @@ class StaffCreateService
             $audit = app(StaffAuditTrailService::class);
             $audit->logChange('staff_create', 'staff', $staffId, $staffId, [], $staffPayload);
 
+            if ($passport !== null) {
+                app(StaffProfileService::class)->storePassport($staffId, $passport);
+            }
+
             $contractId = $this->contracts->create($staffId, $this->contractPayload($data), $contractPdf);
             if (! $contractId) {
                 throw new RuntimeException('Could not create staff contract.');
+            }
+
+            if (
+                ! empty($data['pay'])
+                && is_array($data['pay'])
+                && Schema::hasTable('payroll_staff_pay')
+                && class_exists(\Modules\Payroll\Services\StaffPayService::class)
+            ) {
+                $pay = $data['pay'];
+                $payService = app(\Modules\Payroll\Services\StaffPayService::class);
+                $payService->upsert($staffId, $pay, $contractId);
+                foreach ((array) ($pay['wage_items'] ?? []) as $item) {
+                    if (empty($item['wage_type_id'])) {
+                        continue;
+                    }
+                    $payService->createWageItem($staffId, array_merge($item, [
+                        'staff_contract_id' => $contractId,
+                    ]));
+                }
             }
 
             return [
@@ -48,7 +72,7 @@ class StaffCreateService
     private function staffPayload(array $data): array
     {
         // Legacy `staff` columns are NOT NULL — store blanks as empty strings (CI3 parity).
-        return [
+        $payload = [
             'SAPNO' => $this->blankToEmpty($data['SAPNO'] ?? null),
             'title' => trim((string) $data['title']),
             'fname' => trim((string) $data['fname']),
@@ -69,6 +93,13 @@ class StaffCreateService
             'email_status' => 0,
             'email_disabled_at' => null,
         ];
+
+        if (Schema::hasColumn('staff', 'next_of_kin_json') && array_key_exists('next_of_kin', $data)) {
+            $nok = app(StaffProfileService::class)->normalizeOptionalNextOfKin((array) ($data['next_of_kin'] ?? []));
+            $payload['next_of_kin_json'] = json_encode($nok, JSON_UNESCAPED_UNICODE);
+        }
+
+        return $payload;
     }
 
     /**

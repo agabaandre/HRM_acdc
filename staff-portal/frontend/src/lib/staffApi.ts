@@ -158,6 +158,18 @@ export interface StaffSupervisorOption {
   lname?: string | null
 }
 
+export interface KinRelationshipType {
+  id: number
+  name: string
+}
+
+export interface StaffNextOfKinInput {
+  name: string
+  relationship_id: number | ''
+  phone: string
+  email: string
+}
+
 export interface StaffFormLookups {
   jobs: StaffLookupOption[]
   jobsActing: StaffLookupOption[]
@@ -171,6 +183,7 @@ export interface StaffFormLookups {
   statuses: StaffLookupOption[]
   nationalities: StaffLookupOption[]
   supervisors: StaffSupervisorOption[]
+  kin_relationship_types?: KinRelationshipType[]
 }
 
 export interface StaffCreatePayload {
@@ -205,6 +218,17 @@ export interface StaffCreatePayload {
   end_date: string
   comments?: string
   status_id?: number
+  next_of_kin?: StaffNextOfKinInput[]
+  pay?: {
+    currency?: string
+    basic_salary: number
+    bank_name?: string | null
+    bank_account?: string | null
+    bank_branch?: string | null
+    tax_identifier?: string | null
+    pay_status?: string
+    notes?: string | null
+  } | null
 }
 
 export interface StaffContractPayload {
@@ -434,7 +458,7 @@ export async function fetchNextOfKinReport(
 
 export async function fetchStaffFormLookups(): Promise<StaffFormLookups> {
   const data = await cachedGet<{ data: StaffFormLookups }>(
-    'staff:form-lookups-v2',
+    'staff:form-lookups-v3',
     '/api/v1/staff/form-lookups',
     5 * 60_000,
   )
@@ -443,6 +467,7 @@ export async function fetchStaffFormLookups(): Promise<StaffFormLookups> {
 
 /** Call after staff/settings mutations that change dropdown options. */
 export function invalidateStaffFormLookupsCache(): void {
+  clearApiCache('staff:form-lookups-v3')
   clearApiCache('staff:form-lookups-v2')
 }
 
@@ -453,6 +478,25 @@ function appendContractFields(form: FormData, payload: StaffContractPayload | St
       ids.forEach((id) => form.append('other_associated_divisions[]', String(id)))
       continue
     }
+    if (key === 'next_of_kin') {
+      const rows = Array.isArray(value) ? (value as StaffNextOfKinInput[]) : []
+      rows.forEach((row, i) => {
+        form.append(`next_of_kin[${i}][name]`, row.name || '')
+        form.append(
+          `next_of_kin[${i}][relationship_id]`,
+          row.relationship_id === '' || row.relationship_id == null ? '' : String(row.relationship_id),
+        )
+        form.append(`next_of_kin[${i}][phone]`, row.phone || '')
+        form.append(`next_of_kin[${i}][email]`, row.email || '')
+      })
+      continue
+    }
+    if (key === 'pay') {
+      if (value && typeof value === 'object') {
+        form.append('pay', JSON.stringify(value))
+      }
+      continue
+    }
     if (value === undefined || value === null) continue
     form.append(key, String(value))
   }
@@ -460,12 +504,17 @@ function appendContractFields(form: FormData, payload: StaffContractPayload | St
 
 export async function createStaff(
   payload: StaffCreatePayload,
-  contractFile?: File | null,
+  files: { contractFile?: File | null; passportFile?: File | null } = {},
 ): Promise<{ staff_id: number; contract_id: number }> {
-  if (contractFile) {
+  const contractFile = files.contractFile ?? null
+  const passportFile = files.passportFile ?? null
+  const hasNok = Array.isArray(payload.next_of_kin) && payload.next_of_kin.length > 0
+  const hasPay = !!payload.pay && payload.pay.basic_salary != null
+  if (contractFile || passportFile || hasNok || hasPay) {
     const form = new FormData()
     appendContractFields(form, payload)
-    form.append('contract_file', contractFile)
+    if (contractFile) form.append('contract_file', contractFile)
+    if (passportFile) form.append('passport', passportFile)
     const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', form)
     return data.data
   }
@@ -532,6 +581,7 @@ export interface StaffBiodataPayload {
   work_email: string
   private_email?: string
   physical_location?: string
+  next_of_kin?: StaffNextOfKinInput[]
 }
 
 export async function updateStaffBiodata(
@@ -543,6 +593,18 @@ export async function updateStaffBiodata(
     payload,
   )
   return data.data.staff
+}
+
+export async function uploadStaffPassport(
+  staffId: number,
+  file: File,
+): Promise<{ filename: string; passport_url: string | null; passport_is_pdf: boolean }> {
+  const form = new FormData()
+  form.append('passport', file)
+  const { data } = await api.post<{
+    data: { filename: string; passport_url: string | null; passport_is_pdf: boolean }
+  }>(`/api/v1/staff/${staffId}/passport`, form)
+  return data.data
 }
 
 export interface StaffAuditChangeRow {

@@ -280,7 +280,7 @@ class ReportController extends Controller
         return $this->pdfTableDownload(
             $request,
             $pdf,
-            'Service Desk tickets ('.$scope.')',
+            'Help Desk tickets ('.$scope.')',
             ['Ticket #', 'Subject', 'Category', 'Status', 'Priority', 'Requester', 'Assignee', 'Created', 'Resolution'],
             $rows,
             'helpdesk-tickets-'.now()->format('Y-m-d-His').'.pdf',

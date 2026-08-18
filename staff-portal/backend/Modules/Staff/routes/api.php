@@ -40,4 +40,5 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('staff/{staff}', [StaffApiController::class, 'show'])->whereNumber('staff');
     Route::get('staff/{staff}/audit-trail', [StaffApiController::class, 'auditTrail'])->whereNumber('staff');
     Route::put('staff/{staff}', [StaffApiController::class, 'updateBiodata'])->whereNumber('staff');
+    Route::post('staff/{staff}/passport', [StaffApiController::class, 'uploadPassport'])->whereNumber('staff');
 });

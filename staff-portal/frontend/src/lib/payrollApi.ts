@@ -47,6 +47,8 @@ export type TaxRule = {
 export type StaffPay = {
   id: number
   staff_id: number
+  staff_contract_id?: number | null
+  inherited_unverified?: boolean
   currency: string
   basic_salary: number
   bank_name?: string | null
@@ -63,6 +65,7 @@ export type StaffPay = {
 export type StaffWageItem = {
   id: number
   staff_id: number
+  staff_contract_id?: number | null
   wage_type_id: number
   amount?: number | null
   percent?: number | null
@@ -82,6 +85,9 @@ export type StaffPayBundle = {
   }
   pay: StaffPay | null
   wage_items: StaffWageItem[]
+  staff_contract_id?: number | null
+  inherited_from_contract_id?: number | null
+  needs_verification?: boolean
 }
 
 export type PayrollPeriod = {

@@ -126,12 +126,7 @@ export function invalidateSettingsCaches(): void {
 
 export async function fetchOrgStaffOptions(q = '') {
   const { data } = await api.get<{
-    data: Array<{
-      staff_id: number
-      name: string
-      email?: string | null
-      photo_url?: string | null
-    }>
+    data: Array<{ staff_id: number; name: string; email?: string | null }>
   }>('/api/v1/settings/staff-options', { params: q ? { q } : {} })
   return data.data
 }

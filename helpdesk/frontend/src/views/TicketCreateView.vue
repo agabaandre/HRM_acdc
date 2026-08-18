@@ -387,7 +387,7 @@ async function submit() {
   <div>
     <CbpPageHeading title="Create ticket" back-to="/tickets" back-label="← Tickets">
       <template #lede>
-        Choose a service desk
+        Choose a help desk
       </template>
     </CbpPageHeading>
 
@@ -400,7 +400,7 @@ async function submit() {
         :aria-selected="activeTab === 'ticket'"
         @click="activeTab = 'ticket'"
       >
-        Service Desk
+        Help Desk
       </button>
       <button
         v-if="canAccessSoftwareRequests"
@@ -440,7 +440,7 @@ async function submit() {
     <div v-show="activeTab === 'software'" class="cbp-card software-gateway" role="tabpanel">
       <h2 class="gateway-title">Information System Request</h2>
       <p class="gateway-copy">
-        Information System requests use a dedicated form under Service Desk Modules — including drafts, status tracking, HoD approval, and reviewer workflows.
+        Information System requests use a dedicated form under Help Desk Modules — including drafts, status tracking, HoD approval, and reviewer workflows.
       </p>
       <UButton color="primary" @click="goToSoftwareRequests">
         Continue to Information System Request
@@ -450,7 +450,7 @@ async function submit() {
     <div v-show="activeTab === 'hosting'" class="cbp-card software-gateway" role="tabpanel">
       <h2 class="gateway-title">Hosting request</h2>
       <p class="gateway-copy">
-        Request cloud or on-premises hosting. Your Head of Division must approve before Service Desk agents can process the request.
+        Request cloud or on-premises hosting. Your Head of Division must approve before Help Desk agents can process the request.
       </p>
       <UButton color="primary" @click="goToHostingRequests">
         Continue to Hosting request

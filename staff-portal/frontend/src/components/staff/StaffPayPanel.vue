@@ -28,6 +28,9 @@ const wageTypes = ref<WageType[]>([])
 const currencies = ref<string[]>(['USD'])
 const editing = ref(false)
 const showGuide = ref(false)
+const staffContractId = ref<number | null>(null)
+const needsVerification = ref(false)
+const inheritedFromContractId = ref<number | null>(null)
 
 const form = reactive({
   currency: 'USD',
@@ -202,16 +205,23 @@ async function load() {
     ])
     pay.value = bundle.pay
     wageItems.value = bundle.wage_items || []
+    staffContractId.value =
+      bundle.staff_contract_id ?? bundle.pay?.staff_contract_id ?? null
+    needsVerification.value = !!bundle.needs_verification
+    inheritedFromContractId.value = bundle.inherited_from_contract_id ?? null
     currencies.value = settings.enabled_currencies?.length
       ? settings.enabled_currencies
       : [settings.default_currency]
     wageTypes.value = types
     applyForm(bundle.pay)
-    if (!bundle.pay) editing.value = true
+    if (!bundle.pay || needsVerification.value) editing.value = true
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load payroll for this staff member')
     pay.value = null
     wageItems.value = []
+    staffContractId.value = null
+    needsVerification.value = false
+    inheritedFromContractId.value = null
   } finally {
     loading.value = false
   }
@@ -233,6 +243,7 @@ async function save() {
       notes: form.notes || null,
     })
     applyForm(pay.value)
+    needsVerification.value = false
     editing.value = false
     success.value = 'Staff pay saved. Next: add benefits and deductions below.'
   } catch (e) {
@@ -305,6 +316,8 @@ watch(
   () => void load(),
 )
 onMounted(() => void load())
+
+defineExpose({ reload: load })
 </script>
 
 <template>
@@ -316,7 +329,13 @@ onMounted(() => void load())
           Payroll
         </h2>
         <p class="staff-pay__lede">
-          Capture basic salary, bank details, benefits, and deductions for this employee.
+          <template v-if="staffContractId">
+            Payroll for current contract #{{ staffContractId }}. Capture basic salary, bank details,
+            benefits, and deductions.
+          </template>
+          <template v-else>
+            Capture basic salary, bank details, benefits, and deductions for this employee.
+          </template>
         </p>
       </div>
       <div class="d-flex ga-2 flex-wrap">
@@ -357,6 +376,18 @@ onMounted(() => void load())
         </v-btn>
       </div>
     </div>
+
+    <v-alert
+      v-if="needsVerification"
+      type="warning"
+      variant="tonal"
+      class="mb-3"
+      density="compact"
+    >
+      Copied from previous contract
+      <template v-if="inheritedFromContractId"> #{{ inheritedFromContractId }}</template>.
+      Verify all entries before saving.
+    </v-alert>
 
     <v-alert
       v-if="showGuide"

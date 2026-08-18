@@ -13,10 +13,9 @@ import {
   type DivisionRow,
 } from '@/lib/settingsApi'
 import { downloadClientCsv, downloadClientExcel, fetchAllPages } from '@/lib/clientTableExport'
-import StaffOrgAutocomplete, { type StaffSelectOption } from '@/components/molecules/StaffOrgAutocomplete.vue'
 import UDateInput from '@cbp/ui/UDateInput.vue'
 
-type StaffOpt = StaffSelectOption
+type StaffOpt = { title: string; value: number; email?: string | null }
 
 type DivForm = {
   division_name: string
@@ -114,17 +113,10 @@ function staffFilter(itemTitle: string, queryText: string, item: unknown): boole
   return hay.includes((queryText || '').toLowerCase().trim())
 }
 
-function ensureStaffOption(id: number | null | undefined, name?: string | null, photoUrl?: string | null) {
+function ensureStaffOption(id: number | null | undefined, name?: string | null) {
   if (!id || id < 1) return
-  const existing = staffOptions.value.find((s) => s.value === id)
-  if (existing) {
-    if (photoUrl && !existing.photo_url) existing.photo_url = photoUrl
-    return
-  }
-  staffOptions.value = [
-    ...staffOptions.value,
-    { title: name || `Staff #${id}`, value: id, photo_url: photoUrl || null },
-  ]
+  if (staffOptions.value.some((s) => s.value === id)) return
+  staffOptions.value = [...staffOptions.value, { title: name || `Staff #${id}`, value: id }]
 }
 
 function fillForm(row?: DivisionRow | null) {
@@ -191,7 +183,6 @@ async function loadStaff() {
     title: s.name,
     value: s.staff_id,
     email: s.email,
-    photo_url: s.photo_url || null,
   }))
 }
 
@@ -438,13 +429,24 @@ onMounted(async () => {
               />
             </v-col>
             <v-col cols="12" md="6">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.director_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Director (optional)"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field
@@ -460,50 +462,105 @@ onMounted(async () => {
               <v-switch v-model="form.is_active" label="Active" color="primary" hide-details density="compact" />
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.division_head"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Division head *"
                 placeholder="Search staff by name or email…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.focal_person"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Focal person *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.finance_officer"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Finance officer *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.admin_assistant"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Admin assistant *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12"><div class="text-subtitle-2 mt-2">Head OIC</div></v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.head_oic_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Head OIC"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
               <UDateInput
@@ -525,13 +582,24 @@ onMounted(async () => {
             </v-col>
             <v-col cols="12"><div class="text-subtitle-2 mt-2">Director OIC</div></v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.director_oic_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Director OIC"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
               <UDateInput
@@ -617,13 +685,24 @@ onMounted(async () => {
               <v-select v-model="form.category" :items="categorySelectItems" label="Category *" density="compact" hide-details="auto" class="bg-white" />
             </v-col>
             <v-col cols="12" md="6">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.director_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Director (optional)"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field
@@ -639,50 +718,105 @@ onMounted(async () => {
               <v-switch v-model="form.is_active" label="Active" color="primary" hide-details density="compact" />
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.division_head"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Division head *"
                 placeholder="Search staff by name or email…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.focal_person"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Focal person *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.finance_officer"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Finance officer *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.admin_assistant"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Admin assistant *"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12"><div class="text-subtitle-2 mt-2">Head OIC</div></v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.head_oic_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Head OIC"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
               <UDateInput v-model="form.head_oic_start_date" label="Head OIC start" density="compact" hide-details :max="form.head_oic_end_date || undefined" />
@@ -692,13 +826,24 @@ onMounted(async () => {
             </v-col>
             <v-col cols="12"><div class="text-subtitle-2 mt-2">Director OIC</div></v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.director_oic_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Director OIC"
                 placeholder="Search staff…"
-              />
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12" md="4">
               <UDateInput v-model="form.director_oic_start_date" label="Director OIC start" density="compact" hide-details :max="form.director_oic_end_date || undefined" />

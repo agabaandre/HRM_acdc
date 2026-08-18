@@ -25,14 +25,17 @@ use Modules\Staff\Support\StaffAccess;
 
 class StaffApiController extends Controller
 {
-    public function formLookups(StaffContractService $contracts): JsonResponse
+    public function formLookups(StaffContractService $contracts, StaffProfileService $profiles): JsonResponse
     {
         if (! StaffAccess::canManageStaff()) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        $data = $contracts->formLookups();
+        $data['kin_relationship_types'] = $profiles->kinRelationshipTypes();
+
         return response()->json([
-            'data' => $contracts->formLookups(),
+            'data' => $data,
         ]);
     }
 
@@ -42,9 +45,25 @@ class StaffApiController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
+        if ($request->has('pay') && is_string($request->input('pay'))) {
+            $decoded = json_decode((string) $request->input('pay'), true);
+            $request->merge(['pay' => is_array($decoded) ? $decoded : null]);
+        }
+
+        $payInput = $request->input('pay');
+        if (is_array($payInput)) {
+            $hasBasic = array_key_exists('basic_salary', $payInput)
+                && $payInput['basic_salary'] !== null
+                && $payInput['basic_salary'] !== '';
+            if (! $hasBasic) {
+                $request->request->remove('pay');
+            }
+        }
+
         $created = $creator->create(
             $this->validatedStorePayload($request),
-            $this->optionalContractPdf($request)
+            $this->optionalContractPdf($request),
+            $this->optionalPassportFile($request),
         );
         PortalReferenceCache::bustFormLookups();
         PortalReadCache::bust('staff');
@@ -147,8 +166,7 @@ class StaffApiController extends Controller
         }, $profiles->contracts($staff));
 
         $staffPayload = (array) $row;
-        $photo = trim((string) ($staffPayload['photo'] ?? ''));
-        $staffPayload['photo_url'] = StaffPhoto::url($photo !== '' ? $photo : null);
+        $this->enrichStaffMedia($staffPayload, $profiles);
         $dob = trim((string) ($staffPayload['date_of_birth'] ?? ''));
         $staffPayload['age'] = $this->ageFromDob($dob);
         $nok = json_decode((string) ($staffPayload['next_of_kin_json'] ?? '[]'), true);
@@ -211,6 +229,11 @@ class StaffApiController extends Controller
             'work_email' => ['required', 'email', 'max:150'],
             'private_email' => ['nullable', 'email', 'max:150'],
             'physical_location' => ['nullable', 'string', 'max:500'],
+            'next_of_kin' => ['nullable', 'array', 'max:2'],
+            'next_of_kin.*.name' => ['nullable', 'string', 'max:190'],
+            'next_of_kin.*.relationship_id' => ['nullable', 'integer', 'min:0'],
+            'next_of_kin.*.phone' => ['nullable', 'string', 'max:50'],
+            'next_of_kin.*.email' => ['nullable', 'email', 'max:190'],
         ]);
 
         if (! $profiles->updateBiodata($staff, $data)) {
@@ -221,8 +244,7 @@ class StaffApiController extends Controller
 
         $row = $profiles->find($staff);
         $staffPayload = (array) $row;
-        $photo = trim((string) ($staffPayload['photo'] ?? ''));
-        $staffPayload['photo_url'] = StaffPhoto::url($photo !== '' ? $photo : null);
+        $this->enrichStaffMedia($staffPayload, $profiles);
         $dob = trim((string) ($staffPayload['date_of_birth'] ?? ''));
         $staffPayload['age'] = $this->ageFromDob($dob);
         $nok = json_decode((string) ($staffPayload['next_of_kin_json'] ?? '[]'), true);
@@ -231,6 +253,29 @@ class StaffApiController extends Controller
         return response()->json([
             'data' => ['staff' => $staffPayload],
             'message' => 'Biodata updated successfully.',
+        ]);
+    }
+
+    public function uploadPassport(int $staff, Request $request, StaffProfileService $profiles): JsonResponse
+    {
+        if (! StaffAccess::canManageStaff()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (! $profiles->find($staff)) {
+            return response()->json(['message' => 'Staff not found.'], 404);
+        }
+
+        $request->validate([
+            'passport' => ['required', 'file', 'max:4096', 'mimes:jpg,jpeg,png,gif,webp,pdf'],
+        ]);
+
+        $media = $profiles->storePassport($staff, $request->file('passport'));
+        PortalReadCache::bust('staff');
+
+        return response()->json([
+            'data' => $media,
+            'message' => 'Passport biodata updated.',
         ]);
     }
 
@@ -804,11 +849,43 @@ class StaffApiController extends Controller
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
             'comments' => ['nullable', 'string', 'max:2000'],
+            'next_of_kin' => ['nullable', 'array', 'max:2'],
+            'next_of_kin.*.name' => ['nullable', 'string', 'max:190'],
+            'next_of_kin.*.relationship_id' => ['nullable', 'integer', 'min:0'],
+            'next_of_kin.*.phone' => ['nullable', 'string', 'max:50'],
+            'next_of_kin.*.email' => ['nullable', 'email', 'max:190'],
+            'pay' => ['nullable', 'array'],
+            'pay.currency' => ['nullable', 'string', 'size:3'],
+            'pay.basic_salary' => ['required_with:pay', 'numeric', 'min:0'],
+            'pay.bank_name' => ['nullable', 'string', 'max:120'],
+            'pay.bank_account' => ['nullable', 'string', 'max:80'],
+            'pay.bank_branch' => ['nullable', 'string', 'max:120'],
+            'pay.tax_identifier' => ['nullable', 'string', 'max:80'],
+            'pay.pay_status' => ['nullable', 'in:active,held,terminated'],
+            'pay.notes' => ['nullable', 'string'],
+            'pay.wage_items' => ['nullable', 'array'],
+            'pay.wage_items.*.wage_type_id' => ['required', 'integer'],
+            'pay.wage_items.*.amount' => ['nullable', 'numeric'],
+            'pay.wage_items.*.percent' => ['nullable', 'numeric'],
         ]);
 
         $validated['other_associated_divisions'] = array_values(
             array_map('intval', (array) ($validated['other_associated_divisions'] ?? []))
         );
+
+        if (array_key_exists('next_of_kin', $validated)) {
+            app(StaffProfileService::class)->assertOptionalNextOfKin((array) ($validated['next_of_kin'] ?? []));
+        }
+
+        if (array_key_exists('pay', $validated) && is_array($validated['pay'])) {
+            $pay = $validated['pay'];
+            $hasMeaningful = array_key_exists('basic_salary', $pay)
+                && $pay['basic_salary'] !== null
+                && $pay['basic_salary'] !== '';
+            if (! $hasMeaningful) {
+                unset($validated['pay']);
+            }
+        }
 
         return $validated;
     }
@@ -854,6 +931,30 @@ class StaffApiController extends Controller
         $file = $request->file('contract_file');
 
         return $file instanceof UploadedFile ? $file : null;
+    }
+
+    protected function optionalPassportFile(Request $request): ?UploadedFile
+    {
+        $request->validate([
+            'passport' => ['nullable', 'file', 'max:4096', 'mimes:jpg,jpeg,png,gif,webp,pdf'],
+        ]);
+
+        $file = $request->file('passport');
+
+        return $file instanceof UploadedFile ? $file : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $staffPayload
+     */
+    protected function enrichStaffMedia(array &$staffPayload, StaffProfileService $profiles): void
+    {
+        $photo = trim((string) ($staffPayload['photo'] ?? ''));
+        $staffPayload['photo_url'] = StaffPhoto::url($photo !== '' ? $photo : null);
+        $passport = trim((string) ($staffPayload['passport_biodata_page'] ?? ''));
+        $staffPayload['passport_url'] = $profiles->passportUrl($passport !== '' ? $passport : null);
+        $staffPayload['passport_is_pdf'] = $passport !== ''
+            && strtolower(pathinfo($passport, PATHINFO_EXTENSION)) === 'pdf';
     }
 
     protected function ageFromDob(string $dob): ?int

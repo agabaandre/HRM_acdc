@@ -8,5 +8,5 @@ return [
     'scope' => env('EXCHANGE_SCOPE', 'https://graph.microsoft.com/.default'),
     'auth_method' => env('EXCHANGE_AUTH_METHOD', 'client_credentials'),
     'from_email' => env('MAIL_FROM_ADDRESS'),
-    'from_name' => env('MAIL_FROM_NAME', 'Africa CDC Service Desk'),
+    'from_name' => env('MAIL_FROM_NAME', 'Africa CDC Help Desk'),
 ];

@@ -43,7 +43,7 @@ export type FetchCbpModulesOptions = {
   fresh?: boolean
 }
 
-/** Shared by top header + Home — one network call per session window (Service Desk pattern). */
+/** Shared by top header + Home — one network call per session window (Help Desk pattern). */
 export async function fetchCbpModules(options: FetchCbpModulesOptions = {}): Promise<CbpNavPayload> {
   const params: Record<string, string> = {}
   if (options.exclude) params.exclude = options.exclude

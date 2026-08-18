@@ -12,9 +12,8 @@ import {
   type DirectorateRow,
 } from '@/lib/settingsApi'
 import { downloadClientCsv, downloadClientExcel, fetchAllPages } from '@/lib/clientTableExport'
-import StaffOrgAutocomplete, { type StaffSelectOption } from '@/components/molecules/StaffOrgAutocomplete.vue'
 
-type StaffOpt = StaffSelectOption
+type StaffOpt = { title: string; value: number; email?: string | null }
 
 const loading = ref(false)
 const saving = ref(false)
@@ -73,7 +72,6 @@ async function loadStaff() {
     title: s.name,
     value: s.staff_id,
     email: s.email,
-    photo_url: s.photo_url || null,
   }))
 }
 
@@ -274,13 +272,27 @@ onMounted(async () => {
               />
             </v-col>
             <v-col cols="12" md="4">
-              <StaffOrgAutocomplete
+              <v-autocomplete
                 v-model="form.director_id"
                 :items="staffOptions"
-                :filter-fn="staffFilter"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
                 label="Director"
                 placeholder="Search staff by name or email…"
-              />
+                density="compact"
+                clearable
+                auto-select-first
+                hide-details="auto"
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+                <template #selection="{ item }">
+                  <span>{{ item.title }}</span>
+                </template>
+              </v-autocomplete>
             </v-col>
           </v-row>
         </v-card-text>

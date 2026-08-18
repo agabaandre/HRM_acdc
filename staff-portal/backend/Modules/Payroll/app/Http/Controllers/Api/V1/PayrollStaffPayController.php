@@ -22,17 +22,13 @@ class PayrollStaffPayController extends Controller
     {
         PayrollAccess::authorizeStaffPay();
 
-        $identity = $service->staffIdentity($staffId);
-        if (! $identity) {
+        $bundle = $service->bundle($staffId);
+        if (! $bundle['staff']) {
             abort(404, 'Staff not found.');
         }
 
         return response()->json([
-            'data' => [
-                'staff' => $identity,
-                'pay' => $service->get($staffId),
-                'wage_items' => $service->wageItems($staffId),
-            ],
+            'data' => $bundle,
         ]);
     }
 

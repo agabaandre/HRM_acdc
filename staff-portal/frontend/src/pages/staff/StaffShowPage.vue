@@ -13,11 +13,13 @@ import {
   fetchStaffFormLookups,
   updateContract,
   updateStaffBiodata,
+  uploadStaffPassport,
   type StaffAuditTrailRow,
   type StaffBiodataPayload,
   type StaffContractPayload,
   type StaffContractRow,
   type StaffFormLookups,
+  type StaffNextOfKinInput,
   type StaffSupervisorOption,
   type StaffUnitOption,
 } from '@/lib/staffApi'
@@ -38,6 +40,7 @@ type ApiFailure = {
 
 const route = useRoute()
 const auth = useAuthStore()
+const payPanelRef = ref<{ reload?: () => Promise<void> } | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
@@ -58,6 +61,11 @@ const biodataValidation = ref<string | null>(null)
 const biodataServerErrors = ref<FieldErrors>({})
 const biodataClientErrors = ref<FieldErrors>({})
 const biodataLookupsLoading = ref(false)
+const biodataPassportFile = ref<File | File[] | null>(null)
+const biodataNextOfKin = ref<StaffNextOfKinInput[]>([
+  { name: '', relationship_id: '', phone: '', email: '' },
+  { name: '', relationship_id: '', phone: '', email: '' },
+])
 
 const titles = ['Dr', 'Prof', 'Rev', 'Mr', 'Mrs', 'Ms']
 const genders = ['Male', 'Female', 'Other']
@@ -83,6 +91,14 @@ const formMode = ref<'create' | 'edit'>('create')
 const editingContractId = ref<number | null>(null)
 const lookupsLoading = ref(false)
 const lookups = ref<StaffFormLookups | null>(null)
+const kinItems = computed(() =>
+  (lookups.value?.kin_relationship_types || []).map((k) => ({
+    title: k.name,
+    value: k.id,
+  })),
+)
+const passportUrl = computed(() => resolveAvatarUrl(String(staff.value?.passport_url || '')) || null)
+const passportIsPdf = computed(() => !!staff.value?.passport_is_pdf)
 const saving = ref(false)
 const validationMessage = ref<string | null>(null)
 const formError = ref<string | null>(null)
@@ -454,6 +470,13 @@ async function load() {
   }
 }
 
+function emptyNokRows(): StaffNextOfKinInput[] {
+  return [
+    { name: '', relationship_id: '', phone: '', email: '' },
+    { name: '', relationship_id: '', phone: '', email: '' },
+  ]
+}
+
 function applyBiodataFromStaff() {
   const s = staff.value || {}
   biodataForm.SAPNO = String(s.SAPNO ?? s.sap_number ?? '')
@@ -471,6 +494,18 @@ function applyBiodataFromStaff() {
   biodataForm.work_email = String(s.work_email ?? '')
   biodataForm.private_email = String(s.private_email ?? '')
   biodataForm.physical_location = String(s.physical_location ?? '')
+  biodataPassportFile.value = null
+  const rows = emptyNokRows()
+  const existing = Array.isArray(s.next_of_kin) ? (s.next_of_kin as Array<Record<string, unknown>>) : []
+  existing.slice(0, 2).forEach((row, i) => {
+    rows[i] = {
+      name: String(row.name ?? ''),
+      relationship_id: numberOrBlank(row.relationship_id),
+      phone: String(row.phone ?? ''),
+      email: String(row.email ?? ''),
+    }
+  })
+  biodataNextOfKin.value = rows
 }
 
 async function openBiodataDialog() {
@@ -485,7 +520,7 @@ async function openBiodataDialog() {
     try {
       lookups.value = await fetchStaffFormLookups()
     } catch (e) {
-      biodataError.value = apiErrorMessage(e, 'Could not load nationality list')
+      biodataError.value = apiErrorMessage(e, 'Could not load form lookups')
     } finally {
       biodataLookupsLoading.value = false
     }
@@ -498,6 +533,7 @@ function closeBiodataDialog() {
   biodataValidation.value = null
   biodataServerErrors.value = {}
   biodataClientErrors.value = {}
+  biodataPassportFile.value = null
 }
 
 function validateBiodata(): boolean {
@@ -537,11 +573,17 @@ async function submitBiodata() {
     const payload: StaffBiodataPayload = {
       ...biodataForm,
       nationality_id: Number(biodataForm.nationality_id),
+      next_of_kin: biodataNextOfKin.value,
     }
-    const previousNok = staff.value?.next_of_kin
     const updated = await updateStaffBiodata(staffId.value, payload)
-    if (previousNok != null && (updated.next_of_kin == null || (Array.isArray(updated.next_of_kin) && updated.next_of_kin.length === 0))) {
-      updated.next_of_kin = previousNok
+    const passport = Array.isArray(biodataPassportFile.value)
+      ? biodataPassportFile.value[0]
+      : biodataPassportFile.value
+    if (passport) {
+      const media = await uploadStaffPassport(staffId.value, passport)
+      updated.passport_url = media.passport_url
+      updated.passport_is_pdf = media.passport_is_pdf
+      updated.passport_biodata_page = media.filename
     }
     staff.value = updated
     successMessage.value = 'Biodata updated successfully.'
@@ -595,7 +637,8 @@ async function submitContract() {
     const pdf = selectedContractFile()
     if (formMode.value === 'create') {
       await createContract(staffId.value, payload, pdf)
-      successMessage.value = 'Contract created successfully.'
+      successMessage.value =
+        'Contract created. If payroll was copied from the previous contract, verify it before saving.'
     } else if (editingContractId.value) {
       await updateContract(staffId.value, editingContractId.value, payload, pdf)
       successMessage.value = 'Contract updated successfully.'
@@ -603,6 +646,7 @@ async function submitContract() {
 
     closeContractDialog()
     await load()
+    await payPanelRef.value?.reload?.()
   } catch (cause) {
     if (errorStatus(cause) === 422) {
       serverErrors.value = validationErrors(cause)
@@ -748,7 +792,11 @@ onMounted(() => void load())
         <div v-else class="text-caption text-medium-emphasis">Not recorded</div>
       </v-sheet>
 
-      <StaffPayPanel v-if="canManagePay && staffId" :staff-id="staffId" />
+      <StaffPayPanel
+        v-if="canManagePay && staffId"
+        ref="payPanelRef"
+        :staff-id="staffId"
+      />
 
       <section class="contract-mgmt mb-4">
         <div class="contract-mgmt__toolbar">
@@ -1490,6 +1538,75 @@ onMounted(() => void load())
                   density="comfortable"
                   hide-details="auto"
                 />
+              </v-col>
+              <v-col cols="12">
+                <div class="text-subtitle-2 mb-2">Passport biodata (optional)</div>
+                <div v-if="passportUrl" class="mb-2 text-body-2">
+                  Current:
+                  <a :href="passportUrl" target="_blank" rel="noopener">
+                    {{ passportIsPdf ? 'View PDF' : 'View image' }}
+                  </a>
+                </div>
+                <v-file-input
+                  v-model="biodataPassportFile"
+                  label="Replace / upload passport biodata page"
+                  accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,application/pdf"
+                  prepend-icon="mdi-card-account-details-outline"
+                  show-size
+                  density="comfortable"
+                  hint="Image or PDF, max 4MB"
+                  persistent-hint
+                  :error-messages="biodataFieldErrors('passport')"
+                  hide-details="auto"
+                />
+              </v-col>
+              <v-col cols="12">
+                <div class="text-subtitle-2 mb-2">Next of kin (optional)</div>
+                <div v-for="(row, idx) in biodataNextOfKin" :key="idx" class="mb-4">
+                  <div class="text-caption text-medium-emphasis mb-1">
+                    {{ idx === 0 ? 'Primary' : 'Secondary' }}
+                  </div>
+                  <v-row density="compact">
+                    <v-col cols="12" sm="6">
+                      <v-text-field
+                        v-model="row.name"
+                        label="Full name"
+                        density="comfortable"
+                        :error-messages="biodataFieldErrors(`next_of_kin.${idx}`)"
+                        hide-details="auto"
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-select
+                        v-model="row.relationship_id"
+                        :items="kinItems"
+                        label="Relationship"
+                        clearable
+                        density="comfortable"
+                        hide-details="auto"
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-text-field
+                        v-model="row.phone"
+                        label="Phone"
+                        density="comfortable"
+                        :error-messages="biodataFieldErrors(`next_of_kin.${idx}.phone`)"
+                        hide-details="auto"
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-text-field
+                        v-model="row.email"
+                        label="Email"
+                        type="email"
+                        density="comfortable"
+                        :error-messages="biodataFieldErrors(`next_of_kin.${idx}.email`)"
+                        hide-details="auto"
+                      />
+                    </v-col>
+                  </v-row>
+                </div>
               </v-col>
             </v-row>
           </form>

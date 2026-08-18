@@ -361,7 +361,7 @@ function roleLabel(c: CandidateRow): string {
           <span class="card-icon" aria-hidden="true">🎨</span>
           <div>
             <h3>Branding</h3>
-            <p class="card-lede">Colours used across the Service Desk portal.</p>
+            <p class="card-lede">Colours used across the Help Desk portal.</p>
           </div>
         </header>
         <div class="color-grid">

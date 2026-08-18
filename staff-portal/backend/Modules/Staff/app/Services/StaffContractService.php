@@ -7,6 +7,7 @@ use App\Support\StaffContractFile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class StaffContractService
@@ -212,6 +213,14 @@ class StaffContractService
             $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $id)->value('status_id');
             if (in_array($statusId, self::CURRENT_STATUSES, true)) {
                 $this->demotePreviousOnRenew($staffId, $id);
+            }
+
+            if (
+                class_exists(\Modules\Payroll\Services\StaffPayService::class)
+                && Schema::hasTable('payroll_staff_pay')
+            ) {
+                app(\Modules\Payroll\Services\StaffPayService::class)
+                    ->inheritFromPreviousContract($staffId, $id);
             }
 
             $this->markEmailEnabledIfActive($staffId, $statusId);
