@@ -2,10 +2,12 @@
 import { computed } from 'vue'
 import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
-import type {
-  PerformanceFormState,
-  PerformanceObjective,
-  PerformanceSkillCatalogItem,
+import {
+  normalizePerformanceSkillIds,
+  performanceSkillItems,
+  type PerformanceFormState,
+  type PerformanceObjective,
+  type PerformanceSkillCatalogItem,
 } from '@/lib/performanceApi'
 
 const props = defineProps<{
@@ -16,6 +18,15 @@ const props = defineProps<{
 }>()
 
 const objectiveIndexes = [1, 2, 3, 4, 5]
+
+const skillItems = computed(() => performanceSkillItems(props.skills))
+
+const requiredSkillIds = computed({
+  get: () => normalizePerformanceSkillIds(props.form.required_skills),
+  set: (value) => {
+    props.form.required_skills = value
+  },
+})
 
 const totalWeight = computed(() =>
   objectiveIndexes.reduce((sum, index) => {
@@ -127,8 +138,10 @@ function objectiveAt(index: number): PerformanceObjective {
         <v-expand-transition>
           <div v-if="form.training_recommended === 'Yes'" class="d-flex flex-column ga-4">
             <v-select
-              v-model="form.required_skills"
-              :items="skills.map((skill) => ({ title: skill.skill, value: skill.id }))"
+              v-model="requiredSkillIds"
+              :items="skillItems"
+              item-title="title"
+              item-value="value"
               :disabled="readonly"
               label="Skill area(s) recommended"
               variant="outlined"

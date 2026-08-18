@@ -4,12 +4,14 @@ import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import CompetencyRatingTable from '@/components/performance/CompetencyRatingTable.vue'
 import { hasRichTextContent } from '@/lib/richText'
-import type {
-  PerformanceFormState,
-  PerformanceObjective,
-  PerformancePhase,
-  PerformanceSkillCatalogItem,
-  PerformanceCompetencyCatalogItem,
+import {
+  normalizePerformanceSkillIds,
+  performanceSkillItems,
+  type PerformanceFormState,
+  type PerformanceObjective,
+  type PerformancePhase,
+  type PerformanceSkillCatalogItem,
+  type PerformanceCompetencyCatalogItem,
 } from '@/lib/performanceApi'
 
 type ReviewTextField =
@@ -50,11 +52,15 @@ const visibleObjectives = computed(() =>
     .sort((a, b) => a.index - b.index),
 )
 
-const recommendedSkillIds = computed<Array<number | string>>({
+const skillItems = computed(() => performanceSkillItems(props.skills))
+
+const recommendedSkillIds = computed<number[]>({
   get: () =>
-    props.phase === 'midterm'
-      ? props.form.midterm_recommended_skills
-      : props.form.endterm_recommended_skills,
+    normalizePerformanceSkillIds(
+      props.phase === 'midterm'
+        ? props.form.midterm_recommended_skills
+        : props.form.endterm_recommended_skills,
+    ),
   set: (value) => {
     if (props.phase === 'midterm') {
       props.form.midterm_recommended_skills = value
@@ -70,7 +76,7 @@ const reviewSummary = computed(() => [
     label: 'Required Skills',
     value:
       props.form.required_skills
-        .map((id) => props.skills.find((skill) => skill.id === Number(id))?.skill || `Skill #${id}`)
+        .map((id) => props.skills.find((skill) => Number(skill.id) === Number(id))?.skill || `Skill #${id}`)
         .join(', ') || 'None listed',
     rich: false,
   },
@@ -256,7 +262,9 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
         />
         <v-select
           v-model="recommendedSkillIds"
-          :items="skills.map((skill) => ({ title: skill.skill, value: skill.id }))"
+          :items="skillItems"
+          item-title="title"
+          item-value="value"
           :disabled="readonly"
           label="2. Additional training recommended - skill area(s)"
           variant="outlined"

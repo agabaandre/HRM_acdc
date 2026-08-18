@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import { computed, onMounted, ref } from 'vue'
+import { QuillEditor, loadQuill } from '@vueup/vue-quill'
+import { computed, onMounted } from 'vue'
 import {
   buildPerformanceQuillOptions,
   editorMinHeightPx,
@@ -11,7 +10,7 @@ import {
 
 const props = withDefaults(
   defineProps<{
-    modelValue: string
+    modelValue?: string | null
     label?: string
     placeholder?: string
     disabled?: boolean
@@ -19,6 +18,7 @@ const props = withDefaults(
     hint?: string
   }>(),
   {
+    modelValue: '',
     placeholder: '',
     disabled: false,
     minRows: 4,
@@ -29,7 +29,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const editorReady = ref(false)
+const htmlContent = computed(() => props.modelValue ?? '')
 const editorMinPx = computed(() => editorMinHeightPx(props.minRows))
 const editorStyle = computed(() => ({
   '--portal-rich-editor-min': `${editorMinPx.value}px`,
@@ -41,9 +41,8 @@ const quillOptions = computed(() =>
   }),
 )
 
-onMounted(async () => {
-  await patchQuillExternalLinks()
-  editorReady.value = true
+onMounted(() => {
+  void patchQuillExternalLinks(loadQuill)
 })
 
 function onContentUpdate(html: string): void {
@@ -52,32 +51,30 @@ function onContentUpdate(html: string): void {
 
 function onReady(quill: unknown): void {
   const q = quill as { root: HTMLElement; on: (e: string, fn: () => void) => void }
+  if (!q?.root) {
+    return
+  }
   setupQuillAutoGrow(q, editorMinPx.value)
 }
 </script>
 
 <template>
-  <div class="portal-rich-field" :class="{ 'portal-rich-field--disabled': disabled }">
+  <div
+    class="portal-rich-field"
+    :class="{ 'portal-rich-field--disabled': disabled }"
+    :style="editorStyle"
+  >
     <div v-if="label" class="portal-rich-field__label">{{ label }}</div>
-    <QuillEditor
-      v-if="editorReady"
-      :content="modelValue"
-      content-type="html"
-      theme="snow"
-      class="portal-rich-editor"
-      :style="editorStyle"
-      :options="quillOptions"
-      :read-only="disabled"
-      @update:content="onContentUpdate"
-      @ready="onReady"
-    />
-    <div
-      v-else
-      class="portal-rich-editor portal-rich-editor--loading"
-      :style="{ minHeight: `${editorMinPx}px` }"
-      aria-busy="true"
-    >
-      Loading editor…
+    <div class="portal-rich-editor">
+      <QuillEditor
+        :content="htmlContent"
+        content-type="html"
+        theme="snow"
+        :options="quillOptions"
+        :read-only="disabled"
+        @update:content="onContentUpdate"
+        @ready="onReady"
+      />
     </div>
     <div v-if="hint" class="portal-rich-field__hint">{{ hint }}</div>
   </div>
@@ -107,18 +104,7 @@ function onReady(quill: unknown): void {
 .portal-rich-editor {
   background: #fff;
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.portal-rich-editor--loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #78909c;
-  font-size: 0.875rem;
-  background: #f8fafc;
-  border: 1px solid var(--portal-field-border, #b0bec5);
-  border-radius: 8px;
+  width: 100%;
 }
 
 .portal-rich-editor :deep(.ql-toolbar.ql-snow) {
@@ -139,7 +125,8 @@ function onReady(quill: unknown): void {
 }
 
 .portal-rich-editor :deep(.ql-container.ql-snow) {
-  height: auto;
+  height: auto !important;
+  min-height: var(--portal-rich-editor-min, 104px);
   border: 1px solid var(--portal-field-border, #b0bec5);
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;

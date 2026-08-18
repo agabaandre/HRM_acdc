@@ -41,6 +41,9 @@ export default defineConfig(({ mode }) => {
             if (!id.includes('node_modules')) {
               return undefined
             }
+            if (id.includes('@vueup/vue-quill') || id.includes('/quill')) {
+              return 'editor'
+            }
             if (id.includes('vuetify')) {
               return 'vuetify'
             }

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { hasRichTextContent, richTextToHtml } from '@/lib/richText'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 const props = withDefaults(
   defineProps<{

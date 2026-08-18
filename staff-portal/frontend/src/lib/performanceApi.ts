@@ -75,9 +75,36 @@ export interface PerformanceContract {
 }
 
 export interface PerformanceSkillCatalogItem {
-  id: number
+  id: number | string
   skill: string
   category_id: number
+}
+
+export function performanceSkillItems(
+  skills: PerformanceSkillCatalogItem[],
+): Array<{ title: string; value: number }> {
+  return skills
+    .map((skill) => ({
+      title: String(skill.skill || '').trim(),
+      value: Number(skill.id),
+    }))
+    .filter((item) => item.title !== '' && Number.isFinite(item.value) && item.value > 0)
+}
+
+export function normalizePerformanceSkillIds(
+  ids: Array<number | string> | null | undefined,
+): number[] {
+  const seen = new Set<number>()
+  const out: number[] = []
+  for (const id of ids ?? []) {
+    const value = Number(id)
+    if (!Number.isFinite(value) || value <= 0 || seen.has(value)) {
+      continue
+    }
+    seen.add(value)
+    out.push(value)
+  }
+  return out
 }
 
 export interface PerformanceCompetencyCatalogItem {

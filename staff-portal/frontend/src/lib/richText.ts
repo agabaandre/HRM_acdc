@@ -41,12 +41,14 @@ export function richTextToHtml(value: string | null | undefined): string {
 }
 
 /** Compact PPA toolbar — same as the CI3 performance Quill editors. */
-export const PERFORMANCE_QUILL_TOOLBAR = [
-  ['bold', 'italic', 'underline'],
-  [{ list: 'ordered' }, { list: 'bullet' }],
-  ['link'],
-  ['clean'],
-] as const
+export function performanceQuillToolbar(): unknown[] {
+  return [
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link'],
+    ['clean'],
+  ]
+}
 
 export function buildPerformanceQuillOptions(params: {
   placeholder?: string
@@ -66,7 +68,7 @@ export function buildPerformanceQuillOptions(params: {
     readOnly: false,
     placeholder: params.placeholder ?? 'Enter text…',
     modules: {
-      toolbar: [...PERFORMANCE_QUILL_TOOLBAR],
+      toolbar: performanceQuillToolbar(),
       clipboard: { matchVisual: false },
     },
   }
@@ -99,13 +101,8 @@ type QuillLike = {
   import: (path: string) => unknown
 }
 
-type VueQuillModule = {
-  Quill: QuillLike
-  loadQuill?: () => Promise<QuillLike>
-}
-
-/** Open http(s) links from Quill in a new tab. */
-export function patchQuillExternalLinks(): Promise<void> {
+/** Open http(s) links from Quill in a new tab. Pass `loadQuill` from `@vueup/vue-quill`. */
+export function patchQuillExternalLinks(loadQuillFn: () => Promise<unknown>): Promise<void> {
   if (linkBlotPatched) {
     return Promise.resolve()
   }
@@ -114,27 +111,30 @@ export function patchQuillExternalLinks(): Promise<void> {
   }
 
   linkBlotPatchPromise = (async () => {
-    const mod = (await import('@vueup/vue-quill')) as unknown as VueQuillModule
-    const Quill = typeof mod.loadQuill === 'function' ? await mod.loadQuill() : mod.Quill
-    const LinkBlot = Quill.import('formats/link') as {
-      create?: (value: string) => HTMLAnchorElement
-      __cbpPatched?: boolean
-    }
-    if (!LinkBlot?.create || LinkBlot.__cbpPatched) {
-      linkBlotPatched = true
-      return
-    }
-    const origCreate = LinkBlot.create
-    LinkBlot.create = function (value: string) {
-      const node: HTMLAnchorElement = origCreate.call(this, value)
-      if (/^https?:/i.test(value)) {
-        node.setAttribute('target', '_blank')
-        node.setAttribute('rel', 'noopener noreferrer')
+    try {
+      const Quill = (await loadQuillFn()) as QuillLike
+      const LinkBlot = Quill.import('formats/link') as {
+        create?: (value: string) => HTMLAnchorElement
+        __cbpPatched?: boolean
       }
-      return node
+      if (!LinkBlot?.create || LinkBlot.__cbpPatched) {
+        return
+      }
+      const origCreate = LinkBlot.create
+      LinkBlot.create = function (value: string) {
+        const node: HTMLAnchorElement = origCreate.call(this, value)
+        if (/^https?:/i.test(value)) {
+          node.setAttribute('target', '_blank')
+          node.setAttribute('rel', 'noopener noreferrer')
+        }
+        return node
+      }
+      LinkBlot.__cbpPatched = true
+    } catch {
+      /* Editor still works without the link-target patch. */
+    } finally {
+      linkBlotPatched = true
     }
-    LinkBlot.__cbpPatched = true
-    linkBlotPatched = true
   })()
 
   return linkBlotPatchPromise

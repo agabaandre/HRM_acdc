@@ -268,12 +268,22 @@ class PpaFormService
     }
 
     /**
-     * @return list<int|string>
+     * @return list<int>
      */
     public function decodeSkillIds(mixed $raw): array
     {
         $decoded = $this->decodeJson($raw);
+        $ids = [];
+        foreach ($decoded as $value) {
+            if (! is_numeric($value)) {
+                continue;
+            }
+            $id = (int) $value;
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
 
-        return array_values($decoded);
+        return array_values($ids);
     }
 }

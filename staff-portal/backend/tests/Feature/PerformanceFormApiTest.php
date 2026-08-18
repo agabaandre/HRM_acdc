@@ -136,6 +136,15 @@ class PerformanceFormApiTest extends TestCase
         $this->assertCount(1, $payload['data']['catalogs']['skills']);
     }
 
+    public function test_decode_skill_ids_casts_quoted_json_ids_to_integers(): void
+    {
+        $forms = app(PpaFormService::class);
+
+        $this->assertSame([17, 44], $forms->decodeSkillIds('["17","44"]'));
+        $this->assertSame([17, 44], $forms->decodeSkillIds([17, '44', '17']));
+        $this->assertSame([], $forms->decodeSkillIds('[]'));
+    }
+
     public function test_show_can_return_requires_permission_and_setting(): void
     {
         $this->insertPpaEntry([
