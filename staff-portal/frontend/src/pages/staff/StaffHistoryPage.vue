@@ -370,10 +370,24 @@ onMounted(() => {
     <div class="portal-staff-filters">
       <v-row dense>
         <v-col cols="12" sm="6" md="3">
-          <v-text-field v-model="periodFrom" type="date" label="Report period from" hide-details />
+          <UDateInput
+            v-model="periodFrom"
+            label="Report period from"
+            placeholder="Select start date"
+            density="comfortable"
+            hide-details="auto"
+            :max="periodTo || undefined"
+          />
         </v-col>
         <v-col cols="12" sm="6" md="3">
-          <v-text-field v-model="periodTo" type="date" label="Report period to" hide-details />
+          <UDateInput
+            v-model="periodTo"
+            label="Report period to"
+            placeholder="Select end date"
+            density="comfortable"
+            hide-details="auto"
+            :min="periodFrom || undefined"
+          />
         </v-col>
         <v-col cols="12" sm="6" md="3">
           <v-text-field v-model="filters.name" label="Name" placeholder="Enter Name" hide-details />
