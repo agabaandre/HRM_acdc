@@ -689,11 +689,12 @@ onMounted(() => {
               />
             </UFormField>
             <UFormField label="Members" name="member_user_ids" class="span-2">
-              <USelect
+              <USelectMenu
                 v-model="groupForm.member_user_ids"
                 multiple
+                searchable
                 :items="agentSelectItems"
-                placeholder="Select agents…"
+                placeholder="Search and select agents…"
                 class="w-full"
               />
             </UFormField>
