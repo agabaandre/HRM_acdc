@@ -5,22 +5,17 @@
 
 url_is_localhost() {
     local value="${1:-}"
-    [[ "$value" =~ localhost|127\.0\.0\.1 ]] && return 0
+    [[ "$value" =~ localhost|127\.0\.0\.1|::1 ]] && return 0
     return 1
 }
 
+# True for URLs that must not be shown as the production site origin.
 url_is_local_dev_host() {
     local value="${1:-}"
     url_is_localhost "$value" && return 0
     [[ "$value" =~ \.local(/|$) ]] && return 0
-    local host machine
-    host="$(url_origin_from_base "$value" 2>/dev/null || true)"
-    host="${host#*://}"
-    host="${host%%/*}"
-    host="${host%%:*}"
-    machine="$(hostname -f 2>/dev/null || hostname 2>/dev/null || true)"
-    machine="$(url_trim "$machine")"
-    [[ -n "$machine" && "$host" == "$machine" ]] && return 0
+    [[ "$value" =~ \.lan(/|$) ]] && return 0
+    [[ "$value" =~ \.localhost(/|$) ]] && return 0
     return 1
 }
 
@@ -29,6 +24,18 @@ url_trim() {
     s="${s%"${s##*[![:space:]]}"}"
     s="${s#"${s%%[![:space:]]*}"}"
     printf '%s' "$s"
+}
+
+url_host_is_public_candidate() {
+    local h="${1:-}"
+    h="$(printf '%s' "$h" | tr '[:upper:]' '[:lower:]')"
+    h="${h%.}"
+    [[ -n "$h" ]] || return 1
+    [[ "$h" == localhost || "$h" == 127.0.0.1 || "$h" == ::1 || "$h" == '_' ]] && return 1
+    [[ "$h" == *.local || "$h" == *.lan || "$h" == *.internal || "$h" == *.localhost ]] && return 1
+    [[ "$h" =~ ^[0-9.]+$ ]] && return 1
+    [[ "$h" == *.* ]] || return 1
+    return 0
 }
 
 url_origin_from_base() {
@@ -52,6 +59,27 @@ url_origin_from_base() {
     return 1
 }
 
+url_path_from_url() {
+    local url
+    url="$(url_trim "$1")"
+    if [[ "$url" =~ ^https?://[^/]+(/.*)$ ]]; then
+        printf '%s' "${BASH_REMATCH[1]}"
+    else
+        printf '/'
+    fi
+}
+
+# Rewrite a public URL to a loopback probe (same path) for on-server curl.
+url_loopback_probe() {
+    printf 'http://127.0.0.1%s' "$(url_path_from_url "$1")"
+}
+
+url_host_header() {
+    local origin
+    origin="$(url_origin_from_base "$1")" || return 1
+    printf '%s' "${origin#*://}"
+}
+
 url_staff_base_from_full() {
     local base origin
     base="$(url_trim "$1")"
@@ -61,6 +89,69 @@ url_staff_base_from_full() {
     fi
     origin="$(url_origin_from_base "$base")" || return 1
     printf '%s/staff/' "$origin"
+}
+
+url_first_public_server_name_in_file() {
+    local file="$1" line name
+    [[ -r "$file" ]] || return 1
+    while IFS= read -r line; do
+        name="${line#*ServerName}"
+        if [[ "$name" == "$line" ]]; then
+            name="${line#*server_name}"
+        fi
+        name="$(url_trim "$name")"
+        name="${name%%;*}"
+        name="${name%% *}"
+        name="${name%.}"
+        if url_host_is_public_candidate "$name"; then
+            printf '%s' "$name"
+            return 0
+        fi
+    done < <(grep -E '^[[:space:]]*(ServerName|server_name)[[:space:]]+' "$file" 2>/dev/null || true)
+    return 1
+}
+
+url_detect_web_server_name() {
+    local f name h old_nullglob
+    local -a files=()
+    old_nullglob="$(shopt -p nullglob)"
+    shopt -s nullglob
+    files=(
+        /etc/apache2/sites-enabled/*.conf
+        /etc/httpd/conf.d/*.conf
+        /etc/nginx/sites-enabled/*
+        /etc/nginx/conf.d/*.conf
+    )
+    eval "$old_nullglob"
+    for f in "${files[@]}"; do
+        case "$(basename "$f")" in
+            *ssl*|*443*|*le-ssl*) ;;
+            *) continue ;;
+        esac
+        name="$(url_first_public_server_name_in_file "$f")" && { printf '%s' "$name"; return 0; }
+    done
+    for f in "${files[@]}"; do
+        name="$(url_first_public_server_name_in_file "$f")" && { printf '%s' "$name"; return 0; }
+    done
+    if command -v apache2ctl >/dev/null 2>&1; then
+        while IFS= read -r h; do
+            h="$(url_trim "$h")"
+            if url_host_is_public_candidate "$h"; then
+                printf '%s' "$h"
+                return 0
+            fi
+        done < <(apache2ctl -S 2>/dev/null | grep -Eo 'namevhost[[:space:]]+[^[:space:]]+' | awk '{print $2}' || true)
+    fi
+    if command -v httpd >/dev/null 2>&1; then
+        while IFS= read -r h; do
+            h="$(url_trim "$h")"
+            if url_host_is_public_candidate "$h"; then
+                printf '%s' "$h"
+                return 0
+            fi
+        done < <(httpd -S 2>/dev/null | grep -Eo 'namevhost[[:space:]]+[^[:space:]]+' | awk '{print $2}' || true)
+    fi
+    return 1
 }
 
 staff_env_get() {
@@ -82,30 +173,36 @@ staff_env_get() {
 
 # Pick the best Staff portal base URL (ends with /staff/).
 resolve_staff_portal_base_url() {
-    local candidate host scheme
+    local candidate host
     for candidate in \
+        "${STAFF_PORTAL_PUBLIC_URL:-}" \
         "$(staff_env_get PRODUCTION_URL)" \
         "$(staff_env_get CI_BASE_URL)" \
         "$(staff_env_get BASE_URL)" \
         "$(dotenv_get "$STAFF_ROOT/apm/.env" BASE_URL 2>/dev/null || true)"; do
         candidate="$(url_trim "$candidate")"
         [[ -n "$candidate" ]] || continue
-        if ! url_is_localhost "$candidate"; then
+        if ! url_is_local_dev_host "$candidate"; then
             url_staff_base_from_full "$candidate"
             return 0
         fi
     done
 
+    host="$(url_detect_web_server_name || true)"
+    host="$(url_trim "$host")"
+    if url_host_is_public_candidate "$host"; then
+        printf 'https://%s/staff/' "$host"
+        return 0
+    fi
+
     host="$(hostname -f 2>/dev/null || hostname 2>/dev/null || true)"
     host="$(url_trim "$host")"
-    [[ -n "$host" ]] || return 1
-
-    if url_is_localhost "$host"; then
-        scheme="http"
-    else
-        scheme="https"
+    if url_host_is_public_candidate "$host"; then
+        printf 'https://%s/staff/' "$host"
+        return 0
     fi
-    printf '%s://%s/staff/' "$scheme" "$host"
+
+    return 1
 }
 
 url_needs_resolve() {

@@ -30,12 +30,12 @@ ENV_PREEXISTED=0
 [[ -f "$BACKEND_ENV" ]] && ENV_PREEXISTED=1
 [[ -f "$BACKEND_ENV" ]] || cp "$PORTAL_ROOT/backend/.env.example" "$BACKEND_ENV"
 
+# setup.env is a local-dev template (APP_ENV=local, localhost URLs). Production
+# setup must not keep those values — dotenv_load_file above already overwrote
+# any APP_ENV=production exported by setup-production.sh.
 if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
-    if [[ "$ENV_PREEXISTED" != "1" ]] \
-        || ! dotenv_value_present "$(dotenv_get "$BACKEND_ENV" APP_ENV 2>/dev/null || true)"; then
-        APP_ENV=production
-        APP_DEBUG=false
-    fi
+    APP_ENV=production
+    APP_DEBUG=false
 fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
@@ -108,6 +108,7 @@ if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
             dotenv_set "$BACKEND_ENV" "$key" "$val"
         fi
     done
+    echo "Production URLs: SPA=${STAFF_PORTAL_SPA_URL:-}  API=${APP_URL:-}"
 
     # Redis is optional. A bad REDIS_PASSWORD (AUTH with no server password) breaks
     # migrate / cache and must not block production deploy — fall back to database.
@@ -156,8 +157,13 @@ fi
 
 if [[ -n "${STAFF_PORTAL_SPA_URL:-}" ]]; then
     host_port="$(printf '%s' "$STAFF_PORTAL_SPA_URL" | sed -E 's#^https?://([^/]+).*#\1#')"
-    dotenv_apply_if_missing "$BACKEND_ENV" SANCTUM_STATEFUL_DOMAINS \
-        "localhost,127.0.0.1,${host_port}" "$ENV_PREEXISTED"
+    if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
+        dotenv_set "$BACKEND_ENV" SANCTUM_STATEFUL_DOMAINS \
+            "localhost,127.0.0.1,${host_port}"
+    else
+        dotenv_apply_if_missing "$BACKEND_ENV" SANCTUM_STATEFUL_DOMAINS \
+            "localhost,127.0.0.1,${host_port}" "$ENV_PREEXISTED"
+    fi
 fi
 
 if [[ -z "$(dotenv_get "$BACKEND_ENV" APP_KEY 2>/dev/null || true)" \

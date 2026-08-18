@@ -49,8 +49,9 @@ staff_portal_resolve_production_urls() {
         if url_needs_resolve "${STAFF_PORTAL_BASE_URL:-}"; then
             STAFF_PORTAL_BASE_URL="${origin}${mount}/staff-portal/backend/"
         fi
+        # systemd / on-box probes stay on loopback; public SPA/API URLs are for browsers.
         if url_needs_resolve "${STAFF_PORTAL_HEALTH_URL:-}"; then
-            STAFF_PORTAL_HEALTH_URL="${origin}${mount}/staff-portal/backend/up"
+            STAFF_PORTAL_HEALTH_URL="http://127.0.0.1${mount}/staff-portal/backend/up"
         fi
         if url_needs_resolve "${APM_BASE_URL:-}"; then
             APM_BASE_URL="${origin}/staff/apm"

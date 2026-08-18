@@ -386,24 +386,60 @@ chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
 export MIGRATE_SHARED_STORAGE="${MIGRATE_SHARED_STORAGE:-true}"
 "$ROOT/scripts/migrate-shared-storage.sh" || warn "Shared storage migration skipped or failed — see docs/STORAGE.md"
 
+# shellcheck source=scripts/lib/urls.sh
+source "$ROOT/scripts/lib/urls.sh"
 dotenv_load_file "$BACKEND_ENV"
-HEALTH_PATH="${STAFF_PORTAL_HEALTH_URL:-}"
-if [[ -z "$HEALTH_PATH" ]]; then
-  HEALTH_PATH="$(dotenv_get "$BACKEND_ENV" APP_URL 2>/dev/null || true)/up"
-fi
-SPA_URL="$(dotenv_get "$BACKEND_ENV" STAFF_PORTAL_SPA_URL 2>/dev/null || true)"
-[[ -z "$SPA_URL" ]] && SPA_URL="${STAFF_PORTAL_SPA_URL:-}"
+APP_ENV=production
+staff_portal_resolve_production_urls || true
+# Persist resolved public URLs if configure-env still had localhost in .env
+for key in APP_URL STAFF_PORTAL_BASE_URL STAFF_PORTAL_SPA_URL BASE_URL APM_BASE_URL; do
+    val="${!key:-}"
+    if [[ -n "$val" ]] && ! url_is_localhost "$val"; then
+        dotenv_set "$BACKEND_ENV" "$key" "$val"
+    fi
+done
+
+SPA_URL="${STAFF_PORTAL_SPA_URL:-}"
+API_UP_URL="${APP_URL:+${APP_URL%/}/up}"
+
+staff_portal_curl_code() {
+    local url="$1"
+    shift
+    curl -sS -o /dev/null -w '%{http_code}' -L --max-time 15 "$@" "$url" 2>/dev/null || echo '000'
+}
+
+# Probe public URL first, then loopback with Host: (Apache vhosts). Print public URL.
+staff_portal_smoke_code() {
+    local public="$1"
+    local code probe host
+    code="$(staff_portal_curl_code "$public")"
+    if [[ "$code" == "200" ]]; then
+        printf '%s' "$code"
+        return 0
+    fi
+    if ! url_is_localhost "$public"; then
+        host="$(url_host_header "$public" 2>/dev/null || true)"
+        probe="$(url_loopback_probe "$public")"
+        if [[ -n "$host" ]]; then
+            code="$(staff_portal_curl_code "$probe" -H "Host: ${host}")"
+        else
+            code="$(staff_portal_curl_code "$probe")"
+        fi
+    fi
+    printf '%s' "$code"
+}
 
 log "Smoke tests"
-if [[ -n "$HEALTH_PATH" ]]; then
-    if curl -fsS --max-time 15 "$HEALTH_PATH" >/dev/null 2>&1; then
-        printf '    API health OK: %s\n' "$HEALTH_PATH"
+if [[ -n "$API_UP_URL" ]]; then
+    code="$(staff_portal_smoke_code "$API_UP_URL")"
+    if [[ "$code" == "200" ]]; then
+        printf '    API health OK: %s\n' "$API_UP_URL"
     else
-        warn "API health check failed: $HEALTH_PATH (Apache may need a reload, or URL is only reachable externally)"
+        warn "API health check failed: $API_UP_URL (Apache may need a reload, or URL is only reachable externally)"
     fi
 fi
 if [[ -n "$SPA_URL" ]]; then
-    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${SPA_URL%/}/" 2>/dev/null || echo '000')"
+    code="$(staff_portal_smoke_code "${SPA_URL%/}/")"
     if [[ "$code" == "200" ]]; then
         printf '    SPA OK: %s/\n' "${SPA_URL%/}"
     else
@@ -412,7 +448,7 @@ if [[ -n "$SPA_URL" ]]; then
     asset_sample="$(find "$ROOT/assets" -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) 2>/dev/null | head -n 1 || true)"
     if [[ -n "$asset_sample" ]]; then
         asset_name="$(basename "$asset_sample")"
-        asset_code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${SPA_URL%/}/assets/${asset_name}" 2>/dev/null || echo '000')"
+        asset_code="$(staff_portal_smoke_code "${SPA_URL%/}/assets/${asset_name}")"
         if [[ "$asset_code" == "200" ]]; then
             printf '    SPA assets OK: %s/assets/%s\n' "${SPA_URL%/}" "$asset_name"
         else
@@ -424,7 +460,7 @@ fi
 echo ""
 echo "Staff Portal production setup complete."
 echo "  SPA:     ${SPA_URL:-/staff/staff-portal/}"
-echo "  API:     ${APP_URL:-}/up"
+echo "  API:     ${API_UP_URL:-}"
 echo ""
 echo "Post-deploy:"
 echo "  1. systemctl status staff-portal-queue.service staff-portal-scheduler.timer"
