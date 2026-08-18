@@ -306,6 +306,16 @@ class StaffDirectoryService
     }
 
     /**
+     * Apply already-normalized directory filters to a query.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function applyListFilters(Builder $q, array $filters): void
+    {
+        $this->applyAdvancedFilters($q, $filters);
+    }
+
+    /**
      * CI3 staff_filters.php parity.
      *
      * @param  array<string, mixed>  $filters

@@ -37,6 +37,7 @@ Route::middleware(['web', 'auth'])->prefix('staff')->name('staff.')->group(funct
     Route::get('/search', fn () => $spa('staff'))->name('search');
     Route::get('/all_staff', fn () => $spa('staff?preset=all'))->name('all');
     Route::get('/contract_status/{preset}', fn (string $preset) => $spa('staff?preset='.$preset))->name('contract-status');
+    Route::get('/staff_history', fn () => $spa('staff/history'))->name('history');
     Route::get('/staff_birthday', fn () => $spa('staff/birthdays'))->name('birthdays');
     Route::get('/staff_data_quality_report', fn () => $spa('staff/data-quality'))->name('data-quality');
     Route::get('/signature_manager', fn () => $spa('staff/signatures'))->name('signature-manager');

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import PortalRichText from '@/components/atoms/PortalRichText.vue'
+import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import CompetencyRatingTable from '@/components/performance/CompetencyRatingTable.vue'
+import { hasRichTextContent } from '@/lib/richText'
 import type {
   PerformanceFormState,
   PerformanceObjective,
@@ -43,7 +46,7 @@ const ratingOptions = [
 const visibleObjectives = computed(() =>
   Object.entries(props.form.objectives)
     .map(([key, value]) => ({ index: Number(key), value }))
-    .filter(({ value }) => String(value.objective || '').trim() !== '')
+    .filter(({ value }) => hasRichTextContent(String(value.objective || '')))
     .sort((a, b) => a.index - b.index),
 )
 
@@ -62,17 +65,18 @@ const recommendedSkillIds = computed<Array<number | string>>({
 })
 
 const reviewSummary = computed(() => [
-  { label: 'Recommended?', value: props.form.training_recommended || 'No' },
+  { label: 'Recommended?', value: props.form.training_recommended || 'No', rich: false },
   {
     label: 'Required Skills',
     value:
       props.form.required_skills
         .map((id) => props.skills.find((skill) => skill.id === Number(id))?.skill || `Skill #${id}`)
         .join(', ') || 'None listed',
+    rich: false,
   },
-  { label: 'Training Contributions', value: props.form.training_contributions || '—' },
-  { label: 'Recommended AUC Courses', value: props.form.recommended_trainings || '—' },
-  { label: 'Other Courses', value: props.form.recommended_trainings_details || '—' },
+  { label: 'Training Contributions', value: props.form.training_contributions || '', rich: true },
+  { label: 'Recommended AUC Courses', value: props.form.recommended_trainings || '', rich: true },
+  { label: 'Other Courses', value: props.form.recommended_trainings_details || '', rich: true },
 ])
 
 function objectiveAt(index: number): PerformanceObjective {
@@ -139,25 +143,28 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
             <div class="text-subtitle-2 mb-3">Objective {{ index }}</div>
             <v-row dense>
               <v-col cols="12" md="4">
-                <v-textarea :model-value="value.objective" label="Objective" rows="4" auto-grow variant="outlined" readonly />
+                <PortalRichText :value="value.objective" label="Objective" />
               </v-col>
               <v-col cols="12" md="2">
                 <v-text-field :model-value="value.timeline" label="Timeline" variant="outlined" readonly />
               </v-col>
               <v-col cols="12" md="3">
-                <v-textarea :model-value="value.indicator" label="Deliverables and KPI's" rows="4" auto-grow variant="outlined" readonly />
+                <PortalRichText :value="value.indicator" label="Deliverables and KPI's" />
               </v-col>
               <v-col cols="12" md="1">
                 <v-text-field :model-value="value.weight" label="Weight" variant="outlined" readonly />
               </v-col>
               <v-col cols="12" md="4">
-                <v-textarea
-                  v-model="objectiveAt(index).self_appraisal"
-                  :readonly="readonly"
+                <PortalRichText
+                  v-if="readonly"
+                  :value="objectiveAt(index).self_appraisal"
                   label="Staff Self Appraisal"
-                  rows="4"
-                  auto-grow
-                  variant="outlined"
+                />
+                <PortalRichTextEditor
+                  v-else
+                  v-model="objectiveAt(index).self_appraisal"
+                  label="Staff Self Appraisal"
+                  :min-rows="4"
                 />
               </v-col>
               <v-col cols="12" md="2">
@@ -180,23 +187,29 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
     <v-card variant="outlined">
       <v-card-title class="text-h6">C. Appraiser's Comments</v-card-title>
       <v-card-text class="d-flex flex-column ga-4">
-        <v-textarea
-          :model-value="getReviewField(achievementsField)"
-          :readonly="readonly"
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(achievementsField)"
           label="1. What has been achieved in relation to the Performance Objectives?"
-          rows="4"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(achievementsField, String($event ?? ''))"
         />
-        <v-textarea
-          :model-value="getReviewField(nonAchievementsField)"
-          :readonly="readonly"
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(achievementsField)"
+          label="1. What has been achieved in relation to the Performance Objectives?"
+          :min-rows="4"
+          @update:model-value="setReviewField(achievementsField, $event)"
+        />
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(nonAchievementsField)"
           label="2. Specify non-achievements in relation to Performance Objectives"
-          rows="4"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(nonAchievementsField, String($event ?? ''))"
+        />
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(nonAchievementsField)"
+          label="2. Specify non-achievements in relation to Performance Objectives"
+          :min-rows="4"
+          @update:model-value="setReviewField(nonAchievementsField, $event)"
         />
       </v-card-text>
     </v-card>
@@ -224,18 +237,22 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
             class="mb-3"
           >
             <div class="text-caption text-medium-emphasis">{{ row.label }}</div>
-            <div class="text-body-2" style="white-space: pre-wrap">{{ row.value }}</div>
+            <PortalRichText v-if="row.rich" :value="row.value" empty-text="—" />
+            <div v-else class="text-body-2">{{ row.value }}</div>
           </div>
         </v-sheet>
 
-        <v-textarea
-          :model-value="getReviewField(trainingReviewField)"
-          :readonly="readonly"
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(trainingReviewField)"
           label="1. Comments on progress made against the employee's Personal Development Plan (PDP)"
-          rows="5"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(trainingReviewField, String($event ?? ''))"
+        />
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(trainingReviewField)"
+          label="1. Comments on progress made against the employee's Personal Development Plan (PDP)"
+          :min-rows="5"
+          @update:model-value="setReviewField(trainingReviewField, $event)"
         />
         <v-select
           v-model="recommendedSkillIds"
@@ -247,32 +264,41 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
           chips
           closable-chips
         />
-        <v-textarea
-          :model-value="getReviewField(trainingContributionsField)"
-          :readonly="readonly"
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(trainingContributionsField)"
           label="How will training contribute to development?"
-          rows="3"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(trainingContributionsField, String($event ?? ''))"
         />
-        <v-textarea
-          :model-value="getReviewField(recommendedTrainingsField)"
-          :readonly="readonly"
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(trainingContributionsField)"
+          label="How will training contribute to development?"
+          :min-rows="3"
+          @update:model-value="setReviewField(trainingContributionsField, $event)"
+        />
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(recommendedTrainingsField)"
           label="Recommended course(s) from the AUC L&D Catalogue"
-          rows="3"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(recommendedTrainingsField, String($event ?? ''))"
         />
-        <v-textarea
-          :model-value="getReviewField(recommendedTrainingsDetailsField)"
-          :readonly="readonly"
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(recommendedTrainingsField)"
+          label="Recommended course(s) from the AUC L&D Catalogue"
+          :min-rows="3"
+          @update:model-value="setReviewField(recommendedTrainingsField, $event)"
+        />
+        <PortalRichText
+          v-if="readonly"
+          :value="getReviewField(recommendedTrainingsDetailsField)"
           label="Other recommendable course(s)"
-          rows="3"
-          auto-grow
-          variant="outlined"
-          @update:model-value="setReviewField(recommendedTrainingsDetailsField, String($event ?? ''))"
+        />
+        <PortalRichTextEditor
+          v-else
+          :model-value="getReviewField(recommendedTrainingsDetailsField)"
+          label="Other recommendable course(s)"
+          :min-rows="3"
+          @update:model-value="setReviewField(recommendedTrainingsDetailsField, $event)"
         />
       </v-card-text>
     </v-card>

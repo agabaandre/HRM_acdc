@@ -280,6 +280,18 @@ export interface StaffListFilters {
   grade_id?: number[]
 }
 
+export interface StaffHistoryResponse {
+  data: StaffListRow[]
+  meta: {
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    period_from: string
+    period_to: string
+  }
+}
+
 export async function fetchStaffList(params: {
   q?: string
   preset?: StaffPreset
@@ -288,6 +300,19 @@ export async function fetchStaffList(params: {
   per_page?: number
 } & StaffListFilters = {}): Promise<StaffListResponse> {
   const { data } = await api.get<StaffListResponse>('/api/v1/staff', {
+    params,
+    paramsSerializer: { indexes: null },
+  })
+  return data
+}
+
+export async function fetchStaffHistory(params: {
+  period_from?: string
+  period_to?: string
+  page?: number
+  per_page?: number
+} & StaffListFilters = {}): Promise<StaffHistoryResponse> {
+  const { data } = await api.get<StaffHistoryResponse>('/api/v1/staff/history', {
     params,
     paramsSerializer: { indexes: null },
   })

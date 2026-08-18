@@ -28,6 +28,13 @@ const items = computed<PortalPillNavItem[]>(() => {
       active: route.path === '/staff' || /^\/staff\/\d+(\/|$)/.test(route.path),
     },
     {
+      key: 'history',
+      to: '/staff/history',
+      label: 'Staff history',
+      icon: 'fa-solid fa-clock-rotate-left',
+      active: route.path.startsWith('/staff/history'),
+    },
+    {
       key: 'new',
       to: '/staff/new',
       label: 'New staff',
@@ -70,7 +77,7 @@ const items = computed<PortalPillNavItem[]>(() => {
       active: route.path.startsWith('/payroll'),
     },
   ].filter((item) => {
-    if (item.key === 'directory') return canDirectory
+    if (item.key === 'directory' || item.key === 'history') return canDirectory
     if (item.key === 'new') return props.showNewStaff && canManage
     if (item.key === 'nok') return canManage || auth.hasPermission(72)
     if (item.key === 'signatures') return canManage

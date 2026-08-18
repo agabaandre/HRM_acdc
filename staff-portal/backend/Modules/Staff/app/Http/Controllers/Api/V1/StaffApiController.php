@@ -20,6 +20,7 @@ use Modules\Staff\Services\StaffAuditTrailService;
 use Modules\Staff\Services\StaffContractService;
 use Modules\Staff\Services\StaffCreateService;
 use Modules\Staff\Services\StaffDirectoryService;
+use Modules\Staff\Services\StaffHistoryService;
 use Modules\Staff\Services\StaffProfileService;
 use Modules\Staff\Support\StaffAccess;
 
@@ -144,6 +145,118 @@ class StaffApiController extends Controller
         }
 
         return response()->json(['data' => $directory->filterOptions()]);
+    }
+
+    public function history(Request $request, StaffHistoryService $history): JsonResponse
+    {
+        if (! StaffAccess::canViewDirectory()) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $filters = $this->staffHistoryFilterInput($request);
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(100, max(10, (int) $request->query('per_page', 20)));
+        $paginator = $history->paginate($filters, $page, $perPage);
+        $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
+
+        return response()->json([
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'period_from' => $period[0],
+                'period_to' => $period[1],
+            ],
+        ]);
+    }
+
+    public function exportHistoryCsv(Request $request, StaffHistoryService $history, \Modules\Core\Services\CsvExportService $csv): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        if (! StaffAccess::canViewDirectory()) {
+            abort(403);
+        }
+
+        $filters = $this->staffHistoryFilterInput($request);
+        $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
+        $exported = $history->exportRows($filters, 5000);
+        $selectedColumns = $this->selectedExportColumns($request);
+        $definitions = $this->csvColumnDefinitions();
+        $rows = [[
+            '#',
+            ...array_map(
+                static fn (string $column): string => $definitions[$column]['label'],
+                $selectedColumns
+            ),
+        ]];
+
+        $n = 0;
+        foreach ($exported as $item) {
+            $r = (array) $item;
+            $n++;
+            $row = [$n];
+            foreach ($selectedColumns as $column) {
+                $row[] = $this->csvColumnValue($column, $r);
+            }
+            $rows[] = $row;
+        }
+
+        $file = 'Staff-History_'.$period[0].'_to_'.$period[1].'.csv';
+
+        return $csv->stream($file, $rows);
+    }
+
+    public function exportHistoryPdf(Request $request, StaffHistoryService $history, PdfService $pdf): Response
+    {
+        if (! StaffAccess::canViewDirectory()) {
+            abort(403);
+        }
+
+        $filters = $this->staffHistoryFilterInput($request);
+        $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
+        $exported = $history->exportRows($filters, 2000);
+        $selectedColumns = $this->selectedExportColumns($request);
+        $definitions = $this->csvColumnDefinitions();
+        $colCount = count($selectedColumns) + 1;
+        $fontSize = $colCount > 18 ? '7px' : ($colCount > 12 ? '8px' : '9px');
+
+        $headerCells = '<th>#</th>';
+        foreach ($selectedColumns as $column) {
+            $headerCells .= '<th>'.e($definitions[$column]['label']).'</th>';
+        }
+
+        $rowsHtml = '';
+        $n = 0;
+        foreach ($exported as $item) {
+            $r = (array) $item;
+            $n++;
+            $rowsHtml .= '<tr><td>'.$n.'</td>';
+            foreach ($selectedColumns as $column) {
+                $rowsHtml .= '<td>'.e($this->csvColumnValue($column, $r)).'</td>';
+            }
+            $rowsHtml .= '</tr>';
+        }
+
+        if ($rowsHtml === '') {
+            $rowsHtml = '<tr><td colspan="'.$colCount.'" align="center">No staff found for the selected period.</td></tr>';
+        }
+
+        $html = '<h2 style="margin:0 0 8px;color:#2c3e50;">Staff history</h2>
+            <p style="margin:0 0 12px;color:#768B9E;font-size:11px;">Period: '.e($period[0]).' → '.e($period[1])
+            .' · '.$n.' record(s). Includes anyone whose contract overlapped this window.</p>
+            <table width="100%" cellpadding="3" cellspacing="0" border="1" style="border-collapse:collapse;font-size:'.$fontSize.';">
+              <thead>
+                <tr style="background:#f8fafc;">'.$headerCells.'</tr>
+              </thead>
+              <tbody>'.$rowsHtml.'</tbody>
+            </table>';
+
+        return $pdf->inline($html, 'Staff-History_'.$period[0].'_to_'.$period[1].'.pdf', [
+            'title' => 'Staff History',
+            'document_url' => url('/staff/staff-portal/staff/history'),
+            'landscape' => true,
+        ]);
     }
 
     public function show(int $staff, StaffProfileService $profiles): JsonResponse
@@ -624,6 +737,20 @@ class StaffApiController extends Controller
             'job_id' => $request->query('job_id'),
             'grade_id' => $request->query('grade_id'),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function staffHistoryFilterInput(Request $request): array
+    {
+        $from = trim((string) $request->query('period_from', ''));
+        $to = trim((string) $request->query('period_to', ''));
+
+        return array_merge($this->staffFilterInput($request), [
+            'period_from' => $from !== '' ? $from : date('Y-01-01'),
+            'period_to' => $to !== '' ? $to : date('Y-m-d'),
+        ]);
     }
 
     protected function normalizeCategory(string $category): string

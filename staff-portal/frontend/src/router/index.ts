@@ -81,6 +81,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 71, title: 'New staff', module: 'staff' },
     },
     {
+      path: '/staff/history',
+      name: 'staff-history',
+      component: () => import('../pages/staff/StaffHistoryPage.vue'),
+      meta: { requiresAuth: true, permission: 72, title: 'Staff history', module: 'staff' },
+    },
+    {
       path: '/staff/:id',
       name: 'staff-show',
       component: () => import('../pages/staff/StaffShowPage.vue'),

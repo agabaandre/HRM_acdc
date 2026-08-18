@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import CbpAvatar from '@cbp/common/CbpAvatar.vue'
+import PortalRichText from '@/components/atoms/PortalRichText.vue'
+import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { toAbsoluteMediaUrl } from '@/lib/personAvatar'
 import type {
@@ -182,14 +184,11 @@ function photoUrl(item: TrailDisplayItem): string | null {
 
     <v-card-text class="perf-trail-card__body d-flex flex-column ga-3 flex-grow-1">
       <div v-if="showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
-        <v-textarea
+        <PortalRichTextEditor
           :model-value="comments"
           label="Comments"
-          rows="2"
-          auto-grow
-          variant="outlined"
-          density="compact"
-          @update:model-value="emit('update:comments', String($event ?? ''))"
+          :min-rows="2"
+          @update:model-value="emit('update:comments', $event)"
         />
 
         <v-checkbox
@@ -272,12 +271,12 @@ function photoUrl(item: TrailDisplayItem): string | null {
                 {{ item.step_label }}
               </div>
               <div class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</div>
-              <div
+              <PortalRichText
                 v-if="item.comments"
-                class="text-body-2 mt-1 perf-trail-item__comment"
-              >
-                {{ item.comments }}
-              </div>
+                class="mt-1"
+                compact
+                :value="item.comments"
+              />
             </div>
           </div>
         </div>
@@ -354,10 +353,5 @@ function photoUrl(item: TrailDisplayItem): string | null {
 .perf-trail-item__body {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.perf-trail-item__comment {
-  white-space: pre-wrap;
-  color: rgba(58, 71, 82, 0.85);
 }
 </style>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import PortalRichText from '@/components/atoms/PortalRichText.vue'
+import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import type {
   PerformanceFormState,
   PerformanceObjective,
@@ -48,13 +50,16 @@ function objectiveAt(index: number): PerformanceObjective {
             </div>
             <v-row dense>
               <v-col cols="12" md="5">
-                <v-textarea
-                  v-model="objectiveAt(index).objective"
-                  :readonly="readonly"
+                <PortalRichText
+                  v-if="readonly"
+                  :value="objectiveAt(index).objective"
                   :label="`Objective ${index}`"
-                  rows="4"
-                  auto-grow
-                  variant="outlined"
+                />
+                <PortalRichTextEditor
+                  v-else
+                  v-model="objectiveAt(index).objective"
+                  :label="`Objective ${index}`"
+                  :min-rows="4"
                 />
               </v-col>
               <v-col cols="12" md="2">
@@ -67,13 +72,16 @@ function objectiveAt(index: number): PerformanceObjective {
                 />
               </v-col>
               <v-col cols="12" md="4">
-                <v-textarea
-                  v-model="objectiveAt(index).indicator"
-                  :readonly="readonly"
+                <PortalRichText
+                  v-if="readonly"
+                  :value="objectiveAt(index).indicator"
                   label="Deliverables and KPI's"
-                  rows="4"
-                  auto-grow
-                  variant="outlined"
+                />
+                <PortalRichTextEditor
+                  v-else
+                  v-model="objectiveAt(index).indicator"
+                  label="Deliverables and KPI's"
+                  :min-rows="4"
                 />
               </v-col>
               <v-col cols="12" md="1">
@@ -128,31 +136,39 @@ function objectiveAt(index: number): PerformanceObjective {
               chips
               closable-chips
             />
-            <v-textarea
-              v-model="form.training_contributions"
-              :readonly="readonly"
+            <PortalRichText
+              v-if="readonly"
+              :value="form.training_contributions"
               label="How training will contribute to the staff member's development and the department's work"
-              rows="4"
-              auto-grow
-              variant="outlined"
             />
-            <v-textarea
-              v-model="form.recommended_trainings"
-              :readonly="readonly"
+            <PortalRichTextEditor
+              v-else
+              v-model="form.training_contributions"
+              label="How training will contribute to the staff member's development and the department's work"
+              :min-rows="4"
+            />
+            <PortalRichText
+              v-if="readonly"
+              :value="form.recommended_trainings"
               label="Recommended course(s) from the AUC L&D Catalogue"
-              rows="4"
-              auto-grow
-              variant="outlined"
-              hint="Separate multiple courses with semicolons."
-              persistent-hint
             />
-            <v-textarea
-              v-model="form.recommended_trainings_details"
-              :readonly="readonly"
+            <PortalRichTextEditor
+              v-else
+              v-model="form.recommended_trainings"
+              label="Recommended course(s) from the AUC L&D Catalogue"
+              hint="Separate multiple courses with semicolons."
+              :min-rows="4"
+            />
+            <PortalRichText
+              v-if="readonly"
+              :value="form.recommended_trainings_details"
               label="Other recommendable course(s)"
-              rows="4"
-              auto-grow
-              variant="outlined"
+            />
+            <PortalRichTextEditor
+              v-else
+              v-model="form.recommended_trainings_details"
+              label="Other recommendable course(s)"
+              :min-rows="4"
             />
           </div>
         </v-expand-transition>

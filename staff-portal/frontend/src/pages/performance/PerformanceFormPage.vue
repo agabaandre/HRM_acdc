@@ -8,7 +8,9 @@ import PerformanceApprovalTrail from '@/components/performance/PerformanceApprov
 import PerformanceStaffDetailsCard from '@/components/performance/PerformanceStaffDetailsCard.vue'
 import PpaSections from '@/components/performance/PpaSections.vue'
 import ReviewSections from '@/components/performance/ReviewSections.vue'
+import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import { openApiPdf } from '@/lib/exportDownload'
+import { hasRichTextContent } from '@/lib/richText'
 import {
   createPerformanceEntry,
   fetchPerformanceEntry,
@@ -258,13 +260,13 @@ function ppaSubmitErrors(): string[] {
     total += Number.isFinite(weight) ? weight : 0
 
     if (index <= 3) {
-      if (!row.objective.trim()) {
+      if (!hasRichTextContent(row.objective)) {
         errors.push(`Objective ${index} is required.`)
       }
       if (!row.timeline.trim()) {
         errors.push(`Timeline ${index} is required.`)
       }
-      if (!row.indicator.trim()) {
+      if (!hasRichTextContent(row.indicator)) {
         errors.push(`Deliverables and KPI's ${index} are required.`)
       }
     }
@@ -419,7 +421,7 @@ async function returnAction(): Promise<void> {
   if (!payload.value) {
     return
   }
-  if (!workflowComments.value.trim()) {
+  if (!hasRichTextContent(workflowComments.value)) {
     error.value = 'Comments are required when returning a form for revision.'
     return
   }
@@ -619,12 +621,10 @@ watch(
       >
         <v-card-title class="text-h6">F. Staff Submission / Sign Off</v-card-title>
         <v-card-text>
-          <v-textarea
+          <PortalRichTextEditor
             v-model="submissionComments"
             :label="submissionCommentLabel"
-            rows="3"
-            auto-grow
-            variant="outlined"
+            :min-rows="3"
           />
         </v-card-text>
         <v-card-actions class="px-4 pb-4">

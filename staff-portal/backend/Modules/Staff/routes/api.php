@@ -25,6 +25,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('staff/export.pdf', [StaffApiController::class, 'exportPdf']);
     Route::get('staff/birthdays', [StaffApiController::class, 'birthdays']);
     Route::get('staff/data-quality', [StaffApiController::class, 'dataQuality']);
+    Route::get('staff/history', [StaffApiController::class, 'history']);
+    Route::get('staff/history/export/csv', [StaffApiController::class, 'exportHistoryCsv']);
+    Route::get('staff/history/export/pdf', [StaffApiController::class, 'exportHistoryPdf']);
 
     Route::get('staff/signatures', [SignatureManagerApiController::class, 'index']);
     Route::post('staff/signatures/refresh-approvers', [SignatureManagerApiController::class, 'refreshApprovers']);

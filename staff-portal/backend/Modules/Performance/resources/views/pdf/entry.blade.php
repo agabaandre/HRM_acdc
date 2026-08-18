@@ -13,7 +13,7 @@
     $objRows = [];
     foreach ($objectives as $key => $row) {
         $obj = is_array($row) ? $row : (array) $row;
-        if (trim((string) ($obj['objective'] ?? '')) === '') {
+        if (\Modules\Performance\Support\PerformanceRichText::isEmpty($obj['objective'] ?? '')) {
             continue;
         }
         $objRows[] = $obj;
@@ -44,6 +44,10 @@
   .muted { color: #64748b; font-size: 9pt; font-style: italic; }
   .page-break { page-break-before: always; }
   .html-cell { font-size: 10.5pt; line-height: 1.5; word-wrap: break-word; }
+  .html-cell p { margin: 0 0 0.4em; }
+  .html-cell p:last-child { margin-bottom: 0; }
+  .html-cell ul, .html-cell ol { margin: 0 0 0.4em; padding-left: 1.2em; }
+  .html-cell a { color: #0d7a3a; }
 </style>
 </head>
 <body>
@@ -116,12 +120,12 @@
       @forelse($objRows as $i => $obj)
         <tr>
           <td>{{ $i + 1 }}</td>
-          <td class="html-cell">{!! nl2br(e((string) ($obj['objective'] ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($obj['objective'] ?? '') !!}</td>
           <td>{{ $obj['timeline'] ?? '' }}</td>
-          <td class="html-cell">{!! nl2br(e((string) ($obj['indicator'] ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($obj['indicator'] ?? '') !!}</td>
           <td>{{ $obj['weight'] ?? '' }}</td>
           @if($isReview)
-            <td class="html-cell">{!! nl2br(e((string) ($obj['self_appraisal'] ?? ''))) !!}</td>
+            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($obj['self_appraisal'] ?? '') !!}</td>
             <td>{{ $obj['appraiser_rating'] ?? '' }}</td>
           @endif
         </tr>
@@ -170,15 +174,15 @@
           </tr>
           <tr>
             <td><b>How training will contribute to development and the department's work</b></td>
-            <td class="html-cell">{!! nl2br(e((string) ($entry->training_contributions ?? ''))) !!}</td>
+            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->training_contributions ?? '') !!}</td>
           </tr>
           <tr>
             <td><b>Recommended course(s) from the AUC L&D Catalogue</b></td>
-            <td class="html-cell">{!! nl2br(e((string) ($entry->recommended_trainings ?? ''))) !!}</td>
+            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->recommended_trainings ?? '') !!}</td>
           </tr>
           <tr>
             <td><b>Other recommendable course(s)</b></td>
-            <td class="html-cell">{!! nl2br(e((string) ($entry->recommended_trainings_details ?? ''))) !!}</td>
+            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->recommended_trainings_details ?? '') !!}</td>
           </tr>
         @endif
       </tbody>
@@ -204,7 +208,7 @@
       <tbody>
         <tr>
           <td style="width:35%;"><b>Comments</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->midterm_comments ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->midterm_comments ?? '') !!}</td>
         </tr>
       </tbody>
     </table>
@@ -213,15 +217,15 @@
       <tbody>
         <tr>
           <td style="width:35%;"><b>Training review</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->midterm_training_review ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->midterm_training_review ?? '') !!}</td>
         </tr>
         <tr>
           <td><b>Achievements</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->midterm_achievements ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->midterm_achievements ?? '') !!}</td>
         </tr>
         <tr>
           <td><b>Non-achievements</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->midterm_non_achievements ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->midterm_non_achievements ?? '') !!}</td>
         </tr>
       </tbody>
     </table>
@@ -240,7 +244,7 @@
       <tbody>
         <tr>
           <td style="width:35%;"><b>Comments</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->endterm_comments ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->endterm_comments ?? '') !!}</td>
         </tr>
       </tbody>
     </table>
@@ -249,15 +253,15 @@
       <tbody>
         <tr>
           <td style="width:35%;"><b>Training review</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->endterm_training_review ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->endterm_training_review ?? '') !!}</td>
         </tr>
         <tr>
           <td><b>Achievements</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->endterm_achievements ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->endterm_achievements ?? '') !!}</td>
         </tr>
         <tr>
           <td><b>Non-achievements</b></td>
-          <td class="html-cell">{!! nl2br(e((string) ($entry->endterm_non_achievements ?? ''))) !!}</td>
+          <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($entry->endterm_non_achievements ?? '') !!}</td>
         </tr>
       </tbody>
     </table>
@@ -315,7 +319,7 @@
             <td>{{ $role }}</td>
             <td>{{ $log->action ?? '' }}</td>
             <td>{{ $whenLabel }}</td>
-            <td>{{ $log->comments ?? '' }}</td>
+            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($log->comments ?? '') !!}</td>
           </tr>
         @empty
           <tr><td colspan="5">No approval trail entries.</td></tr>

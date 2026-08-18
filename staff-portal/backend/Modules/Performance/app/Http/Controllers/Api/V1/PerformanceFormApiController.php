@@ -24,6 +24,7 @@ use Modules\Performance\Services\PpaFormService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Services\SupervisorResolver;
 use Modules\Performance\Support\PerformancePeriod;
+use Modules\Performance\Support\PerformanceRichText;
 
 class PerformanceFormApiController extends Controller
 {
@@ -208,7 +209,7 @@ class PerformanceFormApiController extends Controller
         }
 
         $validated = $request->validate([
-            'comments' => 'nullable|string|max:5000',
+            'comments' => 'nullable|string|max:20000',
             'supervisor2_agreement' => 'nullable|boolean',
         ]);
 
@@ -217,7 +218,7 @@ class PerformanceFormApiController extends Controller
                 $entryId,
                 $phase,
                 $actorStaffId,
-                (string) ($validated['comments'] ?? ''),
+                PerformanceRichText::sanitize((string) ($validated['comments'] ?? '')),
                 array_key_exists('supervisor2_agreement', $validated)
                     ? (bool) $validated['supervisor2_agreement']
                     : null,
@@ -278,11 +279,18 @@ class PerformanceFormApiController extends Controller
         }
 
         $validated = $request->validate([
-            'comments' => 'required|string|max:5000',
+            'comments' => 'required|string|max:20000',
         ]);
 
+        $comments = PerformanceRichText::sanitize((string) $validated['comments']);
+        if (PerformanceRichText::isEmpty($comments)) {
+            throw ValidationException::withMessages([
+                'comments' => ['Comments are required when returning a form for revision.'],
+            ]);
+        }
+
         try {
-            $approval->returnForRevision($entryId, $phase, $actorStaffId, (string) $validated['comments']);
+            $approval->returnForRevision($entryId, $phase, $actorStaffId, $comments);
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages([
                 'entry' => [$e->getMessage()],
@@ -332,7 +340,7 @@ class PerformanceFormApiController extends Controller
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
         $validated = $request->validate([
-            'comments' => 'nullable|string|max:5000',
+            'comments' => 'nullable|string|max:20000',
             'accept_rating' => 'nullable|boolean',
         ]);
 
@@ -340,7 +348,7 @@ class PerformanceFormApiController extends Controller
             $approval->recordEmployeeConsent(
                 $entryId,
                 $actorStaffId,
-                (string) ($validated['comments'] ?? ''),
+                PerformanceRichText::sanitize((string) ($validated['comments'] ?? '')),
                 array_key_exists('accept_rating', $validated) ? (bool) $validated['accept_rating'] : true,
             );
         } catch (\RuntimeException $e) {
@@ -605,7 +613,7 @@ class PerformanceFormApiController extends Controller
             'training_contributions' => 'nullable|string',
             'recommended_trainings' => 'nullable|string',
             'recommended_trainings_details' => 'nullable|string',
-            'comments' => 'nullable|string|max:5000',
+            'comments' => 'nullable|string|max:20000',
             'midterm_comments' => 'nullable|string',
             'midterm_training_review' => 'nullable|string',
             'midterm_achievements' => 'nullable|string',
@@ -640,7 +648,7 @@ class PerformanceFormApiController extends Controller
             abort(404, 'Entry not found.');
         }
 
-        $payload = [
+        $payload = PerformanceRichText::sanitizeFormPayload([
             'staff_id' => $staffId,
             'staff_contract_id' => $this->nullableInt($request->input('staff_contract_id'), $existing->staff_contract_id ?? null),
             'performance_period' => (string) ($request->input('performance_period') ?: ($existing->performance_period ?? PerformancePeriod::currentSlug())),
@@ -680,7 +688,7 @@ class PerformanceFormApiController extends Controller
             'endterm_competency' => $request->input('endterm_competency', []),
             'midterm_submit_action' => $submitAction,
             'endterm_submit_action' => $submitAction,
-        ];
+        ]);
 
         try {
             match ($phase) {
