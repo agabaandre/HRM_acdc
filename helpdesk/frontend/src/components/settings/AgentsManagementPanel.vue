@@ -680,11 +680,12 @@ onMounted(() => {
              
               description="Leave empty to route every category (catch-all)"
             >
-              <USelect
+              <USelectMenu
                 v-model="groupForm.category_ids"
                 multiple
+                searchable
                 :items="categorySelectItems"
-                placeholder="Select categories…"
+                placeholder="Search and select categories…"
                 class="w-full"
               />
             </UFormField>
