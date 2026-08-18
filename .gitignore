@@ -16,6 +16,8 @@ node_modules
 
 # Exclude uploads from Git (use STAFF_DATA_ROOT in production — see docs/STORAGE.md)
 /uploads/
+.DS_Store
+**/.DS_Store
 .env
 .env
 .sql
@@ -27,5 +29,3 @@ package-lock.json
 Africa CDC Funding Portfolio.xlsx
 
 /apm/vendor/
-
-uploads/.DS_Store
