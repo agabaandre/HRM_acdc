@@ -203,7 +203,7 @@ function photoUrl(item: TrailDisplayItem): string | null {
         <v-checkbox
           v-if="canConsent"
           :model-value="acceptRating"
-          label="I accept the end-of-year rating."
+          label="I accept the overall rating assigned by my first supervisor."
           hide-details
           density="compact"
           @update:model-value="emit('update:acceptRating', Boolean($event))"

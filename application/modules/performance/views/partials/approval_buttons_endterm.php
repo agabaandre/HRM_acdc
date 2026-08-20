@@ -17,6 +17,10 @@ $sameSupervisor = !empty($ppa->endterm_supervisor_1) && (
 // Check approval trail to determine current stage
 $firstSupervisorApproved = false;
 $staffConsented = !empty($ppa->endterm_staff_consent_at);
+$consentRequired = !function_exists('ppa_endterm_requires_employee_consent') || ppa_endterm_requires_employee_consent();
+$secondRequired = function_exists('ppa_phase_requires_second_supervisor')
+    ? ppa_phase_requires_second_supervisor('endterm')
+    : true;
 $secondSupervisorCanApprove = false;
 
 // Check the most recent action by first supervisor (not just any approval)
@@ -65,18 +69,18 @@ if (!empty($approval_trail)) {
     }
 }
 
-// Second supervisor can approve only if first supervisor approved AND staff consented
-// But NOT if first supervisor is the same as second supervisor (they already approved)
-// Also NOT if second supervisor is empty/0 (no second supervisor exists)
-if ($firstSupervisorApproved && $staffConsented && 
-    !empty($ppa->endterm_supervisor_2) && 
-    (int)$ppa->endterm_supervisor_2 !== 0 && 
-    !$sameSupervisor) {
+// Second supervisor can approve only after first supervisor, then employee consent.
+if ($firstSupervisorApproved
+    && $secondRequired
+    && (!$consentRequired || $staffConsented)
+    && !empty($ppa->endterm_supervisor_2)
+    && (int)$ppa->endterm_supervisor_2 !== 0
+    && !$sameSupervisor) {
     $secondSupervisorCanApprove = true;
 }
 
 // Show staff consent form if first supervisor approved but staff hasn't consented
-$showStaffConsent = $firstSupervisorApproved && !$staffConsented && $isOwner && $endterm_exists && ((int)@$ppa->endterm_draft_status !== 2);
+$showStaffConsent = $consentRequired && $firstSupervisorApproved && !$staffConsented && $isOwner && $endterm_exists && ((int)@$ppa->endterm_draft_status !== 2);
 
 $hasEndtermObjectives = false;
 if (!empty($ppa->endterm_objectives)) {

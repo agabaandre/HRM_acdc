@@ -2453,17 +2453,18 @@ function curl_send_post($url, $body, $headers) {
                 }
             }
     
-            //dd($supervisor2Approved);
             // Main logic
-            //dd($isSupervisor2);
+            $requiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+                && ppa_phase_requires_second_supervisor('ppa')
+                && !empty($ppa->supervisor2_id);
+            $fullyApproved = ((int) ($ppa->draft_status ?? 0) === 2)
+                || ($supervisor1Approved && (! $requiresSecond || $supervisor2Approved));
+
             if ($isSupervisor1 && $ppa->draft_status == 0 && ($last_action == 'Submitted'||$last_action == 'Updated')) {
                 return 'show';
-            } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->draft_status == 0 && $last_action == 'Approved' && !$supervisor2Approved) {
+            } elseif ($isSupervisor2 && $requiresSecond && $supervisor1Approved && $ppa->draft_status == 0 && $last_action == 'Approved' && !$supervisor2Approved) {
                 return 'show';
-            } elseif (
-                ($supervisor1Approved && is_null($ppa->supervisor2_id)) || 
-                ($supervisor1Approved && $supervisor2Approved)
-            ) {
+            } elseif ($fullyApproved) {
                 return '<a href="' . base_url('performance/print_ppa/' . $ppa->entry_id) .'/'.$ppa->staff_id.'/'.$ppa->staff_contract_id.'" 
                             class="btn btn-dark btn-sm me-2" target="_blank">
                             <i class="fa fa-print"></i> Print PPA without Approval Trail
@@ -2611,6 +2612,9 @@ if (!function_exists('pa_settings')) {
     function ppa_settings()
     {
         $CI =& get_instance();
+        if (function_exists('ensure_ppa_workflow_config_columns')) {
+            ensure_ppa_workflow_config_columns();
+        }
         return $CI->db->get('ppa_configs')->row();
             
 }
@@ -2684,6 +2688,210 @@ function generate_weeks_of_year($year = null) {
 }
 
 }
+
+if (!function_exists('ensure_ppa_workflow_config_columns')) {
+    function ensure_ppa_workflow_config_columns()
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return;
+        }
+        $CI =& get_instance();
+        $columns = array(
+            'ppa_requires_second_supervisor' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'midterm_requires_second_supervisor' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'endterm_requires_second_supervisor' => 'TINYINT(1) NOT NULL DEFAULT 1',
+            'endterm_requires_employee_consent' => 'TINYINT(1) NOT NULL DEFAULT 1',
+        );
+        foreach ($columns as $column => $ddl) {
+            if (!$CI->db->field_exists($column, 'ppa_configs')) {
+                $CI->db->query("ALTER TABLE `ppa_configs` ADD COLUMN `{$column}` {$ddl}");
+            }
+        }
+        $ensured = true;
+    }
+}
+
+if (!function_exists('ppa_phase_requires_second_supervisor')) {
+    function ppa_phase_requires_second_supervisor($phase = 'ppa')
+    {
+        $settings = ppa_settings();
+        if (!$settings) {
+            return $phase === 'endterm';
+        }
+        if ($phase === 'midterm') {
+            return (int) ($settings->midterm_requires_second_supervisor ?? 0) === 1;
+        }
+        if ($phase === 'endterm') {
+            return (int) ($settings->endterm_requires_second_supervisor ?? 1) === 1;
+        }
+
+        return (int) ($settings->ppa_requires_second_supervisor ?? 0) === 1;
+    }
+}
+
+if (!function_exists('ppa_endterm_requires_employee_consent')) {
+    function ppa_endterm_requires_employee_consent()
+    {
+        $settings = ppa_settings();
+        if (!$settings) {
+            return true;
+        }
+
+        return (int) ($settings->endterm_requires_employee_consent ?? 1) === 1;
+    }
+}
+
+if (!function_exists('ppa_last_trail_action')) {
+    function ppa_last_trail_action($table, $entry_id, $staff_id)
+    {
+        if (empty($entry_id) || empty($staff_id)) {
+            return null;
+        }
+        $CI =& get_instance();
+        $row = $CI->db->where('entry_id', $entry_id)
+            ->where('staff_id', $staff_id)
+            ->order_by('id', 'DESC')
+            ->limit(1)
+            ->get($table)
+            ->row();
+
+        return $row ? $row->action : null;
+    }
+}
+
+if (!function_exists('ppa_workflow_correction_phase')) {
+    function ppa_workflow_correction_phase($entry, $phase)
+    {
+        $map = array(
+            'ppa' => array('draft_status', 'supervisor_id', 'supervisor2_id', 'ppa_approval_trail', true),
+            'midterm' => array('midterm_draft_status', 'midterm_supervisor_1', 'midterm_supervisor_2', 'ppa_approval_trail_midterm', !empty($entry->midterm_created_at)),
+            'endterm' => array('endterm_draft_status', 'endterm_supervisor_1', 'endterm_supervisor_2', 'ppa_approval_trail_end_term', !empty($entry->endterm_created_at)),
+        );
+        if (!isset($map[$phase])) {
+            $phase = 'ppa';
+        }
+        list($draftCol, $s1Col, $s2Col, $trail, $exists) = $map[$phase];
+        $draft = (int) ($entry->{$draftCol} ?? 1);
+        $s1 = !empty($entry->{$s1Col}) ? (int) $entry->{$s1Col} : 0;
+        $s2 = !empty($entry->{$s2Col}) ? (int) $entry->{$s2Col} : 0;
+        $requiresSecond = ppa_phase_requires_second_supervisor($phase) && $s2 > 0;
+        $s1Action = $s1 ? ppa_last_trail_action($trail, $entry->entry_id, $s1) : null;
+        $s2Action = $s2 ? ppa_last_trail_action($trail, $entry->entry_id, $s2) : null;
+
+        $state = 'Draft';
+        if (!$exists) {
+            $state = 'Not started';
+        } elseif ($draft === 2) {
+            $state = 'Approved';
+        } elseif ($draft === 1) {
+            $state = 'Draft';
+        } elseif ($s1Action !== 'Approved') {
+            $state = 'Pending First Supervisor';
+        } elseif ($phase === 'endterm') {
+            $consentRequired = (int) (ppa_settings()->endterm_requires_employee_consent ?? 1) === 1;
+            if ($consentRequired && empty($entry->endterm_staff_consent_at)) {
+                $state = 'Pending Employee Consent';
+            } elseif ($requiresSecond && $s2Action !== 'Approved') {
+                $state = 'Pending Second Supervisor';
+            } else {
+                $state = 'Approved';
+            }
+        } elseif ($requiresSecond && $s2Action !== 'Approved') {
+            $state = 'Pending Second Supervisor';
+        } else {
+            $state = 'Approved';
+        }
+
+        return array(
+            'label' => $phase === 'ppa' ? 'PPA' : ucfirst($phase),
+            'exists' => $exists,
+            'draft_status' => $draft,
+            'draft_column' => $draftCol,
+            'requires_second' => $requiresSecond,
+            's1_action' => $s1Action,
+            's2_action' => $s2Action,
+            'state' => $state,
+            'can_correct' => $exists && $draft !== 1 && $draft !== 2 && $state === 'Approved',
+        );
+    }
+}
+
+if (!function_exists('ppa_workflow_correction_preview')) {
+    function ppa_workflow_correction_preview($entry_id)
+    {
+        $CI =& get_instance();
+        ensure_ppa_workflow_config_columns();
+        $entry = $CI->db->get_where('ppa_entries', array('entry_id' => $entry_id))->row();
+        if (!$entry) {
+            return null;
+        }
+
+        $phases = array(
+            'ppa' => ppa_workflow_correction_phase($entry, 'ppa'),
+            'midterm' => ppa_workflow_correction_phase($entry, 'midterm'),
+            'endterm' => ppa_workflow_correction_phase($entry, 'endterm'),
+        );
+
+        return array(
+            'entry' => $entry,
+            'staff_name' => function_exists('staff_name') ? staff_name($entry->staff_id) : '',
+            'phases' => $phases,
+            'can_correct' => !empty($phases['ppa']['can_correct'])
+                || !empty($phases['midterm']['can_correct'])
+                || !empty($phases['endterm']['can_correct']),
+        );
+    }
+}
+
+if (!function_exists('ppa_finalize_phase_if_ready')) {
+    function ppa_finalize_phase_if_ready($entry_id, $phase = 'ppa')
+    {
+        $CI =& get_instance();
+        $entry = $CI->db->get_where('ppa_entries', array('entry_id' => $entry_id))->row();
+        if (!$entry) {
+            return false;
+        }
+        $info = ppa_workflow_correction_phase($entry, $phase);
+        if (empty($info['can_correct'])) {
+            return false;
+        }
+        $update = array(
+            $info['draft_column'] => 2,
+            'updated_at' => date('Y-m-d H:i:s'),
+        );
+        if ($phase === 'midterm') {
+            $update['midterm_updated_at'] = date('Y-m-d H:i:s');
+        }
+        if ($phase === 'endterm') {
+            $update['endterm_updated_at'] = date('Y-m-d H:i:s');
+        }
+        $CI->db->where('entry_id', $entry_id)->update('ppa_entries', $update);
+
+        return true;
+    }
+}
+
+if (!function_exists('ppa_apply_workflow_correction')) {
+    function ppa_apply_workflow_correction($entry_id)
+    {
+        $preview = ppa_workflow_correction_preview($entry_id);
+        if (!$preview) {
+            return null;
+        }
+        $corrected = array();
+        foreach (array('ppa', 'midterm', 'endterm') as $phase) {
+            if (!empty($preview['phases'][$phase]['can_correct']) && ppa_finalize_phase_if_ready($entry_id, $phase)) {
+                $corrected[] = $phase;
+            }
+        }
+        $preview = ppa_workflow_correction_preview($entry_id);
+        $preview['corrected_phases'] = $corrected;
+
+        return $preview;
+    }
+}
+
 function status_badge($status) {
     switch ((int)$status) {
         case 1: return '<span class="badge bg-warning">Pending</span>';

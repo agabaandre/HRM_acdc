@@ -37,15 +37,20 @@ if (!function_exists('show_midterm_approval_action')) {
             }
         }
 
+        $requiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+            && ppa_phase_requires_second_supervisor('midterm')
+            && !empty($ppa->midterm_supervisor_2);
+
         // Logic to show Approve buttons or print options
         if ($isSupervisor1 && $ppa->midterm_draft_status == 0 && in_array($last_action, ['Submitted', 'Updated']) && !$isReturned) {
             return 'show';
-        } elseif ($isSupervisor2 && $supervisor1Approved && $ppa->midterm_draft_status == 0 && $last_action === 'Approved' && !$supervisor2Approved && !$isReturned) {
+        } elseif ($isSupervisor2 && $requiresSecond && $supervisor1Approved && $ppa->midterm_draft_status == 0 && $last_action === 'Approved' && !$supervisor2Approved && !$isReturned) {
             return 'show';
         } elseif (
-            // Only show print buttons if midterm is actually approved (draft_status = 2) and not returned
-            // If draft_status is 2, it means it's approved regardless of who approved it
-            $ppa->midterm_draft_status == 2 && !$isReturned
+            // Approved after first supervisor when second supervisor is not required,
+            // or after both when it is required.
+            (((int) $ppa->midterm_draft_status === 2) || ($supervisor1Approved && (!$requiresSecond || $supervisor2Approved)))
+            && !$isReturned
         ) {
             return '<a href="' . base_url('performance/midterm/print_ppa/' . $ppa->entry_id) . '/' . $ppa->staff_id . '/' . $ppa->staff_contract_id . '" 
                         class="btn btn-dark btn-sm me-2" target="_blank">

@@ -62,7 +62,13 @@ if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
     $isApproved = $status === 2;
 
     $isOwner = isset($ppa->staff_id) && $session->staff_id == $ppa->staff_id;
-    $isSupervisor = in_array($session->staff_id, [(int) @$ppa->supervisor_id, (int) @$ppa->supervisor2_id]);
+    $ppaRequiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+        && ppa_phase_requires_second_supervisor('ppa')
+        && !empty($ppa->supervisor2_id);
+    $isSupervisor = in_array($session->staff_id, array_values(array_filter([
+        (int) @$ppa->supervisor_id,
+        $ppaRequiresSecond ? (int) @$ppa->supervisor2_id : 0,
+    ])));
 
     // Determine readonly
     if (
@@ -77,10 +83,13 @@ if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
 /** True when logged-in user is 1st or 2nd PPA supervisor (for preview button). */
 $isPpaApprover = false;
 if (!empty($ppa) && is_object($ppa)) {
-    $isPpaApprover = in_array((int) $session->staff_id, [
+    $ppaRequiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+        && ppa_phase_requires_second_supervisor('ppa')
+        && !empty($ppa->supervisor2_id);
+    $isPpaApprover = in_array((int) $session->staff_id, array_values(array_filter([
         (int) ($ppa->supervisor_id ?? 0),
-        (int) ($ppa->supervisor2_id ?? 0),
-    ], true);
+        $ppaRequiresSecond ? (int) ($ppa->supervisor2_id ?? 0) : 0,
+    ])), true);
 }
 
 @$showApprovalBtns = show_ppa_approval_action(@$ppa, @$approval_trail, $this->session->userdata('user'));
@@ -587,7 +596,11 @@ if($showApprovalBtns!='show'){
     <?php
     $ppa_supervisor_can_act = !empty($ppa) && is_object($ppa)
       && ((int) @$ppa->draft_status !== 2)
-      && ((@$ppa->supervisor_id == $session->staff_id) || (@$ppa->supervisor2_id == $session->staff_id));
+      && ((@$ppa->supervisor_id == $session->staff_id) || (
+        function_exists('ppa_phase_requires_second_supervisor')
+        && ppa_phase_requires_second_supervisor('ppa')
+        && @$ppa->supervisor2_id == $session->staff_id
+      ));
     ?>
     <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-3">
       <?php if ($ppa_supervisor_can_act): ?>

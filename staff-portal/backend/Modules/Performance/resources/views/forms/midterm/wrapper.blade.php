@@ -46,7 +46,13 @@ if (!isset($ppa) || empty($ppa) || !is_object($ppa)) {
     $isSubmitted = $status === 0;
     $isApproved = $status === 2;
     $isOwner = isset($ppa->staff_id) && $session->staff_id == $ppa->staff_id;
-    $isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1, (int) @$ppa->midterm_supervisor_2]);
+    $midRequiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+        && ppa_phase_requires_second_supervisor('midterm')
+        && !empty($ppa->midterm_supervisor_2);
+    $isSupervisor = in_array($session->staff_id, array_values(array_filter([
+        (int) @$ppa->midterm_supervisor_1,
+        $midRequiresSecond ? (int) @$ppa->midterm_supervisor_2 : 0,
+    ])));
 
     if (
         ($isApproved) ||

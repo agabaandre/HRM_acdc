@@ -50,7 +50,8 @@ $settings = [
   ['settings/training_skills', 'Training Skills', 'bx-book'],
   ['settings/regions', 'Regions', 'bx-compass'],
   ['settings/units', 'Units', 'bx-building'],
-  ['staff-portal/settings/performance', 'PPA Configuration', 'bx-slider-alt']
+  ['staff-portal/settings/performance', 'PPA Configuration', 'bx-slider-alt'],
+  ['settings/ppa_workflow', 'PPA workflow & corrections', 'bx-git-pull-request'],
 ];
 ?>
 

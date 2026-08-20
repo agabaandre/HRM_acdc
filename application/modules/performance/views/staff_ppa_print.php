@@ -491,7 +491,7 @@ $is_draft_print = !empty($performance_draft_watermark_text);
     </tr>
 
     <!-- Optional Second Supervisor -->
-    <?php if (!empty($ppa->supervisor2_id)): ?>
+    <?php if (!empty($ppa->supervisor2_id) && (!function_exists('ppa_phase_requires_second_supervisor') || ppa_phase_requires_second_supervisor('ppa'))): ?>
       <tr style="background-color: #f9fafb; font-weight: 600; color: #0f172a;">
         <td colspan="2" style="text-align: center;">Second Supervisor
     

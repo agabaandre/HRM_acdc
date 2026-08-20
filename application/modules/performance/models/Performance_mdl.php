@@ -8,6 +8,49 @@ class Performance_mdl extends CI_Model
         parent::__construct();
     }
 
+    protected function sql_requires_second_supervisor($phase = 'ppa')
+    {
+        if (function_exists('ensure_ppa_workflow_config_columns')) {
+            ensure_ppa_workflow_config_columns();
+        }
+        $map = array(
+            'ppa' => array('ppa_requires_second_supervisor', '0'),
+            'midterm' => array('midterm_requires_second_supervisor', '0'),
+            'endterm' => array('endterm_requires_second_supervisor', '1'),
+        );
+        if (!isset($map[$phase])) {
+            $phase = 'ppa';
+        }
+        $col = $map[$phase][0];
+        $default = $map[$phase][1];
+
+        return "COALESCE((SELECT `{$col}` FROM ppa_configs ORDER BY id ASC LIMIT 1), {$default}) = 1";
+    }
+
+    protected function sql_treat_as_single_supervisor($phase = 'ppa')
+    {
+        $idCol = 'p.supervisor2_id';
+        if ($phase === 'midterm') {
+            $idCol = 'p.midterm_supervisor_2';
+        } elseif ($phase === 'endterm') {
+            $idCol = 'p.endterm_supervisor_2';
+        }
+
+        return '(' . $idCol . ' IS NULL OR NOT (' . $this->sql_requires_second_supervisor($phase) . '))';
+    }
+
+    protected function sql_treat_as_two_supervisors($phase = 'ppa')
+    {
+        $idCol = 'p.supervisor2_id';
+        if ($phase === 'midterm') {
+            $idCol = 'p.midterm_supervisor_2';
+        } elseif ($phase === 'endterm') {
+            $idCol = 'p.endterm_supervisor_2';
+        }
+
+        return '(' . $idCol . ' IS NOT NULL AND ' . $this->sql_requires_second_supervisor($phase) . ')';
+    }
+
     public function isapproved($entry_id)
     {
         if (!empty($entry_id)) {
@@ -76,6 +119,8 @@ public function get_approval_trail($entry_id)
 public function get_pending_ppa($staff_id)
 {
     $staff_id_escaped = (int)$staff_id;
+    $ppaSingle = $this->sql_treat_as_single_supervisor('ppa');
+    $ppaTwo = $this->sql_treat_as_two_supervisors('ppa');
     $sql = "
         SELECT 
             p.*, 
@@ -99,8 +144,9 @@ public function get_pending_ppa($staff_id)
 
             -- Compute overall status
             CASE 
+                WHEN p.draft_status = 2 THEN 'Approved'
                 WHEN p.draft_status = 1 THEN 'Pending (Draft)'
-                WHEN p.supervisor2_id IS NULL AND
+                WHEN {$ppaSingle} AND
                     COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
@@ -123,7 +169,7 @@ public function get_pending_ppa($staff_id)
                     )
                 THEN 'Approved'
 
-                WHEN p.supervisor2_id IS NOT NULL AND
+                WHEN {$ppaTwo} AND
                     COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
@@ -178,7 +224,7 @@ public function get_pending_ppa($staff_id)
                 ), '') = 'Returned'
                 THEN 'Returned'
 
-                WHEN p.supervisor2_id IS NOT NULL AND
+                WHEN {$ppaTwo} AND
                     COALESCE((
                         SELECT a1.action 
                         FROM ppa_approval_trail a1 
@@ -242,7 +288,7 @@ public function get_pending_ppa($staff_id)
             OR
             -- Second supervisor: can see if first approved (even if still draft)
             (p.supervisor2_id = {$staff_id_escaped} AND
-             p.supervisor2_id IS NOT NULL AND
+             {$ppaTwo} AND
              COALESCE((
                         SELECT a1.action
                         FROM ppa_approval_trail a1
@@ -302,6 +348,8 @@ public function get_approved_ppas($staff_id, $role)
 
 public function get_all_approved_ppas_for_user($staff_id)
 {
+    $ppaSingle = $this->sql_treat_as_single_supervisor('ppa');
+    $ppaTwo = $this->sql_treat_as_two_supervisors('ppa');
     $sql = "
     SELECT 
         p.*, 
@@ -329,8 +377,10 @@ public function get_all_approved_ppas_for_user($staff_id)
     WHERE p.staff_id = ?
 
     AND (
+        p.draft_status = 2
+        OR (
         -- Case 1: Only one supervisor and they approved
-        (p.supervisor2_id IS NULL AND
+        ({$ppaSingle} AND
          (
             SELECT a1.action 
             FROM ppa_approval_trail a1
@@ -340,7 +390,7 @@ public function get_all_approved_ppas_for_user($staff_id)
 
         -- Case 2: Both supervisors and both approved
         OR (
-            p.supervisor2_id IS NOT NULL AND
+            {$ppaTwo} AND
             (
                 SELECT a1.action 
                 FROM ppa_approval_trail a1
@@ -354,6 +404,7 @@ public function get_all_approved_ppas_for_user($staff_id)
                 ORDER BY a2.id DESC LIMIT 1
             ) = 'Approved'
         )
+        )
     )
 
     ORDER BY p.created_at DESC
@@ -364,6 +415,8 @@ public function get_all_approved_ppas_for_user($staff_id)
 
 public function get_recent_ppas_for_user($staff_id, $period)
 {
+    $ppaSingle = $this->sql_treat_as_single_supervisor('ppa');
+    $ppaTwo = $this->sql_treat_as_two_supervisors('ppa');
     $sql = "
         SELECT 
             p.*, 
@@ -387,10 +440,11 @@ public function get_recent_ppas_for_user($staff_id, $period)
             
             -- Final status decision with draft consideration
             CASE 
+                WHEN p.draft_status = 2 THEN 'Approved'
                 WHEN p.draft_status = 1 THEN 'Pending (Draft)'
                 ELSE (
                     CASE
-                        WHEN p.supervisor2_id IS NULL AND
+                        WHEN {$ppaSingle} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -399,7 +453,7 @@ public function get_recent_ppas_for_user($staff_id, $period)
                             ) = 'Approved'
                         THEN 'Approved'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN {$ppaTwo} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -430,7 +484,7 @@ public function get_recent_ppas_for_user($staff_id, $period)
                             ) = 'Returned'
                         THEN 'Returned'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN {$ppaTwo} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -455,6 +509,8 @@ public function get_recent_ppas_for_user($staff_id, $period)
 
 public function get_all_ppas_for_user($staff_id, $period = null)
 {
+    $ppaSingle = $this->sql_treat_as_single_supervisor('ppa');
+    $ppaTwo = $this->sql_treat_as_two_supervisors('ppa');
     $sql = "
         SELECT 
             p.*, 
@@ -478,10 +534,11 @@ public function get_all_ppas_for_user($staff_id, $period = null)
             
             -- Final status decision with draft consideration
             CASE 
+                WHEN p.draft_status = 2 THEN 'Approved'
                 WHEN p.draft_status = 1 THEN 'Pending (Draft)'
                 ELSE (
                     CASE
-                        WHEN p.supervisor2_id IS NULL AND
+                        WHEN {$ppaSingle} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -490,7 +547,7 @@ public function get_all_ppas_for_user($staff_id, $period = null)
                             ) = 'Approved'
                         THEN 'Approved'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN {$ppaTwo} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -521,7 +578,7 @@ public function get_all_ppas_for_user($staff_id, $period = null)
                             ) = 'Returned'
                         THEN 'Returned'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND
+                        WHEN {$ppaTwo} AND
                             (
                                 SELECT a1.action 
                                 FROM ppa_approval_trail a1
@@ -765,7 +822,7 @@ public function get_staff_by_type($type, $division_id = null, $period = null)
                             if ($sup1_action === 'Returned' || $sup2_action === 'Returned') {
                                 $staff->approval_status = 'Returned';
                                 $staff->pending_supervisor_name = null;
-                            } elseif (!empty($ppa_entry->supervisor2_id)) {
+                            } elseif (!empty($ppa_entry->supervisor2_id) && function_exists('ppa_phase_requires_second_supervisor') && ppa_phase_requires_second_supervisor('ppa')) {
                                 // Two supervisors: both must approve
                                 if ($sup1_action === 'Approved' && $sup2_action === 'Approved') {
                                     $staff->approval_status = 'Approved';
@@ -1197,6 +1254,8 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
     if (empty($filters['period'])) {
         $filters['period'] = str_replace(' ', '-', current_period());
     }
+    $ppaSingle = $this->sql_treat_as_single_supervisor('ppa');
+    $ppaTwo = $this->sql_treat_as_two_supervisors('ppa');
 
     $sql = "
         SELECT 
@@ -1205,17 +1264,18 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
             CONCAT(s.fname, ' ', s.lname) AS staff_name,
 
             CASE 
+                WHEN p.draft_status = 2 THEN 'Approved'
                 WHEN p.draft_status = 1 THEN 'Draft'
                 ELSE (
                     CASE
-                        WHEN p.supervisor2_id IS NULL AND (
+                        WHEN {$ppaSingle} AND (
                             SELECT action FROM ppa_approval_trail 
                             WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
                             ORDER BY id DESC LIMIT 1
                         ) = 'Approved'
                         THEN 'Approved'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND (
+                        WHEN {$ppaTwo} AND (
                             SELECT action FROM ppa_approval_trail 
                             WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
                             ORDER BY id DESC LIMIT 1
@@ -1240,7 +1300,7 @@ public function get_all_ppas_filtered($filters, $limit = 40, $offset = 0)
                         ) = 'Returned'
                         THEN 'Returned'
 
-                        WHEN p.supervisor2_id IS NOT NULL AND (
+                        WHEN {$ppaTwo} AND (
                             SELECT action FROM ppa_approval_trail 
                             WHERE entry_id = p.entry_id AND staff_id = p.supervisor_id 
                             ORDER BY id DESC LIMIT 1
@@ -1593,6 +1653,10 @@ private function _can_second_supervisor_see_endterm($entry_id, $staff_id)
         log_message('debug', "Endterm visibility check failed: empty entry_id or staff_id. entry_id={$entry_id}, staff_id={$staff_id}");
         return false;
     }
+
+    if (function_exists('ppa_phase_requires_second_supervisor') && !ppa_phase_requires_second_supervisor('endterm')) {
+        return false;
+    }
     
     // Get entry details
     $this->db->select('endterm_supervisor_1, endterm_supervisor_2, endterm_staff_consent_at');
@@ -1682,41 +1746,26 @@ private function _calculate_endterm_status($entry, $supervisor1_action, $supervi
             return 'Returned';
         }
     }
-    
-    // Single supervisor scenario
-    if (empty($entry->endterm_supervisor_2)) {
-        if ($supervisor1_action == 'Approved' && 
-            !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1)) {
-            return 'Approved';
-        }
+
+    $s1Approved = $supervisor1_action == 'Approved'
+        && !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1);
+    if (!$s1Approved) {
         return 'Pending First Supervisor';
     }
-    
-    // Two supervisor scenario
-    if ($supervisor1_action == 'Approved' && $supervisor2_action == 'Approved') {
-        // Check if there's a return after either approval
-        if (!$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
-            !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_2)) {
-            return 'Approved';
-        }
-    }
-    
-    // After first supervisor approved: waiting on employee consent before second supervisor
-    if ($supervisor1_action == 'Approved' &&
-        !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
-        empty($entry->endterm_staff_consent_at) &&
-        !empty($entry->endterm_supervisor_2)) {
+
+    $consentRequired = !function_exists('ppa_endterm_requires_employee_consent')
+        || ppa_endterm_requires_employee_consent();
+    if ($consentRequired && empty($entry->endterm_staff_consent_at)) {
         return 'Pending Employee Consent';
     }
 
-    // Check if pending second supervisor
-    if ($supervisor1_action == 'Approved' && 
-        !$this->_has_return_after_approval($entry->entry_id, $entry->endterm_supervisor_1) &&
-        !empty($entry->endterm_staff_consent_at)) {
+    $secondRequired = !empty($entry->endterm_supervisor_2)
+        && (!function_exists('ppa_phase_requires_second_supervisor') || ppa_phase_requires_second_supervisor('endterm'));
+    if ($secondRequired && $supervisor2_action != 'Approved') {
         return 'Pending Second Supervisor';
     }
-    
-    return 'Pending First Supervisor';
+
+    return 'Approved';
 }
 
 public function get_all_pending_approvals($staff_id)
@@ -1730,6 +1779,8 @@ public function get_all_pending_approvals($staff_id)
     // Get pending Midterm approvals based on midterm supervisors
     // Exclude entries that have already been approved
     $staff_id_escaped = (int)$staff_id;
+    $midSingle = $this->sql_treat_as_single_supervisor('midterm');
+    $midTwo = $this->sql_treat_as_two_supervisors('midterm');
     $sql = "SELECT 
                 p.*, 
                 CONCAT(s.fname, ' ', s.lname) AS staff_name,
@@ -1754,7 +1805,8 @@ public function get_all_pending_approvals($staff_id)
                 ) AS supervisor2_action,
                 -- Compute overall status
                 CASE 
-                    WHEN p.midterm_supervisor_2 IS NULL AND
+                    WHEN p.midterm_draft_status = 2 THEN 'Approved'
+                    WHEN {$midSingle} AND
                         COALESCE((
                             SELECT a1.action 
                             FROM ppa_approval_trail_midterm a1 
@@ -1777,7 +1829,7 @@ public function get_all_pending_approvals($staff_id)
                             )
                         )
                     THEN 'Approved'
-                    WHEN p.midterm_supervisor_2 IS NOT NULL AND
+                    WHEN {$midTwo} AND
                         COALESCE((
                             SELECT a1.action 
                             FROM ppa_approval_trail_midterm a1 
@@ -1833,7 +1885,7 @@ public function get_all_pending_approvals($staff_id)
                         ORDER BY a1.id DESC LIMIT 1
                     ), '') = 'Returned'
                     THEN 'Returned'
-                    WHEN p.midterm_supervisor_2 IS NOT NULL AND
+                    WHEN {$midTwo} AND
                         COALESCE((
                             SELECT a1.action 
                             FROM ppa_approval_trail_midterm a1 
@@ -1899,7 +1951,7 @@ public function get_all_pending_approvals($staff_id)
                 OR
                 -- Second supervisor: can see if first approved (even if still draft)
                 (p.midterm_supervisor_2 = {$staff_id_escaped} AND
-                 p.midterm_supervisor_2 IS NOT NULL AND
+                 {$midTwo} AND
                  COALESCE((
                      SELECT a1.action 
                      FROM ppa_approval_trail_midterm a1 

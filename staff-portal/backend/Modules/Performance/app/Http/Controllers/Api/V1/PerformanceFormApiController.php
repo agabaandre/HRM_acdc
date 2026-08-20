@@ -18,6 +18,7 @@ use Modules\Performance\Services\CompetencyService;
 use Modules\Performance\Services\PerformanceApprovalService;
 use Modules\Performance\Services\PerformanceAnalyticsService;
 use Modules\Performance\Services\PerformanceService;
+use Modules\Performance\Services\PerformanceWorkflowCorrectionService;
 use Modules\Performance\Services\PerformanceWorkflowService;
 use Modules\Performance\Services\PpaContractService;
 use Modules\Performance\Services\PpaFormService;
@@ -1034,6 +1035,8 @@ class PerformanceFormApiController extends Controller
         PpaFormService $forms
     ): object {
         $workflow->syncSupervisorsFromContract($entry, $phase);
+        $entry = $forms->findEntry((string) $entry->entry_id) ?? $entry;
+        app(PerformanceWorkflowCorrectionService::class)->finalizeIfReady($entry, $phase);
 
         return $forms->findEntry((string) $entry->entry_id) ?? $entry;
     }

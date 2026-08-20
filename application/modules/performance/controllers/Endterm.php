@@ -510,6 +510,21 @@ public function endterm_review($entry_id)
 		
 		// Handle second supervisor approval (only if not the same as first supervisor)
 		if ($action === 'approve' && $staff_id == $ppa->endterm_supervisor_2 && !$sameSupervisor) {
+			if (function_exists('ppa_phase_requires_second_supervisor') && !ppa_phase_requires_second_supervisor('endterm')) {
+				Modules::run('utility/setFlash', [
+					'msg' => 'Second supervisor approval is not required for endterm.',
+					'type' => 'error'
+				]);
+				redirect("performance/endterm/endterm_review/{$entry_id}/{$staffno}");
+			}
+			if ((!function_exists('ppa_endterm_requires_employee_consent') || ppa_endterm_requires_employee_consent())
+				&& empty($ppa->endterm_staff_consent_at)) {
+				Modules::run('utility/setFlash', [
+					'msg' => 'Employee must consent to the first supervisor\'s results before the second supervisor can approve.',
+					'type' => 'error'
+				]);
+				redirect("performance/endterm/endterm_review/{$entry_id}/{$staffno}");
+			}
 			$supervisor2_agreement = $this->input->post('supervisor2_agreement');
 			if ($supervisor2_agreement === null) {
 				Modules::run('utility/setFlash', [

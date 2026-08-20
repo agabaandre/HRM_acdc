@@ -7,11 +7,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\PortalPermission;
+use Modules\Performance\Services\PerformanceWorkflowCorrectionService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Support\PerformanceMonth;
 use Modules\Performance\Support\PerformanceSettingsAccess;
 use Modules\Settings\Services\PortalModulesService;
 use Modules\Settings\Services\SettingsLookupService;
+use RuntimeException;
 
 class SettingsApiController extends Controller
 {
@@ -44,7 +46,7 @@ class SettingsApiController extends Controller
             ['to' => '/settings/lookup/funders', 'label' => 'Funders', 'icon' => 'bx-dollar'],
             ['to' => '/settings/leave', 'label' => 'Leave policy & types', 'icon' => 'bx-time-five'],
             ['to' => '/leave/admin/balances', 'label' => 'Leave balances (all staff)', 'icon' => 'bx-calendar-check'],
-            ['to' => '/settings/performance', 'label' => 'PPA / Performance deadlines', 'icon' => 'bx-line-chart'],
+            ['to' => '/settings/performance', 'label' => 'PPA / workflow', 'icon' => 'bx-line-chart'],
             ['to' => '/settings/lookup/regions', 'label' => 'Regions', 'icon' => 'bx-compass'],
             ['to' => '/settings/lookup/units', 'label' => 'Units', 'icon' => 'bx-building'],
             ['to' => '/settings/lookup/training_skills', 'label' => 'Training Skills', 'icon' => 'bx-book'],
@@ -254,6 +256,7 @@ class SettingsApiController extends Controller
                     'midterm' => 'Midterm uses months in the current year. If start is after end (e.g. Dec–Jul), the window wraps into the next year.',
                     'endterm' => "Endterm starts in {$year} and ends in ".($year + 1).' (e.g. December → March).',
                     'override' => 'Override days keep the window open past the last day of the deadline month.',
+                    'second_supervisor' => 'Off by default for PPA and midterm: only the first supervisor approves, then overall status is Approved. Endterm: first supervisor, then employee consent on that rating, then second supervisor (on by default).',
                 ],
             ],
         ]);
@@ -303,6 +306,42 @@ class SettingsApiController extends Controller
         ]);
 
         return response()->json(['message' => 'Performance & workflow settings saved.']);
+    }
+
+    public function previewPerformanceWorkflowCorrection(
+        string $entryId,
+        PerformanceWorkflowCorrectionService $correction,
+    ): JsonResponse {
+        PerformanceSettingsAccess::authorize();
+
+        try {
+            return response()->json(['data' => $correction->preview(trim($entryId))]);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+    }
+
+    public function applyPerformanceWorkflowCorrection(
+        string $entryId,
+        PerformanceWorkflowCorrectionService $correction,
+    ): JsonResponse {
+        PerformanceSettingsAccess::authorize();
+
+        try {
+            $data = $correction->apply(trim($entryId));
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 404);
+        }
+
+        $phases = $data['corrected_phases'] ?? [];
+        $message = $phases === []
+            ? 'No phases needed correction. PPA and midterm only finalize after the first supervisor when second-supervisor approval is off.'
+            : 'Marked as approved: '.implode(', ', $phases).'.';
+
+        return response()->json([
+            'message' => $message,
+            'data' => $data,
+        ]);
     }
 
     /**

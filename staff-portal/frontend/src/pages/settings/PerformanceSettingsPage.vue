@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalBtn from '@/components/molecules/PortalBtn.vue'
-import { fetchPerformanceSettings, savePerformanceSettings } from '@/lib/settingsApi'
+import {
+  applyPerformanceWorkflowCorrection,
+  fetchPerformanceSettings,
+  previewPerformanceWorkflowCorrection,
+  savePerformanceSettings,
+  type PerformanceWorkflowCorrection,
+} from '@/lib/settingsApi'
 
+const route = useRoute()
 const tab = ref<'workflow' | 'general'>('general')
 const loading = ref(false)
 const saving = ref(false)
@@ -21,6 +28,10 @@ const monthOptions = ref<Array<{ title: string; value: number | null }>>([])
 const currentMonthLabel = ref('')
 const currentYear = ref(new Date().getFullYear())
 const help = ref<Record<string, string>>({})
+const correctionId = ref('')
+const correctionBusy = ref(false)
+const correctionApplying = ref(false)
+const correctionPreview = ref<PerformanceWorkflowCorrection | null>(null)
 
 const yearLabel = computed(() => String(currentYear.value))
 const nextYearLabel = computed(() => String(currentYear.value + 1))
@@ -67,7 +78,55 @@ async function onSave() {
   }
 }
 
-onMounted(() => void load())
+async function previewCorrection() {
+  const entryId = correctionId.value.trim()
+  if (!entryId) {
+    error.value = 'Enter a PPA entry ID.'
+    return
+  }
+  correctionBusy.value = true
+  error.value = null
+  success.value = null
+  try {
+    correctionPreview.value = await previewPerformanceWorkflowCorrection(entryId)
+  } catch (e) {
+    correctionPreview.value = null
+    error.value = apiErrorMessage(e, 'Could not load that PPA entry')
+  } finally {
+    correctionBusy.value = false
+  }
+}
+
+async function applyCorrection() {
+  const entryId = correctionId.value.trim()
+  if (!entryId) {
+    error.value = 'Enter a PPA entry ID.'
+    return
+  }
+  correctionApplying.value = true
+  error.value = null
+  success.value = null
+  try {
+    const result = await applyPerformanceWorkflowCorrection(entryId)
+    correctionPreview.value = result.data
+    success.value = result.message
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Could not correct that PPA entry')
+  } finally {
+    correctionApplying.value = false
+  }
+}
+
+onMounted(() => {
+  const fromQuery = String(route.query.entry_id || route.query.entryId || '').trim()
+  if (fromQuery) {
+    correctionId.value = fromQuery
+    tab.value = 'workflow'
+  }
+  void load().then(() => {
+    if (fromQuery) void previewCorrection()
+  })
+})
 </script>
 
 <template>
@@ -98,21 +157,35 @@ onMounted(() => void load())
 
       <v-card v-if="tab === 'workflow'" variant="outlined">
         <v-card-text>
-          <v-checkbox v-model="settings.ppa_requires_second_supervisor" label="PPA requires second supervisor" hide-details />
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            {{
+              help.second_supervisor ||
+              'Off by default for PPA and midterm: only the first supervisor approves, then overall status is Approved. Endterm keeps two approvers on by default.'
+            }}
+          </p>
+          <v-checkbox
+            v-model="settings.ppa_requires_second_supervisor"
+            label="PPA requires second supervisor"
+            hint="Default off. When off, first-supervisor approval is the final PPA status."
+            persistent-hint
+          />
           <v-checkbox
             v-model="settings.midterm_requires_second_supervisor"
             label="Midterm requires second supervisor"
-            hide-details
+            hint="Default off. When off, first-supervisor approval is the final midterm status."
+            persistent-hint
           />
           <v-checkbox
             v-model="settings.endterm_requires_second_supervisor"
             label="Endterm requires second supervisor"
-            hide-details
+            hint="Default on. Second supervisor acts only after the employee consents to the first supervisor's rating."
+            persistent-hint
           />
           <v-checkbox
             v-model="settings.endterm_requires_employee_consent"
             label="Endterm requires employee consent"
-            hide-details
+            hint="Default on. After the first supervisor approves, the employee must accept or reject that rating before the second supervisor."
+            persistent-hint
           />
 
           <v-row class="mt-4">
@@ -139,7 +212,61 @@ onMounted(() => void load())
         </v-card-actions>
       </v-card>
 
-      <v-card v-else variant="outlined">
+      <v-card v-if="tab === 'workflow'" variant="outlined" class="mt-4">
+        <v-card-text>
+          <h4 class="text-subtitle-1 text-primary mb-1">Correct a stuck approval</h4>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Use the PPA entry ID from the URL (for example
+            <code>57acb619fc074dee9c9cb7663b7e02c4</code>). If the first supervisor already approved and second-supervisor
+            approval is off for that phase, overall status is set to Approved.
+          </p>
+          <v-text-field
+            v-model="correctionId"
+            label="PPA entry ID"
+            hide-details
+            class="mb-3"
+            @keyup.enter="previewCorrection"
+          />
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <PortalBtn :loading="correctionBusy" variant="outlined" @click="previewCorrection">Preview</PortalBtn>
+            <PortalBtn
+              :loading="correctionApplying"
+              :disabled="!correctionPreview?.can_correct"
+              @click="applyCorrection"
+            >
+              Apply correction
+            </PortalBtn>
+          </div>
+          <div v-if="correctionPreview">
+            <p class="mb-2">
+              {{ correctionPreview.staff_name }}
+              <span class="text-medium-emphasis">· {{ correctionPreview.performance_period }}</span>
+            </p>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>Phase</th>
+                  <th>Status</th>
+                  <th>First supervisor</th>
+                  <th>Second required</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(phase, key) in correctionPreview.phases" :key="key">
+                  <td>{{ phase.label }}</td>
+                  <td>{{ phase.exists ? phase.state : 'Not started' }}</td>
+                  <td>{{ phase.supervisor_1_action || '—' }}</td>
+                  <td>{{ phase.requires_second_supervisor ? 'Yes' : 'No' }}</td>
+                  <td>{{ phase.can_correct ? 'Will mark approved' : '—' }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <v-card v-else-if="tab === 'general'" variant="outlined">
         <v-card-text>
           <h4 class="text-subtitle-1 text-primary mb-2">General flags</h4>
           <v-checkbox v-model="settings.allow_supervisor_return" label="Allow supervisor return" hide-details />

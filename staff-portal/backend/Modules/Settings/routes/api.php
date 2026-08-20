@@ -54,4 +54,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
         ->where('table', '[a-z_]+');
     Route::get('settings/performance', [SettingsApiController::class, 'showPerformance']);
     Route::put('settings/performance', [SettingsApiController::class, 'updatePerformance']);
+    Route::get('settings/performance/entries/{entryId}/workflow-correction', [SettingsApiController::class, 'previewPerformanceWorkflowCorrection']);
+    Route::post('settings/performance/entries/{entryId}/workflow-correction', [SettingsApiController::class, 'applyPerformanceWorkflowCorrection']);
 });

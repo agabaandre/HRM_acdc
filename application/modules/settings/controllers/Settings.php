@@ -451,8 +451,73 @@ public function sysvariables()
 
 public function ppa_variables()
 {
-    // Migrated to staff-portal Performance settings (month windows + day overrides).
-    redirect(rtrim(base_url(), '/') . '/staff-portal/settings/performance');
+    // Deadlines live in staff-portal; workflow flags + entry correction stay here too.
+    redirect('settings/ppa_workflow');
+}
+
+public function ppa_workflow()
+{
+    $this->_require_settings_access();
+    ensure_ppa_workflow_config_columns();
+    $entryId = trim((string) $this->input->get('entry_id'));
+    $data = array(
+        'module' => $this->module,
+        'title' => 'PPA workflow',
+        'setting' => $this->settings_mdl->get_ppa(),
+        'entry_id' => $entryId,
+        'preview' => $entryId !== '' ? ppa_workflow_correction_preview($entryId) : null,
+    );
+    render('ppa_workflow', $data);
+}
+
+public function ppa_workflow_save()
+{
+    $this->_require_settings_access();
+    if ($this->input->method() !== 'post') {
+        show_404();
+        return;
+    }
+    ensure_ppa_workflow_config_columns();
+    $row = $this->settings_mdl->get_ppa();
+    $this->settings_mdl->update_ppa_variables(array(
+        'id' => $row->id,
+        'ppa_requires_second_supervisor' => $this->input->post('ppa_requires_second_supervisor') ? 1 : 0,
+        'midterm_requires_second_supervisor' => $this->input->post('midterm_requires_second_supervisor') ? 1 : 0,
+        'endterm_requires_second_supervisor' => $this->input->post('endterm_requires_second_supervisor') ? 1 : 0,
+        'endterm_requires_employee_consent' => $this->input->post('endterm_requires_employee_consent') ? 1 : 0,
+    ));
+    Modules::run('utility/setFlash', array(
+        'msg' => 'Workflow settings saved.',
+        'type' => 'success',
+    ));
+    redirect('settings/ppa_workflow');
+}
+
+public function ppa_workflow_correct()
+{
+    $this->_require_settings_access();
+    if ($this->input->method() !== 'post') {
+        show_404();
+        return;
+    }
+    $entryId = trim((string) $this->input->post('entry_id'));
+    $result = $entryId !== '' ? ppa_apply_workflow_correction($entryId) : null;
+    if (!$result) {
+        Modules::run('utility/setFlash', array(
+            'msg' => 'PPA entry not found.',
+            'type' => 'error',
+        ));
+        redirect('settings/ppa_workflow');
+        return;
+    }
+    $phases = $result['corrected_phases'] ?? array();
+    Modules::run('utility/setFlash', array(
+        'msg' => $phases
+            ? ('Marked as approved: ' . implode(', ', $phases) . '.')
+            : 'No phases needed correction. PPA and midterm only finalize after the first supervisor when second-supervisor approval is off.',
+        'type' => 'success',
+    ));
+    redirect('settings/ppa_workflow?entry_id=' . rawurlencode($entryId));
 }
 
 /**

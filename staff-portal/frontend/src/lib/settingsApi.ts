@@ -374,6 +374,39 @@ export async function savePerformanceSettings(payload: Record<string, unknown>) 
   await api.put('/api/v1/settings/performance', payload)
 }
 
+export type PerformanceWorkflowPhasePreview = {
+  label: string
+  exists: boolean
+  draft_status: number
+  requires_second_supervisor: boolean
+  supervisor_1_action: string | null
+  supervisor_2_action: string | null
+  state: string
+  state_step: string | null
+  can_correct: boolean
+}
+
+export type PerformanceWorkflowCorrection = {
+  entry_id: string
+  staff_id: number
+  staff_name: string
+  performance_period: string
+  settings: Record<string, boolean>
+  phases: Record<string, PerformanceWorkflowPhasePreview>
+  can_correct: boolean
+  corrected_phases?: string[]
+}
+
+export async function previewPerformanceWorkflowCorrection(entryId: string) {
+  const { data } = await api.get(`/api/v1/settings/performance/entries/${encodeURIComponent(entryId)}/workflow-correction`)
+  return data.data as PerformanceWorkflowCorrection
+}
+
+export async function applyPerformanceWorkflowCorrection(entryId: string) {
+  const { data } = await api.post(`/api/v1/settings/performance/entries/${encodeURIComponent(entryId)}/workflow-correction`)
+  return data as { message: string; data: PerformanceWorkflowCorrection }
+}
+
 export type StaffJobsScheduleSpec = false | { hour: number; minute: number; weekday?: number } | number | boolean | null
 
 export type StaffJobsDailyMeta = {

@@ -163,6 +163,9 @@ class Performance extends MX_Controller
 		$data['skills'] = $this->db->get('training_skills')->result();
 	
 		// Get saved PPA form
+		if (function_exists('ppa_finalize_phase_if_ready')) {
+			ppa_finalize_phase_if_ready($entry_id, 'ppa');
+		}
 		$data['ppa'] = $this->per_mdl->get_plan_by_entry_id($entry_id);
 	
 		// Get approval logs if any

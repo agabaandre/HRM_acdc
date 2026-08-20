@@ -1,6 +1,12 @@
 <?php
 $status = ((intval(@$ppa_settings->allow_supervisor_return) === 1) && in_array('83', $permissions));
-$isSupervisor = in_array($session->staff_id, [(int) @$ppa->midterm_supervisor_1, (int) @$ppa->midterm_supervisor_2]);
+$midRequiresSecond = function_exists('ppa_phase_requires_second_supervisor')
+  && ppa_phase_requires_second_supervisor('midterm')
+  && !empty($ppa->midterm_supervisor_2);
+$isSupervisor = in_array($session->staff_id, array_values(array_filter([
+  (int) @$ppa->midterm_supervisor_1,
+  $midRequiresSecond ? (int) @$ppa->midterm_supervisor_2 : 0,
+])));
 $isOwner = isset($ppa->staff_id) && (int) $ppa->staff_id === (int) $session->staff_id;
 $hasMidtermObjectives = false;
 if (!empty($ppa->midterm_objectives)) {
