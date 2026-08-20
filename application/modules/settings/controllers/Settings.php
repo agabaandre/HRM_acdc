@@ -816,7 +816,7 @@ public function force_generate_short_names() {
 		$data['daily_jobs_meta'] = [
 			'staff_profile_completion_reminder' => [
 				'label' => 'Profile completion reminder',
-				'help' => 'Email staff (eligible contracts) who are missing extended profile fields.',
+				'help' => 'Email staff (eligible contracts) who are missing extended profile fields. Off by default — enable here to schedule.',
 			],
 			'staff_birthday' => [
 				'label' => 'Staff birthday',

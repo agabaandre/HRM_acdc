@@ -17,7 +17,8 @@ if (!function_exists('staff_jobs_schedule_defaults')) {
             'mark_due_contracts'                => ['hour' => 23, 'minute' => 0],
             'audit_extended_contracts'          => ['hour' => 23, 'minute' => 5],
             'staff_birthday'                    => ['hour' => 3, 'minute' => 0],
-            'staff_profile_completion_reminder' => ['hour' => 8, 'minute' => 30],
+            // Off by default — enable via Settings → Staff jobs (shared JSON).
+            'staff_profile_completion_reminder' => false,
             'manage_accounts_hourly_minute'     => 0,
             'apm_approver_staff_ids_cache_interval_minutes' => 60,
             // weekday: PHP date('w') — 0=Sun … 2=Tue … 6=Sat (weekly, not daily).
@@ -164,6 +165,7 @@ if (!function_exists('staff_jobs_schedule_from_post')) {
             'staff_birthday',
             'staff_profile_completion_reminder',
             'user_logs_prune_get_access',
+            'sync_pra_workplan',
         ];
         foreach ($dailyKeys as $dk) {
             if (empty($post[$dk . '_enabled'])) {

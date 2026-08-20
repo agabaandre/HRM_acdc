@@ -7,9 +7,13 @@ use Modules\Settings\Http\Controllers\Api\V1\OrgStructureController;
 use Modules\Settings\Http\Controllers\Api\V1\OrgUnitsSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\SharedStorageController;
 use Modules\Settings\Http\Controllers\Api\V1\SettingsApiController;
+use Modules\Settings\Http\Controllers\Api\V1\StaffJobsSettingsController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('settings/hub', [SettingsApiController::class, 'hub']);
+    Route::get('settings/staff-jobs', [StaffJobsSettingsController::class, 'show']);
+    Route::put('settings/staff-jobs', [StaffJobsSettingsController::class, 'update']);
+    Route::post('settings/staff-jobs/run', [StaffJobsSettingsController::class, 'run']);
     Route::get('settings/shared-storage', [SharedStorageController::class, 'show']);
     Route::post('settings/shared-storage/migrate', [SharedStorageController::class, 'migrate']);
     Route::post('settings/shared-storage/enable-host', [SharedStorageController::class, 'enableHost']);

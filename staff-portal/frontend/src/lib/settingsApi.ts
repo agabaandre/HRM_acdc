@@ -111,7 +111,7 @@ export interface LookupColumnMeta {
 
 export async function fetchSettingsHub(): Promise<SettingsHubCard[]> {
   const data = await cachedGet<{ data: SettingsHubCard[] }>(
-    'settings:hub-v3',
+    'settings:hub-v4',
     '/api/v1/settings/hub',
     5 * 60_000,
   )
@@ -372,6 +372,48 @@ export async function fetchPerformanceSettings() {
 
 export async function savePerformanceSettings(payload: Record<string, unknown>) {
   await api.put('/api/v1/settings/performance', payload)
+}
+
+export type StaffJobsScheduleSpec = false | { hour: number; minute: number; weekday?: number } | number | boolean | null
+
+export type StaffJobsDailyMeta = {
+  label: string
+  help: string
+  weekday_select?: boolean
+}
+
+export type StaffJobsInstantJob = {
+  key: string
+  label: string
+}
+
+export async function fetchStaffJobsSettings() {
+  const { data } = await api.get<{
+    data: {
+      schedule: Record<string, StaffJobsScheduleSpec>
+      schedule_path: string
+      daily_jobs_meta: Record<string, StaffJobsDailyMeta>
+      instant_jobs: StaffJobsInstantJob[]
+    }
+  }>('/api/v1/settings/staff-jobs')
+  return data.data
+}
+
+export async function saveStaffJobsSettings(payload: Record<string, unknown>) {
+  const { data } = await api.put<{
+    message: string
+    data: { schedule: Record<string, StaffJobsScheduleSpec>; schedule_path: string }
+  }>('/api/v1/settings/staff-jobs', payload)
+  invalidateSettingsCaches()
+  return data
+}
+
+export async function runStaffJob(jobKey: string) {
+  const { data } = await api.post<{
+    message: string
+    data: { ok: boolean; output: string; label: string }
+  }>('/api/v1/settings/staff-jobs/run', { job_key: jobKey })
+  return data
 }
 
 export interface OrgStructurePerson {

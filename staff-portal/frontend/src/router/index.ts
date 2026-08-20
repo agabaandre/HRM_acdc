@@ -178,6 +178,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 15, title: 'Shared storage', module: 'settings' },
     },
     {
+      path: '/settings/staff-jobs',
+      name: 'settings-staff-jobs',
+      component: () => import('../pages/settings/StaffJobsSettingsPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'Staff jobs', module: 'settings' },
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../pages/settings/SettingsHubPage.vue'),

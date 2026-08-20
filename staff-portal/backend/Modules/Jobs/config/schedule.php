@@ -8,7 +8,8 @@ return [
     'mark_due_contracts' => ['hour' => 23, 'minute' => 0],
     'audit_extended_contracts' => ['hour' => 23, 'minute' => 5],
     'staff_birthday' => ['hour' => 3, 'minute' => 0],
-    'staff_profile_completion_reminder' => ['hour' => 8, 'minute' => 30],
+    // Off by default — enable via Settings → Staff jobs (shared JSON).
+    'staff_profile_completion_reminder' => false,
     'manage_accounts_hourly_minute' => 0,
     'user_logs_prune_get_access' => ['hour' => 0, 'minute' => 0, 'weekday' => 2],
     'sync_pra_workplan' => ['hour' => 0, 'minute' => 5],

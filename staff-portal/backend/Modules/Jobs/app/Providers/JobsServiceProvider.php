@@ -13,6 +13,7 @@ use Modules\Jobs\Console\SendInstantMailsCommand;
 use Modules\Jobs\Console\SendMailsCommand;
 use Modules\Jobs\Console\StaffBirthdayCommand;
 use Modules\Jobs\Console\StaffProfileCompletionReminderCommand;
+use Modules\Jobs\Services\StaffJobsScheduleService;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class JobsServiceProvider extends ModuleServiceProvider
@@ -41,7 +42,12 @@ class JobsServiceProvider extends ModuleServiceProvider
 
     protected function configureSchedules(Schedule $schedule): void
     {
-        $cfg = config('jobs.schedule', []);
+        /** @var StaffJobsScheduleService $resolver */
+        $resolver = $this->app->make(StaffJobsScheduleService::class);
+        $cfg = $resolver->resolved();
+        // Non-schedule keys (mail URLs, etc.) still come from config.
+        $static = config('jobs.schedule', []);
+        $cfg = array_merge($static, $cfg);
 
         if (! empty($cfg['send_instant_mails'])) {
             $schedule->command('jobs:send-instant-mails')
@@ -72,7 +78,6 @@ class JobsServiceProvider extends ModuleServiceProvider
                 ->dailyAt(sprintf('%02d:%02d', $h, $m))
                 ->withoutOverlapping()
                 ->name('jobs-staff-birthday');
-            // Hourly catch-up 03:00–09:00 (idempotent queue).
             $schedule->command('jobs:staff-birthday')
                 ->hourly()
                 ->between('3:00', '9:59')
@@ -92,8 +97,7 @@ class JobsServiceProvider extends ModuleServiceProvider
         if (is_array($prune)) {
             $h = (int) ($prune['hour'] ?? 0);
             $m = (int) ($prune['minute'] ?? 0);
-            $wd = (int) ($prune['weekday'] ?? 2); // PHP date('w'): 0=Sun … 2=Tue
-            // Laravel weeklyOn uses 0=Sunday too.
+            $wd = (int) ($prune['weekday'] ?? 2);
             $schedule->command('jobs:prune-user-logs-get-access')
                 ->weeklyOn($wd, sprintf('%02d:%02d', $h, $m))
                 ->withoutOverlapping()

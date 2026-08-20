@@ -166,8 +166,10 @@ else
     log "Skipping migrations (--skip-migrate)"
 fi
 
-log "Storage link"
-(cd "$BACKEND" && "$PHP_BIN" artisan storage:link --no-interaction 2>/dev/null || true)
+log "Storage link + upload dirs (Laravel public disk)"
+chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+# Ensure dirs exist before migrate/seed touch the filesystem.
+"$ROOT/fix-storage-permissions.sh" || warn "Storage prep failed — uploads may fail until fixed"
 
 if [[ "$SKIP_SEED" -eq 0 ]]; then
     if [[ "$WITH_DEMO_SEED" -eq 1 ]]; then
@@ -251,20 +253,8 @@ verify_queue_table() {
 verify_queue_table
 
 log "Fixing storage permissions ($HELPDESK_USER:$HELPDESK_GROUP)"
-fix_perms() {
-    local target="$1"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        chown -R "$HELPDESK_USER:$HELPDESK_GROUP" "$target"
-        chmod -R ug+rwx "$target"
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo chown -R "$HELPDESK_USER:$HELPDESK_GROUP" "$target"
-        sudo chmod -R ug+rwx "$target"
-    else
-        warn "Not root and no sudo — ensure $target is writable by the web server user"
-    fi
-}
-fix_perms "$BACKEND/storage"
-fix_perms "$BACKEND/bootstrap/cache"
+export HELPDESK_USER HELPDESK_GROUP PHP_BIN
+"$ROOT/fix-storage-permissions.sh" || warn "Run: sudo HELPDESK_USER=$HELPDESK_USER HELPDESK_GROUP=$HELPDESK_GROUP $ROOT/fix-storage-permissions.sh"
 
 if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
     log "Installing / restarting systemd (queue + scheduler)"

@@ -28,7 +28,8 @@ if [[ -z "$(dotenv_get .env APP_KEY 2>/dev/null || true)" ]]; then
   php artisan key:generate --no-interaction
 fi
 php artisan migrate --no-interaction --force
-php artisan storage:link --no-interaction 2>/dev/null || true
+chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+"$ROOT/fix-storage-permissions.sh" || true
 php artisan db:seed --no-interaction --force
 
 echo "==> Frontend (npm install + production build)"
