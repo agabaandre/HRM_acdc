@@ -117,8 +117,8 @@ function renderSsoErrorScreen(failure: SsoFailure): void {
   root.innerHTML = `
     <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f8f9fa;font-family:Arial,Roboto,sans-serif;">
       <section style="max-width:560px;width:100%;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);padding:28px;">
-        <p style="margin:0 0 8px;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;color:#0d7a3a;font-weight:600;">Help Desk</p>
-        <h1 style="margin:0 0 12px;font-size:1.4rem;color:#1f2933;">We couldn’t open Help Desk</h1>
+        <p style="margin:0 0 8px;font-size:0.85rem;letter-spacing:0.04em;text-transform:uppercase;color:#0d7a3a;font-weight:600;">HelpDesk</p>
+        <h1 style="margin:0 0 12px;font-size:1.4rem;color:#1f2933;">We couldn’t open HelpDesk</h1>
         <p style="margin:0 0 16px;color:#475569;line-height:1.55;">${safeMessage}</p>
         <p style="margin:0 0 20px;color:#64748b;font-size:0.9rem;line-height:1.55;">
           Reason code: <code style="background:#eef2f7;padding:2px 6px;border-radius:4px;">${failure.code}${failure.status ? ' / ' + failure.status : ''}</code>

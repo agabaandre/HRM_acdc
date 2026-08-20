@@ -159,18 +159,11 @@ class Cbp_modules_mdl extends CI_Model
 			}
 		}
 
-		// Display name: Service Desk / IT Service Desk → Help Desk (multi-BU).
+		// Display name: legacy Service Desk / Help Desk variants → HelpDesk (multi-BU).
 		$this->db->where_in('module_key', ['helpdesk_itsm', 'helpdesk'])
-			->where_in('system_name', [
-				'IT Service Desk (Helpdesk)',
-				'IT Service Desk',
-				'IT Help Desk (Helpdesk)',
-				'IT Help Desk',
-				'Service Desk',
-				'Helpdesk',
-			])
+			->where('system_name !=', 'HelpDesk')
 			->update($this->table, [
-				'system_name' => 'Help Desk',
+				'system_name' => 'HelpDesk',
 				'description' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as APM).',
 			]);
 	}
@@ -239,7 +232,7 @@ class Cbp_modules_mdl extends CI_Model
 			],
 			[
 				'module_key' => 'helpdesk_itsm',
-				'system_name' => 'Help Desk',
+				'system_name' => 'HelpDesk',
 				'description' => 'Log and track service requests across business units; session opens from the Staff portal (same sign-on as APM).',
 				'base_url' => 'helpdesk',
 				'base_url_development' => null,

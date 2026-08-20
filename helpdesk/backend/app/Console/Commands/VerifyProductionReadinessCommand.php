@@ -18,7 +18,7 @@ class VerifyProductionReadinessCommand extends Command
     protected $signature = 'helpdesk:verify-production
                             {--strict : Exit 1 when any check fails (default: warn-only for optional items)}';
 
-    protected $description = 'Verify Help Desk production readiness (migrations, Protocol BU, queues, mailbox intake schedule)';
+    protected $description = 'Verify HelpDesk production readiness (migrations, Protocol BU, queues, mailbox intake schedule)';
 
     public function handle(): int
     {
@@ -38,7 +38,7 @@ class VerifyProductionReadinessCommand extends Command
             $this->info('OK    '.$msg);
         };
 
-        $this->line('Help Desk production readiness');
+        $this->line('HelpDesk production readiness');
         $this->newLine();
 
         // --- Schema / feature migrations ---
@@ -96,9 +96,9 @@ class VerifyProductionReadinessCommand extends Command
         // --- Branding ---
         $brand = (string) config('helpdesk.mail_brand_name', '');
         if (stripos($brand, 'IT Service Desk') !== false || stripos($brand, 'IT Help Desk') !== false) {
-            $warn("Mail brand still uses an IT-only name ({$brand}) — set HELPDESK_MAIL_BRAND_NAME=\"Africa CDC Help Desk\" and config:cache");
-        } elseif (stripos($brand, 'Service Desk') !== false) {
-            $warn("Mail brand still says Service Desk ({$brand}) — set HELPDESK_MAIL_BRAND_NAME=\"Africa CDC Help Desk\" and config:cache");
+            $warn("Mail brand still uses an IT-only name ({$brand}) — set HELPDESK_MAIL_BRAND_NAME=\"Africa CDC HelpDesk\" and config:cache");
+        } elseif (stripos($brand, 'Service Desk') !== false || stripos($brand, 'Help Desk') !== false) {
+            $warn("Mail brand still uses legacy Service Desk naming ({$brand}) — set HELPDESK_MAIL_BRAND_NAME=\"Africa CDC HelpDesk\" and config:cache");
         } elseif ($brand !== '') {
             $ok("Mail brand: {$brand}");
         }
@@ -207,7 +207,7 @@ class VerifyProductionReadinessCommand extends Command
         $this->line('Runtime (ops) checklist — confirm on the server:');
         $this->line('  • systemctl is-active helpdesk-queue.service helpdesk-scheduler.timer');
         $this->line('  • queue worker listens: default,helpdesk,helpdesk-ai  (see deploy/bin/helpdesk-queue.sh)');
-        $this->line('  • Staff cbp_modules.system_name = "Help Desk" for helpdesk_itsm');
+        $this->line('  • Staff cbp_modules.system_name = "HelpDesk" for helpdesk_itsm');
         $this->line('  • Graph app has Mail.ReadWrite (or read+move) on each intake mailbox');
         $this->newLine();
 

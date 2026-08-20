@@ -6,7 +6,7 @@ use App\Ai\OpenAiCompatibleClient;
 use Illuminate\Support\Str;
 
 /**
- * Ask Help Desk agent — structured troubleshooting guidance for staff.
+ * Ask HelpDesk agent — structured troubleshooting guidance for staff.
  * Designed to align with Laravel AI SDK agent classes (instructions + prompt).
  */
 class HelpdeskAssistantAgent
@@ -18,7 +18,7 @@ class HelpdeskAssistantAgent
     public function instructions(): string
     {
         return <<<'PROMPT'
-You are Ask Help Desk, the Africa CDC Help Desk virtual assistant.
+You are Ask HelpDesk, the Africa CDC HelpDesk virtual assistant.
 
 Your role:
 - Understand the user's service request or issue in plain language (IT, Protocol, HR, Finance, and other business units).

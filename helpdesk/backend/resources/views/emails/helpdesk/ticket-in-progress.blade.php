@@ -2,7 +2,7 @@
 
 @section('title', 'Ticket in progress')
 @section('headline', 'Your ticket is being worked on')
-@section('subheadline', 'The Service Desk team has started on your request.')
+@section('subheadline', 'The HelpDesk team has started on your request.')
 
 @section('content')
     <p>Hello <strong>{{ $ticket->requester_name ?? 'colleague' }}</strong>,</p>
@@ -14,7 +14,7 @@
 
     @if($agent)
         <p>
-            <strong>{{ $agent->name }}</strong> from the Service Desk is working on it.
+            <strong>{{ $agent->name }}</strong> from HelpDesk is working on it.
         </p>
     @endif
 

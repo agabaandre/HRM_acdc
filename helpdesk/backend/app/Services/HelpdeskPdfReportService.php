@@ -160,7 +160,7 @@ class HelpdeskPdfReportService
             }
         }
 
-        $by = $generatedBy !== '' ? e($generatedBy) : 'Help Desk';
+        $by = $generatedBy !== '' ? e($generatedBy) : 'HelpDesk';
 
         return $qrHtml
             .'Source: Africa CDC Central Business Platform<br>'

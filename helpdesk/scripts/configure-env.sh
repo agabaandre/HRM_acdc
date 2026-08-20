@@ -163,23 +163,23 @@ fi
 if [[ "${HELPDESK_PRODUCTION_SETUP:-}" == "1" || "${APP_ENV:-}" == "production" ]]; then
     brand="$(dotenv_get "$BACKEND_ENV" HELPDESK_MAIL_BRAND_NAME 2>/dev/null || true)"
     case "$brand" in
-        *'IT Service Desk'*|*'IT Help Desk'*|*'Africa CDC Service Desk'*|*'Africa CDC Helpdesk'*|'')
-            dotenv_set "$BACKEND_ENV" HELPDESK_MAIL_BRAND_NAME "Africa CDC Help Desk"
-            echo "Set HELPDESK_MAIL_BRAND_NAME=Africa CDC Help Desk"
+        *'IT Service Desk'*|*'IT Help Desk'*|*'IT HelpDesk'*|*'Africa CDC Service Desk'*|*'Africa CDC Helpdesk'*|*'Africa CDC Help Desk'*|'')
+            dotenv_set "$BACKEND_ENV" HELPDESK_MAIL_BRAND_NAME "Africa CDC HelpDesk"
+            echo "Set HELPDESK_MAIL_BRAND_NAME=Africa CDC HelpDesk"
             ;;
     esac
     app_name="$(dotenv_get "$BACKEND_ENV" APP_NAME 2>/dev/null || true)"
     case "$app_name" in
         *'IT Service Desk'*|*'IT Help Desk'*|*'Africa CDC Service Desk'*|*'Africa CDC Helpdesk'*)
-            dotenv_set "$BACKEND_ENV" APP_NAME "Africa CDC Help Desk"
-            echo "Set APP_NAME=Africa CDC Help Desk"
+            dotenv_set "$BACKEND_ENV" APP_NAME "Africa CDC HelpDesk"
+            echo "Set APP_NAME=Africa CDC HelpDesk"
             ;;
     esac
     mail_from="$(dotenv_get "$BACKEND_ENV" MAIL_FROM_NAME 2>/dev/null || true)"
     case "$mail_from" in
         *'IT Service Desk'*|*'IT Help Desk'*|*'Africa CDC Service Desk'*|*'Africa CDC Helpdesk'*)
-            dotenv_set "$BACKEND_ENV" MAIL_FROM_NAME "Africa CDC Help Desk"
-            echo "Set MAIL_FROM_NAME=Africa CDC Help Desk"
+            dotenv_set "$BACKEND_ENV" MAIL_FROM_NAME "Africa CDC HelpDesk"
+            echo "Set MAIL_FROM_NAME=Africa CDC HelpDesk"
             ;;
     esac
 fi

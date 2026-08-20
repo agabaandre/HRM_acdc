@@ -200,7 +200,7 @@ const screenAreaActive = computed(() => route.path === '/screen' || route.path.s
               @click.stop="toggleTools"
             >
               <i :class="HELP_DESK_NAV_ICONS.tools" class="cbp-nav-link-icon" aria-hidden="true" />
-              <span>Help Desk Modules</span>
+              <span>HelpDesk Modules</span>
               <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
             </button>
             <div class="cbp-nav-dd-menu" role="menu">

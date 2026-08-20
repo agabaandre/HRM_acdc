@@ -9,9 +9,9 @@ class HelpdeskMailBrandingTest extends TestCase
 {
     public function test_default_brand_name_is_africa_cdc_service_desk(): void
     {
-        config(['helpdesk.mail_brand_name' => 'Africa CDC Help Desk']);
+        config(['helpdesk.mail_brand_name' => 'Africa CDC HelpDesk']);
 
-        $this->assertSame('Africa CDC Help Desk', HelpdeskMailBranding::brandName());
+        $this->assertSame('Africa CDC HelpDesk', HelpdeskMailBranding::brandName());
     }
 
     public function test_logo_url_prefers_app_logo_url_env(): void

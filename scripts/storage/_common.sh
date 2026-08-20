@@ -37,7 +37,12 @@ if [[ -z "$OWNER" || "$OWNER" == "root" ]]; then
   OWNER="$(id -un)"
 fi
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  GROUP="${STAFF_STORAGE_GROUP:-staff}"
+  # Apache/Homebrew serves as _www; group write lets the web server update uploads.
+  if [[ -z "${STAFF_STORAGE_GROUP:-}" ]] && id -g _www >/dev/null 2>&1; then
+    GROUP="_www"
+  else
+    GROUP="${STAFF_STORAGE_GROUP:-staff}"
+  fi
 else
   GROUP="${STAFF_STORAGE_GROUP:-www-data}"
 fi

@@ -285,6 +285,7 @@ cd ../../staff-portal && composer dump-autoload -o
 | Helpdesk avatars broken | Set `STAFF_PORTAL_UPLOADS_ROOT` to `{STAFF_DATA_ROOT}/ci` in Helpdesk `.env` |
 | Staff-portal photos 404 | Set `STAFF_PORTAL_UPLOADS_ROOT`; use `staff.media.photo` route (not direct `/uploads/staff/`) |
 | Migration created root-owned files | Re-run `fix-staff-storage-permissions.sh` and `fix-ci-app-permissions.sh` |
+| Staff Portal dashboard HTTP 500 | Run `staff-portal/fix-storage-permissions.sh` (sudo on macOS if `bootstrap/cache` is `_www`-owned) |
 
 ---
 
@@ -295,6 +296,8 @@ cd ../../staff-portal && composer dump-autoload -o
 | `scripts/storage/fix-staff-storage-permissions.sh` | Host data dirs under `/var/staffdata` |
 | `scripts/storage/migrate-all.sh` | Copy all module uploads to host |
 | `scripts/fix-ci-app-permissions.sh` | CI3 `application/cache` and `application/logs` |
+| `staff-portal/fix-storage-permissions.sh` | Staff Portal Laravel `storage/`, `bootstrap/cache`, host public disk |
+| `helpdesk/fix-storage-permissions.sh` | Helpdesk Laravel storage + host public disk |
 | `apm/fix-storage-permissions.sh` | APM Laravel `storage/` and `bootstrap/cache` |
 
 ---

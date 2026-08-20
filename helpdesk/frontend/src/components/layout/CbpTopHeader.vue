@@ -143,7 +143,7 @@ function onLogoError(e: Event) {
 <template>
   <header class="cbp-topbar">
     <div class="cbp-topbar-inner">
-      <RouterLink to="/" class="cbp-topbar-logo" title="Help Desk — Overview">
+      <RouterLink to="/" class="cbp-topbar-logo" title="HelpDesk — Overview">
         <img
           :src="`${base}/assets/images/AU_CDC_Logo-800.png`"
           width="200"

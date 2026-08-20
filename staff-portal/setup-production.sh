@@ -128,7 +128,7 @@ if [[ "$(id -u)" -eq 0 ]]; then
     warn "running as root — COMPOSER_ALLOW_SUPERUSER=1 so module autoload plugins stay enabled"
 fi
 
-chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/dev/null || true
+chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
 chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
 
 export APP_ENV APP_DEBUG STAFF_PORTAL_PRODUCTION_SETUP
@@ -207,6 +207,29 @@ if ! (
     die "Modules autoload missing (merge-plugin). Re-run as non-root, or: cd backend && COMPOSER_ALLOW_SUPERUSER=1 composer dump-autoload -o"
 fi
 
+# Resolve web-server ownership (Linux www-data vs macOS Homebrew _www).
+group_exists() {
+    getent group "$1" >/dev/null 2>&1 || id -g "$1" >/dev/null 2>&1
+}
+if ! id -u "$STAFF_PORTAL_USER" >/dev/null 2>&1; then
+    if id -u _www >/dev/null 2>&1; then
+        STAFF_PORTAL_USER="_www"
+    else
+        STAFF_PORTAL_USER="$(id -un)"
+    fi
+fi
+if ! group_exists "$STAFF_PORTAL_GROUP"; then
+    if group_exists _www; then
+        STAFF_PORTAL_GROUP="_www"
+    else
+        STAFF_PORTAL_GROUP="$(id -gn)"
+    fi
+fi
+
+log "Storage link + upload dirs (Laravel + host staffdata)"
+export STAFF_PORTAL_USER STAFF_PORTAL_GROUP PHP_BIN
+"$ROOT/fix-storage-permissions.sh" || warn "Storage prep failed — dashboard may 500 until fixed"
+
 # Drop cached config so REDIS_PASSWORD / CACHE_STORE changes always apply
 rm -f "$BACKEND/bootstrap/cache/config.php" 2>/dev/null || true
 
@@ -258,6 +281,7 @@ fi
 
 log "Storage link"
 artisan_safe storage:link --no-interaction 2>/dev/null || true
+"$ROOT/fix-storage-permissions.sh" || warn "Storage link fix failed — run ./fix-storage-permissions.sh"
 
 if [[ "$WITH_DEMO_SEED" -eq 1 ]]; then
     warn "Running DatabaseSeeder (demo data — not for production)"
@@ -314,6 +338,7 @@ fi
 
 if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     log "Caching Laravel config / routes / views"
+    "$ROOT/fix-storage-permissions.sh" || warn "bootstrap/cache not writable — run ./fix-storage-permissions.sh before optimize"
     # nwidart modules register views paths; empty dirs are not in git — create them
     # so `view:cache` does not abort deploy.
     while IFS= read -r -d '' mod_dir; do
@@ -330,42 +355,9 @@ if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
     )
 fi
 
-# Resolve web-server ownership (Linux www-data vs macOS Homebrew _www).
-group_exists() {
-    getent group "$1" >/dev/null 2>&1 || id -g "$1" >/dev/null 2>&1
-}
-if ! id -u "$STAFF_PORTAL_USER" >/dev/null 2>&1; then
-    if id -u _www >/dev/null 2>&1; then
-        STAFF_PORTAL_USER="_www"
-    else
-        STAFF_PORTAL_USER="$(id -un)"
-    fi
-fi
-if ! group_exists "$STAFF_PORTAL_GROUP"; then
-    if group_exists _www; then
-        STAFF_PORTAL_GROUP="_www"
-    else
-        STAFF_PORTAL_GROUP="$(id -gn)"
-    fi
-fi
-
 log "Fixing storage permissions ($STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP)"
-fix_perms() {
-    local target="$1"
-    mkdir -p "$target"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        chown -R "$STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP" "$target" || warn "chown failed for $target"
-        chmod -R ug+rwx "$target" || warn "chmod failed for $target"
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo chown -R "$STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP" "$target" || warn "chown failed for $target"
-        sudo chmod -R ug+rwx "$target" || warn "chmod failed for $target"
-    else
-        warn "Not root and no sudo — ensure $target is writable by the web server user"
-        chmod -R ug+rwx "$target" 2>/dev/null || true
-    fi
-}
-fix_perms "$BACKEND/storage"
-fix_perms "$BACKEND/bootstrap/cache"
+export STAFF_PORTAL_USER STAFF_PORTAL_GROUP PHP_BIN
+"$ROOT/fix-storage-permissions.sh" || warn "Run: sudo STAFF_PORTAL_USER=$STAFF_PORTAL_USER STAFF_PORTAL_GROUP=$STAFF_PORTAL_GROUP $ROOT/fix-storage-permissions.sh"
 
 if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
     log "Installing / restarting systemd (queue + scheduler)"
@@ -385,6 +377,7 @@ chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
 # Production defaults to migrate when unset; set MIGRATE_SHARED_STORAGE=false to skip.
 export MIGRATE_SHARED_STORAGE="${MIGRATE_SHARED_STORAGE:-true}"
 "$ROOT/scripts/migrate-shared-storage.sh" || warn "Shared storage migration skipped or failed — see docs/STORAGE.md"
+"$ROOT/fix-storage-permissions.sh" || warn "Host staffdata permissions failed — run ./fix-storage-permissions.sh"
 
 # shellcheck source=scripts/lib/urls.sh
 source "$ROOT/scripts/lib/urls.sh"

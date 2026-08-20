@@ -7,7 +7,7 @@ withDefaults(
     apiHref?: string | null
   }>(),
   {
-    product: 'Help Desk',
+    product: 'HelpDesk',
     apiHref: null,
   },
 )

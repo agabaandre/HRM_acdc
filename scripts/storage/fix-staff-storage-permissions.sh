@@ -10,7 +10,9 @@ sudo mkdir -p \
   "${STAFF_DATA_ROOT}/staff-portal" \
   "${STAFF_DATA_ROOT}/backups/files"
 
-sudo chown -R "${OWNER}:${GROUP}" "${STAFF_HOST_DATA_ROOT}"
-chmod -R ug+rwX "${STAFF_HOST_DATA_ROOT}" 2>/dev/null || true
+sudo chown -R "${OWNER}:${GROUP}" "${STAFF_DATA_ROOT}"
+chmod -R ug+rwX "${STAFF_DATA_ROOT}" 2>/dev/null || true
+# Site root must be traversable by the web server (e.g. Apache _www).
+chmod ug+rwX "${STAFF_HOST_DATA_ROOT}" 2>/dev/null || sudo chmod ug+rwX "${STAFF_HOST_DATA_ROOT}" 2>/dev/null || true
 
 log "Permissions set on ${STAFF_DATA_ROOT}"

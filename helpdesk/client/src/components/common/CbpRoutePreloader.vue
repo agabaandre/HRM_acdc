@@ -23,7 +23,7 @@ const fullFrame = computed(() => route.meta.chrome === false)
           <div class="hd-route-loader__spinner" aria-hidden="true">
             <span class="hd-route-loader__ring" />
           </div>
-          <p class="hd-route-loader__label">Help Desk</p>
+          <p class="hd-route-loader__label">HelpDesk</p>
         </div>
       </div>
     </Transition>

@@ -52,7 +52,7 @@ const homeLede = computed(() => {
   if (isAgentHome.value) {
     return 'Log and track service requests across Africa CDC business units. Triage assigned tickets on your board below, browse FAQs, or open the agent desk for your full workload.'
   }
-  return 'Log and track service requests across Africa CDC business units. Ask our AI assistant for guided troubleshooting, browse FAQs below, or create a ticket for the help desk team.'
+  return 'Log and track service requests across Africa CDC business units. Ask our AI assistant for guided troubleshooting, browse FAQs below, or create a ticket for the HelpDesk team.'
 })
 
 const agentShortcuts: HomeShortcut[] = [
@@ -199,7 +199,7 @@ onMounted(() => {
     <v-card class="hd-home-hero" variant="flat" rounded="lg">
       <v-card-text class="pa-0">
         <CbpBadgeStrip product="ITSM" />
-        <CbpPageHeading title="Help Desk">
+        <CbpPageHeading title="HelpDesk">
           <template #lede>
             <span class="hd-home-lede">{{ homeLede }}</span>
           </template>
@@ -211,7 +211,7 @@ onMounted(() => {
       <v-card-text>
         <p class="gate-title">No active session in this app</p>
         <p class="gate-text">
-          Open the Staff portal, sign in there, then choose <strong>Help Desk</strong> from your home dashboard.
+          Open the Staff portal, sign in there, then choose <strong>HelpDesk</strong> from your home dashboard.
         </p>
         <v-btn :href="portalHref" color="primary" variant="flat" size="large">Go to Staff portal home</v-btn>
       </v-card-text>

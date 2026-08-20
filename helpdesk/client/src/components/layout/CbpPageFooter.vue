@@ -4,6 +4,6 @@ const year = new Date().getFullYear()
 
 <template>
   <footer class="cbp-page-footer">
-    <p>Copyright © Africa CDC {{ year }}. All rights reserved. · Help Desk</p>
+    <p>Copyright © Africa CDC {{ year }}. All rights reserved. · HelpDesk</p>
   </footer>
 </template>

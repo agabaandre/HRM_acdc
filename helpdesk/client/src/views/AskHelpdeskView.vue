@@ -88,7 +88,7 @@ async function sendQuestion(text: string): Promise<void> {
       suggestTicket: payload.suggest_ticket,
     })
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Ask Help Desk could not respond. Try again or log a ticket.'))
+    notifyError(apiErrorMessage(e, 'Ask HelpDesk could not respond. Try again or log a ticket.'))
   } finally {
     sending.value = false
     await scrollToBottom()
@@ -142,7 +142,7 @@ onMounted(() => {
 <template>
   <div>
     <CbpBadgeStrip product="ITSM · AI" />
-    <CbpPageHeading title="Ask Help Desk">
+    <CbpPageHeading title="Ask HelpDesk">
       <template #lede>
         Describe your issue in plain language. Our assistant searches the knowledge base and suggests
         troubleshooting steps before you open a ticket.
@@ -150,14 +150,14 @@ onMounted(() => {
     </CbpPageHeading>
 
     <div class="hd-ask-layout">
-      <v-card class="hd-ask-panel" variant="outlined" aria-label="Ask Help Desk conversation">
+      <v-card class="hd-ask-panel" variant="outlined" aria-label="Ask HelpDesk conversation">
         <v-card-item class="hd-ask-header">
           <template #prepend>
             <v-avatar rounded="lg" color="primary" variant="tonal" size="40">
               <v-icon icon="mdi-robot" size="22" />
             </v-avatar>
           </template>
-          <v-card-title class="hd-ask-header-title">Help Desk assistant</v-card-title>
+          <v-card-title class="hd-ask-header-title">HelpDesk assistant</v-card-title>
           <v-card-subtitle class="hd-ask-header-sub">
             {{ messages.length ? `${messages.length} message${messages.length === 1 ? '' : 's'}` : 'Knowledge-base powered answers' }}
           </v-card-subtitle>
@@ -224,7 +224,7 @@ onMounted(() => {
               :variant="m.role === 'user' ? 'flat' : 'outlined'"
               rounded="lg"
             >
-              <span class="hd-bubble-label">{{ m.role === 'user' ? 'You' : 'Help Desk assistant' }}</span>
+              <span class="hd-bubble-label">{{ m.role === 'user' ? 'You' : 'HelpDesk assistant' }}</span>
               <p class="hd-bubble-text">{{ m.text }}</p>
 
               <ol v-if="m.steps && m.steps.length" class="hd-steps">
@@ -312,7 +312,7 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
-      <aside class="hd-ask-side" aria-label="Ask Help Desk tips">
+      <aside class="hd-ask-side" aria-label="Ask HelpDesk tips">
         <v-card variant="outlined" class="hd-side-card">
           <v-card-title class="hd-side-card-title">Suggested prompts</v-card-title>
           <v-card-text class="hd-side-card-body">

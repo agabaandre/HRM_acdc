@@ -7,7 +7,7 @@
 @section('content')
     <p>Hello <strong>{{ $agent->name }}</strong>,</p>
 
-    <p>This is your daily reminder of tickets still assigned to you on the Service Desk:</p>
+    <p>This is your daily reminder of tickets still assigned to you on HelpDesk:</p>
 
     <ul style="margin: 0; padding-left: 1.25rem;">
         @foreach ($tickets as $row)

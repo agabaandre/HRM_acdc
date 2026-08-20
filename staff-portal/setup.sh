@@ -48,6 +48,10 @@ CACHE_STORE=array QUEUE_CONNECTION=sync SESSION_DRIVER=array REDIS_PASSWORD= \
   php artisan module:migrate --no-interaction --force 2>/dev/null \
   || CACHE_STORE=array QUEUE_CONNECTION=sync SESSION_DRIVER=array REDIS_PASSWORD= php artisan module:migrate --force \
   || echo "warning: module:migrate failed or already applied — continuing" >&2
+
+chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+"$ROOT/fix-storage-permissions.sh" || echo "warning: run ./fix-storage-permissions.sh with sudo if the dashboard returns 500" >&2
+
 php artisan storage:link --no-interaction 2>/dev/null || true
 
 echo "==> Frontend (npm install + production build)"
@@ -74,6 +78,9 @@ npm run build
 echo "==> Shared file storage (CI3 + APM → host path outside git)"
 chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
 "$ROOT/scripts/migrate-shared-storage.sh" || true
+
+chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+"$ROOT/fix-storage-permissions.sh" || echo "warning: run ./fix-storage-permissions.sh with sudo if the dashboard returns 500" >&2
 
 echo "==> Systemd (queue worker + scheduler on Linux)"
 "$ROOT/scripts/install-systemd.sh" || true

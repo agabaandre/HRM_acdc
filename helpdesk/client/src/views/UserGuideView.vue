@@ -10,8 +10,8 @@ const slides = [
     lede: 'Use your existing Staff portal session — no separate password for Helpdesk.',
     steps: [
       { title: 'Go to the Staff portal', text: 'Sign in at your usual Africa CDC Staff home (same login as Finance and APM).' },
-      { title: 'Open Help Desk', text: 'From the home dashboard, choose Help Desk.' },
-      { title: 'Explore the home page', text: 'Browse FAQs, try Ask Help Desk (AI assistant), or jump to Create ticket.' },
+      { title: 'Open HelpDesk', text: 'From the home dashboard, choose HelpDesk.' },
+      { title: 'Explore the home page', text: 'Browse FAQs, try Ask HelpDesk (AI assistant), or jump to Create ticket.' },
     ],
     tip: 'If you see “No active session”, return to the Staff portal and open Helpdesk from there.',
   },
@@ -28,7 +28,7 @@ const slides = [
       { title: 'Describe the problem & add a screenshot', text: 'Explain what happened and when. Paste a screenshot (⌘V / Ctrl+V) or drag an image — up to 10 MB.' },
       { title: 'Submit', text: 'By default the ticket is for you. Use “another staff member” only when logging on someone else’s behalf. You can also email IT & MIS at helpdesk@africacdc.org when email intake is enabled.' },
     ],
-    tip: 'A screenshot saves back-and-forth email. Try Ask Help Desk first if you only need a quick FAQ answer.',
+    tip: 'A screenshot saves back-and-forth email. Try Ask HelpDesk first if you only need a quick FAQ answer.',
   },
   {
     num: 3,
@@ -54,7 +54,7 @@ const slides = [
       { title: 'Agent dashboard', text: 'Open Agent desk for a greeting with your full name, assigned work, KPIs, and the kanban board.' },
       { title: 'Reply & reassign', text: 'Post public comments for the requester or internal notes for the team. Reassign when another agent should own the ticket.' },
       { title: 'Submit resolution', text: 'Document what was fixed. Optionally link a requester IT asset (serial/tag search) when the Business Unit allows it, and publish to the knowledge base if permitted.' },
-      { title: 'Help Desk Modules & live screen', text: 'Use Help Desk Modules → IT Assets / Licenses / Software / Hosting / Innovations when you have access. Open Live screen → All business units for a unified TV board, or pick a unit (e.g. IT Help Desk) so queues stay separate.' },
+      { title: 'HelpDesk Modules & live screen', text: 'Use HelpDesk Modules → IT Assets / Licenses / Software / Hosting / Innovations when you have access. Open Live screen → All business units for a unified TV board, or pick a unit (e.g. IT HelpDesk) so queues stay separate.' },
     ],
     tip: 'Admins: Settings cover business units (mailbox intake, Allow Asset), IT Asset brands, agents, SLA, and Exchange mail.',
   },
