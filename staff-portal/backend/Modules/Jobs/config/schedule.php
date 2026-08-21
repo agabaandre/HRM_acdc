@@ -20,8 +20,11 @@ return [
     /** Base URL for deep links in reminder emails (SPA or CI performance routes). */
     'portal_base_url' => rtrim((string) env('JOBS_PORTAL_BASE_URL', env('STAFF_PORTAL_SPA_URL', env('APP_URL'))), '/').'/',
 
-    /** System inbox appended to many reminder recipients (semicolon-separated OK). */
-    'system_email' => env('JOBS_SYSTEM_EMAIL', env('MAIL_FROM_ADDRESS', 'registry@africacdc.org')),
+    /**
+     * Audit BCC inbox for notification emails (never registry@).
+     * Prefer JOBS_SYSTEM_EMAIL, then MAIL_CC_ADDRESS, else system@africacdc.org.
+     */
+    'system_email' => env('JOBS_SYSTEM_EMAIL', env('MAIL_CC_ADDRESS', 'system@africacdc.org')),
 
     /** Extra recipients on expired-contract notices. */
     'contracts_status_copied_emails' => env('JOBS_CONTRACTS_COPIED_EMAILS', ''),

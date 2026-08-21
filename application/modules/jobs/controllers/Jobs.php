@@ -601,7 +601,7 @@ public function cron_register(){
      */
     private function performance_reminder_allowed_contract_status_ids()
     {
-        return [1, 2, 3, 7];
+        return [1, 2, 7];
     }
 
     /**

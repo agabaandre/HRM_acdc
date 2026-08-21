@@ -17,6 +17,7 @@ class PortalMailer
 
     /**
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     * @param  list<string>  $bcc
      */
     public function send(
         string|array $to,
@@ -24,6 +25,7 @@ class PortalMailer
         string $htmlBody,
         array $attachments = [],
         ?PortalEmailProvider $provider = null,
+        array $bcc = [],
     ): void {
         $resolved = $this->providers->resolveForSend($provider);
         $driver = $resolved['provider']->driver;
@@ -31,17 +33,18 @@ class PortalMailer
         $fromAddress = $resolved['from_address'];
         $fromName = $resolved['from_name'];
         $recipients = is_array($to) ? $to : [$to];
+        $bcc = array_values(array_unique(array_filter(array_map('trim', $bcc))));
 
         match ($driver) {
-            'exchange' => $this->sendExchange($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
-            'smtp', 'zoho' => $this->sendSmtp($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $driver),
-            'log' => $this->sendLog($recipients, $subject, $htmlBody, $attachments),
-            'sendgrid' => $this->sendSendgrid($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
-            'mailgun' => $this->sendMailgun($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
-            'postmark' => $this->sendPostmark($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
-            'mailjet' => $this->sendMailjet($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
-            'ses' => $this->sendViaLaravelMailer('ses', $recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments),
-            'api' => $this->sendCustomApi($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config),
+            'exchange' => $this->sendExchange($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
+            'smtp', 'zoho' => $this->sendSmtp($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $driver, $bcc),
+            'log' => $this->sendLog($recipients, $subject, $htmlBody, $attachments, $bcc),
+            'sendgrid' => $this->sendSendgrid($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
+            'mailgun' => $this->sendMailgun($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
+            'postmark' => $this->sendPostmark($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
+            'mailjet' => $this->sendMailjet($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
+            'ses' => $this->sendViaLaravelMailer('ses', $recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $bcc),
+            'api' => $this->sendCustomApi($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
             'azure', 'google' => throw new RuntimeException(
                 ucfirst($driver).' send is configured for storage; use Exchange/SMTP for payslip delivery, or set a working default provider.'
             ),
@@ -54,6 +57,12 @@ class PortalMailer
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
      */
+    /**
+     * @param  list<string>  $to
+     * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
+     */
     private function sendExchange(
         array $to,
         string $subject,
@@ -62,6 +71,7 @@ class PortalMailer
         string $fromName,
         array $attachments,
         array $config,
+        array $bcc = [],
     ): void {
         $client = new ExchangeGraphMailClient($config);
         $client->send(
@@ -71,7 +81,7 @@ class PortalMailer
             $fromAddress,
             $fromName,
             [],
-            [],
+            $bcc,
             $attachments,
         );
     }
@@ -80,6 +90,12 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     */
+    /**
+     * @param  list<string>  $to
+     * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
     private function sendSmtp(
         array $to,
@@ -90,6 +106,7 @@ class PortalMailer
         array $attachments,
         array $config,
         string $driver,
+        array $bcc = [],
     ): void {
         if ($driver === 'zoho' && ($config['mode'] ?? 'smtp') === 'api') {
             throw new RuntimeException('Zoho API mode is not implemented for payslip attachments; switch mode to smtp.');
@@ -108,12 +125,13 @@ class PortalMailer
             ],
         ]);
 
-        $this->sendViaLaravelMailer('portal_smtp', $to, $subject, $htmlBody, $fromAddress, $fromName, $attachments);
+        $this->sendViaLaravelMailer('portal_smtp', $to, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $bcc);
     }
 
     /**
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     * @param  list<string>  $bcc
      */
     private function sendViaLaravelMailer(
         string $mailer,
@@ -123,9 +141,13 @@ class PortalMailer
         string $fromAddress,
         string $fromName,
         array $attachments,
+        array $bcc = [],
     ): void {
-        Mail::mailer($mailer)->html($htmlBody, function ($message) use ($to, $subject, $fromAddress, $fromName, $attachments) {
+        Mail::mailer($mailer)->html($htmlBody, function ($message) use ($to, $subject, $fromAddress, $fromName, $attachments, $bcc) {
             $message->to($to)->subject($subject)->from($fromAddress, $fromName);
+            if ($bcc !== []) {
+                $message->bcc($bcc);
+            }
             foreach ($attachments as $attachment) {
                 $message->attachData(
                     $attachment['content'],
@@ -139,11 +161,13 @@ class PortalMailer
     /**
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
+     * @param  list<string>  $bcc
      */
-    private function sendLog(array $to, string $subject, string $htmlBody, array $attachments): void
+    private function sendLog(array $to, string $subject, string $htmlBody, array $attachments, array $bcc = []): void
     {
         Log::info('PortalMailer log transport', [
             'to' => $to,
+            'bcc' => $bcc,
             'subject' => $subject,
             'html_length' => strlen($htmlBody),
             'attachments' => array_map(fn ($a) => $a['name'], $attachments),
@@ -154,11 +178,16 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
-    private function sendSendgrid(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config): void
+    private function sendSendgrid(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config, array $bcc = []): void
     {
+        $personalization = ['to' => array_map(fn ($e) => ['email' => $e], $to)];
+        if ($bcc !== []) {
+            $personalization['bcc'] = array_map(fn ($e) => ['email' => $e], $bcc);
+        }
         $payload = [
-            'personalizations' => [['to' => array_map(fn ($e) => ['email' => $e], $to)]],
+            'personalizations' => [$personalization],
             'from' => ['email' => $fromAddress, 'name' => $fromName],
             'subject' => $subject,
             'content' => [['type' => 'text/html', 'value' => $htmlBody]],
@@ -185,8 +214,9 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
-    private function sendMailgun(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config): void
+    private function sendMailgun(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config, array $bcc = []): void
     {
         $domain = (string) ($config['domain'] ?? '');
         $region = ($config['region'] ?? 'us') === 'eu' ? 'api.eu.mailgun.net' : 'api.mailgun.net';
@@ -196,6 +226,9 @@ class PortalMailer
             ->attach('to', implode(',', $to))
             ->attach('subject', $subject)
             ->attach('html', $htmlBody);
+        if ($bcc !== []) {
+            $request = $request->attach('bcc', implode(',', $bcc));
+        }
 
         foreach ($attachments as $i => $attachment) {
             $request = $request->attach(
@@ -215,8 +248,9 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
-    private function sendPostmark(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config): void
+    private function sendPostmark(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config, array $bcc = []): void
     {
         $payload = [
             'From' => "{$fromName} <{$fromAddress}>",
@@ -225,6 +259,9 @@ class PortalMailer
             'HtmlBody' => $htmlBody,
             'MessageStream' => $config['message_stream'] ?? 'outbound',
         ];
+        if ($bcc !== []) {
+            $payload['Bcc'] = implode(',', $bcc);
+        }
         if ($attachments !== []) {
             $payload['Attachments'] = array_map(fn ($a) => [
                 'Name' => $a['name'],
@@ -247,22 +284,25 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
-    private function sendMailjet(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config): void
+    private function sendMailjet(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config, array $bcc = []): void
     {
-        $payload = [
-            'Messages' => [[
-                'From' => ['Email' => $fromAddress, 'Name' => $fromName],
-                'To' => array_map(fn ($e) => ['Email' => $e], $to),
-                'Subject' => $subject,
-                'HTMLPart' => $htmlBody,
-                'Attachments' => array_map(fn ($a) => [
-                    'ContentType' => $a['content_type'] ?? 'application/octet-stream',
-                    'Filename' => $a['name'],
-                    'Base64Content' => base64_encode($a['content']),
-                ], $attachments),
-            ]],
+        $message = [
+            'From' => ['Email' => $fromAddress, 'Name' => $fromName],
+            'To' => array_map(fn ($e) => ['Email' => $e], $to),
+            'Subject' => $subject,
+            'HTMLPart' => $htmlBody,
+            'Attachments' => array_map(fn ($a) => [
+                'ContentType' => $a['content_type'] ?? 'application/octet-stream',
+                'Filename' => $a['name'],
+                'Base64Content' => base64_encode($a['content']),
+            ], $attachments),
         ];
+        if ($bcc !== []) {
+            $message['Bcc'] = array_map(fn ($e) => ['Email' => $e], $bcc);
+        }
+        $payload = ['Messages' => [$message]];
 
         $res = Http::withBasicAuth((string) ($config['api_key'] ?? ''), (string) ($config['secret_key'] ?? ''))
             ->post('https://api.mailjet.com/v3.1/send', $payload);
@@ -276,8 +316,9 @@ class PortalMailer
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
-    private function sendCustomApi(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config): void
+    private function sendCustomApi(array $to, string $subject, string $htmlBody, string $fromAddress, string $fromName, array $attachments, array $config, array $bcc = []): void
     {
         $base = rtrim((string) ($config['base_url'] ?? ''), '/');
         $path = (string) ($config['send_path'] ?? '/mail/send');
@@ -296,6 +337,7 @@ class PortalMailer
 
         $res = $request->post($url, [
             'to' => $to,
+            'bcc' => $bcc,
             'subject' => $subject,
             'html' => $htmlBody,
             'from' => ['email' => $fromAddress, 'name' => $fromName],

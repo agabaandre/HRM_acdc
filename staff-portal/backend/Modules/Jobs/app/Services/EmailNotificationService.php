@@ -61,20 +61,59 @@ class EmailNotificationService
 
     public function systemEmail(): string
     {
-        return trim((string) config('jobs.schedule.system_email'));
+        $sys = strtolower(trim((string) config('jobs.schedule.system_email')));
+        if ($sys === '' || $this->isBlockedAuditAddress($sys) || $this->isFromAddressNotAuditBcc($sys)) {
+            return 'system@africacdc.org';
+        }
+
+        return $sys;
     }
 
+    /**
+     * Append the audit BCC inbox to a semicolon-separated recipient list.
+     * registry@africacdc.org is never appended (use system@ only).
+     */
     public function appendSystemInbox(string $emailTo): string
     {
-        $sys = $this->systemEmail();
-        if ($sys === '') {
-            return $emailTo;
-        }
-        if (stripos($emailTo, $sys) !== false) {
-            return $emailTo;
+        $parts = preg_split('/[;,]+/', $emailTo) ?: [];
+        $cleaned = [];
+        foreach ($parts as $part) {
+            $email = strtolower(trim($part));
+            if ($email === '' || $this->isBlockedAuditAddress($email)) {
+                continue;
+            }
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+            $cleaned[] = $email;
         }
 
-        return rtrim($emailTo, ';').';'.$sys;
+        $sys = $this->systemEmail();
+        if ($sys !== '' && ! in_array($sys, $cleaned, true)) {
+            $cleaned[] = $sys;
+        }
+
+        return implode(';', array_values(array_unique($cleaned)));
+    }
+
+    public function isBlockedAuditAddress(string $email): bool
+    {
+        $email = strtolower(trim($email));
+
+        return $email === 'registry@africacdc.org'
+            || str_ends_with($email, '@registry.africacdc.org');
+    }
+
+    /**
+     * MAIL_FROM / notifications@ must not be used as the audit BCC.
+     */
+    public function isFromAddressNotAuditBcc(string $email): bool
+    {
+        $email = strtolower(trim($email));
+        $from = strtolower(trim((string) (config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', ''))));
+
+        return $email === 'notifications@africacdc.org'
+            || ($from !== '' && $email === $from);
     }
 
     public function purgeTestRecipients(): void

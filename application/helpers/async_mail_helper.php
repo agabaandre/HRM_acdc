@@ -237,6 +237,56 @@ if (!function_exists('get_exchange_config')) {
 }
 
 /**
+ * Audit BCC for Staff portal mail — always system@africacdc.org, never registry@.
+ */
+if (!function_exists('staff_mail_audit_bcc_address')) {
+    function staff_mail_audit_bcc_address()
+    {
+        $addr = strtolower(trim((string) get_exchange_config('mail_cc_address', 'system@africacdc.org')));
+        $from = strtolower(trim((string) get_exchange_config('mail_from_address', 'notifications@africacdc.org')));
+        if ($addr === ''
+            || $addr === 'registry@africacdc.org'
+            || substr($addr, -22) === '@registry.africacdc.org'
+            || $addr === $from
+            || $addr === 'notifications@africacdc.org'
+        ) {
+            return 'system@africacdc.org';
+        }
+
+        return $addr;
+    }
+}
+
+/**
+ * Drop registry@ from BCC lists and ensure the audit inbox is present.
+ *
+ * @param array $bcc
+ * @return array
+ */
+if (!function_exists('staff_mail_normalize_bcc')) {
+    function staff_mail_normalize_bcc(array $bcc)
+    {
+        $out = [];
+        foreach ($bcc as $email) {
+            $email = strtolower(trim((string) $email));
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+            if ($email === 'registry@africacdc.org' || substr($email, -22) === '@registry.africacdc.org') {
+                continue;
+            }
+            $out[] = $email;
+        }
+        $audit = staff_mail_audit_bcc_address();
+        if ($audit !== '' && !in_array($audit, $out, true)) {
+            $out[] = $audit;
+        }
+
+        return array_values(array_unique($out));
+    }
+}
+
+/**
  * Check if Exchange OAuth is properly configured
  * Accesses config values dynamically (like database.php pattern)
  */
@@ -499,7 +549,7 @@ if (!function_exists('send_email_async')) {
         return new Promise(function ($resolve, $reject) use ($to, $subject, $message, $id, $next_run) {
             try {
                 // Get config values dynamically (like database.php pattern)
-                $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+                $mail_cc_address = staff_mail_audit_bcc_address();
                 $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
                 $mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
                 
@@ -525,7 +575,7 @@ if (!function_exists('send_email_async')) {
                         }
                     }
                 }
-                $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
+                $bccArray = staff_mail_normalize_bcc($bccArray);
                 $ccArray = [];
 
                 // Determine if message is HTML
@@ -564,7 +614,7 @@ if (!function_exists('push_email')) {
     {
         try {
             // Get config values dynamically (like database.php pattern)
-            $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+            $mail_cc_address = staff_mail_audit_bcc_address();
             $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
             $mail_from_name = get_exchange_config('mail_from_name', 'Africa CDC Staff Portal');
             
@@ -590,7 +640,7 @@ if (!function_exists('push_email')) {
                     }
                 }
             }
-            $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
+            $bccArray = staff_mail_normalize_bcc($bccArray);
             $ccArray = [];
 
             // Determine if message is HTML
@@ -640,7 +690,7 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
 {
     try {
         // Get config values dynamically (like database.php pattern)
-        $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+        $mail_cc_address = staff_mail_audit_bcc_address();
         
         // Check if service is configured
         if (!exchange_is_configured()) {
@@ -668,7 +718,7 @@ function exchange_email($to, $from, $subject, $message, $cc = '', $bcc = '', $at
         }
 
         $ccArray = array_values(array_unique(array_filter(array_map('trim', $ccArray))));
-        $bccArray = array_values(array_unique(array_filter(array_map('trim', $bccArray))));
+        $bccArray = staff_mail_normalize_bcc($bccArray);
 
         // Determine if message is HTML
         $isHtml = (strpos($message, '<html') !== false || strpos($message, '<body') !== false || strpos($message, '<p') !== false);
@@ -711,7 +761,7 @@ function exchange_test_email($testEmail = null)
 {
     // Get config values dynamically (like database.php pattern)
     $mail_from_address = get_exchange_config('mail_from_address', 'notifications@africacdc.org');
-    $mail_cc_address = get_exchange_config('mail_cc_address', 'system@africacdc.org');
+    $mail_cc_address = staff_mail_audit_bcc_address();
     
     $testEmail = $testEmail ?: $mail_from_address;
     

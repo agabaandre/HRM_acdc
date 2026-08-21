@@ -117,8 +117,10 @@ class SendQueuedMailService
                 continue;
             }
 
+            [$to, $bcc] = $this->partitionToAndBcc($recipients);
+
             try {
-                $this->mailer->send($recipients, (string) $message->subject, (string) $message->body);
+                $this->mailer->send($to, (string) $message->subject, (string) $message->body, [], null, $bcc);
                 $this->markDispatched((int) $message->id, (string) $message->subject, $message->end_date);
                 $sent++;
                 DB::table('email_notifications')
@@ -158,13 +160,60 @@ class SendQueuedMailService
         $parts = preg_split('/[;,]+/', $raw) ?: [];
         $out = [];
         foreach ($parts as $part) {
-            $email = trim($part);
-            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $out[] = $email;
+            $email = strtolower(trim($part));
+            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
             }
+            if ($this->notifications->isBlockedAuditAddress($email)) {
+                continue;
+            }
+            $out[] = $email;
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * First address is To; remaining addresses (incl. system@) are BCC — CI async_mail parity.
+     * Always BCC system@africacdc.org; never registry@.
+     *
+     * @param  list<string>  $recipients
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    protected function partitionToAndBcc(array $recipients): array
+    {
+        $system = strtolower($this->notifications->systemEmail());
+        $to = [];
+        $bcc = [];
+
+        foreach ($recipients as $email) {
+            if ($email === $system) {
+                $bcc[] = $email;
+
+                continue;
+            }
+            if ($to === []) {
+                $to[] = $email;
+            } else {
+                $bcc[] = $email;
+            }
+        }
+
+        if ($to === [] && $bcc !== []) {
+            // Should not happen for real staff mail; keep deliverable.
+            $to = [array_shift($bcc)];
+        }
+
+        if ($system !== '' && ! in_array($system, $bcc, true) && ! in_array($system, $to, true)) {
+            $bcc[] = $system;
+        }
+
+        $bcc = array_values(array_filter(
+            array_unique($bcc),
+            fn (string $email) => ! $this->notifications->isBlockedAuditAddress($email) && ! in_array($email, $to, true),
+        ));
+
+        return [$to, $bcc];
     }
 
     protected function markDispatched(int $id, string $subject, mixed $endDate): void

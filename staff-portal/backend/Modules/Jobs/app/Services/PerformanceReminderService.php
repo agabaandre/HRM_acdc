@@ -9,8 +9,8 @@ use Modules\Performance\Services\PpaSettingsService;
 
 class PerformanceReminderService
 {
-    /** @var list<int> */
-    private array $allowedStatuses = [1, 2, 3, 7];
+    /** @var list<int> Active / due / under renewal — exclude expired (3) and former/separated (4). */
+    private array $allowedStatuses = [1, 2, 7];
 
     /** @var list<int> */
     private array $excludedContractTypes = [1, 3, 5, 7];
@@ -501,7 +501,7 @@ class PerformanceReminderService
         $staff = DB::table('staff as s')
             ->join(DB::raw($latest.' as latest'), 'latest.staff_id', '=', 's.staff_id')
             ->join('staff_contracts as sc', 'sc.staff_contract_id', '=', 'latest.cid')
-            ->whereIn('sc.status_id', [1, 2])
+            ->whereIn('sc.status_id', [1, 2, 7])
             ->whereNotIn('sc.contract_type_id', $this->excludedContractTypes)
             ->whereRaw("TRIM(COALESCE(s.work_email, '')) != ''")
             ->where('s.work_email', 'not like', 'xx%')

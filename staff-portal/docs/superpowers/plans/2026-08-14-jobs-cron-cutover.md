@@ -42,5 +42,5 @@ php artisan schedule:list
 
 - `JOBS_MAIL_LOGO_URL`
 - `JOBS_PORTAL_BASE_URL` (deep links in emails)
-- `JOBS_SYSTEM_EMAIL`
+- `JOBS_SYSTEM_EMAIL` (audit BCC; defaults to `system@africacdc.org` via `MAIL_CC_ADDRESS` — never `registry@`)
 - `JOBS_CONTRACTS_COPIED_EMAILS`
