@@ -213,8 +213,8 @@ onMounted(load)
         <v-card variant="outlined" class="mb-4">
           <v-card-text>
             <div class="d-flex align-center ga-4 mb-4">
-              <v-avatar size="72" color="primary">
-                <v-img v-if="photoUrl" :src="photoUrl" alt="" />
+              <v-avatar size="108" rounded="lg" color="primary" class="profile-avatar">
+                <v-img v-if="photoUrl" :src="photoUrl" alt="" cover />
                 <span v-else class="text-h6">{{ displayName.slice(0, 2).toUpperCase() }}</span>
               </v-avatar>
               <div>
@@ -462,6 +462,10 @@ onMounted(load)
 </template>
 
 <style scoped>
+.profile-avatar :deep(.v-img__img) {
+  object-fit: cover;
+  object-position: center 26%;
+}
 .profile-summary-grid {
   display: grid;
   gap: 0.7rem 1.25rem;

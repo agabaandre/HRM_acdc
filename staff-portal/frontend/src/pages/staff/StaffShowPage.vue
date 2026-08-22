@@ -685,7 +685,7 @@ onMounted(() => void load())
       <v-sheet border rounded class="pa-4 mb-4 biodata-card">
         <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
           <div class="d-flex align-start ga-3">
-            <v-avatar size="94" rounded="lg" class="biodata-avatar">
+            <v-avatar size="108" rounded="lg" class="biodata-avatar">
               <v-img v-if="photoUrl" :src="photoUrl" alt="" cover />
               <span v-else class="text-h6">{{ String(staff.fname || fullName || '?').slice(0, 1) }}</span>
             </v-avatar>
@@ -1719,7 +1719,7 @@ onMounted(() => void load())
 }
 .biodata-avatar :deep(.v-img__img) {
   object-fit: cover;
-  object-position: center 46%;
+  object-position: center 26%;
 }
 .section-heading {
   display: flex;
