@@ -112,7 +112,6 @@ const router = createRouter({
         requiresAuth: true,
         title: 'Leave balances',
         anyPermission: [96],
-        anyRole: [10, 20, 22],
         skipHrBypass: true,
         module: 'leave',
       },
@@ -376,18 +375,24 @@ router.beforeEach(async (to) => {
     const anyRoles = to.meta.anyRole as number[] | undefined
     const roleOk = !!anyRoles?.length && anyRoles.includes(roleId)
     const anyPerm = to.meta.anyPermission as Array<number | string> | undefined
-    if (anyPerm?.length) {
-      const skipHrBypass = !!to.meta.skipHrBypass
+    const skipHrBypass = !!to.meta.skipHrBypass
+    const perm = to.meta.permission as number | undefined
+    if (skipHrBypass) {
+      const required = anyPerm?.length ? anyPerm : perm !== undefined ? [perm] : []
+      if (!required.some((p) => auth.hasPermission(p))) {
+        return { name: 'home' }
+      }
+    } else if (anyPerm?.length) {
       const ok =
-        (!skipHrBypass && (isHr || isSystemAdmin)) ||
+        isHr ||
+        isSystemAdmin ||
         roleOk ||
         anyPerm.some((p) => auth.hasPermission(p)) ||
         // Legacy soft access: linked staff can open Leave self-service without 37 yet.
         ((to.name === 'leave' || to.name === 'leave-apply') && hasStaff)
       if (!ok) return { name: 'home' }
     }
-    const perm = to.meta.permission as number | undefined
-    if (perm !== undefined) {
+    if (!skipHrBypass && perm !== undefined) {
       const leaveSelfService =
         (to.name === 'leave-apply' || to.name === 'leave') && (isHr || hasStaff)
       if (!auth.hasPermission(perm) && !leaveSelfService && !isHr && !isSystemAdmin && !roleOk) {

@@ -22,5 +22,6 @@
 /assets
 /public-spa
 /index.html
+/maps
 *.log
 Thumbs.db

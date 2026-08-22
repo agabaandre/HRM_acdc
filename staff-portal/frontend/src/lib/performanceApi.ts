@@ -67,7 +67,9 @@ export interface PerformanceContract {
   division_id?: number | null
   division_name?: string | null
   first_supervisor?: number | null
+  first_supervisor_name?: string | null
   second_supervisor?: number | null
+  second_supervisor_name?: string | null
   funder_id?: number | null
   funder?: string | null
   contract_type_id?: number | null

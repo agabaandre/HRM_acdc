@@ -2,12 +2,14 @@
 
 namespace Modules\Leave\Support;
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Support\PortalPermission;
 
 class LeaveAccess
 {
-    /** System Administrator, HR Manager, HR Admin. */
+    /** System Administrator, HR Manager, HR Admin — groups that receive permission 96. */
     public const BALANCES_ADMIN_ROLES = [10, 20, 22];
 
     public static function isHr(): bool
@@ -78,8 +80,73 @@ class LeaveAccess
 
     public static function canManageBalances(): bool
     {
-        return PortalPermission::can(LeavePermissions::MANAGE_BALANCES)
-            || self::isBalancesAdminRole(self::currentRoleId());
+        return PortalPermission::can(LeavePermissions::MANAGE_BALANCES);
+    }
+
+    /**
+     * Grant manage_leave_balances (96) to System Administrator + HR groups only.
+     * Removes it from every other group and from per-user grants on other roles.
+     */
+    public static function syncManageBalancesPermission(): void
+    {
+        $permId = LeavePermissions::MANAGE_BALANCES;
+        $groupIds = self::BALANCES_ADMIN_ROLES;
+
+        if (Schema::hasTable('permissions')) {
+            $row = [
+                'id' => $permId,
+                'name' => 'manage_leave_balances',
+                'definition' => 'Manage Leave Balances',
+                'module' => 'leave',
+            ];
+            $existing = DB::table('permissions')->where('id', $permId)->first();
+            if ($existing) {
+                DB::table('permissions')->where('id', $permId)->update([
+                    'name' => $row['name'],
+                    'definition' => $row['definition'],
+                    'module' => $row['module'],
+                ]);
+            } elseif (! DB::table('permissions')->where('name', $row['name'])->exists()) {
+                DB::table('permissions')->insert($row);
+            }
+        }
+
+        if (Schema::hasTable('user_groups') && Schema::hasTable('group_permissions')) {
+            foreach ($groupIds as $groupId) {
+                if (! DB::table('user_groups')->where('id', $groupId)->exists()) {
+                    continue;
+                }
+                $exists = DB::table('group_permissions')
+                    ->where('group_id', $groupId)
+                    ->where('permission_id', $permId)
+                    ->exists();
+                if ($exists) {
+                    continue;
+                }
+                DB::table('group_permissions')->insert([
+                    'group_id' => $groupId,
+                    'permission_id' => $permId,
+                    'last_updated' => now(),
+                ]);
+            }
+
+            DB::table('group_permissions')
+                ->where('permission_id', $permId)
+                ->whereNotIn('group_id', $groupIds)
+                ->delete();
+        }
+
+        if (Schema::hasTable('user_permissions') && Schema::hasTable('user')) {
+            $keepUserIds = DB::table('user')
+                ->whereIn('role', $groupIds)
+                ->pluck('user_id');
+
+            $query = DB::table('user_permissions')->where('permission_id', $permId);
+            if ($keepUserIds->isNotEmpty()) {
+                $query->whereNotIn('user_id', $keepUserIds);
+            }
+            $query->delete();
+        }
     }
 
     public static function canManageSettings(): bool

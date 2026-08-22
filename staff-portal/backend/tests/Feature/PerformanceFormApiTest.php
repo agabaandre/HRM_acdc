@@ -31,6 +31,14 @@ class PerformanceFormApiTest extends TestCase
     {
         parent::setUp();
 
+        config([
+            'database.default' => 'sqlite',
+            'database.connections.sqlite.database' => ':memory:',
+            'app.key' => 'base64:'.base64_encode(str_repeat('a', 32)),
+        ]);
+        DB::purge();
+        DB::reconnect();
+
         $this->withoutMiddleware();
         $this->createTables();
         $this->seedFixtures();
@@ -70,6 +78,8 @@ class PerformanceFormApiTest extends TestCase
         $this->assertSame('No', $payload['data']['form']['training_recommended']);
         $this->assertTrue($payload['data']['can_save']);
         $this->assertSame(1000, $payload['data']['contract']['staff_contract_id']);
+        $this->assertSame('Alice Supervisor', $payload['data']['contract']['first_supervisor_name']);
+        $this->assertSame('Bob Supervisor', $payload['data']['contract']['second_supervisor_name']);
         $this->assertCount(5, $payload['data']['form']['objectives']);
 
         $this->assertDatabaseMissing('ppa_entries', [
@@ -124,6 +134,8 @@ class PerformanceFormApiTest extends TestCase
         $this->assertSame('ppa-entry-100', $payload['data']['entry']['entry_id']);
         $this->assertSame(100, $payload['data']['form']['staff_id']);
         $this->assertSame(50, $payload['data']['form']['supervisor_id']);
+        $this->assertSame('Alice Supervisor', $payload['data']['contract']['first_supervisor_name']);
+        $this->assertSame('Bob Supervisor', $payload['data']['contract']['second_supervisor_name']);
         $this->assertSame(1, $payload['data']['form']['required_skills'][0]);
         $this->assertSame('Yes', $payload['data']['form']['training_recommended']);
         $this->assertSame('Ship staffing dashboard', $payload['data']['form']['objectives'][1]['objective']);
@@ -134,6 +146,48 @@ class PerformanceFormApiTest extends TestCase
         $this->assertFalse($payload['data']['can_consent']);
         $this->assertSame('draft', $payload['data']['workflow']['state']['step']);
         $this->assertCount(1, $payload['data']['catalogs']['skills']);
+    }
+
+    public function test_show_midterm_resolves_supervisor_names_not_ids(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-midterm-names',
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+            'draft_status' => 2,
+            'staff_sign_off' => 1,
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        $response = app(PerformanceFormApiController::class)->show(
+            'ppa-entry-midterm-names',
+            Request::create('/api/v1/performance/entries/ppa-entry-midterm-names', 'GET', [
+                'phase' => 'midterm',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('midterm', $payload['data']['phase']);
+        $this->assertSame(50, $payload['data']['form']['supervisor_id']);
+        $this->assertSame(51, $payload['data']['form']['supervisor2_id']);
+        $this->assertSame('Alice Supervisor', $payload['data']['contract']['first_supervisor_name']);
+        $this->assertSame('Bob Supervisor', $payload['data']['contract']['second_supervisor_name']);
+        $this->assertIsInt($payload['data']['contract']['first_supervisor']);
+        $this->assertIsInt($payload['data']['contract']['second_supervisor']);
     }
 
     public function test_decode_skill_ids_casts_quoted_json_ids_to_integers(): void
@@ -517,6 +571,7 @@ class PerformanceFormApiTest extends TestCase
             $table->string('SAPNO')->nullable();
             $table->string('fname')->nullable();
             $table->string('lname')->nullable();
+            $table->string('photo')->nullable();
             $table->date('initiation_date')->nullable();
             $table->string('work_email')->nullable();
         });

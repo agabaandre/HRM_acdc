@@ -403,6 +403,10 @@ html.helpdesk-theme-dark .cbp-theme-btn.active {
   flex-shrink: 0;
 }
 
+.cbp-topbar-avatar .cbp-avatar__img {
+  object-position: center 46%;
+}
+
 .cbp-topbar-user-name {
   font-weight: var(--hd-topbar-font-weight, 500);
   font-size: var(--hd-topbar-user-font-size, 15px);

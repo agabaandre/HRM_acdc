@@ -592,6 +592,11 @@ onMounted(() => {
   align-items: center;
 }
 
+.staff-photo-cell :deep(.cbp-avatar) {
+  width: 35.2px;
+  height: 35.2px;
+}
+
 .staff-photo-cell :deep(img) {
   width: 100%;
   height: 100%;

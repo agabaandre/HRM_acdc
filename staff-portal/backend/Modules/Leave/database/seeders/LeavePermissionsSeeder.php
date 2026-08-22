@@ -4,6 +4,7 @@ namespace Modules\Leave\Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Modules\Leave\Support\LeaveAccess;
 use Modules\Leave\Support\LeavePermissions;
 
 /**
@@ -28,6 +29,7 @@ class LeavePermissionsSeeder extends Seeder
                 LeavePermissions::MANAGE_HOLIDAYS,
             ],
         );
+        LeaveAccess::syncManageBalancesPermission();
     }
 
     private function upsertCatalog(): void

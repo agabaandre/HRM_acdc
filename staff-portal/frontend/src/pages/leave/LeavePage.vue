@@ -61,7 +61,6 @@ const canViewAll = computed(
 )
 const canManageBalances = computed(() =>
   canManageLeaveBalances({
-    roleId: auth.me?.profile?.role_id,
     hasPermission: (code) => auth.hasPermission(code),
   }),
 )

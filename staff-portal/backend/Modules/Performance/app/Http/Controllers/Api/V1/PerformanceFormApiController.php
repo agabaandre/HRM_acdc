@@ -774,7 +774,11 @@ class PerformanceFormApiController extends Controller
                 (int) ($resolved['supervisor_2'] ?? 0),
                 $forms
             ),
-            'contract' => (array) $contract,
+            'contract' => $this->contractWithSupervisorNames(
+                (array) $contract,
+                (int) ($resolved['supervisor_1'] ?? 0),
+                (int) ($resolved['supervisor_2'] ?? 0),
+            ),
             'contract_missing' => $contractMissing,
             'catalogs' => [
                 'skills' => $this->normalizeRows($forms->trainingSkills()),
@@ -867,6 +871,8 @@ class PerformanceFormApiController extends Controller
             PerformancePhase::Endterm => $endreadonly,
         };
 
+        $form = $this->formStateFromEntry($entry, $phase, $forms);
+
         return [
             'phase' => $phase->value,
             'phase_label' => $phase->label(),
@@ -881,8 +887,12 @@ class PerformanceFormApiController extends Controller
                 'midterm_draft_status' => (int) ($entry->midterm_draft_status ?? 1),
                 'endterm_draft_status' => (int) ($entry->endterm_draft_status ?? 1),
             ],
-            'form' => $this->formStateFromEntry($entry, $phase, $forms),
-            'contract' => (array) $contract,
+            'form' => $form,
+            'contract' => $this->contractWithSupervisorNames(
+                (array) $contract,
+                (int) ($form['supervisor_id'] ?? 0),
+                (int) ($form['supervisor2_id'] ?? 0),
+            ),
             'contract_missing' => $contractMissing,
             'catalogs' => [
                 'skills' => $this->normalizeRows($forms->trainingSkills()),
@@ -910,6 +920,21 @@ class PerformanceFormApiController extends Controller
             'period_label' => PerformancePeriod::toLabel((string) $entry->performance_period),
             'period_end_year' => $this->periodEndYear((string) $entry->performance_period),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $contract
+     * @return array<string, mixed>
+     */
+    protected function contractWithSupervisorNames(array $contract, int $supervisor1Id, int $supervisor2Id): array
+    {
+        $supervisors = app(SupervisorResolver::class);
+        $firstId = $supervisor1Id ?: (int) ($contract['first_supervisor'] ?? 0);
+        $secondId = $supervisor2Id ?: (int) ($contract['second_supervisor'] ?? 0);
+        $contract['first_supervisor_name'] = $supervisors->staffName($firstId ?: null);
+        $contract['second_supervisor_name'] = $supervisors->staffName($secondId ?: null);
+
+        return $contract;
     }
 
     /**

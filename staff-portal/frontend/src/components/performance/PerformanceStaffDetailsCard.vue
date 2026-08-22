@@ -47,9 +47,9 @@ withDefaults(
           </tr>
           <tr>
             <th class="perf-label">{{ supervisorLabel }}</th>
-            <td>{{ contract.first_supervisor || form.supervisor_id || '—' }}</td>
+            <td>{{ contract.first_supervisor_name || '—' }}</td>
             <th class="perf-label">Second Supervisor</th>
-            <td>{{ contract.second_supervisor || form.supervisor2_id || '—' }}</td>
+            <td>{{ contract.second_supervisor_name || '—' }}</td>
           </tr>
           <tr>
             <th class="perf-label">Funder</th>

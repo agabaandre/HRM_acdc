@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
@@ -21,6 +21,7 @@ import {
 } from '@/lib/leaveApi'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const year = ref(new Date().getFullYear())
 const search = ref('')
@@ -54,7 +55,6 @@ const editRows = ref<
 
 const canAdmin = computed(() =>
   canManageLeaveBalances({
-    roleId: auth.me?.profile?.role_id,
     hasPermission: (code) => auth.hasPermission(code),
   }),
 )
@@ -256,7 +256,7 @@ watch(page, () => void loadDirectory())
 
 onMounted(() => {
   if (!canAdmin.value) {
-    error.value = 'You do not have permission to manage leave balances.'
+    void router.replace({ name: 'home' })
     return
   }
   void loadDirectory()

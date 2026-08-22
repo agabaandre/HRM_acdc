@@ -10,17 +10,9 @@ export const LEAVE_PERMS = {
   MANAGE_HOLIDAYS: 98,
 } as const
 
-/** System Administrator, HR Manager, HR Admin — leave opening-balance admins. */
-export const LEAVE_BALANCE_ADMIN_ROLES = [10, 20, 22] as const
-
 export function canManageLeaveBalances(opts: {
-  roleId?: number | string | null
   hasPermission: (code: number) => boolean
 }): boolean {
-  const roleId = Number(opts.roleId || 0)
-  if ((LEAVE_BALANCE_ADMIN_ROLES as readonly number[]).includes(roleId)) {
-    return true
-  }
   return opts.hasPermission(LEAVE_PERMS.MANAGE_BALANCES)
 }
 
