@@ -111,7 +111,7 @@ export interface LookupColumnMeta {
 
 export async function fetchSettingsHub(): Promise<SettingsHubCard[]> {
   const data = await cachedGet<{ data: SettingsHubCard[] }>(
-    'settings:hub-v5',
+    'settings:hub-v6',
     '/api/v1/settings/hub',
     5 * 60_000,
   )

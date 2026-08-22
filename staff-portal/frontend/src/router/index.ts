@@ -108,7 +108,14 @@ const router = createRouter({
       path: '/leave/admin/balances',
       name: 'leave-admin-balances',
       component: () => import('../pages/leave/LeaveAdminBalancesPage.vue'),
-      meta: { requiresAuth: true, title: 'Leave balances', anyPermission: [96], module: 'leave' },
+      meta: {
+        requiresAuth: true,
+        title: 'Leave balances',
+        anyPermission: [96],
+        anyRole: [10, 20, 22],
+        skipHrBypass: true,
+        module: 'leave',
+      },
     },
     {
       path: '/settings/leave',
@@ -370,9 +377,9 @@ router.beforeEach(async (to) => {
     const roleOk = !!anyRoles?.length && anyRoles.includes(roleId)
     const anyPerm = to.meta.anyPermission as Array<number | string> | undefined
     if (anyPerm?.length) {
+      const skipHrBypass = !!to.meta.skipHrBypass
       const ok =
-        isHr ||
-        isSystemAdmin ||
+        (!skipHrBypass && (isHr || isSystemAdmin)) ||
         roleOk ||
         anyPerm.some((p) => auth.hasPermission(p)) ||
         // Legacy soft access: linked staff can open Leave self-service without 37 yet.

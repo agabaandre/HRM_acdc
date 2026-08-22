@@ -10,7 +10,7 @@ import {
   openClientPdfTable,
 } from '@/lib/clientTableExport'
 import { useAuthStore } from '@/stores/auth'
-import { LEAVE_PERMS } from '@/lib/leavePermissions'
+import { canManageLeaveBalances } from '@/lib/leavePermissions'
 import {
   bulkFillLeaveBalances,
   fetchLeaveAdminDirectory,
@@ -52,11 +52,11 @@ const editRows = ref<
   >
 >([])
 
-const canAdmin = computed(
-  () =>
-    auth.hasPermission(LEAVE_PERMS.MANAGE_BALANCES) ||
-    !!auth.me?.profile?.is_hr ||
-    auth.me?.profile?.role_id === 20,
+const canAdmin = computed(() =>
+  canManageLeaveBalances({
+    roleId: auth.me?.profile?.role_id,
+    hasPermission: (code) => auth.hasPermission(code),
+  }),
 )
 
 const incompleteCount = computed(() => rows.value.filter((r) => !r.balances_complete).length)

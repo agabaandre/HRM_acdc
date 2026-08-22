@@ -7,6 +7,9 @@ use Modules\Core\Support\PortalPermission;
 
 class LeaveAccess
 {
+    /** System Administrator, HR Manager, HR Admin. */
+    public const BALANCES_ADMIN_ROLES = [10, 20, 22];
+
     public static function isHr(): bool
     {
         $user = auth()->user();
@@ -17,6 +20,21 @@ class LeaveAccess
         $role = session('user.role_id') ?? session('user.role') ?? null;
 
         return (int) $role === 20;
+    }
+
+    public static function currentRoleId(): int
+    {
+        $user = auth()->user();
+        if ($user instanceof PortalUser) {
+            return (int) $user->role;
+        }
+
+        return (int) (session('user.role_id') ?? session('user.role') ?? 0);
+    }
+
+    public static function isBalancesAdminRole(?int $roleId): bool
+    {
+        return in_array((int) $roleId, self::BALANCES_ADMIN_ROLES, true);
     }
 
     public static function staffId(): ?int
@@ -60,7 +78,8 @@ class LeaveAccess
 
     public static function canManageBalances(): bool
     {
-        return PortalPermission::can(LeavePermissions::MANAGE_BALANCES) || self::isHr();
+        return PortalPermission::can(LeavePermissions::MANAGE_BALANCES)
+            || self::isBalancesAdminRole(self::currentRoleId());
     }
 
     public static function canManageSettings(): bool

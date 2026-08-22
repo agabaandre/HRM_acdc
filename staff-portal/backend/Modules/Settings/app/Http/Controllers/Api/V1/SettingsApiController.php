@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Core\Support\PortalPermission;
+use Modules\Leave\Support\LeaveAccess;
 use Modules\Performance\Services\PerformanceWorkflowCorrectionService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Support\PerformanceMonth;
@@ -53,6 +54,13 @@ class SettingsApiController extends Controller
             ['to' => '/settings/lookup/training_skills', 'label' => 'Training Skills', 'icon' => 'bx-book'],
             ['to' => '/settings/lookup/au_values', 'label' => 'AU Values', 'icon' => 'bx-star'],
         ];
+
+        if (! LeaveAccess::canManageBalances()) {
+            $cards = array_values(array_filter(
+                $cards,
+                fn (array $card): bool => $card['to'] !== '/leave/admin/balances',
+            ));
+        }
 
         return response()->json(['data' => $cards]);
     }

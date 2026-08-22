@@ -8,7 +8,7 @@ import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
 import { useAuthStore } from '@/stores/auth'
-import { LEAVE_PERMS } from '@/lib/leavePermissions'
+import { canManageLeaveBalances, LEAVE_PERMS } from '@/lib/leavePermissions'
 import {
   decideLeaveRequest,
   fetchLeaveApprovals,
@@ -59,8 +59,11 @@ const canViewAll = computed(
     auth.hasPermission(LEAVE_PERMS.VIEW_ALL) ||
     auth.hasPermission(LEAVE_PERMS.LEGACY_VIEW_ALL),
 )
-const canManageBalances = computed(
-  () => isHr.value || auth.hasPermission(LEAVE_PERMS.MANAGE_BALANCES),
+const canManageBalances = computed(() =>
+  canManageLeaveBalances({
+    roleId: auth.me?.profile?.role_id,
+    hasPermission: (code) => auth.hasPermission(code),
+  }),
 )
 const canManageSettings = computed(
   () =>
