@@ -12,7 +12,7 @@ if [[ ! -f "$DIST/index.html" || ! -d "$DIST/assets" ]]; then
 fi
 
 echo "==> Removing old published SPA files (including broken symlinks)"
-rm -rf "$ROOT/assets" "$ROOT/public-spa"
+rm -rf "$ROOT/assets" "$ROOT/public-spa" "$ROOT/maps"
 # Old mistaken symlink targets
 [[ -L "$ROOT/index.html" ]] && rm -f "$ROOT/index.html"
 
@@ -22,6 +22,17 @@ cp -a "$DIST/." "$ROOT/public-spa/"
 cp -f "$DIST/index.html" "$ROOT/index.html"
 cp -a "$DIST/assets" "$ROOT/assets"
 
+rm -rf "$ROOT/maps"
+if [[ -d "$DIST/maps" ]]; then
+  cp -a "$DIST/maps" "$ROOT/maps"
+  cat > "$ROOT/maps/.htaccess" <<'EOF'
+# Serve Africa map GeoJSON as a static file.
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
+EOF
+fi
+
 # Ensure Apache never rewrites inside assets/
 cat > "$ROOT/assets/.htaccess" <<'EOF'
 # Serve Vite hashed assets as static files only (no rewrite / no SPA fallback).
@@ -30,7 +41,7 @@ cat > "$ROOT/assets/.htaccess" <<'EOF'
 </IfModule>
 EOF
 
-chmod -R a+rX "$ROOT/assets" "$ROOT/public-spa" "$ROOT/index.html" 2>/dev/null || true
+chmod -R a+rX "$ROOT/assets" "$ROOT/public-spa" "$ROOT/index.html" "$ROOT/maps" 2>/dev/null || true
 
 js_count="$(find "$ROOT/assets" -type f -name '*.js' | wc -l | tr -d ' ')"
 css_count="$(find "$ROOT/assets" -type f -name '*.css' | wc -l | tr -d ' ')"

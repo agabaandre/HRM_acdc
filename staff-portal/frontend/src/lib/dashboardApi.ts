@@ -17,6 +17,29 @@ export interface DashboardChartPair {
   [key: string]: string[] | number[]
 }
 
+export interface DashboardMapStation {
+  name: string
+  city: string | null
+  count: number
+}
+
+export interface DashboardMapPoint {
+  code: string
+  iso2: string
+  'iso-a2'?: string
+  'iso-a3'?: string | null
+  name: string
+  value: number
+  on_map?: boolean
+  stations?: DashboardMapStation[]
+}
+
+export interface DashboardMapData {
+  points: DashboardMapPoint[]
+  unmapped: number
+  outside_africa: number
+}
+
 export interface DashboardData {
   staff: number
   two_months: number
@@ -28,6 +51,8 @@ export interface DashboardData {
   staff_by_division: { division: string[]; value: number[] }
   staff_by_member_state: { member_states: string[]; value: number[] }
   staff_by_funder: { funder: string[]; value: number[] }
+  staff_by_duty_station_map?: DashboardMapData
+  staff_by_nationality_map?: DashboardMapData
   birthdays?: Array<{
     id: number
     title: string
@@ -84,7 +109,7 @@ export async function fetchDashboard(params: {
   }
 
   const res = await cachedGet<DashboardResponse>(
-    'dashboard:snapshot',
+    'dashboard:snapshot-maps',
     '/api/v1/dashboard',
     90_000,
     query,

@@ -15,6 +15,9 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
+    # Africa map from Vite public/ (also published to public-spa/maps/)
+    RewriteRule ^maps/([^/]+)$ public-spa/maps/$1 [L]
+
     # Vue Router → spa-static.php (serves index.html, no-cache)
     RewriteRule ^ spa-static.php [L,QSA]
 </IfModule>

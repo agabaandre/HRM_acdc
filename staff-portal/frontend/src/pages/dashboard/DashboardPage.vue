@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
+import PortalAfricaMap from '@/components/molecules/PortalAfricaMap.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   fetchDashboard,
@@ -85,6 +86,8 @@ const byFunder = computed(() =>
 const byMemberState = computed(() =>
   zipChart(data.value?.staff_by_member_state?.member_states, data.value?.staff_by_member_state?.value),
 )
+const dutyStationMap = computed(() => data.value?.staff_by_duty_station_map ?? { points: [], unmapped: 0, outside_africa: 0 })
+const nationalityMap = computed(() => data.value?.staff_by_nationality_map ?? { points: [], unmapped: 0, outside_africa: 0 })
 const byGender = computed(() =>
   (data.value?.staff_by_gender || []).map((r) => ({ label: String(r.name || 'Unknown'), value: Number(r.y) || 0 })),
 )
@@ -269,6 +272,28 @@ onMounted(() => {
       </v-row>
 
       <v-row dense>
+        <v-col cols="12" md="6">
+          <v-sheet border rounded class="pa-3 mb-3">
+            <PortalAfricaMap
+              title="Staff distribution by duty station"
+              :points="dutyStationMap.points"
+              tooltip-mode="stations"
+              :unmapped="dutyStationMap.unmapped"
+              :outside-africa="dutyStationMap.outside_africa"
+            />
+          </v-sheet>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-sheet border rounded class="pa-3 mb-3">
+            <PortalAfricaMap
+              title="Staff by nationality"
+              :points="nationalityMap.points"
+              tooltip-mode="count"
+              :unmapped="nationalityMap.unmapped"
+              :outside-africa="nationalityMap.outside_africa"
+            />
+          </v-sheet>
+        </v-col>
         <v-col cols="12" md="6">
           <v-sheet border rounded class="pa-3 mb-3">
             <PortalHighchart

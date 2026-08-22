@@ -6,6 +6,8 @@ declare global {
   interface Window {
     Highcharts?: {
       chart: (el: HTMLElement | string, options: Record<string, unknown>) => { destroy: () => void }
+      mapChart?: (el: HTMLElement | string, options: Record<string, unknown>) => { destroy: () => void }
+      maps?: Record<string, unknown>
       setOptions?: (opts: Record<string, unknown>) => void
     }
   }

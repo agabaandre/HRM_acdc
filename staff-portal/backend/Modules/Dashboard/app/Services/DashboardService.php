@@ -4,11 +4,24 @@ namespace Modules\Dashboard\Services;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardService
 {
+    /** ISO2 codes present on the Highcharts custom/africa map (excluding overseas France). */
+    private const AFRICA_ISO2 = [
+        'AO', 'BF', 'BI', 'BJ', 'BW', 'CD', 'CF', 'CG', 'CI', 'CM', 'CV', 'DJ', 'DZ',
+        'EG', 'EH', 'ER', 'ET', 'GA', 'GH', 'GM', 'GN', 'GQ', 'GW', 'KE', 'KM', 'LR',
+        'LS', 'LY', 'MA', 'MG', 'ML', 'MR', 'MU', 'MW', 'MZ', 'NA', 'NE', 'NG', 'RW',
+        'SC', 'SD', 'SL', 'SN', 'SO', 'SS', 'ST', 'SX', 'SZ', 'TD', 'TG', 'TN', 'TZ',
+        'UG', 'ZA', 'ZM', 'ZW',
+    ];
+
     /** @var list<int>|null */
     private ?array $latestContractIdsCache = null;
+
+    /** @var array{byIso2: array<string, object>, byIso3: array<string, object>, byName: array<string, object>}|null */
+    private ?array $nationalityLookupsCache = null;
 
     /**
      * @return array<string, mixed>
@@ -43,6 +56,8 @@ class DashboardService
             'staff_by_division' => $this->chartDivision($active),
             'staff_by_member_state' => $this->chartMemberState($active),
             'staff_by_funder' => $this->chartFunder($latestCids, $divisionId, $dutyStationId, $funderId, $jobId),
+            'staff_by_duty_station_map' => $this->chartDutyStationMap($active),
+            'staff_by_nationality_map' => $this->chartNationalityMap($active),
         ];
     }
 
@@ -62,6 +77,8 @@ class DashboardService
             'staff_by_division' => ['division' => [], 'value' => []],
             'staff_by_member_state' => ['member_states' => [], 'value' => []],
             'staff_by_funder' => ['funder' => [], 'value' => []],
+            'staff_by_duty_station_map' => $this->emptyMapPayload(),
+            'staff_by_nationality_map' => $this->emptyMapPayload(),
         ];
     }
 
@@ -234,6 +251,244 @@ class DashboardService
             'funder' => $rows->pluck('funder')->all(),
             'value' => $rows->pluck('no')->map(fn ($v) => (int) $v)->all(),
         ];
+    }
+
+    /**
+     * @return array{points: list<array<string, mixed>>, unmapped: int, outside_africa: int}
+     */
+    protected function emptyMapPayload(): array
+    {
+        return ['points' => [], 'unmapped' => 0, 'outside_africa' => 0];
+    }
+
+    /**
+     * @return array{points: list<array<string, mixed>>, unmapped: int, outside_africa: int}
+     */
+    protected function chartDutyStationMap(Builder $active): array
+    {
+        $lookups = $this->nationalityLookups();
+        $groupCols = ['ds.duty_station_id', 'ds.duty_station_name', 'ds.country'];
+        $select = 'ds.duty_station_id, ds.duty_station_name, ds.country, COUNT(DISTINCT s.staff_id) as n';
+        if (Schema::hasColumn('duty_stations', 'country_iso2')) {
+            $groupCols[] = 'ds.country_iso2';
+            $select = 'ds.duty_station_id, ds.duty_station_name, ds.country, ds.country_iso2, COUNT(DISTINCT s.staff_id) as n';
+        }
+        if (Schema::hasColumn('duty_stations', 'city')) {
+            $groupCols[] = 'ds.city';
+            $select = str_replace(' COUNT(DISTINCT', ' ds.city, COUNT(DISTINCT', $select);
+        }
+
+        $rows = (clone $active)
+            ->leftJoin('duty_stations as ds', 'ds.duty_station_id', '=', 'sc.duty_station_id')
+            ->selectRaw($select)
+            ->groupBy(...$groupCols)
+            ->get();
+
+        $hasCity = Schema::hasColumn('duty_stations', 'city');
+
+        /** @var array<string, array<string, mixed>> $buckets */
+        $buckets = [];
+        $unmapped = 0;
+        foreach ($rows as $row) {
+            $count = (int) $row->n;
+            $iso2 = $this->resolveStationIso2($row, $lookups);
+            if ($iso2 === null) {
+                $unmapped += $count;
+
+                continue;
+            }
+            if (! isset($buckets[$iso2])) {
+                $nat = $lookups['byIso2'][$iso2] ?? null;
+                $buckets[$iso2] = $this->mapPoint($iso2, $nat, (string) ($row->country ?? ''), 0);
+                $buckets[$iso2]['stations'] = [];
+            }
+            $buckets[$iso2]['value'] += $count;
+            $stationName = trim((string) ($row->duty_station_name ?? ''));
+            $city = $hasCity ? trim((string) ($row->city ?? '')) : '';
+            $buckets[$iso2]['stations'][] = [
+                'name' => $stationName !== '' ? $stationName : 'Unknown',
+                'city' => $city !== '' ? $city : null,
+                'count' => $count,
+            ];
+        }
+
+        foreach ($buckets as &$bucket) {
+            usort($bucket['stations'], static function (array $a, array $b): int {
+                return $b['count'] <=> $a['count'] ?: strcmp((string) $a['name'], (string) $b['name']);
+            });
+        }
+        unset($bucket);
+
+        return $this->finalizeMapPayload($buckets, $unmapped);
+    }
+
+    /**
+     * @return array{points: list<array<string, mixed>>, unmapped: int, outside_africa: int}
+     */
+    protected function chartNationalityMap(Builder $active): array
+    {
+        $lookups = $this->nationalityLookups();
+        $groupCols = ['s.nationality_id', 'n.nationality', 'n.iso2'];
+        $select = 's.nationality_id, n.nationality, n.iso2, COUNT(DISTINCT s.staff_id) as n';
+        if (Schema::hasColumn('nationalities', 'iso3')) {
+            $groupCols[] = 'n.iso3';
+            $select = 's.nationality_id, n.nationality, n.iso2, n.iso3, COUNT(DISTINCT s.staff_id) as n';
+        }
+        if (Schema::hasColumn('nationalities', 'nationality_name')) {
+            $groupCols[] = 'n.nationality_name';
+            $select = str_replace(' COUNT(DISTINCT', ' n.nationality_name, COUNT(DISTINCT', $select);
+        }
+
+        $rows = (clone $active)
+            ->leftJoin('nationalities as n', 'n.nationality_id', '=', 's.nationality_id')
+            ->selectRaw($select)
+            ->groupBy(...$groupCols)
+            ->get();
+
+        /** @var array<string, array<string, mixed>> $buckets */
+        $buckets = [];
+        $unmapped = 0;
+        foreach ($rows as $row) {
+            $count = (int) $row->n;
+            $iso2 = strtoupper(trim((string) ($row->iso2 ?? '')));
+            if (strlen($iso2) !== 2) {
+                $unmapped += $count;
+
+                continue;
+            }
+            if (! isset($buckets[$iso2])) {
+                $nat = $lookups['byIso2'][$iso2] ?? $row;
+                $fallback = (string) (($row->nationality_name ?? null) ?: ($row->nationality ?? ''));
+                $buckets[$iso2] = $this->mapPoint($iso2, $nat, $fallback, 0);
+            }
+            $buckets[$iso2]['value'] += $count;
+        }
+
+        return $this->finalizeMapPayload($buckets, $unmapped);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $buckets
+     * @return array{points: list<array<string, mixed>>, unmapped: int, outside_africa: int}
+     */
+    protected function finalizeMapPayload(array $buckets, int $unmapped): array
+    {
+        $africa = array_flip(self::AFRICA_ISO2);
+        $outside = 0;
+        $points = array_values($buckets);
+        foreach ($points as &$point) {
+            $iso = (string) ($point['iso2'] ?? '');
+            $onMap = isset($africa[$iso]);
+            $point['on_map'] = $onMap;
+            if (! $onMap) {
+                $outside += (int) $point['value'];
+            }
+        }
+        unset($point);
+        usort($points, static fn (array $a, array $b): int => (int) $b['value'] <=> (int) $a['value']);
+
+        return [
+            'points' => $points,
+            'unmapped' => $unmapped,
+            'outside_africa' => $outside,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function mapPoint(string $iso2, mixed $nat, string $fallbackName, int $value): array
+    {
+        $iso3 = is_object($nat) ? strtoupper(trim((string) ($nat->iso3 ?? ''))) : '';
+        $name = is_object($nat)
+            ? trim((string) (($nat->nationality_name ?? null) ?: ($nat->nationality ?? '') ?: $fallbackName))
+            : trim($fallbackName);
+        if ($name === '') {
+            $name = $iso2;
+        }
+
+        return [
+            'code' => strtolower($iso2),
+            'iso2' => $iso2,
+            'iso-a2' => $iso2,
+            'iso-a3' => strlen($iso3) === 3 ? $iso3 : null,
+            'name' => $name,
+            'value' => $value,
+        ];
+    }
+
+    /**
+     * @return array{byIso2: array<string, object>, byIso3: array<string, object>, byName: array<string, object>}
+     */
+    protected function nationalityLookups(): array
+    {
+        if ($this->nationalityLookupsCache !== null) {
+            return $this->nationalityLookupsCache;
+        }
+
+        $cols = ['nationality_id', 'nationality', 'iso2'];
+        if (Schema::hasColumn('nationalities', 'iso3')) {
+            $cols[] = 'iso3';
+        }
+        if (Schema::hasColumn('nationalities', 'nationality_name')) {
+            $cols[] = 'nationality_name';
+        }
+
+        $byIso2 = [];
+        $byIso3 = [];
+        $byName = [];
+        foreach (DB::table('nationalities')->get($cols) as $row) {
+            $iso2 = strtoupper(trim((string) ($row->iso2 ?? '')));
+            if (strlen($iso2) === 2) {
+                $byIso2[$iso2] = $row;
+            }
+            $iso3 = strtoupper(trim((string) ($row->iso3 ?? '')));
+            if (strlen($iso3) === 3) {
+                $byIso3[$iso3] = $row;
+            }
+            foreach (['nationality', 'nationality_name'] as $field) {
+                $label = strtolower(trim((string) ($row->{$field} ?? '')));
+                if ($label !== '') {
+                    $byName[$label] = $row;
+                }
+            }
+        }
+
+        $this->nationalityLookupsCache = ['byIso2' => $byIso2, 'byIso3' => $byIso3, 'byName' => $byName];
+
+        return $this->nationalityLookupsCache;
+    }
+
+    /**
+     * @param  array{byIso2: array<string, object>, byIso3: array<string, object>, byName: array<string, object>}  $lookups
+     */
+    protected function resolveStationIso2(object $station, array $lookups): ?string
+    {
+        $iso = strtoupper(trim((string) ($station->country_iso2 ?? '')));
+        if (strlen($iso) === 2) {
+            return $iso;
+        }
+
+        $country = trim((string) ($station->country ?? ''));
+        if ($country === '') {
+            return null;
+        }
+        if (strlen($country) === 2) {
+            return strtoupper($country);
+        }
+        if (strlen($country) === 3 && isset($lookups['byIso3'][strtoupper($country)])) {
+            $iso2 = strtoupper(trim((string) ($lookups['byIso3'][strtoupper($country)]->iso2 ?? '')));
+
+            return strlen($iso2) === 2 ? $iso2 : null;
+        }
+
+        $nat = $lookups['byName'][strtolower($country)] ?? null;
+        if ($nat === null) {
+            return null;
+        }
+        $iso2 = strtoupper(trim((string) ($nat->iso2 ?? '')));
+
+        return strlen($iso2) === 2 ? $iso2 : null;
     }
 
     /**

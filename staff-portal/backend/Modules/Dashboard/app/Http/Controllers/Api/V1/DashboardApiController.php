@@ -29,7 +29,7 @@ class DashboardApiController extends Controller
 
         $user = $request->user();
         $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
-        $cacheKey = PortalReadCache::key('dashboard', 'snapshot', $userId, [
+            $cacheKey = PortalReadCache::key('dashboard', 'snapshot-maps', $userId, [
             'division_id' => $divisionId,
             'duty_station_id' => $dutyStationId,
             'funder_id' => $funderId,
@@ -103,6 +103,12 @@ class DashboardApiController extends Controller
         ];
         foreach ($data['staff_by_division']['division'] ?? [] as $i => $label) {
             $rows[] = ['Division: '.$label, $data['staff_by_division']['value'][$i] ?? 0];
+        }
+        foreach ($data['staff_by_duty_station_map']['points'] ?? [] as $point) {
+            $rows[] = ['Duty station country: '.($point['name'] ?? $point['iso2'] ?? ''), $point['value'] ?? 0];
+        }
+        foreach ($data['staff_by_nationality_map']['points'] ?? [] as $point) {
+            $rows[] = ['Nationality: '.($point['name'] ?? $point['iso2'] ?? ''), $point['value'] ?? 0];
         }
 
         return $csv->stream('staff-dashboard.csv', $rows);
