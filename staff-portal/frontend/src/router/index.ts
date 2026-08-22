@@ -96,7 +96,7 @@ const router = createRouter({
       path: '/leave',
       name: 'leave',
       component: () => import('../pages/leave/LeavePage.vue'),
-      meta: { requiresAuth: true, title: 'Leave', anyPermission: [37, 73, 95, 96, 97, 77], module: 'leave' },
+      meta: { requiresAuth: true, title: 'Leave', anyPermission: [37, 73, 95, 96, 97, 98, 77], module: 'leave' },
     },
     {
       path: '/leave/apply',
@@ -114,7 +114,7 @@ const router = createRouter({
       path: '/settings/leave',
       name: 'settings-leave',
       component: () => import('../pages/settings/LeaveSettingsPage.vue'),
-      meta: { requiresAuth: true, title: 'Leave settings', anyPermission: [97, 15], module: 'settings' },
+      meta: { requiresAuth: true, title: 'Leave settings', anyPermission: [97, 98, 15], module: 'settings' },
     },
     {
       path: '/settings/performance',

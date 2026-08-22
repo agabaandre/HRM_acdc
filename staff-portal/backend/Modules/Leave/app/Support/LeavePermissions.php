@@ -33,6 +33,9 @@ final class LeavePermissions
     /** Manage leave policy and leave types. */
     public const MANAGE_SETTINGS = 97;
 
+    /** Manage public holiday calendars and holiday compensatory rules. */
+    public const MANAGE_HOLIDAYS = 98;
+
     /**
      * @return list<array{id: int, name: string, definition: string, module: string}>
      */
@@ -69,6 +72,12 @@ final class LeavePermissions
                 'definition' => 'Manage Leave Settings',
                 'module' => 'leave',
             ],
+            [
+                'id' => self::MANAGE_HOLIDAYS,
+                'name' => 'manage_leave_holidays',
+                'definition' => 'Manage Leave Holidays',
+                'module' => 'leave',
+            ],
         ];
     }
 
@@ -85,6 +94,7 @@ final class LeavePermissions
             self::VIEW_ALL,
             self::MANAGE_BALANCES,
             self::MANAGE_SETTINGS,
+            self::MANAGE_HOLIDAYS,
             self::LEGACY_VIEW_ALL,
         ];
     }

@@ -67,7 +67,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     group: 'primary',
     icon: 'fa-solid fa-calendar-check',
     // 37 make + 73 approve + 95/77 view-all + 96/97 admin (HR role also bypasses in nav filter)
-    anyPermission: [37, 73, 95, 96, 97, 77],
+    anyPermission: [37, 73, 95, 96, 97, 98, 77],
     module: 'leave',
   },
   {

@@ -131,7 +131,7 @@ async function loadFormMeta() {
 async function refreshDays() {
   if (!startDate.value || !endDate.value) return
   try {
-    requestedDays.value = await fetchWorkingDays(startDate.value, endDate.value)
+    requestedDays.value = await fetchWorkingDays(startDate.value, endDate.value, leaveId.value)
   } catch {
     /* ignore until both dates valid */
   }
@@ -149,7 +149,7 @@ async function refreshBalance() {
   }
 }
 
-watch([startDate, endDate], () => void refreshDays())
+watch([startDate, endDate, leaveId], () => void refreshDays())
 watch(leaveId, () => void refreshBalance())
 
 function openFilePicker() {

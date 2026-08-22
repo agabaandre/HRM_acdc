@@ -40,13 +40,16 @@ class LeaveMetaController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'leave_id' => 'nullable|integer|min:1',
         ]);
 
         return response()->json([
             'data' => [
                 'requested_days' => $requests->workingDaysBetween(
                     $validated['start_date'],
-                    $validated['end_date']
+                    $validated['end_date'],
+                    LeaveAccess::staffId(),
+                    isset($validated['leave_id']) ? (int) $validated['leave_id'] : null,
                 ),
             ],
         ]);

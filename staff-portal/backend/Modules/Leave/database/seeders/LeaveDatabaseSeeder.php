@@ -11,6 +11,7 @@ class LeaveDatabaseSeeder extends Seeder
         $this->call([
             LeavePermissionsSeeder::class,
             LeavePolicySeeder::class,
+            LeaveHolidaySeeder::class,
         ]);
     }
 }

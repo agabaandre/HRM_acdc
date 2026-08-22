@@ -4,7 +4,9 @@ import { RouterLink, useRouter } from 'vue-router'
 import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalBtn from '@/components/molecules/PortalBtn.vue'
+import LeaveHolidaysTab from '@/components/leave/LeaveHolidaysTab.vue'
 import { useAuthStore } from '@/stores/auth'
+import { LEAVE_PERMS } from '@/lib/leavePermissions'
 import {
   fetchLeavePolicy,
   fetchSettingsLeaveTypes,
@@ -16,7 +18,7 @@ import {
 const auth = useAuthStore()
 const router = useRouter()
 
-const tab = ref<'policy' | 'types'>('policy')
+const tab = ref<'policy' | 'types' | 'holidays'>('policy')
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -42,8 +44,13 @@ const canManageSettings = computed(
   () =>
     !!auth.me?.profile?.is_hr ||
     auth.me?.profile?.role_id === 20 ||
-    auth.hasPermission(97) ||
+    auth.hasPermission(LEAVE_PERMS.MANAGE_SETTINGS) ||
     auth.hasPermission(15),
+)
+const canManageHolidays = computed(
+  () =>
+    canManageSettings.value ||
+    auth.hasPermission(LEAVE_PERMS.MANAGE_HOLIDAYS),
 )
 
 function resetTypeForm() {
@@ -72,9 +79,18 @@ function editType(t: LeaveTypeDto) {
   typeForm.policy_notes = t.policy_notes ?? ''
 }
 
+function onHolidayStatus(payload: { success?: string | null; error?: string | null }) {
+  if (payload.success !== undefined) success.value = payload.success ?? null
+  if (payload.error !== undefined) error.value = payload.error ?? null
+}
+
 async function load() {
+  if (!canManageSettings.value && !canManageHolidays.value) {
+    error.value = 'Leave settings require the Manage Leave Settings or Manage Leave Holidays permission (or HR).'
+    return
+  }
   if (!canManageSettings.value) {
-    error.value = 'Leave settings require the Manage Leave Settings permission (or HR).'
+    tab.value = 'holidays'
     return
   }
   loading.value = true
@@ -129,7 +145,7 @@ onMounted(async () => {
       /* handled by router */
     }
   }
-  if (!canManageSettings.value) {
+  if (!canManageSettings.value && !canManageHolidays.value) {
     await router.replace('/leave')
     return
   }
@@ -140,7 +156,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="d-flex justify-space-between align-center mb-3">
-      <CbpPageHeading title="Leave configuration" subtitle="Policy rules and leave types." />
+      <CbpPageHeading title="Leave configuration" subtitle="Policy rules, leave types, and public holidays." />
       <RouterLink to="/leave" style="text-decoration:none">
         <PortalBtn variant="outlined" color="primary" size="small">Back to Leave</PortalBtn>
       </RouterLink>
@@ -152,8 +168,9 @@ onMounted(async () => {
 
     <template v-else>
       <v-tabs v-model="tab" color="primary" class="mb-4">
-        <v-tab value="policy">Accumulation &amp; policy rules</v-tab>
-        <v-tab value="types">Leave types</v-tab>
+        <v-tab v-if="canManageSettings" value="policy">Accumulation &amp; policy rules</v-tab>
+        <v-tab v-if="canManageSettings" value="types">Leave types</v-tab>
+        <v-tab v-if="canManageHolidays" value="holidays">Holidays</v-tab>
       </v-tabs>
 
       <v-card v-if="tab === 'policy'" variant="outlined">
@@ -186,10 +203,25 @@ onMounted(async () => {
               <v-checkbox v-model="policy.deduct_compensatory_first" label="Deduct compensatory balance first" hide-details />
             </v-col>
             <v-col cols="12" md="4">
-              <v-text-field v-model.number="policy.compensatory_weekend_travel_months" type="number" label="Expiry (months) — weekend travel" />
+              <v-text-field v-model.number="policy.compensatory_expiry_months" type="number" label="Other compensatory expiry (months)" hint="Travel/overtime credits. Default: 3." persistent-hint />
             </v-col>
             <v-col cols="12" md="4">
-              <v-text-field v-model.number="policy.compensatory_public_holiday_months" type="number" label="Expiry (months) — public holiday" />
+              <v-text-field v-model.number="policy.holiday_compensatory_max_days_per_year" type="number" label="Holiday compensatory cap (days / year)" hint="Unused holiday compensatory forfeits on 31 Dec of the year earned. Default: 15." persistent-hint />
+            </v-col>
+          </v-row>
+
+          <h3 class="text-h6 text-primary mb-3 mt-4">Weekday public holidays in a leave request</h3>
+          <v-row>
+            <v-col cols="12" md="8">
+              <v-select
+                v-model="policy.weekday_holiday_in_request"
+                :items="[
+                  { title: 'A — Do not count weekday holidays as leave days (default)', value: 'skip_all' },
+                  { title: 'B — Count weekday holidays as leave days', value: 'count_all' },
+                  { title: 'C — Skip weekday holidays only for annual leave', value: 'skip_annual_only' },
+                ]"
+                label="How weekday holidays affect requested days"
+              />
             </v-col>
           </v-row>
 
@@ -244,7 +276,7 @@ onMounted(async () => {
         </v-card-actions>
       </v-card>
 
-      <v-row v-else>
+      <v-row v-else-if="tab === 'types'">
         <v-col cols="12" lg="5">
           <v-card variant="outlined">
             <v-card-title>{{ editingTypeId ? 'Edit leave type' : 'Add leave type' }}</v-card-title>
@@ -301,6 +333,11 @@ onMounted(async () => {
           </v-card>
         </v-col>
       </v-row>
+
+      <LeaveHolidaysTab
+        v-else-if="tab === 'holidays'"
+        @status="onHolidayStatus"
+      />
     </template>
   </div>
 </template>

@@ -23,6 +23,8 @@ class MemberState extends Model
         'region_id',
         'iso2',
         'iso3',
+        'independence_month',
+        'independence_day',
     ];
 
     public function region(): BelongsTo

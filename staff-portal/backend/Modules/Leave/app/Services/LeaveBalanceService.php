@@ -23,6 +23,7 @@ class LeaveBalanceService
      *     opening: float,
      *     carried_forward: float,
      *     compensatory: float,
+     *     holiday_compensatory: float,
      *     used: float,
      *     pending: float,
      *     available: float,
@@ -39,7 +40,8 @@ class LeaveBalanceService
 
         $openingDays = (float) ($opening?->opening_days ?? 0);
         $carriedForward = (float) ($opening?->carried_forward_days ?? 0);
-        $compensatory = $this->compensatoryAvailable($staffId) + (float) ($opening?->compensatory_days ?? 0);
+        $holidayComp = $this->compensatoryAvailable($staffId, 'holiday');
+        $otherComp = $this->compensatoryAvailable($staffId, 'other') + (float) ($opening?->compensatory_days ?? 0);
 
         // When an opening row exists, it is the administered entitlement for non-accrued types
         // (avoids double-counting leave_days + opening_days). Accrued types still accrue.
@@ -50,14 +52,22 @@ class LeaveBalanceService
         $used = $this->usedDays($staffId, $leaveTypeId, $year);
         $pending = $this->pendingDays($staffId, $leaveTypeId, $year);
 
-        $available = max(0, $openingDays + $carriedForward + $entitlement + $accrued - $used - $pending);
+        $kind = $type->compensatoryKind();
+        if ($kind === 'holiday') {
+            $available = max(0, $holidayComp - $pending);
+        } elseif ($kind === 'other') {
+            $available = max(0, $otherComp - $pending);
+        } else {
+            $available = max(0, $openingDays + $carriedForward + $entitlement + $accrued - $used - $pending);
+        }
 
         return [
             'entitlement' => round($entitlement, 2),
             'accrued' => round($accrued, 2),
             'opening' => round($openingDays, 2),
             'carried_forward' => round($carriedForward, 2),
-            'compensatory' => round($compensatory, 2),
+            'compensatory' => round($otherComp, 2),
+            'holiday_compensatory' => round($holidayComp, 2),
             'used' => round($used, 2),
             'pending' => round($pending, 2),
             'available' => round($available, 2),
@@ -91,7 +101,8 @@ class LeaveBalanceService
             ->get()
             ->keyBy(fn (StaffLeaveOpeningBalance $row) => (int) $row->leave_id);
 
-        $compensatoryBase = $this->compensatoryAvailable($staffId);
+        $compensatoryBase = $this->compensatoryAvailable($staffId, 'other');
+        $holidayCompBase = $this->compensatoryAvailable($staffId, 'holiday');
 
         $usedByType = StaffLeave::query()
             ->where('staff_id', $staffId)
@@ -124,6 +135,7 @@ class LeaveBalanceService
             $openingDays = (float) ($opening?->opening_days ?? 0);
             $carriedForward = (float) ($opening?->carried_forward_days ?? 0);
             $compensatory = $compensatoryBase + (float) ($opening?->compensatory_days ?? 0);
+            $holidayComp = $holidayCompBase;
 
             $entitlement = ($hasOpening && ! $type->is_accrued)
                 ? 0.0
@@ -137,7 +149,14 @@ class LeaveBalanceService
 
             $used = (float) ($usedByType[$leaveId] ?? 0);
             $pending = (float) ($pendingByType[$leaveId] ?? 0);
-            $available = max(0, $openingDays + $carriedForward + $entitlement + $accrued - $used - $pending);
+            $kind = $type->compensatoryKind();
+            if ($kind === 'holiday') {
+                $available = max(0, $holidayComp - $pending);
+            } elseif ($kind === 'other') {
+                $available = max(0, $compensatory - $pending);
+            } else {
+                $available = max(0, $openingDays + $carriedForward + $entitlement + $accrued - $used - $pending);
+            }
 
             $result[] = [
                 'type' => $type,
@@ -147,6 +166,7 @@ class LeaveBalanceService
                     'opening' => round($openingDays, 2),
                     'carried_forward' => round($carriedForward, 2),
                     'compensatory' => round($compensatory, 2),
+                    'holiday_compensatory' => round($holidayComp, 2),
                     'used' => round($used, 2),
                     'pending' => round($pending, 2),
                     'available' => round($available, 2),
@@ -159,17 +179,19 @@ class LeaveBalanceService
         return $result;
     }
 
-    public function compensatoryAvailable(int $staffId): float
+    public function compensatoryAvailable(int $staffId, ?string $kind = null): float
     {
-        $remaining = StaffLeaveCompensatoryCredit::query()
+        $query = StaffLeaveCompensatoryCredit::query()
             ->where('staff_id', $staffId)
             ->where(function ($q): void {
                 $q->whereNull('expires_on')->orWhere('expires_on', '>=', now()->toDateString());
-            })
-            ->selectRaw('COALESCE(SUM(GREATEST(COALESCE(days, 0) - COALESCE(days_used, 0), 0)), 0) as remaining')
-            ->value('remaining');
+            });
 
-        return (float) $remaining;
+        if ($kind !== null && \Illuminate\Support\Facades\Schema::hasColumn('staff_leave_compensatory_credits', 'kind')) {
+            $query->where('kind', $kind);
+        }
+
+        return round((float) $query->get()->sum(fn (StaffLeaveCompensatoryCredit $row) => $row->remainingDays()), 2);
     }
 
     protected function openingRecord(int $staffId, int $leaveTypeId, int $year): ?StaffLeaveOpeningBalance

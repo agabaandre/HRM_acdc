@@ -57,4 +57,13 @@ class LeaveType extends Model
 
         return $code === 'ANNUAL' || str_contains($name, 'annual') || str_contains($name, 'home');
     }
+
+    public function compensatoryKind(): ?string
+    {
+        return match (strtoupper((string) $this->code)) {
+            'HOLIDAY_COMPENSATORY' => 'holiday',
+            'COMPENSATORY' => 'other',
+            default => null,
+        };
+    }
 }

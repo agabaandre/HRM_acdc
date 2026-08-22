@@ -18,8 +18,9 @@ class LeavePolicySeeder extends Seeder
             ['code' => 'MATERNITY', 'leave_name' => 'Maternity Leave', 'leave_days' => 98, 'is_accrued' => 0, 'max_instances' => 4, 'sort_order' => 3],
             ['code' => 'PATERNITY', 'leave_name' => 'Paternity Leave', 'leave_days' => 10, 'is_accrued' => 0, 'max_instances' => 4, 'sort_order' => 4],
             ['code' => 'STUDY', 'leave_name' => 'Study Leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 5],
-            ['code' => 'COMPENSATORY', 'leave_name' => 'Compensatory Leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 6],
-            ['code' => 'SPECIAL', 'leave_name' => 'Special Leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 7],
+            ['code' => 'COMPENSATORY', 'leave_name' => 'Compensatory Leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 7],
+            ['code' => 'HOLIDAY_COMPENSATORY', 'leave_name' => 'Holiday compensatory leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 6],
+            ['code' => 'SPECIAL', 'leave_name' => 'Special Leave', 'leave_days' => 0, 'is_accrued' => 0, 'sort_order' => 8],
         ];
 
         foreach ($types as $row) {

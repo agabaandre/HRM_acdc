@@ -10,12 +10,15 @@ class StaffLeaveCompensatoryCredit extends Model
 {
     protected $fillable = [
         'staff_id',
+        'kind',
         'days',
         'days_used',
         'reason',
         'granted_on',
         'expires_on',
         'granted_by_user_id',
+        'source_holiday_rule_id',
+        'source_date',
     ];
 
     protected function casts(): array
@@ -25,6 +28,8 @@ class StaffLeaveCompensatoryCredit extends Model
             'days_used' => 'float',
             'granted_on' => 'date',
             'expires_on' => 'date',
+            'source_date' => 'date',
+            'source_holiday_rule_id' => 'integer',
         ];
     }
 

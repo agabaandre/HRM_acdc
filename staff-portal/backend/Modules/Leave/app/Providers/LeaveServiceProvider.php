@@ -24,6 +24,7 @@ class LeaveServiceProvider extends ModuleServiceProvider
      */
     protected array $commands = [
         \Modules\Leave\Console\FillLeaveBalancesCommand::class,
+        \Modules\Leave\Console\GrantHolidayCompensatoryCommand::class,
     ];
 
     /**
@@ -38,11 +39,12 @@ class LeaveServiceProvider extends ModuleServiceProvider
 
     /**
      * Define module schedules.
-     * 
-     * @param $schedule
      */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        $schedule->command('leave:grant-holiday-compensatory')
+            ->dailyAt('01:15')
+            ->withoutOverlapping()
+            ->name('leave-grant-holiday-compensatory');
+    }
 }

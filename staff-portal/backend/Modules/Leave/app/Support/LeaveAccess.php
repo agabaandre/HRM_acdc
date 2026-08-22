@@ -70,6 +70,12 @@ class LeaveAccess
             || self::isHr();
     }
 
+    public static function canManageHolidays(): bool
+    {
+        return PortalPermission::can(LeavePermissions::MANAGE_HOLIDAYS)
+            || self::canManageSettings();
+    }
+
     public static function canAccessModule(): bool
     {
         if (self::isHr()) {
@@ -90,6 +96,13 @@ class LeaveAccess
     {
         if (! self::canManageBalances()) {
             abort(403, 'You do not have permission to manage leave balances.');
+        }
+    }
+
+    public static function authorizeHolidays(): void
+    {
+        if (! self::canManageHolidays()) {
+            abort(403, 'You do not have permission to manage leave holidays.');
         }
     }
 

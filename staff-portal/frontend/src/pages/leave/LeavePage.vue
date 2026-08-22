@@ -66,6 +66,7 @@ const canManageSettings = computed(
   () =>
     isHr.value ||
     auth.hasPermission(LEAVE_PERMS.MANAGE_SETTINGS) ||
+    auth.hasPermission(LEAVE_PERMS.MANAGE_HOLIDAYS) ||
     auth.hasPermission(15),
 )
 
@@ -175,7 +176,7 @@ function exportBalancesCsv() {
   try {
     downloadClientCsv(
       'leave-balances.csv',
-      ['Leave type', 'Available', 'Opening', 'Carried', 'Accrued', 'Used', 'Pending', 'Comp'],
+      ['Leave type', 'Available', 'Opening', 'Carried', 'Accrued', 'Used', 'Pending', 'Holiday comp', 'Comp'],
       balances.value.map((row) => [
         row.type.leave_name,
         formatDays(row.balance.available),
@@ -184,6 +185,7 @@ function exportBalancesCsv() {
         formatDays(row.balance.accrued),
         formatDays(row.balance.used),
         formatDays(row.balance.pending),
+        formatDays(row.balance.holiday_compensatory ?? 0),
         formatDays(row.balance.compensatory),
       ]),
     )
@@ -197,7 +199,7 @@ function exportBalancesPdf() {
   try {
     openClientPdfTable(
       `Leave balances ${balanceYear.value}`,
-      ['Leave type', 'Available', 'Opening', 'Carried', 'Accrued', 'Used', 'Pending', 'Comp'],
+      ['Leave type', 'Available', 'Opening', 'Carried', 'Accrued', 'Used', 'Pending', 'Holiday comp', 'Comp'],
       balances.value.map((row) => [
         row.type.leave_name,
         formatDays(row.balance.available),
@@ -206,6 +208,7 @@ function exportBalancesPdf() {
         formatDays(row.balance.accrued),
         formatDays(row.balance.used),
         formatDays(row.balance.pending),
+        formatDays(row.balance.holiday_compensatory ?? 0),
         formatDays(row.balance.compensatory),
       ]),
     )
@@ -581,6 +584,7 @@ onMounted(() => {
                   <th class="text-end d-none d-md-table-cell">Accrued</th>
                   <th class="text-end">Used</th>
                   <th class="text-end">Pending</th>
+                  <th class="text-end d-none d-lg-table-cell">Holiday comp</th>
                   <th class="text-end d-none d-lg-table-cell">Comp</th>
                 </tr>
               </thead>
@@ -619,6 +623,9 @@ onMounted(() => {
                     <span :class="{ 'leave-balances__pending': Number(row.balance.pending) > 0 }">
                       {{ formatDays(row.balance.pending) }}
                     </span>
+                  </td>
+                  <td class="text-end d-none d-lg-table-cell">
+                    {{ formatDays(row.balance.holiday_compensatory ?? 0) }}
                   </td>
                   <td class="text-end d-none d-lg-table-cell">
                     {{ formatDays(row.balance.compensatory) }}

@@ -44,7 +44,7 @@ class SettingsApiController extends Controller
             ['to' => '/settings/lookup/grades', 'label' => 'Grades', 'icon' => 'bx-bar-chart-alt-2'],
             ['to' => '/settings/lookup/jobs', 'label' => 'Jobs', 'icon' => 'bx-briefcase'],
             ['to' => '/settings/lookup/funders', 'label' => 'Funders', 'icon' => 'bx-dollar'],
-            ['to' => '/settings/leave', 'label' => 'Leave policy & types', 'icon' => 'bx-time-five'],
+            ['to' => '/settings/leave', 'label' => 'Leave policy, types & holidays', 'icon' => 'bx-time-five'],
             ['to' => '/leave/admin/balances', 'label' => 'Leave balances (all staff)', 'icon' => 'bx-calendar-check'],
             ['to' => '/settings/performance', 'label' => 'PPA / workflow', 'icon' => 'bx-line-chart'],
             ['to' => '/settings/lookup/regions', 'label' => 'Regions', 'icon' => 'bx-compass'],

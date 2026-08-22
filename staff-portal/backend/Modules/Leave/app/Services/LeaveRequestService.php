@@ -14,6 +14,7 @@ class LeaveRequestService
     public function __construct(
         protected LeaveBalanceService $balances,
         protected LeavePolicyService $policy,
+        protected ?HolidayCalendarService $holidays = null,
     ) {}
 
     public function minNoticeDays(): int
@@ -112,6 +113,7 @@ class LeaveRequestService
             return false;
         }
 
+        $wasOverall = (string) $leave->overall_status;
         $leave->{$column} = $message;
         $leave->updated_at = now();
 
@@ -119,20 +121,75 @@ class LeaveRequestService
             $leave->overall_status = $message === 'Approved' ? 'Approved' : 'Rejected';
         }
 
-        return $leave->save();
-    }
-
-    public function workingDaysBetween(string $start, string $end): int
-    {
-        $startDate = \Carbon\Carbon::parse($start);
-        $endDate = \Carbon\Carbon::parse($end);
-        $days = 0;
-        for ($d = $startDate->copy(); $d->lte($endDate); $d->addDay()) {
-            if (! $d->isWeekend()) {
-                $days++;
+        $saved = $leave->save();
+        if ($saved && $wasOverall !== 'Approved' && $leave->overall_status === 'Approved') {
+            $type = LeaveType::query()->find($leave->leave_id);
+            $kind = $type?->compensatoryKind();
+            if ($kind) {
+                app(HolidayCompensatoryGrantService::class)->consume(
+                    (int) $leave->staff_id,
+                    $kind,
+                    (float) $leave->requested_days,
+                );
             }
         }
 
-        return max(1, $days);
+        return $saved;
+    }
+
+    public function workingDaysBetween(string $start, string $end, ?int $staffId = null, ?int $leaveTypeId = null): int
+    {
+        $startDate = \Carbon\Carbon::parse($start)->startOfDay();
+        $endDate = \Carbon\Carbon::parse($end)->startOfDay();
+        $skipHolidays = $this->shouldSkipWeekdayHolidays($leaveTypeId);
+        $holidayDates = $skipHolidays && $staffId
+            ? $this->holidayDateMap($staffId, (int) $startDate->year, (int) $endDate->year)
+            : [];
+
+        $days = 0;
+        for ($d = $startDate->copy(); $d->lte($endDate); $d->addDay()) {
+            if ($d->isWeekend()) {
+                continue;
+            }
+            if ($skipHolidays && isset($holidayDates[$d->toDateString()])) {
+                continue;
+            }
+            $days++;
+        }
+
+        return $days;
+    }
+
+    protected function shouldSkipWeekdayHolidays(?int $leaveTypeId): bool
+    {
+        $mode = (string) $this->policy->get('weekday_holiday_in_request', 'skip_all');
+        if ($mode === 'count_all') {
+            return false;
+        }
+        if ($mode === 'skip_annual_only') {
+            if (! $leaveTypeId) {
+                return false;
+            }
+
+            return (bool) LeaveType::query()->find($leaveTypeId)?->isAnnual();
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    protected function holidayDateMap(int $staffId, int $fromYear, int $toYear): array
+    {
+        $calendar = $this->holidays ?? app(HolidayCalendarService::class);
+        $dates = [];
+        for ($year = $fromYear; $year <= $toYear; $year++) {
+            foreach ($calendar->holidayDatesForStaff($staffId, $year) as $date) {
+                $dates[$date] = true;
+            }
+        }
+
+        return $dates;
     }
 }

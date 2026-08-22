@@ -27,6 +27,8 @@ class LeavePolicyService
             'compensatory_expiry_months' => 3,
             'compensatory_weekend_travel_months' => 3,
             'compensatory_public_holiday_months' => 3,
+            'weekday_holiday_in_request' => 'skip_all',
+            'holiday_compensatory_max_days_per_year' => 15,
             'sick_full_pay_months' => 3,
             'sick_half_pay_months' => 3,
             'sick_unpaid_max_months' => 6,

@@ -25,6 +25,7 @@ class LeavePermissionsSeeder extends Seeder
                 LeavePermissions::VIEW_ALL,
                 LeavePermissions::MANAGE_BALANCES,
                 LeavePermissions::MANAGE_SETTINGS,
+                LeavePermissions::MANAGE_HOLIDAYS,
             ],
         );
     }

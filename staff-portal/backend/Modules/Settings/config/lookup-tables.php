@@ -8,13 +8,22 @@ return [
     'nationalities' => [
         'label' => 'Nationalities',
         'pk' => 'nationality_id',
-        'columns' => ['nationality' => ['label' => 'Name', 'required' => true]],
+        'columns' => [
+            'nationality' => ['label' => 'Name', 'required' => true],
+            'iso2' => ['label' => 'ISO2', 'required' => false],
+            'independence_month' => ['label' => 'Independence month', 'type' => 'number'],
+            'independence_day' => ['label' => 'Independence day', 'type' => 'number'],
+        ],
         'order' => 'nationality',
     ],
     'duty_stations' => [
         'label' => 'Duty Stations',
         'pk' => 'duty_station_id',
-        'columns' => ['duty_station_name' => ['label' => 'Name', 'required' => true]],
+        'columns' => [
+            'duty_station_name' => ['label' => 'Name', 'required' => true],
+            'country' => ['label' => 'Country', 'required' => true],
+            'country_iso2' => ['label' => 'Country ISO2', 'required' => false],
+        ],
         'order' => 'duty_station_name',
     ],
     'contract_types' => [

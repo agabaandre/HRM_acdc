@@ -26,6 +26,7 @@ export interface LeaveBalanceDto {
   opening: number
   carried_forward: number
   compensatory: number
+  holiday_compensatory?: number
   used: number
   pending: number
   available: number
@@ -178,10 +179,14 @@ export async function fetchLeaveApplyRules(): Promise<LeaveApplyRules> {
   return data.data
 }
 
-export async function fetchWorkingDays(start_date: string, end_date: string): Promise<number> {
+export async function fetchWorkingDays(
+  start_date: string,
+  end_date: string,
+  leave_id?: number | null,
+): Promise<number> {
   const { data } = await api.post<{ data: { requested_days: number } }>(
     '/api/v1/leave/working-days',
-    { start_date, end_date },
+    { start_date, end_date, leave_id: leave_id || undefined },
   )
   return data.data.requested_days
 }
@@ -317,6 +322,106 @@ export async function fetchLeavePolicy(): Promise<Record<string, unknown>> {
 
 export async function saveLeavePolicy(policy: Record<string, unknown>): Promise<void> {
   await api.put('/api/v1/leave/settings/policy', { policy })
+}
+
+export interface LeaveHolidayRuleDto {
+  id: number
+  code?: string | null
+  name: string
+  recurrence: 'yearly_md' | 'once' | string
+  month?: number | null
+  day?: number | null
+  once_date?: string | null
+  scope: 'global' | 'country' | 'duty_station' | string
+  country_iso2?: string | null
+  duty_station_id?: number | null
+  grants_compensatory_if_weekend: boolean
+  compensatory_duty_station_ids?: number[] | null
+  source?: string | null
+  openholidays_id?: string | null
+  is_movable: boolean
+  is_active: boolean
+}
+
+export async function fetchHolidayRules(): Promise<LeaveHolidayRuleDto[]> {
+  const { data } = await api.get<{ data: LeaveHolidayRuleDto[] }>('/api/v1/leave/settings/holidays')
+  return data.data
+}
+
+export async function saveHolidayRule(
+  payload: Partial<LeaveHolidayRuleDto> & { name: string; recurrence: string; scope: string },
+  id?: number | null,
+): Promise<void> {
+  if (id) {
+    await api.put(`/api/v1/leave/settings/holidays/${id}`, payload)
+  } else {
+    await api.post('/api/v1/leave/settings/holidays', payload)
+  }
+}
+
+export async function deleteHolidayRule(id: number): Promise<void> {
+  await api.delete(`/api/v1/leave/settings/holidays/${id}`)
+}
+
+export async function fetchHolidayPreview(params: {
+  year: number
+  country_iso2?: string
+  duty_station_id?: number | null
+}): Promise<{ year: number; country_iso2?: string | null; holidays: Array<{ date: string; name: string }> }> {
+  const { data } = await api.get('/api/v1/leave/settings/holidays/preview', { params })
+  return data.data
+}
+
+export async function fetchOpenHolidaysCountries(): Promise<Array<{ iso: string; name: string }>> {
+  const { data } = await api.get('/api/v1/leave/settings/holidays/openholidays/countries')
+  return data.data
+}
+
+export async function fetchOpenHolidaysPreview(
+  country_iso2: string,
+  year: number,
+): Promise<Array<{ name: string; start_date: string; recurrence: string; is_movable: boolean }>> {
+  const { data } = await api.get('/api/v1/leave/settings/holidays/openholidays/preview', {
+    params: { country_iso2, year },
+  })
+  return data.data
+}
+
+export async function importOpenHolidays(
+  country_iso2: string,
+  year: number,
+): Promise<{ created: number; skipped: number }> {
+  const { data } = await api.post('/api/v1/leave/settings/holidays/openholidays/import', {
+    country_iso2,
+    year,
+  })
+  return data.data
+}
+
+export async function fetchIndependenceRows(): Promise<
+  Array<{ nationality_id: number; nationality: string; iso2?: string | null; independence_month?: number | null; independence_day?: number | null }>
+> {
+  const { data } = await api.get('/api/v1/leave/settings/holidays/independence')
+  return data.data
+}
+
+export async function saveIndependenceRows(
+  rows: Array<{ nationality_id: number; independence_month?: number | null; independence_day?: number | null }>,
+): Promise<void> {
+  await api.put('/api/v1/leave/settings/holidays/independence', { rows })
+}
+
+export async function fetchHolidayDutyStations(): Promise<
+  Array<{ duty_station_id: number; duty_station_name: string; country?: string | null; country_iso2?: string | null }>
+> {
+  const { data } = await api.get('/api/v1/leave/settings/holidays/duty-stations')
+  return data.data
+}
+
+export async function saveHolidayDutyStations(
+  rows: Array<{ duty_station_id: number; country_iso2?: string | null }>,
+): Promise<void> {
+  await api.put('/api/v1/leave/settings/holidays/duty-stations', { rows })
 }
 
 export async function fetchSettingsLeaveTypes(): Promise<LeaveTypeDto[]> {

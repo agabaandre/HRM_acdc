@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Leave\Http\Controllers\Api\V1\LeaveAdminBalanceController;
 use Modules\Leave\Http\Controllers\Api\V1\LeaveApprovalController;
 use Modules\Leave\Http\Controllers\Api\V1\LeaveBalanceController;
+use Modules\Leave\Http\Controllers\Api\V1\LeaveHolidaySettingsController;
 use Modules\Leave\Http\Controllers\Api\V1\LeaveMetaController;
 use Modules\Leave\Http\Controllers\Api\V1\LeavePlanController;
 use Modules\Leave\Http\Controllers\Api\V1\LeaveRequestController;
@@ -39,4 +40,19 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('leave/settings/types', [LeaveSettingsController::class, 'storeType']);
     Route::put('leave/settings/types/{leaveId}', [LeaveSettingsController::class, 'updateType'])
         ->whereNumber('leaveId');
+
+    Route::get('leave/settings/holidays', [LeaveHolidaySettingsController::class, 'index']);
+    Route::post('leave/settings/holidays', [LeaveHolidaySettingsController::class, 'store']);
+    Route::put('leave/settings/holidays/{id}', [LeaveHolidaySettingsController::class, 'update'])
+        ->whereNumber('id');
+    Route::delete('leave/settings/holidays/{id}', [LeaveHolidaySettingsController::class, 'destroy'])
+        ->whereNumber('id');
+    Route::get('leave/settings/holidays/preview', [LeaveHolidaySettingsController::class, 'preview']);
+    Route::get('leave/settings/holidays/openholidays/countries', [LeaveHolidaySettingsController::class, 'openHolidaysCountries']);
+    Route::get('leave/settings/holidays/openholidays/preview', [LeaveHolidaySettingsController::class, 'openHolidaysPreview']);
+    Route::post('leave/settings/holidays/openholidays/import', [LeaveHolidaySettingsController::class, 'openHolidaysImport']);
+    Route::get('leave/settings/holidays/independence', [LeaveHolidaySettingsController::class, 'independenceIndex']);
+    Route::put('leave/settings/holidays/independence', [LeaveHolidaySettingsController::class, 'independenceUpdate']);
+    Route::get('leave/settings/holidays/duty-stations', [LeaveHolidaySettingsController::class, 'dutyStationsIndex']);
+    Route::put('leave/settings/holidays/duty-stations', [LeaveHolidaySettingsController::class, 'dutyStationsUpdate']);
 });
