@@ -215,7 +215,7 @@ class StaffJobsScheduleService
             ],
             'sync_pra_workplan' => [
                 'label' => 'Sync PRA workplan',
-                'help' => 'Daily: pulls Africa CDC PRA public workplan into staff-portal workplan tables.',
+                'help' => 'Daily at 00:05 (server time, unless changed in this schedule): pulls Africa CDC PRA public workplan for the current calendar year. Configure URL and API key in Settings → Workplan / PRA.',
             ],
         ];
     }

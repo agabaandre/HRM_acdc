@@ -7,19 +7,24 @@ use RuntimeException;
 
 class PraWorkplanClient
 {
+    public function __construct(
+        protected PraWorkplanSettingsService $settings,
+    ) {}
+
     /**
      * @return array{success?: bool, meta?: array<string, mixed>, data: list<array<string, mixed>>}
      */
     public function fetch(string $divisionCode, int $fiscalYear, ?string $tiers = null): array
     {
-        $base = (string) config('workplan.pra.base_url');
-        $key = (string) config('workplan.pra.api_key');
+        $pra = $this->settings->resolved();
+        $base = (string) $pra['base_url'];
+        $key = (string) $pra['api_key'];
         if ($base === '' || $key === '') {
-            throw new RuntimeException('PRA workplan API is not configured (PRA_WORKPLAN_API_URL / PRA_WORKPLAN_API_KEY).');
+            throw new RuntimeException('PRA workplan API is not configured. Add the URL and API key in Settings → Workplan / PRA.');
         }
 
-        $tiers = $tiers ?? (string) config('workplan.pra.tiers', '3,4');
-        $timeout = max(10, (int) config('workplan.pra.timeout', 60));
+        $tiers = $tiers ?? (string) $pra['tiers'];
+        $timeout = max(10, (int) $pra['timeout']);
         $connectTimeout = min(30, $timeout);
 
         $response = Http::timeout($timeout)

@@ -184,6 +184,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 15, title: 'Staff jobs', module: 'settings' },
     },
     {
+      path: '/settings/workplan',
+      name: 'settings-workplan',
+      component: () => import('../pages/settings/WorkplanPraSettingsPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'Workplan / PRA', module: 'settings' },
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../pages/settings/SettingsHubPage.vue'),

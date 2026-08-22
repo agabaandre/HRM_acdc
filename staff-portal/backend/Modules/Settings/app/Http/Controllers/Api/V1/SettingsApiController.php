@@ -31,6 +31,7 @@ class SettingsApiController extends Controller
             ['to' => '/settings/portal-modules', 'label' => 'Portal modules', 'icon' => 'bx-toggle-left', 'special' => true],
             ['to' => '/settings/shared-storage', 'label' => 'Shared storage', 'icon' => 'bx-hdd', 'special' => true],
             ['to' => '/settings/staff-jobs', 'label' => 'Staff jobs', 'icon' => 'bx-timer', 'special' => true],
+            ['to' => '/settings/workplan', 'label' => 'Workplan / PRA', 'icon' => 'bx-cloud-download', 'special' => true],
             ['to' => '/settings/email-servers', 'label' => 'Email servers', 'icon' => 'bx-envelope', 'special' => true],
             ['to' => '/settings/lookup/cbp_modules', 'label' => 'CBP modules', 'icon' => 'bx-grid-alt', 'special' => true],
             ['to' => '/settings/lookup/nationalities', 'label' => 'Nationalities', 'icon' => 'bx-globe'],

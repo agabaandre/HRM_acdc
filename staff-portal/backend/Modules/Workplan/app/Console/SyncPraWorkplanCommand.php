@@ -8,7 +8,7 @@ use Modules\Workplan\Services\PraWorkplanSyncService;
 class SyncPraWorkplanCommand extends Command
 {
     protected $signature = 'workplan:sync-pra
-                            {--year= : Fiscal year (default: PRA_WORKPLAN_FISCAL_YEAR or current year)}
+                            {--year= : Fiscal year (default: current calendar year)}
                             {--division=* : PRA division code(s), e.g. MIS (default: all mapped short codes)}';
 
     protected $description = 'Fetch Africa CDC PRA public workplan and upsert into workplan_tasks / work_planner_tasks';

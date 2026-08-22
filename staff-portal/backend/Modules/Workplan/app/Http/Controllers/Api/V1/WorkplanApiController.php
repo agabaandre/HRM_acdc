@@ -10,11 +10,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Support\PortalPermission;
+use Modules\Workplan\Services\PraWorkplanSettingsService;
 use Modules\Workplan\Services\PraWorkplanSyncService;
 
 class WorkplanApiController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, PraWorkplanSettingsService $praSettings): JsonResponse
     {
         PortalPermission::authorize(79);
 
@@ -28,7 +29,7 @@ class WorkplanApiController extends Controller
                     'per_page' => 25,
                     'total' => 0,
                     'divisions' => [],
-                    'pra_configured' => false,
+                    'pra_configured' => $praSettings->isConfigured(),
                 ],
             ]);
         }
@@ -114,7 +115,6 @@ class WorkplanApiController extends Controller
 
             $meta = [
                 'source' => 'workplan_tasks',
-                'pra_configured' => (string) config('workplan.pra.api_key') !== '',
                 'current_page' => $page,
                 'last_page' => max(1, (int) ceil($total / $perPage)),
                 'per_page' => $perPage,
@@ -130,6 +130,8 @@ class WorkplanApiController extends Controller
                 'meta' => $meta,
             ];
         });
+
+        $payload['meta']['pra_configured'] = $praSettings->isConfigured();
 
         return response()->json($payload);
     }

@@ -10,6 +10,7 @@ class PraWorkplanSyncService
 {
     public function __construct(
         protected PraWorkplanClient $client,
+        protected PraWorkplanSettingsService $settings,
     ) {}
 
     /**
@@ -32,7 +33,7 @@ class PraWorkplanSyncService
         }
 
         $year = $fiscalYear
-            ?? (int) (config('workplan.pra.fiscal_year') ?: now()->year);
+            ?? (int) ($this->settings->resolved()['fiscal_year'] ?: now()->year);
 
         $codes = $divisionCodes !== null && $divisionCodes !== []
             ? array_values(array_unique(array_map(fn ($c) => strtoupper(trim((string) $c)), $divisionCodes)))
@@ -50,7 +51,7 @@ class PraWorkplanSyncService
         foreach ($codes as $praCode) {
             $divisionId = $this->resolveDivisionId($praCode);
             if ($divisionId === null) {
-                $msg = "No local division for PRA code {$praCode} (set division_short_name or PRA_WORKPLAN_DIVISION_ALIASES).";
+                $msg = "No local division for PRA code {$praCode} (set division_short_name or Settings → Workplan / PRA aliases).";
                 $result['skipped'][] = $msg;
                 Log::warning('workplan.pra_sync.skipped', ['code' => $praCode, 'message' => $msg]);
 
@@ -86,7 +87,7 @@ class PraWorkplanSyncService
      */
     public function defaultDivisionCodes(): array
     {
-        $configured = (array) config('workplan.pra.divisions', []);
+        $configured = $this->settings->resolved()['divisions'];
         $codes = array_values(array_unique(array_filter(array_map(
             fn ($c) => strtoupper(trim((string) $c)),
             $configured,
@@ -97,7 +98,7 @@ class PraWorkplanSyncService
         }
 
         // All local division short names → PRA fetch codes (apply reverse aliases, e.g. DHIS→MIS).
-        $aliases = (array) config('workplan.pra.division_aliases', []);
+        $aliases = $this->settings->resolved()['division_aliases'];
         $localToPra = [];
         foreach ($aliases as $praCode => $localShort) {
             $localToPra[strtoupper((string) $localShort)] = strtoupper((string) $praCode);
@@ -129,7 +130,7 @@ class PraWorkplanSyncService
     public function resolveDivisionId(string $praCode): ?int
     {
         $praCode = strtoupper(trim($praCode));
-        $aliases = (array) config('workplan.pra.division_aliases', []);
+        $aliases = $this->settings->resolved()['division_aliases'];
         $localShort = strtoupper((string) ($aliases[$praCode] ?? $praCode));
 
         $id = DB::table('divisions')

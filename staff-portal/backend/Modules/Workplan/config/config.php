@@ -28,14 +28,17 @@ return [
     'name' => 'Workplan',
 
     'pra' => [
+        /**
+         * Fallback from .env. Settings → Workplan / PRA overrides these when saved.
+         */
         'base_url' => rtrim((string) env(
             'PRA_WORKPLAN_API_URL',
             'https://pra.africacdc.org/api/public/workplan'
         ), '/'),
         'api_key' => (string) env('PRA_WORKPLAN_API_KEY', ''),
         'tiers' => (string) env('PRA_WORKPLAN_TIERS', '3,4'),
-        /** Empty = current calendar year at sync time */
-        'fiscal_year' => env('PRA_WORKPLAN_FISCAL_YEAR'),
+        /** Unused. Sync uses the current calendar year unless Settings pins one. */
+        'fiscal_year' => null,
         /**
          * PRA division codes to fetch on scheduled/full sync (comma-separated).
          * Empty / * / all = every local division_short_name (plus aliases).

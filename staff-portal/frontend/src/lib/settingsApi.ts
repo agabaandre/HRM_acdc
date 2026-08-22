@@ -111,7 +111,7 @@ export interface LookupColumnMeta {
 
 export async function fetchSettingsHub(): Promise<SettingsHubCard[]> {
   const data = await cachedGet<{ data: SettingsHubCard[] }>(
-    'settings:hub-v4',
+    'settings:hub-v5',
     '/api/v1/settings/hub',
     5 * 60_000,
   )
@@ -418,6 +418,38 @@ export type StaffJobsDailyMeta = {
 export type StaffJobsInstantJob = {
   key: string
   label: string
+}
+
+export type WorkplanPraSettings = {
+  base_url: string
+  api_key_set: boolean
+  tiers: string
+  fiscal_year: number | null
+  divisions: string
+  division_aliases: string
+  timeout: number
+}
+
+export async function fetchWorkplanPraSettings() {
+  const { data } = await api.get<{ data: WorkplanPraSettings }>('/api/v1/settings/workplan-pra')
+  return data.data
+}
+
+export async function saveWorkplanPraSettings(payload: {
+  base_url: string
+  api_key?: string
+  tiers: string
+  fiscal_year: number | null
+  divisions: string
+  division_aliases: string
+  timeout: number
+}) {
+  const { data } = await api.put<{ data: WorkplanPraSettings; message: string }>(
+    '/api/v1/settings/workplan-pra',
+    payload,
+  )
+  invalidateSettingsCaches()
+  return data
 }
 
 export async function fetchStaffJobsSettings() {

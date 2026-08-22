@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Support\PortalPermission;
+use Modules\Workplan\Services\PraWorkplanSettingsService;
 
 class TasksApiController extends Controller
 {
@@ -587,11 +588,11 @@ class TasksApiController extends Controller
     }
 
     /**
-     * Current PRA / workplan financial year (calendar year unless PRA_WORKPLAN_FISCAL_YEAR is set).
+     * Current PRA / workplan financial year (calendar year unless Settings pins one).
      */
     protected function currentFinancialYear(): string
     {
-        $configured = config('workplan.pra.fiscal_year');
+        $configured = app(PraWorkplanSettingsService::class)->resolved()['fiscal_year'];
         if ($configured !== null && $configured !== '') {
             return (string) (int) $configured;
         }

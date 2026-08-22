@@ -5,12 +5,16 @@ import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
+import { useAuthStore } from '@/stores/auth'
 import { fetchWorkplans, syncPraWorkplan, type WorkplanDivisionOption, type WorkplanRow } from '@/lib/workplanApi'
+
+const auth = useAuthStore()
 
 const route = useRoute()
 const router = useRouter()
 
-const loading = ref(false)
+const loading = ref(true)
+const canConfigurePra = computed(() => auth.hasPermission(15))
 const syncing = ref(false)
 const exporting = ref(false)
 const error = ref<string | null>(null)
@@ -20,7 +24,7 @@ const divisions = ref<WorkplanDivisionOption[]>([])
 const praConfigured = ref(false)
 const q = ref('')
 const divisionId = ref<number | null>(null)
-const year = ref<number | null>(2026)
+const year = ref<number | null>(new Date().getFullYear())
 const metaMessage = ref<string | null>(null)
 const page = ref(1)
 const perPage = ref(25)
@@ -186,20 +190,46 @@ onMounted(() => {
       lede="Synced from Africa CDC PRA (tier 3/4 indicators) into workplan_tasks — mapped by division short code."
     >
       <template #actions>
+        <RouterLink v-if="canConfigurePra" to="/settings/workplan" style="text-decoration: none">
+          <v-btn size="small" variant="outlined" color="secondary">
+            <i class="fa-solid fa-gear me-2" aria-hidden="true" />
+            PRA settings
+          </v-btn>
+        </RouterLink>
         <v-btn
+          v-if="praConfigured"
           size="small"
           color="primary"
           variant="flat"
           :loading="syncing"
-          :disabled="!praConfigured"
           @click="onSyncPra"
         >
           <i class="fa-solid fa-cloud-arrow-down me-2" aria-hidden="true" />
           Sync from PRA
         </v-btn>
+        <v-btn
+          v-else-if="canConfigurePra"
+          size="small"
+          color="primary"
+          variant="flat"
+          to="/settings/workplan"
+        >
+          Configure PRA
+        </v-btn>
       </template>
     </PortalPageChrome>
 
+    <v-alert
+      v-if="!loading && !praConfigured"
+      type="warning"
+      variant="tonal"
+      class="mb-3"
+      density="compact"
+    >
+      PRA sync is not configured.
+      <RouterLink v-if="canConfigurePra" to="/settings/workplan">Add the API URL and key in Settings → Workplan / PRA.</RouterLink>
+      <span v-else> Ask an administrator to configure Settings → Workplan / PRA.</span>
+    </v-alert>
     <v-alert v-if="metaMessage" type="info" variant="tonal" class="mb-3" density="compact">{{ metaMessage }}</v-alert>
     <v-alert v-if="success" type="success" variant="tonal" class="mb-3" density="compact">{{ success }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
