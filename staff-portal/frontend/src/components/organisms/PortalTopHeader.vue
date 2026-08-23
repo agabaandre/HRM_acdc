@@ -6,6 +6,7 @@ import { fetchCbpModules, type CbpModuleLink, type CbpNavPayload } from '@/lib/c
 import { launchCbpModule, moduleLaunchKey } from '@/lib/cbpLaunch'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 
 defineProps<{
   userName: string | null
@@ -14,6 +15,7 @@ defineProps<{
 }>()
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const route = useRoute()
 
 const staffBase = computed(() => {
@@ -30,7 +32,7 @@ const nav = ref<CbpNavPayload | null>(null)
 const navLoading = ref(false)
 const navError = ref<string | null>(null)
 
-const portalHomeLabel = computed(() => nav.value?.home?.label ?? 'CBP Home')
+const portalHomeLabel = computed(() => nav.value?.home?.label ?? locale.t('chrome.cbp_home', 'CBP Home'))
 const systems = computed(() => nav.value?.modules ?? [])
 
 const portalToggleActive = computed(() => {
@@ -61,7 +63,7 @@ async function loadCbpModules() {
     navError.value = null
   } catch (e) {
     nav.value = null
-    navError.value = apiErrorMessage(e, 'Could not load CBP modules')
+    navError.value = apiErrorMessage(e, locale.t('chrome.load_modules_error', 'Could not load CBP modules'))
   } finally {
     navLoading.value = false
   }
@@ -147,11 +149,11 @@ onUnmounted(() => {
 <template>
   <header class="cbp-topbar">
     <div class="cbp-topbar-inner">
-      <RouterLink to="/" class="cbp-topbar-logo" title="Staff Portal">
+      <RouterLink to="/" class="cbp-topbar-logo" :title="locale.t('chrome.staff_portal', 'Staff Portal')">
         <img
           :src="logoUrl"
           width="200"
-          alt="Africa CDC"
+          :alt="locale.t('chrome.africa_cdc', 'Africa CDC')"
           @error="onLogoError"
         />
       </RouterLink>
@@ -169,11 +171,11 @@ onUnmounted(() => {
             :class="{ 'is-active': portalToggleActive }"
             aria-haspopup="true"
             :aria-expanded="portalOpen"
-            title="CBP Modules"
+            :title="locale.t('chrome.cbp_modules', 'CBP Modules')"
             @click.stop="togglePortal"
           >
             <i class="bx bx-category cbp-topbar-dd-icon" aria-hidden="true" />
-            <span class="cbp-topbar-dd-toggle-label ms-2">CBP Modules</span>
+            <span class="cbp-topbar-dd-toggle-label ms-2">{{ locale.t('chrome.cbp_modules', 'CBP Modules') }}</span>
             <span class="cbp-topbar-dd-caret" aria-hidden="true">▼</span>
           </button>
           <div class="cbp-topbar-dd-panel" role="menu">
@@ -187,13 +189,13 @@ onUnmounted(() => {
               <span class="cbp-topbar-dd-primary-title">{{ portalHomeLabel }}</span>
             </RouterLink>
             <template v-if="navLoading">
-              <p class="cbp-topbar-dd-empty" role="status">Loading modules…</p>
+              <p class="cbp-topbar-dd-empty" role="status">{{ locale.t('chrome.loading_modules', 'Loading modules…') }}</p>
             </template>
             <template v-else-if="navError">
               <p class="cbp-topbar-dd-empty" role="alert">{{ navError }}</p>
             </template>
             <template v-else-if="systems.length > 0">
-              <p class="cbp-topbar-dd-section">Systems</p>
+              <p class="cbp-topbar-dd-section">{{ locale.t('chrome.systems', 'Systems') }}</p>
               <a
                 v-for="sys in systems"
                 :key="sys.module_key || sys.id || sys.href"
@@ -217,7 +219,7 @@ onUnmounted(() => {
               </a>
             </template>
             <p v-else class="cbp-topbar-dd-empty" role="status">
-              No other CBP systems are assigned to your account.
+              {{ locale.t('chrome.no_systems', 'No other CBP systems are assigned to your account.') }}
             </p>
           </div>
         </div>
@@ -243,8 +245,8 @@ onUnmounted(() => {
             role="menuitem"
             @click="closeMenus"
           >
-            <span class="cbp-topbar-dd-item-label">Home</span>
-            <span class="cbp-topbar-dd-item-sub">Staff portal overview</span>
+            <span class="cbp-topbar-dd-item-label">{{ locale.t('chrome.home', 'Home') }}</span>
+            <span class="cbp-topbar-dd-item-sub">{{ locale.t('chrome.home_sub', 'Staff portal overview') }}</span>
           </RouterLink>
           <RouterLink
             to="/profile"
@@ -253,8 +255,8 @@ onUnmounted(() => {
             role="menuitem"
             @click="closeMenus"
           >
-            <span class="cbp-topbar-dd-item-label">Profile</span>
-            <span class="cbp-topbar-dd-item-sub">Staff account</span>
+            <span class="cbp-topbar-dd-item-label">{{ locale.t('chrome.profile', 'Profile') }}</span>
+            <span class="cbp-topbar-dd-item-sub">{{ locale.t('chrome.profile_sub', 'Staff account') }}</span>
           </RouterLink>
           <RouterLink
             v-if="passwordLoginAvailable"
@@ -264,12 +266,12 @@ onUnmounted(() => {
             role="menuitem"
             @click="closeMenus"
           >
-            <span class="cbp-topbar-dd-item-label">Change password</span>
-            <span class="cbp-topbar-dd-item-sub">Email sign-in password</span>
+            <span class="cbp-topbar-dd-item-label">{{ locale.t('chrome.change_password', 'Change password') }}</span>
+            <span class="cbp-topbar-dd-item-sub">{{ locale.t('chrome.change_password_sub', 'Email sign-in password') }}</span>
           </RouterLink>
           <button type="button" class="cbp-topbar-dd-item cbp-topbar-dd-logout" role="menuitem" @click="onLogout">
-            <span class="cbp-topbar-dd-item-label">Log out</span>
-            <span class="cbp-topbar-dd-item-sub">End session</span>
+            <span class="cbp-topbar-dd-item-label">{{ locale.t('chrome.log_out', 'Log out') }}</span>
+            <span class="cbp-topbar-dd-item-sub">{{ locale.t('chrome.log_out_sub', 'End session') }}</span>
           </button>
         </div>
       </div>

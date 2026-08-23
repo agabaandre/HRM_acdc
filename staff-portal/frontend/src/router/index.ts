@@ -123,6 +123,18 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'Leave settings', anyPermission: [97, 98, 15], module: 'settings' },
     },
     {
+      path: '/settings/languages',
+      name: 'settings-languages',
+      component: () => import('../pages/settings/LanguagesSettingsPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'Languages', module: 'settings' },
+    },
+    {
+      path: '/settings/ai-providers',
+      name: 'settings-ai-providers',
+      component: () => import('../pages/settings/AiProvidersPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'AI providers', module: 'settings' },
+    },
+    {
       path: '/settings/performance',
       name: 'settings-performance',
       component: () => import('../pages/settings/PerformanceSettingsPage.vue'),

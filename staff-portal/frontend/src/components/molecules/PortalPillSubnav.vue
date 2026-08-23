@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import { useLocaleStore } from '@/stores/locale'
 
 export type PortalPillNavItem = {
   key: string
@@ -20,10 +21,12 @@ defineProps<{
 const emit = defineEmits<{
   select: [key: string]
 }>()
+
+const locale = useLocaleStore()
 </script>
 
 <template>
-  <nav class="portal-pill-subnav" :aria-label="ariaLabel || 'Section navigation'">
+  <nav class="portal-pill-subnav" :aria-label="ariaLabel || locale.t('subnav.section_nav', 'Section navigation')">
     <component
       :is="item.to ? RouterLink : 'button'"
       v-for="item in items"

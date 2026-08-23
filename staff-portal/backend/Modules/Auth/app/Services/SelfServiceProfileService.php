@@ -5,8 +5,11 @@ namespace Modules\Auth\Services;
 use App\Support\StaffPhoto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Modules\Auth\Models\PortalUser;
+use Modules\Settings\Models\PortalLanguage;
+use Modules\Settings\Services\PortalLanguageService;
 use Modules\Staff\Services\StaffProfileService;
 use Staff\Shared\StaffStorage;
 
@@ -14,6 +17,7 @@ class SelfServiceProfileService
 {
     public function __construct(
         protected StaffProfileService $staffProfiles,
+        protected PortalLanguageService $languages,
     ) {}
 
     public function passwordLoginAvailable(PortalUser $user): bool
@@ -45,8 +49,11 @@ class SelfServiceProfileService
         $signature = trim((string) ($staff->signature ?? ''));
         $photo = trim((string) ($staff->photo ?? ''));
 
+        $staffPayload = $this->staffPayload($staff);
+        $staffPayload['langauge'] = (string) ($user->langauge ?: 'en');
+
         return [
-            'staff' => $this->staffPayload($staff),
+            'staff' => $staffPayload,
             'contract' => $contract ? $this->contractPayload($contract) : null,
             'supervisors' => [
                 'first' => $contract ? [
@@ -64,6 +71,7 @@ class SelfServiceProfileService
             ],
             'lookups' => [
                 'kin_relationship_types' => $kinTypes,
+                'languages' => $this->languages->profileOptions(),
             ],
             'flags' => [
                 'allow_email_login' => (bool) $user->allow_email_login,
@@ -87,11 +95,16 @@ class SelfServiceProfileService
             'whatsapp' => $validated['whatsapp'] ?? null,
             'tel_1' => $validated['tel_1'],
             'tel_2' => $validated['tel_2'] ?? null,
-            'langauge' => $validated['langauge'] ?? null,
             'residential_address_duty_station' => $validated['residential_address_duty_station'],
             'number_of_dependants' => $validated['number_of_dependants'],
             'next_of_kin_json' => json_encode($nok, JSON_UNESCAPED_UNICODE),
         ]);
+
+        $locale = (string) ($validated['langauge'] ?? '');
+        if ($locale !== '') {
+            DB::table('user')->where('user_id', $user->user_id)->update(['langauge' => $locale]);
+            $user->langauge = $locale;
+        }
 
         return $this->show($user);
     }
@@ -209,7 +222,7 @@ class SelfServiceProfileService
             'whatsapp' => ['nullable', 'string', 'max:50'],
             'tel_1' => ['required', 'string', 'max:50'],
             'tel_2' => ['nullable', 'string', 'max:50'],
-            'langauge' => ['nullable', 'in:en,fr,sw,ar'],
+            'langauge' => ['nullable', 'string', Rule::in(PortalLanguage::activeLocaleCodes())],
             'residential_address_duty_station' => ['required', 'string', 'max:500'],
             'number_of_dependants' => ['required', 'integer', 'min:0', 'max:99'],
             'next_of_kin' => ['required', 'array', 'max:2'],

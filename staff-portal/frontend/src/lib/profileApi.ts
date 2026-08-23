@@ -54,6 +54,7 @@ export interface MyProfilePayload {
   }
   lookups: {
     kin_relationship_types: KinRelationshipType[]
+    languages?: Array<{ code: string; name: string; flag: string }>
   }
   flags: {
     allow_email_login: boolean

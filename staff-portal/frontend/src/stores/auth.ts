@@ -17,6 +17,7 @@ export interface PortalProfile {
   allow_email_login?: boolean
   password_login_available?: boolean
   is_impersonated?: boolean
+  locale?: string
 }
 
 export interface PortalUser {

@@ -14,6 +14,7 @@ import {
   type PerformanceTab,
 } from '@/lib/performanceApi'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
+import { useLocaleStore } from '@/stores/locale'
 
 type HubTab = PerformanceTab | 'analytics'
 type AnalyticsPhase = 'ppa' | 'midterm' | 'endterm'
@@ -49,6 +50,7 @@ type AnalyticsPayload = {
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 
 const tab = ref<HubTab>('dashboard')
 const analyticsPhase = ref<AnalyticsPhase>('ppa')
@@ -158,42 +160,42 @@ function setTab(next: HubTab) {
 const hubTabItems = computed<PortalPillNavItem[]>(() => [
   {
     key: 'dashboard',
-    label: 'My forms',
+    label: locale.t('subnav.perf_my_forms', 'My forms'),
     icon: 'fa-solid fa-file-lines',
     active: tab.value === 'dashboard',
   },
   {
     key: 'my',
-    label: 'History',
+    label: locale.t('subnav.perf_history', 'History'),
     icon: 'fa-solid fa-clock-rotate-left',
     active: tab.value === 'my',
   },
   {
     key: 'pending',
-    label: 'Pending reviews',
+    label: locale.t('subnav.perf_pending', 'Pending reviews'),
     icon: 'fa-solid fa-clipboard-check',
     active: tab.value === 'pending',
     badge: data.value?.pending_count || null,
   },
   {
     key: 'analytics',
-    label: 'Analytics',
+    label: locale.t('subnav.perf_analytics', 'Analytics'),
     icon: 'fa-solid fa-chart-line',
     active: tab.value === 'analytics',
   },
 ])
 
 const analyticsPhaseItems = computed<PortalPillNavItem[]>(() => [
-  { key: 'ppa', label: 'PPA', icon: 'fa-solid fa-flag', active: analyticsPhase.value === 'ppa' },
+  { key: 'ppa', label: locale.t('subnav.ppa', 'PPA'), icon: 'fa-solid fa-flag', active: analyticsPhase.value === 'ppa' },
   {
     key: 'midterm',
-    label: 'Midterm',
+    label: locale.t('subnav.midterm', 'Midterm'),
     icon: 'fa-solid fa-chart-simple',
     active: analyticsPhase.value === 'midterm',
   },
   {
     key: 'endterm',
-    label: 'Endterm',
+    label: locale.t('subnav.endterm', 'Endterm'),
     icon: 'fa-solid fa-flag-checkered',
     active: analyticsPhase.value === 'endterm',
   },
@@ -505,7 +507,7 @@ onMounted(() => {
       <template #tabs>
         <PortalPillSubnav
           :items="hubTabItems"
-          aria-label="Performance sections"
+          :aria-label="locale.t('subnav.perf_sections', 'Performance sections')"
           @select="(key) => setTab(key as HubTab)"
         />
       </template>
@@ -572,7 +574,7 @@ onMounted(() => {
       <PortalPillSubnav
         class="mb-3 analytics-filters"
         :items="analyticsPhaseItems"
-        aria-label="Analytics phase"
+        :aria-label="locale.t('subnav.analytics_phase', 'Analytics phase')"
         @select="(key) => setAnalyticsPhase(key as AnalyticsPhase)"
       />
 

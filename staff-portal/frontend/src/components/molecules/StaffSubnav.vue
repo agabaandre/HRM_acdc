@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = withDefaults(
   defineProps<{
@@ -13,6 +14,7 @@ const props = withDefaults(
 )
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const route = useRoute()
 
 const items = computed<PortalPillNavItem[]>(() => {
@@ -23,56 +25,56 @@ const items = computed<PortalPillNavItem[]>(() => {
     {
       key: 'directory',
       to: '/staff',
-      label: 'Directory',
+      label: locale.t('subnav.directory', 'Directory'),
       icon: 'fa-solid fa-users',
       active: route.path === '/staff' || /^\/staff\/\d+(\/|$)/.test(route.path),
     },
     {
       key: 'history',
       to: '/staff/history',
-      label: 'Staff history',
+      label: locale.t('subnav.staff_history', 'Staff history'),
       icon: 'fa-solid fa-clock-rotate-left',
       active: route.path.startsWith('/staff/history'),
     },
     {
       key: 'new',
       to: '/staff/new',
-      label: 'New staff',
+      label: locale.t('subnav.new_staff', 'New staff'),
       icon: 'fa-solid fa-user-plus',
       active: route.path === '/staff/new' || route.path.startsWith('/staff/new/'),
     },
     {
       key: 'birthdays',
       to: '/staff/birthdays',
-      label: 'Birthdays',
+      label: locale.t('subnav.birthdays', 'Birthdays'),
       icon: 'fa-solid fa-cake-candles',
       active: route.path.startsWith('/staff/birthdays'),
     },
     {
       key: 'nok',
       to: '/staff/next-of-kin',
-      label: 'Next of kin',
+      label: locale.t('subnav.next_of_kin', 'Next of kin'),
       icon: 'fa-solid fa-people-roof',
       active: route.path.startsWith('/staff/next-of-kin'),
     },
     {
       key: 'signatures',
       to: '/staff/signatures',
-      label: 'Signatures',
+      label: locale.t('subnav.signatures', 'Signatures'),
       icon: 'fa-solid fa-signature',
       active: route.path.startsWith('/staff/signatures'),
     },
     {
       key: 'quality',
       to: '/staff/data-quality',
-      label: 'Data quality',
+      label: locale.t('subnav.data_quality', 'Data quality'),
       icon: 'fa-solid fa-clipboard-check',
       active: route.path.startsWith('/staff/data-quality'),
     },
     {
       key: 'payroll',
       to: '/payroll',
-      label: 'Payroll',
+      label: locale.t('subnav.payroll', 'Payroll'),
       icon: 'fa-solid fa-money-check-dollar',
       active: route.path.startsWith('/payroll'),
     },
@@ -105,5 +107,5 @@ const items = computed<PortalPillNavItem[]>(() => {
 </script>
 
 <template>
-  <PortalPillSubnav :items="items" aria-label="Staff tools" />
+  <PortalPillSubnav :items="items" :aria-label="locale.t('subnav.staff_tools', 'Staff tools')" />
 </template>

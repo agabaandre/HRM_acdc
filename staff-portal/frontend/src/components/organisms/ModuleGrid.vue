@@ -2,6 +2,9 @@
 import { computed } from 'vue'
 import ModuleCard from '@/components/molecules/ModuleCard.vue'
 import type { CbpModuleLink } from '@/lib/cbpModules'
+import { useLocaleStore } from '@/stores/locale'
+
+const locale = useLocaleStore()
 
 const props = defineProps<{
   modules: CbpModuleLink[]
@@ -26,7 +29,7 @@ function handleClick(mod: CbpModuleLink, e: Event) {
 <template>
   <div>
     <p v-if="query && filtered.length === 0" class="cbp-home-search-empty">
-      No modules match your search.
+      {{ locale.t('home.no_match', 'No modules match your search.') }}
     </p>
     <div class="cbp-home-grid">
       <div

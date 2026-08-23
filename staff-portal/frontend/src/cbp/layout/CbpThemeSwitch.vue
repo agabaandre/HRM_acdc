@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useLocaleStore } from '@/stores/locale'
+
 defineProps<{
   theme: 'dark' | 'light'
 }>()
@@ -6,10 +8,12 @@ defineProps<{
 const emit = defineEmits<{
   'update:theme': [value: 'dark' | 'light']
 }>()
+
+const locale = useLocaleStore()
 </script>
 
 <template>
-  <div class="cbp-theme-switch" role="group" aria-label="Colour theme">
+  <div class="cbp-theme-switch" role="group" :aria-label="locale.t('chrome.theme', 'Colour theme')">
     <button
       type="button"
       class="cbp-theme-btn"
@@ -17,7 +21,7 @@ const emit = defineEmits<{
       :aria-pressed="theme === 'dark'"
       @click="emit('update:theme', 'dark')"
     >
-      Dark
+      {{ locale.t('chrome.dark', 'Dark') }}
     </button>
     <button
       type="button"
@@ -26,7 +30,7 @@ const emit = defineEmits<{
       :aria-pressed="theme === 'light'"
       @click="emit('update:theme', 'light')"
     >
-      Light
+      {{ locale.t('chrome.light', 'Light') }}
     </button>
   </div>
 </template>

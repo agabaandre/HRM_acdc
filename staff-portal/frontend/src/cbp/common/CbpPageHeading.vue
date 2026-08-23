@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import { useLocaleStore } from '@/stores/locale'
 
 defineProps<{
   title: string
   backTo?: string
   backLabel?: string
 }>()
+
+const locale = useLocaleStore()
 </script>
 
 <template>
   <header class="cbp-view-head">
     <p v-if="backTo" class="cbp-view-back">
-      <RouterLink :to="backTo">{{ backLabel ?? '← Back' }}</RouterLink>
+      <RouterLink :to="backTo">{{ backLabel ?? locale.t('chrome.back', '← Back') }}</RouterLink>
     </p>
     <h1 class="cbp-view-title">{{ title }}</h1>
     <p v-if="$slots.lede" class="cbp-view-lede">

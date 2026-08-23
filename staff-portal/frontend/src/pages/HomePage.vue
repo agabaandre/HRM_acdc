@@ -5,6 +5,9 @@ import ModuleGrid from '@/components/organisms/ModuleGrid.vue'
 import { fetchCbpModules, type CbpModuleLink } from '@/lib/cbpModules'
 import { launchCbpModule, moduleLaunchKey } from '@/lib/cbpLaunch'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
+import { useLocaleStore } from '@/stores/locale'
+
+const locale = useLocaleStore()
 
 const modules = ref<CbpModuleLink[]>([])
 const loading = ref(true)
@@ -37,7 +40,7 @@ onMounted(async () => {
     const payload = await fetchCbpModules({ path: 'home' })
     modules.value = payload.modules
   } catch (e) {
-    error.value = apiErrorMessage(e, 'Could not load modules')
+    error.value = apiErrorMessage(e, locale.t('chrome.load_modules_error', 'Could not load CBP modules'))
   } finally {
     loading.value = false
   }
@@ -49,10 +52,10 @@ onMounted(async () => {
     <div class="cbp-home-shell">
       <div class="cbp-home-shell-inner">
         <div class="cbp-home">
-          <h1 class="cbp-home-title">Welcome to Africa CDC Central Business Platform</h1>
+          <h1 class="cbp-home-title">{{ locale.t('home.welcome', 'Welcome to Africa CDC Central Business Platform') }}</h1>
 
           <div class="cbp-home-search">
-            <label for="cbpHomeModuleSearch" class="visually-hidden">Search modules</label>
+            <label for="cbpHomeModuleSearch" class="visually-hidden">{{ locale.t('home.search_modules', 'Search modules') }}</label>
             <div class="cbp-home-search-input">
               <span class="cbp-home-search-icon" aria-hidden="true">
                 <i class="fa-solid fa-search" />
@@ -61,21 +64,21 @@ onMounted(async () => {
                 id="cbpHomeModuleSearch"
                 v-model="query"
                 type="search"
-                placeholder="Search modules by name or description…"
+                :placeholder="locale.t('home.search_placeholder', 'Search modules by name or description…')"
                 autocomplete="off"
                 spellcheck="false"
               />
             </div>
           </div>
 
-          <StatusText v-if="loading" message="Loading modules…" tone="muted" />
+          <StatusText v-if="loading" :message="locale.t('chrome.loading_modules', 'Loading modules…')" tone="muted" />
           <StatusText v-else-if="error" :message="error" tone="error" />
           <ModuleGrid v-else :modules="modules" :query="query" :on-module-click="onModuleClick" />
 
           <footer class="cbp-home-footer">
             <p>
-              <a :href="`${apmBase}/faq`" target="_blank" rel="noopener noreferrer">FAQs</a>
-              <a :href="`${apmBase}/help`" target="_blank" rel="noopener noreferrer">Help</a>
+              <a :href="`${apmBase}/faq`" target="_blank" rel="noopener noreferrer">{{ locale.t('home.faqs', 'FAQs') }}</a>
+              <a :href="`${apmBase}/help`" target="_blank" rel="noopener noreferrer">{{ locale.t('home.help', 'Help') }}</a>
             </p>
           </footer>
         </div>

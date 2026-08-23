@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { revertImpersonation } from '@/lib/authAdminApi'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const router = useRouter()
 const reverting = ref(false)
 const error = ref<string | null>(null)
@@ -94,9 +96,9 @@ onUnmounted(() => window.clearInterval(timer))
       <div class="impersonation-banner__copy">
         <i class="fa-solid fa-user-secret me-2" aria-hidden="true" />
         <span>
-          Impersonating <strong>{{ userName }}</strong>
-          <span class="text-medium-emphasis"> · return to {{ originalName }}</span>
-          <span v-if="timerLabel" class="impersonation-banner__timer"> · {{ timerLabel }} left</span>
+          {{ locale.t('chrome.impersonating', 'Impersonating') }} <strong>{{ userName }}</strong>
+          <span class="text-medium-emphasis"> · {{ locale.t('chrome.return_to', 'return to') }} {{ originalName }}</span>
+          <span v-if="timerLabel" class="impersonation-banner__timer"> · {{ timerLabel }} {{ locale.t('chrome.left', 'left') }}</span>
         </span>
       </div>
       <div class="impersonation-banner__actions">
@@ -108,7 +110,7 @@ onUnmounted(() => window.clearInterval(timer))
           :loading="reverting"
           @click="onRevert(false)"
         >
-          Revert to admin
+          {{ locale.t('chrome.revert_to_admin', 'Revert to admin') }}
         </v-btn>
       </div>
     </div>

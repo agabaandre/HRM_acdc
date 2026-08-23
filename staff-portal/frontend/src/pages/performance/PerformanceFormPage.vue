@@ -11,6 +11,7 @@ import ReviewSections from '@/components/performance/ReviewSections.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import { openApiPdf } from '@/lib/exportDownload'
 import { hasRichTextContent } from '@/lib/richText'
+import { useLocaleStore } from '@/stores/locale'
 import {
   createPerformanceEntry,
   fetchPerformanceEntry,
@@ -28,6 +29,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 
 const loading = ref(false)
 const busy = ref(false)
@@ -107,7 +109,7 @@ const phaseTabs = computed<PortalPillNavItem[]>(() => {
   const tabs: PortalPillNavItem[] = [
     {
       key: 'ppa',
-      label: 'PPA',
+      label: locale.t('subnav.ppa', 'PPA'),
       icon: 'fa-solid fa-flag',
       to: { name: 'performance-form', params: { ...baseParams, phase: 'ppa' as const } },
       active: activePhase.value === 'ppa',
@@ -117,7 +119,7 @@ const phaseTabs = computed<PortalPillNavItem[]>(() => {
   if (payload.value.midterm_exists || activePhase.value === 'midterm') {
     tabs.push({
       key: 'midterm',
-      label: 'Midterm',
+      label: locale.t('subnav.midterm', 'Midterm'),
       icon: 'fa-solid fa-chart-simple',
       to: { name: 'performance-form', params: { ...baseParams, phase: 'midterm' as const } },
       active: activePhase.value === 'midterm',
@@ -127,7 +129,7 @@ const phaseTabs = computed<PortalPillNavItem[]>(() => {
   if (payload.value.endterm_exists || activePhase.value === 'endterm') {
     tabs.push({
       key: 'endterm',
-      label: 'Endterm',
+      label: locale.t('subnav.endterm', 'Endterm'),
       icon: 'fa-solid fa-flag-checkered',
       to: { name: 'performance-form', params: { ...baseParams, phase: 'endterm' as const } },
       active: activePhase.value === 'endterm',
@@ -504,7 +506,7 @@ watch(
         <PortalPillSubnav
           v-if="phaseTabs.length"
           :items="phaseTabs"
-          aria-label="Performance phases"
+          :aria-label="locale.t('subnav.perf_phases', 'Performance phases')"
         />
       </template>
 

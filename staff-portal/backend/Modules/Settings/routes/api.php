@@ -10,6 +10,8 @@ use Modules\Settings\Http\Controllers\Api\V1\SettingsApiController;
 use Modules\Settings\Http\Controllers\Api\V1\StaffJobsSettingsController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
+    require module_path('Settings', '/routes/languages.php');
+    require module_path('Settings', '/routes/ai.php');
     Route::get('settings/hub', [SettingsApiController::class, 'hub']);
     Route::get('settings/staff-jobs', [StaffJobsSettingsController::class, 'show']);
     Route::put('settings/staff-jobs', [StaffJobsSettingsController::class, 'update']);

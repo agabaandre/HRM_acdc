@@ -11,6 +11,8 @@ export interface PortalNavItem {
   icon?: string
   /** SPA module key from Settings → Portal modules */
   module?: string
+  /** i18n key under the `nav` group, e.g. dashboard */
+  i18nKey?: string
 }
 
 /** Page heading icons (Font Awesome) keyed by route path prefix */
@@ -45,6 +47,7 @@ export function pageIconForPath(path: string): string {
 export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   {
     label: 'Dashboard',
+    i18nKey: 'dashboard',
     to: '/dashboard',
     permission: 76,
     group: 'primary',
@@ -53,6 +56,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Staff',
+    i18nKey: 'staff',
     to: '/staff',
     permission: 72,
     match: ['/staff'],
@@ -62,16 +66,17 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Leave',
+    i18nKey: 'leave',
     to: '/leave',
     match: ['/leave'],
     group: 'primary',
     icon: 'fa-solid fa-calendar-check',
-    // 37 make + 73 approve + 95/77 view-all + 96/97 admin (HR role also bypasses in nav filter)
     anyPermission: [37, 73, 95, 96, 97, 98, 77],
     module: 'leave',
   },
   {
     label: 'Payroll',
+    i18nKey: 'payroll',
     to: '/payroll',
     match: ['/payroll'],
     group: 'primary',
@@ -81,6 +86,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Performance',
+    i18nKey: 'performance',
     to: '/performance',
     permission: 74,
     match: ['/performance'],
@@ -90,6 +96,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Tasks',
+    i18nKey: 'tasks',
     to: '/tasks/weekly',
     permission: 75,
     match: ['/tasks'],
@@ -99,6 +106,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Workplan',
+    i18nKey: 'workplan',
     to: '/workplan',
     permission: 79,
     match: ['/workplan'],
@@ -108,6 +116,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'AD Manager',
+    i18nKey: 'ad_manager',
     to: '/admanager/expired',
     permission: 77,
     match: ['/admanager'],
@@ -117,6 +126,7 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   },
   {
     label: 'Settings',
+    i18nKey: 'settings',
     to: '/settings',
     permission: 15,
     match: ['/settings'],
@@ -124,10 +134,10 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     icon: 'fa-solid fa-gear',
     module: 'settings',
   },
-  { label: 'Permissions', to: '/permissions', permission: 17, group: 'more', icon: 'fa-solid fa-lock' },
-  { label: 'Users', to: '/auth/users', permission: 17, match: ['/auth/users'], group: 'more', icon: 'fa-solid fa-users' },
-  { label: 'OAuth clients', to: '/auth/oauth-clients', permission: 17, match: ['/auth/oauth-clients'], group: 'more', icon: 'fa-solid fa-key' },
-  { label: 'Audit logs', to: '/auth/audit-logs', permission: 17, match: ['/auth/audit-logs'], group: 'more', icon: 'fa-solid fa-clock-rotate-left' },
+  { label: 'Permissions', i18nKey: 'permissions', to: '/permissions', permission: 17, group: 'more', icon: 'fa-solid fa-lock' },
+  { label: 'Users', i18nKey: 'users', to: '/auth/users', permission: 17, match: ['/auth/users'], group: 'more', icon: 'fa-solid fa-users' },
+  { label: 'OAuth clients', i18nKey: 'oauth_clients', to: '/auth/oauth-clients', permission: 17, match: ['/auth/oauth-clients'], group: 'more', icon: 'fa-solid fa-key' },
+  { label: 'Audit logs', i18nKey: 'audit_logs', to: '/auth/audit-logs', permission: 17, match: ['/auth/audit-logs'], group: 'more', icon: 'fa-solid fa-clock-rotate-left' },
 ]
 
 export function isNavItemActive(item: PortalNavItem, path: string): boolean {

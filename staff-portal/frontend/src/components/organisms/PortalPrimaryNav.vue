@@ -3,11 +3,18 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { PORTAL_NAV_ITEMS, isNavItemActive, type PortalNavItem } from '@/lib/portalNav'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const route = useRoute()
 const navOpen = ref(false)
 const moreOpen = ref(false)
+
+function navLabel(item: PortalNavItem): string {
+  if (!item.i18nKey) return item.label
+  return locale.t(`nav.${item.i18nKey}`, item.label)
+}
 
 function canSee(item: PortalNavItem): boolean {
   if (item.module && !auth.isModuleEnabled(item.module)) return false
@@ -62,9 +69,9 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <template>
-  <nav class="cbp-primary-nav" aria-label="Primary">
+  <nav class="cbp-primary-nav" :aria-label="locale.t('chrome.primary', 'Primary')">
     <div class="cbp-primary-nav-inner">
-      <button type="button" class="cbp-nav-toggle" aria-label="Toggle menu" @click.stop="toggleNav">
+      <button type="button" class="cbp-nav-toggle" :aria-label="locale.t('chrome.toggle_menu', 'Toggle menu')" @click.stop="toggleNav">
         <i class="bx bx-menu" aria-hidden="true" />
       </button>
       <div class="cbp-nav-links" :class="{ 'is-open': navOpen }">
@@ -78,7 +85,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
             @click="closeAll"
           >
             <i v-if="item.icon" :class="[item.icon, 'cbp-nav-link-icon']" aria-hidden="true" />
-            <span>{{ item.label }}</span>
+            <span class="notranslate">{{ navLabel(item) }}</span>
           </RouterLink>
 
           <div
@@ -92,11 +99,11 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
               :class="{ 'router-link-active': moreActive }"
               aria-haspopup="true"
               :aria-expanded="moreOpen"
-              aria-label="More navigation"
+              :aria-label="locale.t('nav.more', 'More')"
               @click.stop="toggleMore"
             >
               <i class="fa-solid fa-ellipsis cbp-nav-link-icon" aria-hidden="true" />
-              <span>More</span>
+              <span class="notranslate">{{ locale.t('nav.more', 'More') }}</span>
               <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
             </button>
             <div class="cbp-nav-dd-menu" role="menu">
@@ -110,7 +117,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
                 @click="closeAll"
               >
                 <i v-if="item.icon" :class="[item.icon, 'cbp-nav-dd-item-icon']" aria-hidden="true" />
-                <span>{{ item.label }}</span>
+                <span class="notranslate">{{ navLabel(item) }}</span>
               </RouterLink>
             </div>
           </div>

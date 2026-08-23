@@ -27,6 +27,7 @@ class PortalUser extends Authenticatable
         'auth_staff_id',
         'status',
         'allow_email_login',
+        'langauge',
     ];
 
     protected $hidden = [

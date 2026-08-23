@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { useTheme } from 'vuetify'
+import { useLocale, useTheme } from 'vuetify'
 import ImpersonationBanner from '@/components/organisms/ImpersonationBanner.vue'
+import LanguageSelector from '@/components/organisms/LanguageSelector.vue'
 import PortalTopHeader from '@/components/organisms/PortalTopHeader.vue'
 import PortalPrimaryNav from '@/components/organisms/PortalPrimaryNav.vue'
 import CbpPageFooter from '@cbp/layout/CbpPageFooter.vue'
 import CbpThemeSwitch from '@cbp/layout/CbpThemeSwitch.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 import { apiDocsUrl } from '@/lib/auth'
 
 defineProps<{
@@ -15,12 +17,14 @@ defineProps<{
 }>()
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
+const vuetifyLocale = useLocale()
 const route = useRoute()
 const vuetifyTheme = useTheme()
 const theme = ref<'dark' | 'light'>('light')
 const THEME_KEY = 'staff-portal.theme'
 
-const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? 'Staff' : null))
+const displayName = computed(() => (auth.isAuthenticated ? auth.me?.name ?? locale.t('chrome.staff', 'Staff') : null))
 const apiHref = computed(() => apiDocsUrl())
 
 /** CBP launcher home matches CI3 `/home/index` — top bar only, no staff primary nav. */
@@ -44,6 +48,22 @@ if (stored === 'light' || stored === 'dark') {
 } else {
   applyTheme('light')
 }
+
+watch(
+  () => auth.isAuthenticated,
+  (ok) => {
+    if (ok) void locale.bootstrap()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => locale.locale,
+  (code) => {
+    vuetifyLocale.current.value = code || 'en'
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -55,6 +75,7 @@ if (stored === 'light' || stored === 'dark') {
       :theme="theme"
     >
       <template v-if="auth.isAuthenticated" #extra>
+        <LanguageSelector />
         <CbpThemeSwitch :theme="theme" @update:theme="onThemeChange" />
       </template>
     </PortalTopHeader>

@@ -2,8 +2,10 @@
 import { storeToRefs } from 'pinia'
 import ToastAlert from '@/components/molecules/ToastAlert.vue'
 import { useToastStore } from '@/features/toast'
+import { useLocaleStore } from '@/stores/locale'
 
 const store = useToastStore()
+const locale = useLocaleStore()
 const { items } = storeToRefs(store)
 </script>
 
@@ -12,7 +14,7 @@ const { items } = storeToRefs(store)
     v-if="items.length"
     id="customToastContainer"
     class="toast-viewport"
-    aria-label="Notifications"
+    :aria-label="locale.t('chrome.notifications', 'Notifications')"
   >
     <ToastAlert
       v-for="item in items"

@@ -4,6 +4,11 @@ import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import ProfileSignaturePad from '@/components/molecules/ProfileSignaturePad.vue'
 import { resolveAvatarUrl } from '@/lib/api'
+import { LEAVE_PERMS } from '@/lib/leavePermissions'
+import {
+  fetchPerformanceHub,
+  type PerformanceSelfActions,
+} from '@/lib/performanceApi'
 import {
   fetchMyProfile,
   updateMyProfile,
@@ -15,9 +20,12 @@ import {
   type NextOfKinRow,
 } from '@/lib/profileApi'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 
 const auth = useAuthStore()
+const localeStore = useLocaleStore()
 const loading = ref(true)
+const selfActions = ref<PerformanceSelfActions | null>(null)
 const saving = ref(false)
 const uploading = ref(false)
 const error = ref<string | null>(null)
@@ -40,12 +48,25 @@ const form = reactive({
   ] as NextOfKinRow[],
 })
 
-const languageItems = [
-  { title: 'English', value: 'en' },
-  { title: 'French', value: 'fr' },
-  { title: 'Swahili', value: 'sw' },
-  { title: 'Arabic', value: 'ar' },
-]
+const languageItems = computed(() => {
+  const fromProfile = payload.value?.lookups.languages || []
+  const fromStore = localeStore.languages
+  const rows = fromProfile.length ? fromProfile : fromStore
+  if (!rows.length) {
+    return [
+      { title: 'English', value: 'en' },
+      { title: 'Français', value: 'fr' },
+      { title: 'العربية', value: 'ar' },
+      { title: 'Español', value: 'es' },
+      { title: 'Português', value: 'pt' },
+      { title: 'Kiswahili', value: 'sw' },
+    ]
+  }
+  return rows.map((row) => ({
+    title: `${row.flag ? `${row.flag} ` : ''}${row.name}`,
+    value: row.code,
+  }))
+})
 
 const displayName = computed(() => {
   const s = payload.value?.staff
@@ -63,6 +84,94 @@ const kinItems = computed(() =>
     value: k.id,
   })),
 )
+
+const roleId = computed(() => Number(auth.me?.profile?.role_id || 0))
+const hasLinkedStaff = computed(() => Number(auth.me?.profile?.staff_id || 0) > 0)
+const isHr = computed(
+  () =>
+    !!auth.me?.profile?.is_hr ||
+    !!auth.me?.profile?.is_hr_admin ||
+    roleId.value === 20 ||
+    roleId.value === 22,
+)
+const isSystemAdmin = computed(() => !!auth.me?.profile?.is_system_admin || roleId.value === 10)
+
+const canApplyLeave = computed(
+  () =>
+    auth.isModuleEnabled('leave') &&
+    (auth.hasPermission(LEAVE_PERMS.MAKE_REQUEST) || hasLinkedStaff.value || isHr.value || isSystemAdmin.value),
+)
+
+const canUsePerformance = computed(
+  () =>
+    auth.isModuleEnabled('performance') &&
+    (auth.hasPermission(74) || isHr.value || isSystemAdmin.value),
+)
+
+type ProfileQuickAction = {
+  key: string
+  label: string
+  icon: string
+  to: string
+  primary?: boolean
+}
+
+const quickActions = computed((): ProfileQuickAction[] => {
+  const items: ProfileQuickAction[] = []
+  if (canApplyLeave.value) {
+    items.push({
+      key: 'leave',
+      label: localeStore.t('profile.apply_leave', 'Apply for leave'),
+      icon: 'fa-solid fa-calendar-plus',
+      to: '/leave/apply',
+      primary: true,
+    })
+  }
+  if (canUsePerformance.value) {
+    const self = selfActions.value
+    items.push({
+      key: 'ppa',
+      label: self?.ppa_exists
+        ? localeStore.t('profile.open_ppa', 'Open PPA')
+        : localeStore.t('profile.make_ppa', 'Make PPA'),
+      icon: 'fa-solid fa-file-signature',
+      to: ppaPath(self),
+    })
+    items.push({
+      key: 'midterm',
+      label: localeStore.t('profile.midterm', 'Midterm'),
+      icon: 'fa-solid fa-clipboard-check',
+      to: self?.midterm_url || ppaPath(self),
+    })
+    items.push({
+      key: 'endterm',
+      label: localeStore.t('profile.endterm', 'Endterm'),
+      icon: 'fa-solid fa-flag-checkered',
+      to: self?.endterm_url || ppaPath(self),
+    })
+  }
+  return items
+})
+
+function ppaPath(self: PerformanceSelfActions | null): string {
+  if (!self) return '/performance'
+  if (self.show_create_ppa) return self.create_ppa_url || '/performance/create'
+  if (self.show_current_ppa && self.current_ppa_url) return self.current_ppa_url
+  return '/performance'
+}
+
+async function loadSelfActions() {
+  if (!canUsePerformance.value) {
+    selfActions.value = null
+    return
+  }
+  try {
+    const hub = await fetchPerformanceHub({ tab: 'dashboard' })
+    selfActions.value = hub.self_actions ?? null
+  } catch {
+    selfActions.value = null
+  }
+}
 
 function applyPayload(next: MyProfilePayload) {
   payload.value = next
@@ -88,6 +197,7 @@ async function load() {
   error.value = null
   try {
     applyPayload(await fetchMyProfile())
+    void loadSelfActions()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load your profile')
   } finally {
@@ -117,6 +227,13 @@ async function save() {
     )
     success.value = 'Profile updated successfully.'
     await auth.fetchMe()
+    if (form.langauge) {
+      try {
+        await localeStore.setLocale(form.langauge)
+      } catch {
+        /* profile language is already saved */
+      }
+    }
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not save profile')
   } finally {
@@ -195,7 +312,7 @@ onMounted(load)
 <template>
   <div>
     <CbpPageHeading
-      title="My profile"
+      :title="localeStore.t('profile.title', 'My profile')"
       :subtitle="displayName"
     />
 
@@ -206,7 +323,27 @@ onMounted(load)
       {{ success }}
     </v-alert>
 
-    <div v-if="loading" class="text-medium-emphasis py-8">Loading your profile…</div>
+    <v-card v-if="!loading && payload && quickActions.length" variant="outlined" class="mb-4">
+      <v-card-text class="py-3">
+        <div class="text-subtitle-2 mb-2">{{ localeStore.t('profile.quick_actions', 'Quick actions') }}</div>
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
+            v-for="action in quickActions"
+            :key="action.key"
+            class="profile-quick-btn"
+            :to="action.to"
+            :color="action.primary ? 'primary' : undefined"
+            :variant="action.primary ? 'flat' : 'tonal'"
+            size="small"
+          >
+            <i :class="[action.icon, 'me-2']" aria-hidden="true" />
+            {{ action.label }}
+          </v-btn>
+        </div>
+      </v-card-text>
+    </v-card>
+
+    <div v-if="loading" class="text-medium-emphasis py-8">{{ localeStore.t('profile.loading', 'Loading your profile…') }}</div>
 
     <v-row v-else-if="payload" density="compact">
       <v-col cols="12" md="5">
@@ -366,7 +503,12 @@ onMounted(load)
                   <v-text-field v-model="form.tel_2" label="Telephone 2" placeholder=" " />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select v-model="form.langauge" :items="languageItems" label="Language" placeholder=" " />
+                  <v-select
+                    v-model="form.langauge"
+                    :items="languageItems"
+                    :label="localeStore.t('chrome.language', 'Language')"
+                    placeholder=" "
+                  />
                 </v-col>
               </v-row>
 
@@ -387,10 +529,10 @@ onMounted(load)
                   @change="onPassport"
                 />
                 <v-btn size="small" variant="tonal" :loading="uploading" @click="photoInput?.click()">
-                  Upload photo
+                  {{ localeStore.t('profile.upload_photo', 'Upload photo') }}
                 </v-btn>
                 <v-btn size="small" variant="tonal" :loading="uploading" @click="passportInput?.click()">
-                  Upload passport biodata
+                  {{ localeStore.t('profile.upload_passport', 'Upload passport biodata') }}
                 </v-btn>
               </div>
               <ProfileSignaturePad @save-data-url="onSignatureDataUrl" @save-file="onSignatureFile" />
@@ -444,7 +586,7 @@ onMounted(load)
               </div>
 
               <div class="d-flex flex-wrap ga-2 mt-2">
-                <v-btn type="submit" color="primary" :loading="saving">Save changes</v-btn>
+                <v-btn type="submit" color="primary" :loading="saving">{{ localeStore.t('profile.save_changes', 'Save changes') }}</v-btn>
                 <v-btn
                   v-if="auth.passwordLoginAvailable"
                   variant="outlined"
@@ -465,6 +607,11 @@ onMounted(load)
 .profile-avatar :deep(.v-img__img) {
   object-fit: cover;
   object-position: center 26%;
+}
+.profile-quick-btn {
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .profile-summary-grid {
   display: grid;

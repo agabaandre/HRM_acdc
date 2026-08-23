@@ -10,31 +10,44 @@ import {
   type BirthdayRange,
   type BirthdayRow,
 } from '@/lib/staffApi'
+import { useLocaleStore } from '@/stores/locale'
 
+const locale = useLocaleStore()
 const loading = ref(false)
 const error = ref<string | null>(null)
 const rows = ref<BirthdayRow[]>([])
 const range = ref<BirthdayRange>('today')
 const total = ref(0)
 
-const rangeTabs: Array<{ value: BirthdayRange; label: string; icon: string }> = [
-  { value: 'today', label: 'Today', icon: 'fa-solid fa-sun' },
-  { value: 'tomorrow', label: 'Tomorrow', icon: 'fa-solid fa-cloud-sun' },
-  { value: 'next_7', label: 'Next 7 days', icon: 'fa-solid fa-calendar-week' },
-  { value: 'next_30', label: 'Next 30 days', icon: 'fa-solid fa-calendar' },
-]
-
-const birthdayRangeItems = computed<PortalPillNavItem[]>(() =>
-  rangeTabs.map((tab) => ({
-    key: tab.value,
-    label: tab.label,
-    icon: tab.icon,
-    active: range.value === tab.value,
-  })),
-)
+const birthdayRangeItems = computed<PortalPillNavItem[]>(() => [
+  {
+    key: 'today',
+    label: locale.t('subnav.bday_today', 'Today'),
+    icon: 'fa-solid fa-sun',
+    active: range.value === 'today',
+  },
+  {
+    key: 'tomorrow',
+    label: locale.t('subnav.bday_tomorrow', 'Tomorrow'),
+    icon: 'fa-solid fa-cloud-sun',
+    active: range.value === 'tomorrow',
+  },
+  {
+    key: 'next_7',
+    label: locale.t('subnav.bday_next_7', 'Next 7 days'),
+    icon: 'fa-solid fa-calendar-week',
+    active: range.value === 'next_7',
+  },
+  {
+    key: 'next_30',
+    label: locale.t('subnav.bday_next_30', 'Next 30 days'),
+    icon: 'fa-solid fa-calendar',
+    active: range.value === 'next_30',
+  },
+])
 
 const rangeLabel = computed(
-  () => rangeTabs.find((t) => t.value === range.value)?.label || 'Birthdays',
+  () => birthdayRangeItems.value.find((t) => t.key === range.value)?.label || locale.t('subnav.birthdays', 'Birthdays'),
 )
 
 function personName(row: BirthdayRow): string {
@@ -62,6 +75,10 @@ async function load() {
 
 watch(range, () => void load())
 onMounted(() => void load())
+
+function setRange(key: string) {
+  range.value = key as BirthdayRange
+}
 </script>
 
 <template>
@@ -81,8 +98,8 @@ onMounted(() => void load())
     <PortalPillSubnav
       class="mb-3"
       :items="birthdayRangeItems"
-      aria-label="Birthday range"
-      @select="(key) => (range = key as BirthdayRange)"
+      :aria-label="locale.t('subnav.birthday_range', 'Birthday range')"
+      @select="setRange"
     />
 
     <div v-if="loading" class="text-medium-emphasis">Loading…</div>

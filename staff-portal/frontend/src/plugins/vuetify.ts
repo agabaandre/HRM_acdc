@@ -72,6 +72,11 @@ const outlinedField = {
 }
 
 export default createVuetify({
+  locale: {
+    locale: 'en',
+    fallback: 'en',
+    rtl: { ar: true },
+  },
   components: {
     VColorInput,
     VDateInput,

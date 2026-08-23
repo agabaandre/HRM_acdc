@@ -8,6 +8,7 @@ import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 import { canManageLeaveBalances, LEAVE_PERMS } from '@/lib/leavePermissions'
 import {
   decideLeaveRequest,
@@ -23,6 +24,7 @@ import {
 type Tab = 'balances' | 'requests' | 'approvals' | 'plan'
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -385,25 +387,27 @@ function setTab(next: Tab) {
 const leaveTabItems = computed<PortalPillNavItem[]>(() => [
   {
     key: 'balances',
-    label: 'My balances',
+    label: locale.t('subnav.leave_balances', 'My balances'),
     icon: 'fa-solid fa-wallet',
     active: tab.value === 'balances',
   },
   {
     key: 'plan',
-    label: 'Annual leave plan',
+    label: locale.t('subnav.leave_plan', 'Annual leave plan'),
     icon: 'fa-solid fa-calendar-days',
     active: tab.value === 'plan',
   },
   {
     key: 'requests',
-    label: canViewAll.value ? 'Requests' : 'My requests',
+    label: canViewAll.value
+      ? locale.t('subnav.leave_requests', 'Requests')
+      : locale.t('subnav.leave_my_requests', 'My requests'),
     icon: 'fa-solid fa-inbox',
     active: tab.value === 'requests',
   },
   {
     key: 'approvals',
-    label: 'Approvals',
+    label: locale.t('subnav.leave_approvals', 'Approvals'),
     icon: 'fa-solid fa-clipboard-check',
     active: tab.value === 'approvals',
   },
@@ -496,7 +500,7 @@ onMounted(() => {
       <PortalPillSubnav
         class="leave-page__tabs"
         :items="leaveTabItems"
-        aria-label="Leave sections"
+        :aria-label="locale.t('subnav.leave_sections', 'Leave sections')"
         @select="(key) => setTab(key as Tab)"
       />
     </header>

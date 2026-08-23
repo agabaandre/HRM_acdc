@@ -6,6 +6,7 @@ export interface SettingsHubCard {
   label: string
   icon: string
   special?: boolean
+  i18n_key?: string
 }
 
 export type PortalModuleRow = {
@@ -111,7 +112,7 @@ export interface LookupColumnMeta {
 
 export async function fetchSettingsHub(): Promise<SettingsHubCard[]> {
   const data = await cachedGet<{ data: SettingsHubCard[] }>(
-    'settings:hub-v6',
+    'settings:hub-v9',
     '/api/v1/settings/hub',
     5 * 60_000,
   )

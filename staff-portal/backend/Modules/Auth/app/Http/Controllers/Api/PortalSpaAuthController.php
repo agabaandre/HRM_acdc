@@ -130,6 +130,7 @@ class PortalSpaAuthController extends Controller
                 'password_login_available' => (bool) $user->allow_email_login
                     && (bool) config('auth.allow_alternative_login', false),
                 'is_impersonated' => (bool) ($session['is_impersonated'] ?? false),
+                'locale' => (string) ($user->langauge ?: 'en'),
             ],
             'impersonation' => $this->impersonation->status(),
             'enabled_modules' => $this->portalModules->enabledMap(),

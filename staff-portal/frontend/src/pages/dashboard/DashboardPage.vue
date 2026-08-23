@@ -7,6 +7,7 @@ import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import PortalAfricaMap from '@/components/molecules/PortalAfricaMap.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 import {
   fetchDashboard,
   fetchDashboardJobs,
@@ -17,6 +18,7 @@ import {
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 
 const auth = useAuthStore()
+const locale = useLocaleStore()
 const loading = ref(false)
 const refreshing = ref(false)
 const error = ref<string | null>(null)
@@ -34,26 +36,26 @@ const data = computed<DashboardData | null>(() => payload.value?.data ?? null)
 const dashboardTabItems = computed<PortalPillNavItem[]>(() => [
   {
     key: 'staff',
-    label: 'Staff',
+    label: locale.t('subnav.dash_staff', 'Staff'),
     icon: 'fa-solid fa-users',
     to: '/dashboard',
     active: true,
   },
   {
     key: 'ppa',
-    label: 'PPA',
+    label: locale.t('subnav.ppa', 'PPA'),
     icon: 'fa-solid fa-flag',
     to: { path: '/performance', query: { tab: 'analytics', phase: 'ppa' } },
   },
   {
     key: 'midterm',
-    label: 'Midterm',
+    label: locale.t('subnav.midterm', 'Midterm'),
     icon: 'fa-solid fa-chart-simple',
     to: { path: '/performance', query: { tab: 'analytics', phase: 'midterm' } },
   },
   {
     key: 'endterm',
-    label: 'Endterm',
+    label: locale.t('subnav.endterm', 'Endterm'),
     icon: 'fa-solid fa-flag-checkered',
     to: { path: '/performance', query: { tab: 'analytics', phase: 'endterm' } },
   },
@@ -184,7 +186,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PortalPageChrome title="Dashboard" lede="Staff analytics — same KPIs and breakdowns as the CI Staff Tracker.">
+    <PortalPageChrome title="Dashboard" lede="Staff analytics.">
       <template #actions>
         <v-btn size="small" variant="tonal" prepend-icon="mdi-printer" :loading="exporting" @click="onPrintPdf">
           Print PDF
@@ -194,7 +196,7 @@ onMounted(() => {
         </v-btn>
       </template>
       <template v-if="auth.hasPermission(74)" #tabs>
-        <PortalPillSubnav :items="dashboardTabItems" aria-label="Dashboard analytics" />
+        <PortalPillSubnav :items="dashboardTabItems" :aria-label="locale.t('subnav.dash_analytics', 'Dashboard analytics')" />
       </template>
     </PortalPageChrome>
 
