@@ -256,14 +256,15 @@
     $displayOriginalTotalBudget = $serviceRequest->original_total_budget ?? 0;
     $displayNewTotalBudget = $serviceRequest->new_total_budget ?? 0;
     // Align Original Memo Budget with parent memo line items (skip when SR is from a change request — CR totals apply below)
-    if (! $cr && ! $serviceRequest->isChildRequest() && $sourceData && isset($sourceData->budget_breakdown)) {
-        $sourceBudgetForTotal = is_string($sourceData->budget_breakdown)
-            ? json_decode(stripslashes($sourceData->budget_breakdown), true)
-            : $sourceData->budget_breakdown;
-        if (is_string($sourceBudgetForTotal ?? null)) {
-            $sourceBudgetForTotal = json_decode($sourceBudgetForTotal, true);
+    if (! $cr && ! $serviceRequest->isChildRequest() && $sourceData) {
+        $sourceBudgetRaw = $sourceData->budget_breakdown ?? null;
+        if (($sourceBudgetRaw === null || $sourceBudgetRaw === [] || $sourceBudgetRaw === '')
+            && isset($sourceData->payload)
+            && is_array($sourceData->payload)) {
+            $sourceBudgetRaw = $sourceData->payload['budget_breakdown'] ?? null;
         }
-        if (is_array($sourceBudgetForTotal) && ! empty($sourceBudgetForTotal)) {
+        $sourceBudgetForTotal = \App\Support\BudgetBreakdownTotal::normalize($sourceBudgetRaw);
+        if ($sourceBudgetForTotal !== []) {
             $computedMemoTotal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
                 (string) $serviceRequest->source_type,
                 $sourceBudgetForTotal
@@ -274,7 +275,7 @@
         }
     }
     if ($cr) {
-        $crDecoded = is_string($cr->budget_breakdown ?? '') ? json_decode($cr->budget_breakdown, true) : ($cr->budget_breakdown ?? []);
+        $crDecoded = \App\Support\BudgetBreakdownTotal::normalize($cr->budget_breakdown ?? null);
         if (is_array($crDecoded) && ! empty($crDecoded)) {
             $crMemoTotal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
                 (string) $serviceRequest->source_type,

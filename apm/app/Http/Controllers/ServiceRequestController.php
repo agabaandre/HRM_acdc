@@ -154,10 +154,8 @@ class ServiceRequestController extends Controller
                 if ($changeRequest && $sourceData) {
                     $this->applyChangeRequestOverlayToSource($sourceData, $changeRequest);
                     if ($changeRequest->budget_breakdown !== null) {
-                        $crBudget = is_string($changeRequest->budget_breakdown)
-                            ? json_decode($changeRequest->budget_breakdown, true)
-                            : $changeRequest->budget_breakdown;
-                        if (is_array($crBudget) && !empty($crBudget)) {
+                        $crBudget = BudgetBreakdownTotal::normalize($changeRequest->budget_breakdown);
+                        if ($crBudget !== []) {
                             $budgetBreakdown = $crBudget;
                             if (! $isChildRequestForm) {
                                 $originalTotalBudget = BudgetBreakdownTotal::originalMemoTotalForSource(
@@ -674,61 +672,32 @@ class ServiceRequestController extends Controller
     private function processBudgetDataFromSource($sourceData, string $sourceType): array
     {
         try {
+            if (! $sourceData) {
+                return [];
+            }
+
+            $raw = null;
             switch ($sourceType) {
                 case 'activity':
-                    if ($sourceData && isset($sourceData->budget_breakdown)) {
-                        $budget = is_string($sourceData->budget_breakdown) 
-                            ? json_decode($sourceData->budget_breakdown, true) 
-                            : $sourceData->budget_breakdown;
-                        
-                        if (is_array($budget)) {
-                            return $budget;
-                        }
-                    }
-                    break;
-                    
                 case 'non_travel_memo':
-                    if ($sourceData && isset($sourceData->budget_breakdown)) {
-                        $budget = is_string($sourceData->budget_breakdown) 
-                            ? json_decode($sourceData->budget_breakdown, true) 
-                            : $sourceData->budget_breakdown;
-                        
-                        if (is_array($budget)) {
-                            return $budget;
-                        }
-                    }
-                    break;
-                    
                 case 'special_memo':
-                    if ($sourceData && isset($sourceData->budget_breakdown)) {
-                        $budget = is_string($sourceData->budget_breakdown) 
-                            ? json_decode($sourceData->budget_breakdown, true) 
-                            : $sourceData->budget_breakdown;
-                        
-                        if (is_array($budget)) {
-                            return $budget;
-                        }
-                    }
+                    $raw = $sourceData->budget_breakdown ?? null;
                     break;
                 case 'other_memo':
-                    if ($sourceData && isset($sourceData->payload) && is_array($sourceData->payload)) {
-                        $payload = $sourceData->payload;
-                        $budget = $payload['budget_breakdown'] ?? null;
-                        if (is_array($budget)) {
-                            return $budget;
-                        }
+                    if (isset($sourceData->payload) && is_array($sourceData->payload)) {
+                        $raw = $sourceData->payload['budget_breakdown'] ?? null;
                     }
                     break;
             }
-            
-            return [];
+
+            return BudgetBreakdownTotal::normalize($raw);
         } catch (\Exception $e) {
             return [];
         }
     }
 
     /**
-     * Line-item total from the source memo (activity / memo), matching the activity show page.
+     * Line-item total from the source memo, matching the service-request budget table.
      */
     private function resolveOriginalMemoBudgetFromSource(string $sourceType, int $sourceId): ?float
     {
@@ -925,10 +894,8 @@ class ServiceRequestController extends Controller
                 }
 
                 if ($originatingChangeRequest->budget_breakdown !== null) {
-                    $crBudget = is_string($originatingChangeRequest->budget_breakdown)
-                        ? json_decode($originatingChangeRequest->budget_breakdown, true)
-                        : $originatingChangeRequest->budget_breakdown;
-                    if (is_array($crBudget) && ! empty($crBudget)) {
+                    $crBudget = BudgetBreakdownTotal::normalize($originatingChangeRequest->budget_breakdown);
+                    if ($crBudget !== []) {
                         $displayMemoBudgetBreakdown = $crBudget;
                         if (! $serviceRequest->isChildRequest()) {
                             $crMemoTotal = BudgetBreakdownTotal::originalMemoTotalForSource(
@@ -1032,32 +999,21 @@ class ServiceRequestController extends Controller
 
         // Original Budget Breakdown display: use source memo's budget (same as create form), not service request's
         $originalBudgetBreakdownFromSource = null;
-        if ($sourceData && isset($sourceData->budget_breakdown)) {
-            $decoded = is_string($sourceData->budget_breakdown)
-                ? json_decode(stripslashes($sourceData->budget_breakdown), true)
-                : $sourceData->budget_breakdown;
-            if (is_string($decoded ?? null)) {
-                $decoded = json_decode($decoded, true);
-            }
-            $originalBudgetBreakdownFromSource = is_array($decoded) ? $decoded : null;
+        if ($sourceData && $sourceType) {
+            $decoded = $this->processBudgetDataFromSource($sourceData, (string) $sourceType);
+            $originalBudgetBreakdownFromSource = $decoded !== [] ? $decoded : null;
         }
 
         // Budget and costs from stored service request (for form values and cost items; submission uses these)
-        $budgetBreakdown = [];
-        if ($serviceRequest->budget_breakdown) {
-            $budgetBreakdown = is_string($serviceRequest->budget_breakdown)
-                ? json_decode($serviceRequest->budget_breakdown, true) ?? []
-                : (is_array($serviceRequest->budget_breakdown) ? $serviceRequest->budget_breakdown : []);
-        }
+        $budgetBreakdown = BudgetBreakdownTotal::normalize($serviceRequest->budget_breakdown);
         $originalTotalBudget = (float) ($serviceRequest->original_total_budget ?? 0);
-        if (! $serviceRequest->isChildRequest() && is_array($originalBudgetBreakdownFromSource) && ! empty($originalBudgetBreakdownFromSource)) {
-            $computedOriginal = BudgetBreakdownTotal::originalMemoTotalForSource(
+        if (! $serviceRequest->isChildRequest()) {
+            $originalTotalBudget = BudgetBreakdownTotal::originalTotalForServiceRequestForm(
                 (string) $sourceType,
-                $originalBudgetBreakdownFromSource
+                $originalBudgetBreakdownFromSource,
+                $budgetBreakdown,
+                $originalTotalBudget
             );
-            if ($computedOriginal > 0) {
-                $originalTotalBudget = $computedOriginal;
-            }
         }
         $internalParticipants = [];
         if ($serviceRequest->internal_participants_cost) {

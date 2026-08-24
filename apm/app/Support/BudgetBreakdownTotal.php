@@ -63,8 +63,33 @@ class BudgetBreakdownTotal
     {
         return match ($sourceType) {
             'non_travel_memo' => self::fromNonTravelBreakdown($breakdown),
-            default => self::fromTravelStrictBreakdown($breakdown),
+            // Service request create/edit table: multiply days only when days > 1.
+            default => self::fromChangeRequestBreakdown($breakdown),
         };
+    }
+
+    /**
+     * Original Memo Budget on the service-request form.
+     * Always prefer the source memo table; never the stored SR breakdown
+     * (that payload is reconstructed from selected cost rows and often cannot be summed).
+     */
+    public static function originalTotalForServiceRequestForm(
+        string $sourceType,
+        mixed $sourceBreakdown,
+        mixed $storedRequestBreakdown = null,
+        float $storedOriginal = 0.0,
+    ): float {
+        $fromSource = self::originalMemoTotalForSource($sourceType, $sourceBreakdown);
+        if ($fromSource > 0) {
+            return $fromSource;
+        }
+
+        $fromStoredBreakdown = self::originalMemoTotalForSource($sourceType, $storedRequestBreakdown);
+        if ($fromStoredBreakdown > 0) {
+            return $fromStoredBreakdown;
+        }
+
+        return round(max(0, $storedOriginal), 2);
     }
 
     /**
@@ -220,6 +245,9 @@ class BudgetBreakdownTotal
     {
         if (is_string($breakdown) && $breakdown !== '') {
             $decoded = json_decode($breakdown, true);
+            if (! is_array($decoded)) {
+                $decoded = json_decode(stripslashes($breakdown), true);
+            }
             if (is_string($decoded)) {
                 $decoded = json_decode($decoded, true);
             }

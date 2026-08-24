@@ -78,3 +78,76 @@ it('matches change request view days logic', function () {
 
     expect(BudgetBreakdownTotal::forFundCode($breakdown, 277, BudgetBreakdownTotal::STYLE_CHANGE_REQUEST))->toBe(80.0);
 });
+
+it('original memo total matches the service-request budget table including days of zero', function () {
+    $breakdown = [
+        '277' => [
+            ['unit_cost' => 1650, 'units' => 6, 'days' => 0, 'cost' => 'Tickets'],
+            ['unit_cost' => 100, 'units' => 6, 'days' => 1, 'cost' => 'Visa'],
+            ['unit_cost' => 176, 'units' => 6, 'days' => 4, 'cost' => 'DSA'],
+        ],
+    ];
+
+    // Table: days<=1 → unit_cost * units; days>1 → unit_cost * units * days
+    // 1650*6 + 100*6 + 176*6*4 = 9900 + 600 + 4224 = 14724
+    expect(BudgetBreakdownTotal::originalMemoTotalForSource('activity', $breakdown))->toBe(14724.0)
+        ->and(BudgetBreakdownTotal::originalMemoTotalForSource('special_memo', $breakdown))->toBe(14724.0);
+});
+
+it('original memo total matches the edit-form budget breakdown subtotal', function () {
+    $source = [
+        '277' => [
+            ['unit_cost' => 1650, 'units' => 6, 'days' => 1, 'cost' => 'Tickets'],
+            ['unit_cost' => 100, 'units' => 6, 'days' => 1, 'cost' => 'Visa'],
+            ['unit_cost' => 24, 'units' => 6, 'days' => 1, 'cost' => 'Terminal Fee'],
+            ['unit_cost' => 176, 'units' => 6, 'days' => 4, 'cost' => 'DSA'],
+            ['unit_cost' => 40, 'units' => 15, 'days' => 3, 'cost' => 'Stipend'],
+            ['unit_cost' => 300, 'units' => 2, 'days' => 1, 'cost' => 'Banners'],
+            ['unit_cost' => 300, 'units' => 1, 'days' => 3, 'cost' => 'Car Hire'],
+            ['unit_cost' => 500, 'units' => 1, 'days' => 3, 'cost' => 'Conference'],
+            ['unit_cost' => 55, 'units' => 25, 'days' => 3, 'cost' => 'Conference'],
+        ],
+    ];
+
+    expect(BudgetBreakdownTotal::originalMemoTotalForSource('activity', $source))->toBe(23793.0);
+});
+
+it('edit-form original total uses the source memo not a stored request breakdown that cannot be summed', function () {
+    $source = [
+        '277' => [
+            ['unit_cost' => 1650, 'units' => 6, 'days' => 1, 'cost' => 'Tickets'],
+            ['unit_cost' => 100, 'units' => 6, 'days' => 1, 'cost' => 'Visa'],
+            ['unit_cost' => 24, 'units' => 6, 'days' => 1, 'cost' => 'Terminal Fee'],
+            ['unit_cost' => 176, 'units' => 6, 'days' => 4, 'cost' => 'DSA'],
+            ['unit_cost' => 40, 'units' => 15, 'days' => 3, 'cost' => 'Stipend'],
+            ['unit_cost' => 300, 'units' => 2, 'days' => 1, 'cost' => 'Banners'],
+            ['unit_cost' => 300, 'units' => 1, 'days' => 3, 'cost' => 'Car Hire'],
+            ['unit_cost' => 500, 'units' => 1, 'days' => 3, 'cost' => 'Conference'],
+            ['unit_cost' => 55, 'units' => 25, 'days' => 3, 'cost' => 'Conference'],
+        ],
+    ];
+    $storedRequestBreakdown = [
+        '277' => [
+            ['cost' => 'Tickets', 'quantity' => 6],
+        ],
+        'grand_total' => 0,
+    ];
+
+    expect(BudgetBreakdownTotal::originalMemoTotalForSource('activity', $storedRequestBreakdown))->toBe(0.0)
+        ->and(BudgetBreakdownTotal::originalTotalForServiceRequestForm(
+            'activity',
+            $source,
+            $storedRequestBreakdown,
+            0.0,
+        ))->toBe(23793.0);
+});
+
+it('decodes slash-escaped budget json when summing original memo total', function () {
+    $json = addslashes(json_encode([
+        '277' => [
+            ['unit_cost' => 100, 'units' => 2, 'days' => 1],
+        ],
+    ]));
+
+    expect(BudgetBreakdownTotal::originalMemoTotalForSource('activity', $json))->toBe(200.0);
+});

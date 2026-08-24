@@ -54,21 +54,28 @@
         $totalOriginal = (float) $originalTotalBudget;
         if (!empty($isChildRequestForm)) {
             // Child SR cap is fixed at creation; do not replace with breakdown grand_total.
-        } elseif (!empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
-            foreach ($budgetBreakdownView as $key => $item) {
-                if ($key === 'grand_total') {
-                    continue;
-                } elseif (is_array($item)) {
-                    $budgetByFundCode[$key] = $item;
+        } else {
+            $memoBreakdown = ! empty($originalBudgetBreakdownFromSource)
+                ? $originalBudgetBreakdownFromSource
+                : $budgetBreakdownView;
+            $totalOriginal = \App\Support\BudgetBreakdownTotal::originalTotalForServiceRequestForm(
+                (string) ($sourceType ?? 'activity'),
+                $memoBreakdown,
+                $budgetBreakdownView,
+                (float) $originalTotalBudget
+            );
+            if (! empty($budgetBreakdownView) && is_array($budgetBreakdownView)) {
+                foreach ($budgetBreakdownView as $key => $item) {
+                    if ($key === 'grand_total') {
+                        continue;
+                    } elseif (is_array($item)) {
+                        $budgetByFundCode[$key] = $item;
+                    }
                 }
-            }
-            if (!empty($budgetByFundCode)) {
-                $fundCodeIds = array_keys($budgetByFundCode);
-                $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
-                $totalOriginal = \App\Support\BudgetBreakdownTotal::originalMemoTotalForSource(
-                    (string) ($sourceType ?? 'activity'),
-                    $budgetBreakdownView
-                );
+                if (! empty($budgetByFundCode)) {
+                    $fundCodeIds = array_keys($budgetByFundCode);
+                    $fundCodes = \App\Models\FundCode::whereIn('id', $fundCodeIds)->get()->keyBy('id');
+                }
             }
         }
     }
@@ -79,12 +86,7 @@
         if (!empty($budgetBreakdown) && is_array($budgetBreakdown)) {
             $createBudgetSource = $budgetBreakdown;
         } elseif ($sourceData && isset($sourceData->budget_breakdown)) {
-            $createBudgetSource = is_string($sourceData->budget_breakdown)
-                ? json_decode(stripslashes($sourceData->budget_breakdown), true)
-                : $sourceData->budget_breakdown;
-            if (is_string($createBudgetSource) && !is_array($createBudgetSource)) {
-                $createBudgetSource = json_decode($createBudgetSource, true);
-            }
+            $createBudgetSource = \App\Support\BudgetBreakdownTotal::normalize($sourceData->budget_breakdown);
         }
         if (is_array($createBudgetSource) && !empty($createBudgetSource)) {
             $budgetBreakdown = $createBudgetSource;
@@ -1715,7 +1717,7 @@ function initServiceRequestCreatePage() {
         } else if (sourceType === 'non_travel_memo') {
             window.isBudgetExceeded = false;
         } else {
-            window.isBudgetExceeded = difference < 0;
+            window.isBudgetExceeded = difference > 0;
         }
         
         // Debug logging
