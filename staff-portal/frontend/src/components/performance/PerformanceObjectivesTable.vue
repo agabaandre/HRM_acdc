@@ -125,6 +125,7 @@ function objectiveAt(index: number): PerformanceObjective {
               v-model="objectiveAt(row.index).objective"
               :disabled="planFieldsLocked"
               keep-toolbar
+              placeholder=""
               :min-rows="3"
             />
           </td>
@@ -143,12 +144,14 @@ function objectiveAt(index: number): PerformanceObjective {
               v-model="objectiveAt(row.index).indicator"
               :disabled="planFieldsLocked"
               keep-toolbar
+              placeholder=""
               :min-rows="3"
             />
           </td>
           <td>
             <v-text-field
               v-model="objectiveAt(row.index).weight"
+              class="perf-obj-weight-field"
               :readonly="planFieldsLocked"
               type="number"
               min="0"
@@ -171,12 +174,15 @@ function objectiveAt(index: number): PerformanceObjective {
               <v-select
                 v-model="objectiveAt(row.index).appraiser_rating"
                 :items="ratingOptions"
+                item-title="title"
+                item-value="value"
                 :readonly="readonly"
                 :disabled="readonly"
                 variant="outlined"
                 density="compact"
                 hide-details
                 placeholder="Select"
+                :menu-props="{ width: 260 }"
               />
             </td>
           </template>
@@ -199,7 +205,7 @@ function objectiveAt(index: number): PerformanceObjective {
 }
 
 .perf-obj-table--review {
-  min-width: 78rem;
+  min-width: 72rem;
 }
 
 .perf-obj-table th,
@@ -236,11 +242,11 @@ function objectiveAt(index: number): PerformanceObjective {
 }
 
 .perf-obj-table__col-weight {
-  width: 5.5rem;
+  width: calc(5.5rem - 10px);
 }
 
 .perf-obj-table__col-rating {
-  width: 12rem;
+  width: 8.75rem;
 }
 
 .perf-obj-table--review .perf-obj-table__col-objective,
@@ -260,11 +266,11 @@ function objectiveAt(index: number): PerformanceObjective {
 }
 
 .perf-obj-table__weight {
-  width: 5.5rem;
+  width: calc(5.5rem - 10px);
 }
 
 .perf-obj-table__rating {
-  width: 11.5rem;
+  width: 8.75rem;
 }
 
 .perf-obj-table__req {
@@ -300,6 +306,12 @@ function objectiveAt(index: number): PerformanceObjective {
 
 .perf-obj-table__rich :deep(.ql-editor) {
   padding: 0.45rem 0.6rem;
+  background: #fff;
+}
+
+.perf-obj-table__rich :deep(.ql-editor::before) {
+  display: none !important;
+  content: none !important;
 }
 
 .perf-obj-table :deep(.v-input) {
@@ -308,5 +320,9 @@ function objectiveAt(index: number): PerformanceObjective {
 
 .perf-obj-table :deep(.v-field) {
   --v-input-control-height: 40px;
+}
+
+.perf-obj-weight-field {
+  width: 100%;
 }
 </style>

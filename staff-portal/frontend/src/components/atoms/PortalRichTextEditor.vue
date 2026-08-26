@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { QuillEditor, loadQuill } from '@vueup/vue-quill'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   buildPerformanceQuillOptions,
   editorMinHeightPx,
+  hasRichTextContent,
   patchQuillExternalLinks,
   setupQuillAutoGrow,
 } from '@/lib/richText'
@@ -33,14 +34,27 @@ const emit = defineEmits<{
 }>()
 
 const htmlContent = computed(() => props.modelValue ?? '')
+const fieldRef = ref<HTMLElement | null>(null)
 const editorMinPx = computed(() => editorMinHeightPx(props.minRows))
 const editorStyle = computed(() => ({
   '--portal-rich-editor-min': `${editorMinPx.value}px`,
 }))
 const showToolbar = computed(() => !props.disabled || props.keepToolbar)
+const quillPlaceholder = computed(() => {
+  if (props.disabled || hasRichTextContent(props.modelValue)) {
+    return ''
+  }
+  if (props.placeholder.trim()) {
+    return props.placeholder
+  }
+  if (props.label) {
+    return props.label
+  }
+  return showToolbar.value ? 'Enter text…' : ''
+})
 const quillOptions = computed(() =>
   buildPerformanceQuillOptions({
-    placeholder: props.placeholder || props.label || (showToolbar.value ? 'Enter text…' : ''),
+    placeholder: quillPlaceholder.value,
     readOnly: props.disabled,
     toolbar: showToolbar.value,
   }),
@@ -54,17 +68,37 @@ function onContentUpdate(html: string): void {
   emit('update:modelValue', html ?? '')
 }
 
+function syncBlankState(root: HTMLElement): void {
+  if ((root.textContent || '').trim()) {
+    root.classList.remove('ql-blank')
+  }
+}
+
+function syncDomBlankState(): void {
+  const editor = fieldRef.value?.querySelector('.ql-editor') as HTMLElement | null
+  if (editor) {
+    syncBlankState(editor)
+  }
+}
+
+watch(htmlContent, () => {
+  requestAnimationFrame(syncDomBlankState)
+})
+
 function onReady(quill: unknown): void {
   const q = quill as { root: HTMLElement; on: (e: string, fn: () => void) => void }
   if (!q?.root) {
     return
   }
+  syncBlankState(q.root)
+  q.on('text-change', () => syncBlankState(q.root))
   setupQuillAutoGrow(q, editorMinPx.value)
 }
 </script>
 
 <template>
   <div
+    ref="fieldRef"
     class="portal-rich-field"
     :class="{
       'portal-rich-field--disabled': disabled,
@@ -149,11 +183,17 @@ function onReady(quill: unknown): void {
   overflow-y: hidden;
   padding: 0.7rem 0.85rem;
   color: var(--portal-field-text, #37474f);
+  background: #fff;
 }
 
 .portal-rich-editor :deep(.ql-editor.ql-blank::before) {
   font-style: normal;
   color: #90a4ae;
+}
+
+.portal-rich-editor :deep(.ql-editor:not(.ql-blank)::before) {
+  display: none !important;
+  content: none !important;
 }
 
 .portal-rich-field--disabled:not(.portal-rich-field--keep-toolbar) :deep(.ql-toolbar) {
