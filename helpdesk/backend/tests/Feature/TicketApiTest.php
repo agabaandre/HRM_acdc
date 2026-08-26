@@ -199,4 +199,119 @@ class TicketApiTest extends TestCase
         $this->assertContains($mine->id, $ids);
         $this->assertCount(1, $ids);
     }
+
+    public function test_ticket_list_filters_by_assigned_agent(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+
+        $agentA = $this->actingHelpdeskUser(88011, HelpdeskProfile::ROLE_AGENT);
+        $agentB = $this->actingHelpdeskUser(88012, HelpdeskProfile::ROLE_AGENT);
+
+        $mine = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-AGENT-A',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Assigned to A',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 910,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agentA->id,
+        ]);
+
+        HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-AGENT-B',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Assigned to B',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 911,
+            'requester_name' => 'Other',
+            'requester_email' => 'other@example.org',
+            'assigned_user_id' => $agentB->id,
+        ]);
+
+        Sanctum::actingAs($agentA);
+        $res = $this->getJson('/api/v1/tickets?assigned_user_id='.$agentA->id);
+        $res->assertOk();
+
+        $ids = array_map('intval', array_column($res->json('data'), 'id'));
+        $this->assertSame([$mine->id], $ids);
+    }
+
+    public function test_ticket_list_date_preset_defaults_to_all(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+        $agent = $this->actingHelpdeskUser(88021, HelpdeskProfile::ROLE_AGENT);
+
+        $recent = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-DATE-NEW',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Recent',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 920,
+            'requester_name' => 'Requester',
+            'requester_email' => 'req@example.org',
+            'assigned_user_id' => $agent->id,
+        ]);
+
+        $old = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-DATE-OLD',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Old',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'web',
+            'requester_staff_id' => 921,
+            'requester_name' => 'Other',
+            'requester_email' => 'other@example.org',
+            'assigned_user_id' => $agent->id,
+        ]);
+        $old->created_at = now()->subDays(10);
+        $old->save();
+
+        Sanctum::actingAs($agent);
+        $all = $this->getJson('/api/v1/tickets');
+        $all->assertOk();
+        $allIds = array_map('intval', array_column($all->json('data'), 'id'));
+        $this->assertContains($recent->id, $allIds);
+        $this->assertContains($old->id, $allIds);
+
+        $today = $this->getJson('/api/v1/tickets?date_preset=today');
+        $today->assertOk();
+        $todayIds = array_map('intval', array_column($today->json('data'), 'id'));
+        $this->assertContains($recent->id, $todayIds);
+        $this->assertNotContains($old->id, $todayIds);
+    }
+
+    public function test_ticket_filter_agents_lists_assignable_agents(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $agentA = $this->actingHelpdeskUser(88031, HelpdeskProfile::ROLE_AGENT);
+        $agentB = $this->actingHelpdeskUser(88032, HelpdeskProfile::ROLE_AGENT);
+        $this->actingHelpdeskUser(88033, HelpdeskProfile::ROLE_USER);
+
+        Sanctum::actingAs($agentA);
+        $res = $this->getJson('/api/v1/tickets/filter-agents');
+        $res->assertOk();
+
+        $ids = array_map('intval', array_column($res->json('data'), 'id'));
+        $this->assertContains($agentA->id, $ids);
+        $this->assertContains($agentB->id, $ids);
+        $this->assertCount(2, $ids);
+    }
 }

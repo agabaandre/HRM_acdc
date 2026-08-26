@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { DataTableHeader } from 'vuetify'
 import CbpAvatar from '../components/common/CbpAvatar.vue'
@@ -11,7 +11,8 @@ import TicketDatesCell from '../components/tickets/TicketDatesCell.vue'
 import { api } from '../lib/api'
 import { apiErrorMessage } from '../lib/apiErrorMessage'
 import { canReassignTickets, ticketStatusAllowsReassign } from '../lib/canReassignTickets'
-import { type PageSize } from '../lib/helpdeskForm'
+import { type PageSize, type SelectNumberItem, type SelectStringItem } from '../lib/helpdeskForm'
+import { isAgentDeskUser } from '../lib/isAgentDeskUser'
 import { notifyError } from '../lib/notify'
 import { useAuthStore } from '../stores/auth'
 import { formatTableCountLabel, priorityMeta, statusMeta } from '../lib/ticketTableMeta'
@@ -65,11 +66,22 @@ function assigneeCell(row: TicketRow): { avatarName: string; avatarUrl: string |
 
 type SortItem = { key: string; order: 'asc' | 'desc' }
 
+type TicketScope = 'all' | 'me'
+
+interface FilterAgent {
+  id: number
+  name: string
+}
+
 const auth = useAuthStore()
 const rows = ref<TicketRow[]>([])
 const loading = ref(false)
 const searchState = reactive<{ q: string }>({ q: '' })
 const q = ref('')
+const scope = ref<TicketScope>('all')
+const agentId = ref<number | 'all'>('all')
+const datePreset = ref('all')
+const agents = ref<FilterAgent[]>([])
 const total = ref(0)
 const page = ref(1)
 const itemsPerPage = ref<PageSize>(20)
@@ -77,8 +89,33 @@ const sortBy = ref<SortItem[]>([{ key: 'id', order: 'desc' }])
 const reassignTicket = ref<ReassignTicketRef | null>(null)
 
 const itemsPerPageOptions = [10, 20, 50, 100] as const
+const scopeItems: SelectStringItem[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Me', value: 'me' },
+]
+const datePresetItems: SelectStringItem[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Today', value: 'today' },
+  { label: 'Last 3 days', value: 'last_3_days' },
+  { label: 'Last 5 days', value: 'last_5_days' },
+  { label: 'Last week', value: 'last_week' },
+  { label: 'Last month', value: 'last_month' },
+  { label: 'Last months', value: 'last_months' },
+]
 
 const canReassign = computed(() => canReassignTickets(auth.me?.profile))
+const showStaffFilters = computed(() => isAgentDeskUser(auth.me?.profile))
+const agentItems = computed((): Array<SelectNumberItem | SelectStringItem> => [
+  { label: 'All agents', value: 'all' },
+  ...agents.value.map((agent) => ({ label: agent.name, value: agent.id })),
+])
+const filtersActive = computed(
+  () =>
+    q.value.trim() !== ''
+    || scope.value === 'me'
+    || agentId.value !== 'all'
+    || datePreset.value !== 'all',
+)
 
 const tableCountLabel = computed(() =>
   formatTableCountLabel(rows.value.length, total.value, page.value, itemsPerPage.value),
@@ -121,6 +158,39 @@ function closeReassign(): void {
   reassignTicket.value = null
 }
 
+async function loadAgents(): Promise<void> {
+  if (!showStaffFilters.value) {
+    agents.value = []
+    return
+  }
+  try {
+    const { data } = await api.get('/api/v1/tickets/filter-agents')
+    agents.value = Array.isArray(data.data) ? (data.data as FilterAgent[]) : []
+  } catch (e: unknown) {
+    agents.value = []
+    notifyError(apiErrorMessage(e, 'Failed to load agents'))
+  }
+}
+
+function applyFilters(): void {
+  page.value = 1
+  void load()
+}
+
+function onScopeChange(): void {
+  if (scope.value === 'me') {
+    agentId.value = 'all'
+  }
+  applyFilters()
+}
+
+function onAgentChange(): void {
+  if (agentId.value !== 'all') {
+    scope.value = 'all'
+  }
+  applyFilters()
+}
+
 async function load() {
   loading.value = true
   const sort = sortBy.value[0]
@@ -132,6 +202,9 @@ async function load() {
         per_page: itemsPerPage.value,
         sort_by: sort?.key && sort.key !== 'row_num' ? sort.key : 'id',
         sort_dir: sort?.order ?? 'desc',
+        assigned_to_me: scope.value === 'me' ? 1 : undefined,
+        assigned_user_id: scope.value === 'me' || agentId.value === 'all' ? undefined : agentId.value,
+        date_preset: datePreset.value === 'all' ? undefined : datePreset.value,
       },
     })
     rows.value = data.data as TicketRow[]
@@ -164,9 +237,22 @@ function doSearch() {
 function resetSearch() {
   searchState.q = ''
   q.value = ''
+  scope.value = 'all'
+  agentId.value = 'all'
+  datePreset.value = 'all'
   page.value = 1
   void load()
 }
+
+watch(showStaffFilters, (show) => {
+  if (show) {
+    void loadAgents()
+  } else {
+    agents.value = []
+    scope.value = 'all'
+    agentId.value = 'all'
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -176,6 +262,30 @@ function resetSearch() {
     <v-card class="hd-data-table-card hd-page-toolbar" elevation="10">
       <v-card-text class="hd-page-toolbar__search">
         <UForm :state="searchState" class="hd-search-form" @submit="doSearch">
+          <UFormField v-if="showStaffFilters" name="scope" label="Tickets" class="hd-ticket-filter">
+            <USelect
+              v-model="scope"
+              :items="scopeItems"
+              :clearable="false"
+              @update:model-value="onScopeChange"
+            />
+          </UFormField>
+          <UFormField v-if="showStaffFilters" name="agentId" label="Agent" class="hd-ticket-filter hd-ticket-filter--agent">
+            <USelect
+              v-model="agentId"
+              :items="agentItems"
+              :clearable="false"
+              @update:model-value="onAgentChange"
+            />
+          </UFormField>
+          <UFormField name="datePreset" label="Created" class="hd-ticket-filter">
+            <USelect
+              v-model="datePreset"
+              :items="datePresetItems"
+              :clearable="false"
+              @update:model-value="applyFilters"
+            />
+          </UFormField>
           <UFormField name="q" label="Search" class="hd-form-toolbar-grow">
             <UInput
               v-model="searchState.q"
@@ -280,7 +390,10 @@ function resetSearch() {
 
         <template #no-data>
           <div class="hd-dt-empty-msg">
-            No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
+            <template v-if="filtersActive">No tickets match these filters.</template>
+            <template v-else>
+              No tickets yet — create one from <RouterLink to="/tickets/new">New ticket</RouterLink>.
+            </template>
           </div>
         </template>
 
@@ -302,5 +415,15 @@ function resetSearch() {
 .hd-page-toolbar__search {
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.hd-ticket-filter {
+  flex: 0 1 10.5rem;
+  min-width: 9.5rem;
+}
+
+.hd-ticket-filter--agent {
+  flex-basis: 13rem;
+  min-width: 12rem;
 }
 </style>

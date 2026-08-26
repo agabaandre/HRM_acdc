@@ -14,6 +14,7 @@ use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskInformationSystem;
 use App\Models\HelpdeskProfile;
 use App\Support\InformationSystemStatus;
+use App\Support\TicketListDatePreset;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
@@ -65,6 +66,16 @@ class TicketController extends Controller
 
             if ($request->boolean('assigned_to_me')) {
                 $q->assignedToUser((int) $user->id);
+            } else {
+                $assignedUserId = (int) $request->query('assigned_user_id', 0);
+                if ($assignedUserId > 0) {
+                    $q->assignedToUser($assignedUserId);
+                }
+            }
+
+            $createdSince = TicketListDatePreset::createdSince((string) $request->query('date_preset', TicketListDatePreset::ALL));
+            if ($createdSince !== null) {
+                $q->where('helpdesk_tickets.created_at', '>=', $createdSince);
             }
 
             $statusIn = trim((string) $request->query('status_in', ''));
@@ -84,6 +95,27 @@ class TicketController extends Controller
         });
 
         return response()->json($payload);
+    }
+
+    /**
+     * Agents that can appear in the tickets-list agent filter.
+     */
+    public function filterAgents(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', HelpdeskTicket::class);
+
+        $agents = User::query()
+            ->whereHas('helpdeskProfile', fn ($q) => $q->assignableAsTicketAssignee())
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return response()->json([
+            'data' => $agents->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+            ])->values(),
+        ]);
     }
 
     public function store(

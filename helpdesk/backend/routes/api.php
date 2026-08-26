@@ -89,6 +89,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/admin/kb/articles/{article}', [AdminKbArticleController::class, 'destroy']);
 
         // Ticket reassignment (open status only; reason required; logged).
+        Route::get('/tickets/filter-agents', [TicketController::class, 'filterAgents']);
         Route::get('/tickets/{ticket}/eligible-agents', [TicketController::class, 'eligibleAgents']);
         Route::get('/tickets/{ticket}/linkable-assets', [TicketController::class, 'linkableAssets']);
         Route::get('/tickets/{ticket}/linkable-information-systems', [TicketController::class, 'linkableInformationSystems']);

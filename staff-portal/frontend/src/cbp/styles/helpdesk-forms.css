@@ -118,6 +118,16 @@
   min-width: 14rem;
 }
 
+.hd-search-form .hd-ticket-filter {
+  flex: 0 1 10.5rem;
+  min-width: 9.5rem;
+}
+
+.hd-search-form .hd-ticket-filter--agent {
+  flex-basis: 13rem;
+  min-width: 12rem;
+}
+
 /* Collapsible filter panel — mobile-friendly reports / list views */
 .hd-filter-panel {
   margin: 0 0 1rem;
