@@ -125,6 +125,50 @@ class ExchangeGraphMailReader
         }
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listMessageAttachments(string $mailboxUpn, string $messageId): array
+    {
+        $url = sprintf(
+            'https://graph.microsoft.com/v1.0/users/%s/messages/%s/attachments',
+            rawurlencode(trim($mailboxUpn)),
+            rawurlencode(trim($messageId))
+        );
+
+        $response = Http::withToken($this->accessToken())
+            ->acceptJson()
+            ->get($url, ['$top' => 50]);
+
+        if (! $response->successful()) {
+            $this->lastError = $response->body();
+            throw new RuntimeException('Graph list attachments failed: '.$this->summarizeError($response->json() ?? $response->body()));
+        }
+
+        $value = $response->json('value');
+
+        return is_array($value) ? $value : [];
+    }
+
+    public function downloadMessageAttachmentBytes(string $mailboxUpn, string $messageId, string $attachmentId): string
+    {
+        $url = sprintf(
+            'https://graph.microsoft.com/v1.0/users/%s/messages/%s/attachments/%s/$value',
+            rawurlencode(trim($mailboxUpn)),
+            rawurlencode(trim($messageId)),
+            rawurlencode(trim($attachmentId))
+        );
+
+        $response = Http::withToken($this->accessToken())->get($url);
+
+        if (! $response->successful()) {
+            $this->lastError = $response->body();
+            throw new RuntimeException('Graph download attachment failed: '.$this->summarizeError($response->json() ?? $response->body()));
+        }
+
+        return (string) $response->body();
+    }
+
     protected function accessToken(): string
     {
         $tenant = (string) config('exchange-email.tenant_id');

@@ -19,6 +19,7 @@ class BusinessUnitMailboxIntakeService
         private TicketNumberGenerator $numbers,
         private TicketSubjectGenerator $subjects,
         private EmailBodyNormalizer $bodyNormalizer,
+        private EmailTicketAttachmentImporter $emailAttachments,
     ) {}
 
     /**
@@ -113,7 +114,7 @@ class BusinessUnitMailboxIntakeService
                         continue;
                     }
 
-                    $ticket = $this->createTicketFromMessage($unit, $message);
+                    $ticket = $this->createTicketFromMessage($unit, $message, $mailbox);
                     HelpdeskEmailMessage::query()->create([
                         'business_unit_id' => $unit->id,
                         'graph_message_id' => $graphId,
@@ -167,11 +168,12 @@ class BusinessUnitMailboxIntakeService
     /**
      * @param  array<string, mixed>  $message
      */
-    private function createTicketFromMessage(HelpdeskBusinessUnit $unit, array $message): HelpdeskTicket
+    private function createTicketFromMessage(HelpdeskBusinessUnit $unit, array $message, string $mailbox): HelpdeskTicket
     {
         $fromEmail = $this->fromAddress($message);
         $fromName = $this->fromName($message);
-        $description = $this->extractBody($message);
+        [$rawBody, $rawType] = $this->rawBody($message);
+        $description = $this->bodyNormalizer->toTicketHtml($rawBody, $rawType);
 
         $subjectLine = trim((string) ($message['subject'] ?? ''));
         if ($subjectLine === '') {
@@ -194,7 +196,7 @@ class BusinessUnitMailboxIntakeService
             $meta['requester_duty_station'] = $dutyStation;
         }
 
-        return HelpdeskTicket::query()->create([
+        $ticket = HelpdeskTicket::query()->create([
             'created_by_user_id' => null,
             'ticket_number' => $this->numbers->next(),
             'category_id' => null,
@@ -213,6 +215,31 @@ class BusinessUnitMailboxIntakeService
             'division_id' => $resolved['division_id'] ?? null,
             'meta' => $meta,
         ]);
+
+        $graphId = trim((string) ($message['id'] ?? ''));
+        if ($graphId !== '') {
+            try {
+                $withFiles = $this->emailAttachments->importForMessage(
+                    $ticket,
+                    $mailbox,
+                    $graphId,
+                    $rawBody,
+                    $rawType,
+                );
+                if ($withFiles !== $ticket->description) {
+                    $ticket->description = $withFiles;
+                    $ticket->save();
+                }
+            } catch (Throwable $e) {
+                Log::warning('helpdesk.email_intake.attachments_failed', [
+                    'ticket_id' => $ticket->id,
+                    'graph_message_id' => $graphId,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $ticket;
     }
 
     /**
@@ -237,21 +264,20 @@ class BusinessUnitMailboxIntakeService
 
     /**
      * @param  array<string, mixed>  $message
+     * @return array{0: string, 1: string}
      */
-    private function extractBody(array $message): string
+    private function rawBody(array $message): array
     {
         $body = $message['body'] ?? null;
         if (is_array($body) && isset($body['content']) && is_string($body['content']) && trim($body['content']) !== '') {
-            $type = strtolower((string) ($body['contentType'] ?? 'html'));
-
-            return $this->bodyNormalizer->toTicketHtml($body['content'], $type);
+            return [$body['content'], strtolower((string) ($body['contentType'] ?? 'html'))];
         }
 
         $preview = trim((string) ($message['bodyPreview'] ?? ''));
         if ($preview !== '') {
-            return $this->bodyNormalizer->toTicketHtml($preview, 'text');
+            return [$preview, 'text'];
         }
 
-        return '<p>Email body was empty.</p>';
+        return ['', 'html'];
     }
 }
