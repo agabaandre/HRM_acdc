@@ -381,6 +381,111 @@ class PerformanceFormApiTest extends TestCase
         $this->assertNull($payload['return_target']);
     }
 
+    public function test_hr_admin_can_return_submitted_midterm_without_being_supervisor(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-hr-midterm',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $payload = $this->showEntry('ppa-entry-hr-midterm', 'midterm');
+
+        $this->assertFalse($payload['can_approve']);
+        $this->assertTrue($payload['can_return']);
+        $this->assertSame('employee', $payload['return_target']);
+
+        $response = app(PerformanceFormApiController::class)->returnEntry(
+            'ppa-entry-hr-midterm',
+            Request::create('/api/v1/performance/entries/ppa-entry-hr-midterm/return', 'POST', [
+                'phase' => 'midterm',
+                'comments' => 'HR sending this midterm back to the employee.',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-midterm')->first();
+        $this->assertSame(1, (int) $row->midterm_draft_status);
+        $this->assertSame(2, (int) $row->draft_status);
+        $this->assertNotNull($row->midterm_updated_at);
+        $this->assertSame(
+            'Returned',
+            DB::table('ppa_approval_trail_midterm')->where('entry_id', 'ppa-entry-hr-midterm')->where('staff_id', 999)->value('action')
+        );
+    }
+
+    public function test_hr_admin_can_return_approved_endterm_to_draft(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-hr-endterm',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 2,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+            'endterm_staff_consent_at' => now()->toDateTimeString(),
+            'endterm_staff_discussion_confirmed' => 1,
+            'endterm_staff_rating_acceptance' => 1,
+        ]);
+        DB::table('ppa_approval_trail_end_term')->insert([
+            'entry_id' => 'ppa-entry-hr-endterm',
+            'staff_id' => 50,
+            'comments' => 'Looks good',
+            'action' => 'Approved',
+            'created_at' => now()->toDateTimeString(),
+            'type' => 'END-TERM REVIEW',
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $payload = $this->showEntry('ppa-entry-hr-endterm', 'endterm');
+
+        $this->assertTrue($payload['can_return']);
+        $this->assertSame('draft', $payload['return_target']);
+
+        app(PerformanceFormApiController::class)->returnEntry(
+            'ppa-entry-hr-endterm',
+            Request::create('/api/v1/performance/entries/ppa-entry-hr-endterm/return', 'POST', [
+                'phase' => 'endterm',
+                'comments' => 'Reopening this approved endterm.',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-endterm')->first();
+        $this->assertSame(1, (int) $row->endterm_draft_status);
+        $this->assertSame(2, (int) $row->draft_status);
+        $this->assertNull($row->endterm_staff_consent_at);
+        $this->assertSame(
+            'Returned',
+            DB::table('ppa_approval_trail_end_term')->where('entry_id', 'ppa-entry-hr-endterm')->where('staff_id', 999)->value('action')
+        );
+    }
+
     public function test_hub_response_exposes_only_spa_edit_urls(): void
     {
         session()->put($this->portalSession(100));

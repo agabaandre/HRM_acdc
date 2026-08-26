@@ -102,6 +102,10 @@ class PerformanceApprovalService
             'updated_at' => now(),
         ];
 
+        if ($phase === PerformancePhase::Midterm) {
+            $update['midterm_updated_at'] = now();
+        }
+
         if ($phase === PerformancePhase::Endterm) {
             $update['endterm_updated_at'] = now();
             $update['endterm_staff_discussion_confirmed'] = 0;
