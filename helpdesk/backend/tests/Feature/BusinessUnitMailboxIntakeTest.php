@@ -79,16 +79,19 @@ class BusinessUnitMailboxIntakeTest extends TestCase
 
         $this->assertSame(1, $r1['created']);
         $this->assertSame(0, $r2['created']);
+        $this->assertSame(1, $r2['skipped']);
         $this->assertSame(1, HelpdeskTicket::query()->where('source', 'email')->count());
         $this->assertSame(1, HelpdeskEmailMessage::query()->count());
         Bus::assertDispatched(CategorizeTicketWithAi::class);
-        $this->assertSame(1, $fake->moveCalls);
 
         $ticket = HelpdeskTicket::query()->where('source', 'email')->first();
         $this->assertNotNull($ticket);
         $this->assertSame($unit->id, (int) $ticket->business_unit_id);
         $this->assertSame('ada@example.org', $ticket->requester_email);
         $this->assertNull($ticket->category_id);
+        $this->assertSame($ticket->ticket_number, $r2['skipped_items'][0]['ticket_number'] ?? null);
+        $this->assertSame('already_imported', $r2['skipped_items'][0]['reason'] ?? null);
+        $this->assertSame(2, $fake->moveCalls);
     }
 
     public function test_email_file_and_inline_attachments_are_stored_on_the_ticket(): void
@@ -322,13 +325,23 @@ class BusinessUnitMailboxIntakeTest extends TestCase
         };
         $this->app->instance(ExchangeGraphMailReader::class, $fake);
 
-        $this->actingAs($this->helpdeskAdmin())
+        $admin = $this->helpdeskAdmin();
+        $this->actingAs($admin)
             ->postJson('/api/v1/admin/business-units/'.$unit->id.'/process-email-intake')
             ->assertOk()
             ->assertJsonPath('data.created', 1);
 
         $this->assertSame(1, HelpdeskTicket::query()->where('source', 'email')->count());
         $this->assertSame(1, HelpdeskEmailMessage::query()->count());
+
+        $ticket = HelpdeskTicket::query()->where('source', 'email')->firstOrFail();
+        $again = $this->actingAs($admin)
+            ->postJson('/api/v1/admin/business-units/'.$unit->id.'/process-email-intake')
+            ->assertOk();
+        $again->assertJsonPath('data.created', 0);
+        $again->assertJsonPath('data.skipped', 1);
+        $this->assertStringContainsString($ticket->ticket_number, (string) $again->json('message'));
+        $this->assertSame($ticket->ticket_number, $again->json('data.skipped_items.0.ticket_number'));
     }
 
     public function test_mailbox_poll_job_runs_inline_from_the_scheduler(): void

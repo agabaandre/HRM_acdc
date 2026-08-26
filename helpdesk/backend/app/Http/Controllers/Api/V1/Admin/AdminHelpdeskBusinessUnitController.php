@@ -206,11 +206,27 @@ class AdminHelpdeskBusinessUnitController extends Controller
         $skipped = (int) ($result['skipped'] ?? 0);
         $errors = (int) ($result['errors'] ?? 0);
         $reason = $result['reason'] ?? null;
+        $skippedItems = is_array($result['skipped_items'] ?? null) ? $result['skipped_items'] : [];
+        $createdItems = is_array($result['created_items'] ?? null) ? $result['created_items'] : [];
+        $existingNumbers = [];
+        foreach ($skippedItems as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $number = trim((string) ($item['ticket_number'] ?? ''));
+            if ($number !== '') {
+                $existingNumbers[$number] = true;
+            }
+        }
+        $existingList = implode(', ', array_keys($existingNumbers));
 
         $message = match (true) {
-            $created > 0 => "Logged {$created} ticket".($created === 1 ? '' : 's')." from the mailbox.",
+            $created > 0 => "Logged {$created} ticket".($created === 1 ? '' : 's')
+                .($createdItems !== [] ? ': '.implode(', ', array_column($createdItems, 'ticket_number')) : '')
+                .'.',
+            $existingList !== '' => "These emails are already tickets: {$existingList}. Open Tickets, set filter to All (not Me), and search by that number.",
             $errors > 0 => "No tickets created ({$errors} message".($errors === 1 ? '' : 's').' failed). Check helpdesk logs.',
-            $skipped > 0 => "No new tickets. {$skipped} message".($skipped === 1 ? '' : 's').' already imported or skipped.',
+            $skipped > 0 => "No new tickets. {$skipped} message".($skipped === 1 ? '' : 's').' skipped.',
             $reason === 'no_mailbox' => 'This business unit has no valid support mailbox.',
             default => 'No unread mailbox messages to log.',
         };
@@ -222,6 +238,8 @@ class AdminHelpdeskBusinessUnitController extends Controller
                 'skipped' => $skipped,
                 'errors' => $errors,
                 'reason' => $reason,
+                'skipped_items' => $skippedItems,
+                'created_items' => $createdItems,
             ],
         ]);
     }

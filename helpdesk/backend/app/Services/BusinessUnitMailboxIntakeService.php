@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\CategorizeTicketWithAi;
+use App\Jobs\ImportEmailTicketAttachmentsJob;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskEmailMessage;
 use App\Models\HelpdeskSetting;
@@ -19,7 +20,6 @@ class BusinessUnitMailboxIntakeService
         private TicketNumberGenerator $numbers,
         private TicketSubjectGenerator $subjects,
         private EmailBodyNormalizer $bodyNormalizer,
-        private EmailTicketAttachmentImporter $emailAttachments,
     ) {}
 
     /**
@@ -66,7 +66,14 @@ class BusinessUnitMailboxIntakeService
     }
 
     /**
-     * @return array{created:int,skipped:int,errors:int,reason:?string}
+     * @return array{
+     *     created:int,
+     *     skipped:int,
+     *     errors:int,
+     *     reason:?string,
+     *     skipped_items:list<array{reason:string,subject:?string,ticket_id:?int,ticket_number:?string}>,
+     *     created_items:list<array{ticket_id:int,ticket_number:string,subject:?string}>
+     * }
      */
     public function pollUnit(HelpdeskBusinessUnit $unit): array
     {
@@ -74,18 +81,20 @@ class BusinessUnitMailboxIntakeService
         $skipped = 0;
         $errors = 0;
         $reason = null;
+        $skippedItems = [];
+        $createdItems = [];
 
         if (! HelpdeskSetting::emailTicketIntakeEnabled()) {
-            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'master_disabled'];
+            return $this->pollResult(0, 0, 0, 'master_disabled');
         }
 
         if (! $unit->email_intake_enabled) {
-            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'unit_disabled'];
+            return $this->pollResult(0, 0, 0, 'unit_disabled');
         }
 
         $mailbox = trim((string) $unit->support_mailbox);
         if ($mailbox === '' || ! filter_var($mailbox, FILTER_VALIDATE_EMAIL)) {
-            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'no_mailbox'];
+            return $this->pollResult(0, 0, 0, 'no_mailbox');
         }
 
         $messages = $this->reader->listUnreadInbox($mailbox, 25);
@@ -93,32 +102,54 @@ class BusinessUnitMailboxIntakeService
         foreach ($messages as $message) {
             if (! is_array($message)) {
                 $skipped++;
+                $skippedItems[] = $this->skipItem('invalid_message', null, null, null);
                 continue;
             }
 
             $graphId = trim((string) ($message['id'] ?? ''));
+            $subject = mb_substr((string) ($message['subject'] ?? ''), 0, 200);
             if ($graphId === '') {
                 $skipped++;
+                $skippedItems[] = $this->skipItem('missing_graph_id', $subject, null, null);
                 continue;
             }
 
-            if ($this->forgetOrphanedImport($graphId) === false) {
+            $state = $this->importedTicketState($graphId);
+            if ($state['ticket'] !== null) {
                 $skipped++;
+                $skippedItems[] = $this->skipItem(
+                    'already_imported',
+                    $subject,
+                    (int) $state['ticket']->id,
+                    (string) $state['ticket']->ticket_number,
+                );
+                $this->tryMoveToProcessed($mailbox, $graphId, (int) $state['ticket']->id);
                 continue;
             }
+            $state['row']?->delete();
 
             try {
                 $lock = Cache::lock('email-intake:'.$graphId, 120);
                 if (! $lock->block(5)) {
                     $skipped++;
+                    $skippedItems[] = $this->skipItem('lock_busy', $subject, null, null);
                     continue;
                 }
 
                 try {
-                    if ($this->forgetOrphanedImport($graphId) === false) {
+                    $state = $this->importedTicketState($graphId);
+                    if ($state['ticket'] !== null) {
                         $skipped++;
+                        $skippedItems[] = $this->skipItem(
+                            'already_imported',
+                            $subject,
+                            (int) $state['ticket']->id,
+                            (string) $state['ticket']->ticket_number,
+                        );
+                        $this->tryMoveToProcessed($mailbox, $graphId, (int) $state['ticket']->id);
                         continue;
                     }
+                    $state['row']?->delete();
 
                     $ticket = $this->createTicketFromMessage($unit, $message);
                     HelpdeskEmailMessage::query()->create([
@@ -137,7 +168,14 @@ class BusinessUnitMailboxIntakeService
                         ],
                     ]);
 
-                    $this->importAttachmentsAfterTicket($ticket, $mailbox, $graphId, $message);
+                    [$rawBody, $rawType] = $this->rawBody($message);
+                    ImportEmailTicketAttachmentsJob::dispatch(
+                        $ticket->id,
+                        $mailbox,
+                        $graphId,
+                        $rawBody,
+                        $rawType,
+                    );
 
                     $duty = null;
                     if ($ticket->requester_staff_id) {
@@ -146,17 +184,14 @@ class BusinessUnitMailboxIntakeService
 
                     CategorizeTicketWithAi::dispatch($ticket->id, $duty);
 
-                    try {
-                        $this->reader->markReadAndMoveToProcessed($mailbox, $graphId);
-                    } catch (Throwable $e) {
-                        Log::warning('helpdesk.email_intake.move_failed', [
-                            'graph_message_id' => $graphId,
-                            'ticket_id' => $ticket->id,
-                            'message' => $e->getMessage(),
-                        ]);
-                    }
+                    $this->tryMoveToProcessed($mailbox, $graphId, $ticket->id);
 
                     $created++;
+                    $createdItems[] = [
+                        'ticket_id' => $ticket->id,
+                        'ticket_number' => (string) $ticket->ticket_number,
+                        'subject' => $subject !== '' ? $subject : null,
+                    ];
                 } finally {
                     $lock->release();
                 }
@@ -170,40 +205,67 @@ class BusinessUnitMailboxIntakeService
             }
         }
 
-        return compact('created', 'skipped', 'errors', 'reason');
+        return [
+            'created' => $created,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'reason' => $reason,
+            'skipped_items' => $skippedItems,
+            'created_items' => $createdItems,
+        ];
     }
 
     /**
-     * @param  array<string, mixed>  $message
+     * @param  list<array{reason:string,subject:?string,ticket_id:?int,ticket_number:?string}>  $skippedItems
+     * @param  list<array{ticket_id:int,ticket_number:string,subject:?string}>  $createdItems
+     * @return array{
+     *     created:int,
+     *     skipped:int,
+     *     errors:int,
+     *     reason:?string,
+     *     skipped_items:list<array{reason:string,subject:?string,ticket_id:?int,ticket_number:?string}>,
+     *     created_items:list<array{ticket_id:int,ticket_number:string,subject:?string}>
+     * }
      */
-    private function importAttachmentsAfterTicket(
-        HelpdeskTicket $ticket,
-        string $mailbox,
-        string $graphId,
-        array $message,
-    ): void {
-        if ($graphId === '') {
-            return;
-        }
+    private function pollResult(
+        int $created,
+        int $skipped,
+        int $errors,
+        ?string $reason,
+        array $skippedItems = [],
+        array $createdItems = [],
+    ): array {
+        return [
+            'created' => $created,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'reason' => $reason,
+            'skipped_items' => $skippedItems,
+            'created_items' => $createdItems,
+        ];
+    }
 
-        [$rawBody, $rawType] = $this->rawBody($message);
+    /**
+     * @return array{reason:string,subject:?string,ticket_id:?int,ticket_number:?string}
+     */
+    private function skipItem(string $reason, ?string $subject, ?int $ticketId, ?string $ticketNumber): array
+    {
+        return [
+            'reason' => $reason,
+            'subject' => $subject !== '' ? $subject : null,
+            'ticket_id' => $ticketId,
+            'ticket_number' => $ticketNumber,
+        ];
+    }
 
+    private function tryMoveToProcessed(string $mailbox, string $graphId, int $ticketId): void
+    {
         try {
-            $withFiles = $this->emailAttachments->importForMessage(
-                $ticket,
-                $mailbox,
-                $graphId,
-                $rawBody,
-                $rawType,
-            );
-            if ($withFiles !== $ticket->description) {
-                $ticket->description = $withFiles;
-                $ticket->save();
-            }
+            $this->reader->markReadAndMoveToProcessed($mailbox, $graphId);
         } catch (Throwable $e) {
-            Log::warning('helpdesk.email_intake.attachments_failed', [
-                'ticket_id' => $ticket->id,
+            Log::warning('helpdesk.email_intake.move_failed', [
                 'graph_message_id' => $graphId,
+                'ticket_id' => $ticketId,
                 'message' => $e->getMessage(),
             ]);
         }
@@ -278,22 +340,6 @@ class BusinessUnitMailboxIntakeService
             : null;
 
         return ['ticket' => $ticket, 'row' => $row];
-    }
-
-    /**
-     * Drop mailbox rows whose ticket was deleted so the message can be logged again.
-     *
-     * @return bool false when a live ticket already exists (caller should skip)
-     */
-    private function forgetOrphanedImport(string $graphId): bool
-    {
-        $state = $this->importedTicketState($graphId);
-        if ($state['ticket'] !== null) {
-            return false;
-        }
-        $state['row']?->delete();
-
-        return true;
     }
 
     /**

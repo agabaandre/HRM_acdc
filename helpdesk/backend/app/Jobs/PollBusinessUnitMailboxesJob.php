@@ -39,7 +39,7 @@ class PollBusinessUnitMailboxesJob
         foreach ($units as $unit) {
             try {
                 $result = $intake->pollUnit($unit);
-                if (($result['created'] ?? 0) > 0 || ($result['errors'] ?? 0) > 0 || ($result['reason'] ?? null)) {
+                if (($result['created'] ?? 0) > 0 || ($result['errors'] ?? 0) > 0 || ($result['skipped'] ?? 0) > 0 || ($result['reason'] ?? null)) {
                     Log::info('helpdesk.email_intake.poll', [
                         'business_unit_id' => $unit->id,
                         'mailbox' => $unit->support_mailbox,
@@ -47,6 +47,8 @@ class PollBusinessUnitMailboxesJob
                         'skipped' => $result['skipped'],
                         'errors' => $result['errors'],
                         'reason' => $result['reason'] ?? null,
+                        'skipped_items' => $result['skipped_items'] ?? [],
+                        'created_items' => $result['created_items'] ?? [],
                     ]);
                 }
             } catch (Throwable $e) {

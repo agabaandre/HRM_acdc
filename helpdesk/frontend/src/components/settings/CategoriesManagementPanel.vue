@@ -519,7 +519,14 @@ async function processEmailIntake(row: BusinessUnitOption) {
   try {
     const { data } = await api.post<{
       message: string
-      data: { created: number; skipped: number; errors: number; reason?: string | null }
+      data: {
+        created: number
+        skipped: number
+        errors: number
+        reason?: string | null
+        skipped_items?: Array<{ ticket_number?: string | null; subject?: string | null }>
+        created_items?: Array<{ ticket_number: string; subject?: string | null }>
+      }
     }>(`/api/v1/admin/business-units/${row.id}/process-email-intake`)
     notifySuccess(data.message || 'Mailbox intake finished.')
   } catch (e: unknown) {
