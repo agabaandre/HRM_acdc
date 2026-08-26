@@ -665,10 +665,14 @@ watch(
   gap: 1rem;
 }
 
+.perf-form-top__trail {
+  min-height: 18rem;
+}
+
 @media (min-width: 1280px) {
-  /* Section A sets row height (+~25%); trail matches and scrolls overflow. */
+  /* Section A sets row height; trail matches and scrolls overflow. */
   .perf-form-top {
-    grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
     align-items: stretch;
   }
 
@@ -677,8 +681,7 @@ watch(
   }
 
   .perf-form-top__trail {
-    height: 0;
-    min-height: 100%;
+    min-height: 22.5rem;
     display: flex;
     flex-direction: column;
   }

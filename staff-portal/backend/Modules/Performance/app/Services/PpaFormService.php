@@ -234,9 +234,13 @@ class PpaFormService
     public function decodeObjectives(mixed $raw, int $defaultRows = 5): array
     {
         $decoded = $this->decodeJson($raw);
+        $zeroBased = array_key_exists(0, $decoded);
         $rows = [];
         for ($i = 1; $i <= $defaultRows; $i++) {
-            $item = $decoded[$i] ?? $decoded[$i - 1] ?? [];
+            $item = $zeroBased ? ($decoded[$i - 1] ?? []) : ($decoded[$i] ?? []);
+            if (! is_array($item)) {
+                $item = [];
+            }
             $rows[$i] = [
                 'objective' => $item['objective'] ?? '',
                 'timeline' => $item['timeline'] ?? '',

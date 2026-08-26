@@ -4,6 +4,7 @@ import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import CompetencyRatingTable from '@/components/performance/CompetencyRatingTable.vue'
 import PerformanceObjectivesTable from '@/components/performance/PerformanceObjectivesTable.vue'
+import { calculateEndtermOverallRating } from '@/lib/endtermScore'
 import {
   normalizePerformanceSkillIds,
   performanceSkillItems,
@@ -110,6 +111,20 @@ const recommendedTrainingsField = computed<ReviewTextField>(() =>
 const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
   props.phase === 'midterm' ? 'midterm_recommended_trainings_details' : 'endterm_recommended_trainings_details',
 )
+
+const overallRating = computed(() => calculateEndtermOverallRating(props.form.objectives))
+const overallRatingColor = computed(() => {
+  switch (overallRating.value.category) {
+    case 'outstanding':
+      return 'success'
+    case 'satisfactory':
+      return 'info'
+    case 'poor':
+      return 'error'
+    default:
+      return 'blue-grey'
+  }
+})
 </script>
 
 <template>
@@ -246,6 +261,20 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
           :min-rows="3"
           @update:model-value="setReviewField(recommendedTrainingsDetailsField, $event)"
         />
+      </v-card-text>
+    </v-card>
+
+    <v-card v-if="phase === 'endterm'" variant="outlined">
+      <v-card-title class="text-h6">Overall Performance Rating</v-card-title>
+      <v-card-subtitle>
+        Score = Σ (Appraiser's rating × Weight) ÷ 5. Outstanding 80–100, Satisfactory 51–79, Poor 0–50.
+      </v-card-subtitle>
+      <v-card-text>
+        <v-alert :color="overallRatingColor" variant="tonal" class="mb-0">
+          <div class="text-h5 font-weight-bold">{{ overallRating.score.toFixed(2) }}%</div>
+          <div class="text-subtitle-1 font-weight-medium">{{ overallRating.label }}</div>
+          <div class="text-body-2 mt-1">{{ overallRating.annotation }}</div>
+        </v-alert>
       </v-card-text>
     </v-card>
   </div>

@@ -24,6 +24,7 @@ use Modules\Performance\Services\PpaContractService;
 use Modules\Performance\Services\PpaFormService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Services\SupervisorResolver;
+use Modules\Performance\Support\EndtermScore;
 use Modules\Performance\Support\PerformanceFormAccess;
 use Modules\Performance\Support\PerformancePeriod;
 use Modules\Performance\Support\PerformanceRichText;
@@ -472,12 +473,15 @@ class PerformanceFormApiController extends Controller
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
-        $objectives = $forms->decodeObjectives((string) ($entry->objectives ?? ''));
+        $objectives = $forms->decodeObjectives((string) ($entry->objectives ?? ''), 5);
         if ($phase === PerformancePhase::Midterm) {
-            $objectives = $forms->decodeObjectives((string) ($entry->midterm_objectives ?? $entry->objectives ?? ''));
+            $objectives = $forms->decodeObjectives((string) ($entry->midterm_objectives ?: $entry->objectives ?? ''), 10);
         }
         if ($phase === PerformancePhase::Endterm) {
-            $objectives = $forms->decodeObjectives((string) ($entry->endterm_objectives ?? $entry->objectives ?? ''));
+            $objectives = $forms->decodeObjectives(
+                (string) ($entry->endterm_objectives ?: $entry->midterm_objectives ?: $entry->objectives ?? ''),
+                10,
+            );
         }
 
         $staff = DB::table('staff')->where('staff_id', $entry->staff_id)->first();
@@ -545,7 +549,8 @@ class PerformanceFormApiController extends Controller
             'phase' => $phase,
             'objectives' => $objectives,
             'withTrail' => $withTrail,
-            'trail' => $withTrail ? $approval->trail($entryId, $phase)->reverse()->values() : collect(),
+            'trail' => $withTrail ? $approval->printTrail($entryId, $phase, $entry) : [],
+            'overallRating' => $phase === PerformancePhase::Endterm ? EndtermScore::fromObjectives($objectives) : null,
             'supervisor1Name' => $supervisors->staffName($supervisor1Id ?: null),
             'supervisor2Name' => $supervisors->staffName($supervisor2Id ?: null),
             'skillsLabel' => $skillsLabel,

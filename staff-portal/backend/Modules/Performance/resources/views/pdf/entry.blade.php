@@ -48,6 +48,74 @@
   .html-cell p:last-child { margin-bottom: 0; }
   .html-cell ul, .html-cell ol { margin: 0 0 0.4em; padding-left: 1.2em; }
   .html-cell a { color: #0d7a3a; }
+
+  .rating-panel { border: 1px solid #dbe3ea; overflow: hidden; margin: 8px 0 16px; }
+  .rating-panel__hero {
+    padding: 16px 18px;
+    background: #0d7a3a;
+    color: #fff;
+  }
+  .rating-panel__kicker { font-size: 8.5pt; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
+  .rating-panel__score { font-size: 22pt; font-weight: 700; line-height: 1.1; margin: 4px 0 2px; }
+  .rating-panel__label { font-size: 11pt; font-weight: 600; }
+  .rating-panel__body { padding: 12px 18px 14px; background: #f8fafc; }
+  .rating-panel__note { margin: 0 0 10px; color: #334155; font-size: 10pt; }
+  .rating-panel__scale { margin: 0; padding: 0; list-style: none; font-size: 8.5pt; color: #64748b; }
+  .rating-panel__scale li { margin: 0 0 3px; }
+  .rating-panel--outstanding .rating-panel__hero { background: #0d7a3a; }
+  .rating-panel--satisfactory .rating-panel__hero { background: #0369a1; }
+  .rating-panel--poor .rating-panel__hero { background: #b91c1c; }
+  .rating-panel--not_rated .rating-panel__hero { background: #64748b; }
+
+  .trail { margin-top: 8px; }
+  .trail-intro { color: #64748b; font-size: 9.5pt; margin: 0 0 12px; }
+  .trail-item { width: 100%; border-collapse: collapse; margin: 0 0 10px; }
+  .trail-item td { border: none; padding: 0; vertical-align: top; }
+  .trail-item__rail { width: 22px; }
+  .trail-item__dot {
+    width: 10px; height: 10px;
+    background: #94a3b8; margin: 8px auto 0;
+  }
+  .trail-item__line { width: 2px; height: 100%; min-height: 28px; background: #e2e8f0; margin: 6px auto 0; }
+  .trail-card {
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #94a3b8;
+    background: #fff;
+    padding: 10px 12px 11px;
+  }
+  .trail-card--approved { border-left-color: #0d7a3a; }
+  .trail-card--consent { border-left-color: #0d7a3a; }
+  .trail-card--returned { border-left-color: #b91c1c; }
+  .trail-card--submitted { border-left-color: #0369a1; }
+  .trail-dot--approved, .trail-dot--consent { background: #0d7a3a; }
+  .trail-dot--returned { background: #b91c1c; }
+  .trail-dot--submitted { background: #0369a1; }
+  .trail-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .trail-meta td { border: none; padding: 0; }
+  .trail-who { font-weight: 700; font-size: 10.5pt; color: #0f172a; }
+  .trail-role { font-size: 8.5pt; color: #64748b; font-weight: 500; }
+  .trail-badge {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    background: #e2e8f0;
+    color: #334155;
+  }
+  .trail-badge--approved, .trail-badge--consent { background: #dcfce7; color: #166534; }
+  .trail-badge--returned { background: #fee2e2; color: #991b1b; }
+  .trail-badge--submitted { background: #e0f2fe; color: #075985; }
+  .trail-date { font-size: 8.5pt; color: #64748b; text-align: right; white-space: nowrap; }
+  .trail-comment {
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 9.5pt;
+    line-height: 1.45;
+  }
 </style>
 </head>
 <body>
@@ -266,12 +334,34 @@
       </tbody>
     </table>
     <div class="section-title">F. Overall Rating and Supervisor Signoff</div>
-    <table>
-      <tr>
-        <td style="width:50%;"><b>Overall rating</b><br>{{ $entry->endterm_overall_rating ?? '—' }}</td>
-        <td><b>Staff consent</b><br>{{ !empty($entry->endterm_staff_consent) ? 'Yes' : '—' }}</td>
-      </tr>
-    </table>
+    @php
+      $rating = $overallRating ?? ['score' => 0, 'category' => 'not_rated', 'label' => 'Not Rated – New in Position', 'annotation' => 'Not Rated – New in Position'];
+      $ratingCat = $rating['category'] ?? 'not_rated';
+      $accepted = (int) ($entry->endterm_staff_rating_acceptance ?? -1);
+      $consentLabel = $accepted === 1 ? 'Accepted' : ($accepted === 0 ? 'Rejected' : 'Pending');
+    @endphp
+    <div class="rating-panel rating-panel--{{ $ratingCat }}">
+      <div class="rating-panel__hero">
+        <div class="rating-panel__kicker">Overall rating</div>
+        <div class="rating-panel__score">{{ number_format((float) ($rating['score'] ?? 0), 2) }}%</div>
+        <div class="rating-panel__label">{{ $rating['label'] }}</div>
+      </div>
+      <div class="rating-panel__body">
+        <p class="rating-panel__note">{{ $rating['annotation'] }}</p>
+        <p class="rating-panel__note" style="margin-bottom:8px;">
+          The overall rating is based on performance against Performance Objectives.
+          Formula: Σ (Appraiser's rating × Weight) ÷ 5.
+        </p>
+        <ul class="rating-panel__scale">
+          <li>Outstanding 80–100 · Satisfactory 51–79 · Poor 0–50 · Not rated – new in position</li>
+          <li>Staff consent: <strong>{{ $consentLabel }}</strong>
+            @if(!empty($entry->endterm_staff_discussion_confirmed))
+              · Discussion with supervisor confirmed
+            @endif
+          </li>
+        </ul>
+      </div>
+    </div>
     <div class="section-title">G. Staff Sign Off</div>
     <table>
       <tr>
@@ -283,49 +373,47 @@
 
   @if($withTrail)
     <div class="page-break"></div>
-    <div class="section-title">{{ $phase->value === 'ppa' ? 'E' : ($phase->value === 'midterm' ? 'G' : 'G') }}. Approval Trail</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Role</th>
-          <th>Action</th>
-          <th>Date</th>
-          <th>Comment</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($trail as $log)
-          @php
-            $sid = (int) ($log->staff_id ?? 0);
-            if ($sid === (int) $entry->staff_id) {
-                $role = 'Staff';
-            } elseif ($sid === (int) ($entry->supervisor_id ?? 0) || $sid === (int) ($entry->midterm_supervisor_1 ?? 0) || $sid === (int) ($entry->endterm_supervisor_1 ?? 0)) {
-                $role = 'First Supervisor';
-            } elseif ($sid === (int) ($entry->supervisor2_id ?? 0) || $sid === (int) ($entry->midterm_supervisor_2 ?? 0) || $sid === (int) ($entry->endterm_supervisor_2 ?? 0)) {
-                $role = 'Second Supervisor';
-            } else {
-                $role = 'Other';
-            }
-            $when = $log->created_at ?? null;
-            try {
-                $whenLabel = $when ? \Carbon\Carbon::parse($when)->format('d M Y H:i') : '—';
-            } catch (\Throwable) {
-                $whenLabel = (string) $when;
-            }
-          @endphp
+    <div class="section-title">Approval trail</div>
+    <div class="trail">
+      <p class="trail-intro">Chronological record of submission, review, and sign-off for this {{ $phase->label() }}.</p>
+      @forelse($trail as $index => $log)
+        @php
+          $badge = $log['badge'] ?? 'other';
+          $isLast = $index === (count($trail) - 1);
+        @endphp
+        <table class="trail-item">
           <tr>
-            <td>{{ $log->staff_name ?? ('#'.$sid) }}</td>
-            <td>{{ $role }}</td>
-            <td>{{ $log->action ?? '' }}</td>
-            <td>{{ $whenLabel }}</td>
-            <td class="html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($log->comments ?? '') !!}</td>
+            <td class="trail-item__rail">
+              <div class="trail-item__dot trail-dot--{{ $badge }}"></div>
+              @if(! $isLast)
+                <div class="trail-item__line"></div>
+              @endif
+            </td>
+            <td>
+              <div class="trail-card trail-card--{{ $badge }}">
+                <table class="trail-meta">
+                  <tr>
+                    <td>
+                      <div class="trail-who">{{ $log['staff_name'] }}</div>
+                      <div class="trail-role">{{ $log['role'] }}</div>
+                    </td>
+                    <td style="text-align:right;width:42%;">
+                      <span class="trail-badge trail-badge--{{ $badge }}">{{ $log['action'] }}</span>
+                      <div class="trail-date">{{ $log['created_at'] }}</div>
+                    </td>
+                  </tr>
+                </table>
+                @if(trim((string) ($log['comments'] ?? '')) !== '')
+                  <div class="trail-comment html-cell">{!! \Modules\Performance\Support\PerformanceRichText::toSafeHtml($log['comments']) !!}</div>
+                @endif
+              </div>
+            </td>
           </tr>
-        @empty
-          <tr><td colspan="5">No approval trail entries.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+        </table>
+      @empty
+        <p class="muted">No approval activity has been recorded for this form yet.</p>
+      @endforelse
+    </div>
   @endif
 
   <p class="muted" style="margin-top:18px;">Generated {{ $generatedAt }}</p>

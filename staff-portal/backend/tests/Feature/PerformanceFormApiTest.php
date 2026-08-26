@@ -631,13 +631,159 @@ class PerformanceFormApiTest extends TestCase
                     }
                 },
                 app(PerformanceWorkflowService::class),
-                app(PerformanceService::class),
+                app(PerformanceApprovalService::class),
+                app(PpaContractService::class),
+                app(SupervisorResolver::class),
             );
         } catch (HttpException $e) {
             $this->assertSame(403, $e->getStatusCode());
 
             throw $e;
         }
+    }
+
+    public function test_show_includes_approval_trail_for_ppa_midterm_and_endterm(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-trails',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 0,
+            'endterm_supervisor_1' => 50,
+        ]);
+
+        DB::table('ppa_approval_trail')->insert([
+            'entry_id' => 'ppa-entry-trails',
+            'staff_id' => 100,
+            'action' => 'Submitted',
+            'comments' => 'PPA submitted',
+            'created_at' => now()->toDateTimeString(),
+        ]);
+        DB::table('ppa_approval_trail_midterm')->insert([
+            'entry_id' => 'ppa-entry-trails',
+            'staff_id' => 50,
+            'action' => 'Approved',
+            'comments' => 'Midterm approved',
+            'type' => 'MID-TERM REVIEW',
+            'created_at' => now()->toDateTimeString(),
+        ]);
+        DB::table('ppa_approval_trail_end_term')->insert([
+            'entry_id' => 'ppa-entry-trails',
+            'staff_id' => 100,
+            'action' => 'Submitted',
+            'comments' => 'Endterm submitted',
+            'type' => 'END-TERM REVIEW',
+            'created_at' => now()->toDateTimeString(),
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        $ppa = $this->showEntry('ppa-entry-trails', 'ppa');
+        $this->assertSame('Submitted', $ppa['workflow']['trail'][0]['action']);
+        $this->assertSame('PPA submitted', $ppa['workflow']['trail'][0]['comments']);
+
+        $midterm = $this->showEntry('ppa-entry-trails', 'midterm');
+        $this->assertSame('Approved', $midterm['workflow']['trail'][0]['action']);
+        $this->assertSame('Midterm approved', $midterm['workflow']['trail'][0]['comments']);
+
+        $endterm = $this->showEntry('ppa-entry-trails', 'endterm');
+        $this->assertSame('Submitted', $endterm['workflow']['trail'][0]['action']);
+        $this->assertSame('Endterm submitted', $endterm['workflow']['trail'][0]['comments']);
+    }
+
+    public function test_endterm_print_html_includes_computed_score_and_trail(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-endterm-print',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 0,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+            'endterm_objectives' => json_encode([
+                1 => [
+                    'objective' => '<p>Ship the staff portal</p>',
+                    'timeline' => '2026-12-31',
+                    'indicator' => '<p>Portal live</p>',
+                    'weight' => 50,
+                    'self_appraisal' => '<p>Done</p>',
+                    'appraiser_rating' => 4,
+                ],
+                2 => [
+                    'objective' => '<p>Harden systems</p>',
+                    'timeline' => '2026-12-31',
+                    'indicator' => '<p>No critical issues</p>',
+                    'weight' => 50,
+                    'self_appraisal' => '<p>Stable</p>',
+                    'appraiser_rating' => 5,
+                ],
+            ]),
+        ]);
+        DB::table('ppa_approval_trail_end_term')->insert([
+            'entry_id' => 'ppa-entry-endterm-print',
+            'staff_id' => 100,
+            'action' => 'Submitted',
+            'comments' => 'Ready for review',
+            'type' => 'END-TERM REVIEW',
+            'created_at' => now()->toDateTimeString(),
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        $rawObjectives = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-endterm-print')->value('endterm_objectives');
+        $decodedRows = app(PpaFormService::class)->decodeObjectives($rawObjectives, 10);
+        $filled = array_filter($decodedRows, fn (array $row): bool => trim(strip_tags((string) $row['objective'])) !== '');
+        $this->assertCount(2, $filled, is_string($rawObjectives) ? $rawObjectives : json_encode($rawObjectives));
+
+        $compiled = sys_get_temp_dir().'/staff-phpunit-views';
+        if (! is_dir($compiled)) {
+            mkdir($compiled, 0777, true);
+        }
+        config(['view.compiled' => $compiled]);
+        $this->app->forgetInstance('blade.compiler');
+        $this->app->forgetInstance('view');
+
+        $pdf = new class extends PdfService
+        {
+            public string $html = '';
+
+            public function inline(string $htmlBody, string $filename, array $options = []): Response
+            {
+                $this->html = $htmlBody;
+
+                return response($htmlBody, 200, ['Content-Type' => 'text/html']);
+            }
+        };
+
+        app(PerformanceFormApiController::class)->printEntry(
+            'ppa-entry-endterm-print',
+            Request::create('/api/v1/performance/entries/ppa-entry-endterm-print/print.pdf', 'GET', [
+                'phase' => 'endterm',
+                'with_trail' => 1,
+            ]),
+            app(PpaFormService::class),
+            $pdf,
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaContractService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $this->assertStringContainsString('90.00%', $pdf->html);
+        $this->assertStringContainsString('Outstanding Performance', $pdf->html);
+        $this->assertStringContainsString('Approval trail', $pdf->html);
+        $this->assertStringContainsString('Ready for review', $pdf->html);
+        $this->assertStringContainsString('Submitted', $pdf->html);
+        $this->assertStringContainsString('Current Staff', $pdf->html);
     }
 
     public function test_export_csv_restricts_role_17_staff_to_their_own_analytics(): void

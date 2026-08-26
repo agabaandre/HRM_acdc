@@ -189,6 +189,83 @@ class PerformanceApprovalService
         });
     }
 
+    /**
+     * Oldest-first trail rows with role labels for the printable PDF.
+     *
+     * @return list<array{staff_name: string, role: string, action: string, created_at: string, comments: string, badge: string}>
+     */
+    public function printTrail(string $entryId, PerformancePhase $phase, object $entry): array
+    {
+        $staffId = (int) ($entry->staff_id ?? 0);
+        $supervisor1Id = match ($phase) {
+            PerformancePhase::Midterm => (int) ($entry->midterm_supervisor_1 ?? $entry->supervisor_id ?? 0),
+            PerformancePhase::Endterm => (int) ($entry->endterm_supervisor_1 ?? $entry->supervisor_id ?? 0),
+            default => (int) ($entry->supervisor_id ?? 0),
+        };
+        $supervisor2Id = match ($phase) {
+            PerformancePhase::Midterm => (int) ($entry->midterm_supervisor_2 ?? $entry->supervisor2_id ?? 0),
+            PerformancePhase::Endterm => (int) ($entry->endterm_supervisor_2 ?? $entry->supervisor2_id ?? 0),
+            default => (int) ($entry->supervisor2_id ?? 0),
+        };
+        $sameSupervisor = $supervisor1Id > 0 && ($supervisor2Id === 0 || $supervisor1Id === $supervisor2Id);
+        $firstSupervisorApprovals = 0;
+
+        return $this->trail($entryId, $phase)
+            ->reverse()
+            ->values()
+            ->map(function (object $log) use (
+                $staffId,
+                $supervisor1Id,
+                $supervisor2Id,
+                $sameSupervisor,
+                &$firstSupervisorApprovals,
+            ): array {
+                $sid = (int) ($log->staff_id ?? 0);
+                $action = trim((string) ($log->action ?? ''));
+                $role = 'Other';
+
+                if ($sid === $staffId) {
+                    $role = 'Staff';
+                } elseif ($sid === $supervisor1Id && $supervisor1Id > 0) {
+                    if ($sameSupervisor && strcasecmp($action, 'Approved') === 0) {
+                        $firstSupervisorApprovals++;
+                        $role = $firstSupervisorApprovals === 2 ? 'Second Supervisor' : 'First Supervisor';
+                    } else {
+                        $role = 'First Supervisor';
+                    }
+                } elseif ($supervisor2Id > 0 && $sid === $supervisor2Id && ! $sameSupervisor) {
+                    $role = 'Second Supervisor';
+                }
+
+                $when = $log->created_at ?? null;
+                try {
+                    $whenLabel = $when ? \Carbon\Carbon::parse($when)->format('d M Y · H:i') : '—';
+                } catch (\Throwable) {
+                    $whenLabel = $when ? (string) $when : '—';
+                }
+
+                $lower = strtolower($action);
+
+                return [
+                    'staff_name' => trim((string) ($log->staff_name ?? '')) !== ''
+                        ? (string) $log->staff_name
+                        : ('Staff #'.$sid),
+                    'role' => $role,
+                    'action' => $action !== '' ? $action : 'Update',
+                    'created_at' => $whenLabel,
+                    'comments' => (string) ($log->comments ?? ''),
+                    'badge' => match (true) {
+                        str_contains($lower, 'approv') => 'approved',
+                        str_contains($lower, 'consent') => 'consent',
+                        str_contains($lower, 'return') || str_contains($lower, 'reject') => 'returned',
+                        str_contains($lower, 'submit') => 'submitted',
+                        default => 'other',
+                    },
+                ];
+            })
+            ->all();
+    }
+
     protected function appendTrail(
         string $entryId,
         PerformancePhase $phase,
