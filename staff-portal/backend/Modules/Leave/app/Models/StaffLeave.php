@@ -4,6 +4,7 @@ namespace Modules\Leave\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Staff\Models\Staff;
 
 class StaffLeave extends Model
@@ -58,5 +59,12 @@ class StaffLeave extends Model
     public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class, 'leave_id', 'leave_id');
+    }
+
+    public function approvalSteps(): HasMany
+    {
+        return $this->hasMany(StaffLeaveApprovalStep::class, 'request_id', 'request_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 }

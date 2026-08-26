@@ -31,6 +31,7 @@ const requestedDays = ref(0)
 const emailLeave = ref(auth.me?.email ?? '')
 const mobileLeave = ref('')
 const supportingStaff = ref<number | null>(null)
+const divisionHead = ref<number | null>(null)
 const remarks = ref('')
 const documentFile = ref<File | null>(null)
 const balance = ref<LeaveBalanceDto | null>(null)
@@ -54,6 +55,37 @@ const officerOptions = computed(() =>
     }
   }),
 )
+
+const hodOptions = computed(() => {
+  const rows = [...officerOptions.value]
+  const hod = applyRules.value.default_hod
+  if (hod && !rows.some((row) => row.value === Number(hod.staff_id))) {
+    rows.unshift({
+      value: Number(hod.staff_id),
+      title: String(hod.name || `Staff #${hod.staff_id}`),
+      subtitle: '',
+      searchText: String(hod.name || '').toLowerCase(),
+    })
+  }
+  return rows
+})
+
+const workflowEnabled = computed(() => Boolean(applyRules.value.workflow_enabled))
+const workflowPreview = computed(() => {
+  const preview = applyRules.value.workflow_preview || []
+  if (!preview.length) return []
+  const selectedHod = hodOptions.value.find((row) => row.value === Number(divisionHead.value))
+  return preview.map((step, index) => {
+    if (index === 0 || step.role === 'hod') {
+      return {
+        ...step,
+        staff_name: selectedHod?.title || step.staff_name,
+        staff_id: selectedHod?.value ?? step.staff_id,
+      }
+    }
+    return step
+  })
+})
 
 const selectedType = computed(() => types.value.find((t) => t.leave_id === leaveId.value) ?? null)
 const documentRequired = computed(() => Boolean(selectedType.value?.requires_medical_certificate))
@@ -121,6 +153,9 @@ async function loadFormMeta() {
     types.value = leaveTypes
     officers.value = supportingOfficers
     applyRules.value = rules
+    if (rules.default_hod?.staff_id) {
+      divisionHead.value = Number(rules.default_hod.staff_id)
+    }
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load leave form')
   } finally {
@@ -221,6 +256,10 @@ async function onSubmit() {
     error.value = 'Select a supporting officer / OIC.'
     return
   }
+  if (workflowEnabled.value && !Number(divisionHead.value)) {
+    error.value = 'Select a Head of Division.'
+    return
+  }
   if (documentRequired.value && !documentFile.value) {
     error.value = 'A medical certificate is required for this leave type.'
     return
@@ -234,6 +273,9 @@ async function onSubmit() {
   form.append('email_leave', emailLeave.value.trim())
   form.append('mobile_leave', mobileLeave.value.trim())
   form.append('supporting_staff', String(officerId))
+  if (workflowEnabled.value && divisionHead.value) {
+    form.append('division_head', String(divisionHead.value))
+  }
   form.append('remarks', remarks.value)
   if (documentFile.value) {
     form.append('document', documentFile.value)
@@ -388,6 +430,36 @@ onMounted(() => {
                 Person who covers your duties while you are on leave.
               </div>
             </v-col>
+            <v-col v-if="workflowEnabled" cols="12" md="6">
+              <v-autocomplete
+                v-model="divisionHead"
+                :items="hodOptions"
+                item-title="title"
+                item-value="value"
+                :custom-filter="filterOfficers"
+                label="Head of Division"
+                placeholder="Type a name or email to search"
+                density="comfortable"
+                clearable
+                auto-select-first
+                hide-details="auto"
+                :no-data-text="hodOptions.length ? 'No matching officer' : 'No active officers available'"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item
+                    v-bind="itemProps"
+                    :title="String(item.raw.title)"
+                    :subtitle="item.raw.subtitle || undefined"
+                  />
+                </template>
+                <template #selection="{ item }">
+                  <span class="leave-apply__selection">{{ String(item.raw.title || item.title || '') }}</span>
+                </template>
+              </v-autocomplete>
+              <div class="text-caption text-medium-emphasis mt-1">
+                Defaults to your division head. Change this if an acting HOD should approve.
+              </div>
+            </v-col>
             <v-col cols="12" md="6">
               <div class="leave-upload__label">
                 Supporting document
@@ -447,8 +519,25 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
+      <v-card v-if="workflowEnabled" variant="outlined" class="mb-3">
+        <v-card-title class="leave-apply__section-title">4. Approval workflow</v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            Your request will move through these approvers in order. The Head of Division is first.
+          </p>
+          <ol class="leave-apply__preview">
+            <li v-for="(step, index) in workflowPreview" :key="`${step.role}-${index}`">
+              <strong>{{ step.label }}</strong>
+              <span class="text-medium-emphasis"> — {{ step.staff_name || 'Not assigned' }}</span>
+            </li>
+          </ol>
+        </v-card-text>
+      </v-card>
+
       <v-card variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">4. Remarks</v-card-title>
+        <v-card-title class="leave-apply__section-title">
+          {{ workflowEnabled ? '5. Remarks' : '4. Remarks' }}
+        </v-card-title>
         <v-card-text>
           <v-textarea
             v-model="remarks"
@@ -479,6 +568,13 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.leave-apply__preview {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.leave-apply__preview li + li {
+  margin-top: 0.35rem;
 }
 .leave-upload__label {
   display: flex;

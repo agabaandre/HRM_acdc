@@ -7,9 +7,11 @@ use App\Support\PortalReadCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Auth\Models\PortalUser;
 use Modules\Leave\Http\Resources\Api\V1\LeaveRequestResource;
 use Modules\Leave\Models\StaffLeave;
+use Modules\Leave\Services\LeaveApprovalWorkflowService;
 use Modules\Leave\Services\LeaveRequestService;
 use Modules\Leave\Support\LeaveAccess;
 
@@ -36,6 +38,7 @@ class LeaveApprovalController extends Controller
                 'data' => $this->pendingApprovals($staffId, $isHr),
                 'meta' => [
                     'is_hr' => $isHr,
+                    'workflow_enabled' => app(LeaveApprovalWorkflowService::class)->isEnabled(),
                 ],
             ];
         });
@@ -46,30 +49,50 @@ class LeaveApprovalController extends Controller
     public function decide(Request $request, int $id, LeaveRequestService $requests): JsonResponse
     {
         $validated = $request->validate([
-            'role' => 'required|string|in:supporting_staff,hr,supervisor,hod',
+            'role' => 'nullable|string|in:supporting_staff,hr,supervisor,hod,workflow',
             'action' => 'required|string|in:approve,reject',
             'message' => 'nullable|string|max:500',
         ]);
 
-        if ($validated['role'] === 'hr' && ! LeaveAccess::isHr() && ! LeaveAccess::canManageSettings()) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-
+        $workflow = app(LeaveApprovalWorkflowService::class);
         $message = $validated['message']
             ?? ($validated['action'] === 'approve' ? 'Approved' : 'Rejected');
 
-        $ok = $requests->approve($id, $validated['role'], $message);
-        if (! $ok) {
-            return response()->json(['message' => 'Could not update leave request.'], 422);
+        if ($workflow->requestHasSteps($id)) {
+            $actorId = LeaveAccess::staffId();
+            if (! $actorId) {
+                return response()->json(['message' => 'Staff profile not linked to your account.'], 403);
+            }
+            try {
+                $workflow->decide($id, $actorId, $validated['action'], $validated['message'] ?? null);
+            } catch (\InvalidArgumentException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+        } else {
+            $role = $validated['role'] ?? '';
+            if ($role === '' || $role === 'workflow') {
+                return response()->json(['message' => 'Approval role is required.'], 422);
+            }
+            if ($role === 'hr' && ! LeaveAccess::isHr() && ! LeaveAccess::canManageSettings()) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+            $ok = $requests->approve($id, $role, $message);
+            if (! $ok) {
+                return response()->json(['message' => 'Could not update leave request.'], 422);
+            }
         }
 
         PortalReadCache::bust('leave');
 
+        $with = [
+            'leaveType:leave_id,leave_name',
+            'staff:staff_id,fname,lname,SAPNO',
+        ];
+        if (Schema::hasTable('staff_leave_approval_steps')) {
+            $with[] = 'approvalSteps.approver';
+        }
         $leave = StaffLeave::query()
-            ->with([
-                'leaveType:leave_id,leave_name',
-                'staff:staff_id,fname,lname,SAPNO',
-            ])
+            ->with($with)
             ->findOrFail($id);
 
         return response()->json([
@@ -85,6 +108,10 @@ class LeaveApprovalController extends Controller
      */
     protected function pendingApprovals(int $staffId, bool $isHr): array
     {
+        $hasStepsTable = Schema::hasTable('staff_leave_approval_steps');
+        $workflow = app(LeaveApprovalWorkflowService::class);
+        $workflowRequestIds = $hasStepsTable ? $workflow->pendingRequestIdsForActor($staffId) : [];
+
         $query = DB::table('staff_leave as sl')
             ->leftJoin('staff as s', 's.staff_id', '=', 'sl.staff_id')
             ->leftJoin('leave_types as lt', 'lt.leave_id', '=', 'sl.leave_id')
@@ -109,18 +136,40 @@ class LeaveApprovalController extends Controller
                 's.SAPNO as sap_number',
             ]);
 
-        if (! $isHr) {
+        if ($hasStepsTable) {
+            $query->where(function ($q) use ($staffId, $isHr, $workflowRequestIds): void {
+                if ($workflowRequestIds !== []) {
+                    $q->whereIn('sl.request_id', $workflowRequestIds);
+                } else {
+                    $q->whereRaw('0 = 1');
+                }
+
+                $q->orWhere(function ($legacy) use ($staffId, $isHr): void {
+                    $legacy->whereNotIn('sl.request_id', function ($sub): void {
+                        $sub->select('request_id')->from('staff_leave_approval_steps');
+                    });
+                    if (! $isHr) {
+                        $legacy->where(function ($mine) use ($staffId): void {
+                            $mine->where('sl.supervisor_id', $staffId)
+                                ->orWhere('sl.supervisor2_id', $staffId)
+                                ->orWhere('sl.division_head', $staffId)
+                                ->orWhere('sl.supporting_staff', (string) $staffId)
+                                ->orWhere('sl.supporting_staff', $staffId);
+                        });
+                    }
+                });
+            });
+        } elseif (! $isHr) {
             $query->where(function ($q) use ($staffId): void {
                 $q->where('sl.supervisor_id', $staffId)
                     ->orWhere('sl.supervisor2_id', $staffId)
                     ->orWhere('sl.division_head', $staffId)
-                    // supporting_staff is stored as string in legacy rows.
                     ->orWhere('sl.supporting_staff', (string) $staffId)
                     ->orWhere('sl.supporting_staff', $staffId);
             });
         }
 
-        return $query->get()->map(function (object $row): array {
+        $rows = $query->get()->map(function (object $row): array {
             $sap = $row->sap_number !== null && $row->sap_number !== ''
                 ? (string) $row->sap_number
                 : null;
@@ -144,5 +193,15 @@ class LeaveApprovalController extends Controller
                 'created_at' => $row->created_at,
             ];
         })->values()->all();
+
+        $workflows = $workflow->serializeForRequests(
+            array_map(fn (array $row) => $row['request_id'], $rows),
+            $staffId,
+        );
+        foreach ($rows as $i => $row) {
+            $rows[$i]['workflow'] = $workflows[$row['request_id']] ?? null;
+        }
+
+        return $rows;
     }
 }

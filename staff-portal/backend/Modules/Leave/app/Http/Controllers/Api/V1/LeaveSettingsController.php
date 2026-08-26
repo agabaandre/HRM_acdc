@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Leave\Http\Resources\Api\V1\LeaveTypeResource;
 use Modules\Leave\Models\LeaveType;
+use Modules\Leave\Services\LeaveApprovalWorkflowService;
 use Modules\Leave\Services\LeavePolicyService;
 use Modules\Leave\Support\LeaveAccess;
 
@@ -30,6 +31,7 @@ class LeaveSettingsController extends Controller
         ]);
 
         $policyPayload = $data['policy'];
+        unset($policyPayload['approval_workflow_enabled']);
         if (array_key_exists('application_min_notice_days', $policyPayload)) {
             $policyPayload['application_min_notice_days'] = max(
                 0,
@@ -44,6 +46,45 @@ class LeaveSettingsController extends Controller
         return response()->json([
             'message' => 'Leave policy and accumulation rules saved.',
             'data' => $policy->all(),
+        ]);
+    }
+
+    public function showApprovalWorkflow(LeaveApprovalWorkflowService $workflow): JsonResponse
+    {
+        LeaveAccess::authorizeSettings();
+
+        return response()->json([
+            'data' => $workflow->definition() + [
+                'staff_options' => $workflow->staffOptions(),
+            ],
+        ]);
+    }
+
+    public function updateApprovalWorkflow(Request $request, LeaveApprovalWorkflowService $workflow): JsonResponse
+    {
+        LeaveAccess::authorizeSettings();
+
+        $data = $request->validate([
+            'enabled' => 'required|boolean',
+            'levels' => 'required|array|min:1',
+            'levels.*.role' => 'required|string|in:hod,hr',
+            'levels.*.staff_id' => 'nullable|integer|min:1',
+            'levels.*.label' => 'nullable|string|max:120',
+        ]);
+
+        try {
+            $saved = $workflow->saveDefinition((bool) $data['enabled'], $data['levels']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        PortalReadCache::bust('leave');
+
+        return response()->json([
+            'message' => 'Leave approval workflow saved.',
+            'data' => $saved + [
+                'staff_options' => $workflow->staffOptions(),
+            ],
         ]);
     }
 

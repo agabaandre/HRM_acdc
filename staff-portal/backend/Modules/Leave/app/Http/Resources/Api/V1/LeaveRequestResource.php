@@ -4,7 +4,10 @@ namespace Modules\Leave\Http\Resources\Api\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Schema;
 use Modules\Leave\Models\StaffLeave;
+use Modules\Leave\Services\LeaveApprovalWorkflowService;
+use Modules\Leave\Support\LeaveAccess;
 
 /** @mixin StaffLeave */
 class LeaveRequestResource extends JsonResource
@@ -36,6 +39,31 @@ class LeaveRequestResource extends JsonResource
             'remarks' => $this->remarks,
             'supporting_documentation' => $this->supporting_documentation,
             'created_at' => $this->created_at?->toIso8601String(),
+            'workflow' => $this->workflowPayload(),
         ];
+    }
+
+    /**
+     * @return array{enabled: bool, steps: list<array<string, mixed>>}|null
+     */
+    protected function workflowPayload(): ?array
+    {
+        if (! Schema::hasTable('staff_leave_approval_steps')) {
+            return null;
+        }
+
+        $steps = $this->relationLoaded('approvalSteps')
+            ? $this->approvalSteps
+            : $this->approvalSteps()->with('approver')->get();
+
+        if ($steps->isEmpty()) {
+            return null;
+        }
+
+        return app(LeaveApprovalWorkflowService::class)->serializeSteps(
+            $steps,
+            LeaveAccess::staffId(),
+            (string) $this->overall_status,
+        );
     }
 }

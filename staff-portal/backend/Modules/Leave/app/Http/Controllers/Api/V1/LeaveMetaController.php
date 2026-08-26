@@ -7,6 +7,7 @@ use App\Support\PortalReferenceCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Modules\Leave\Services\LeaveApprovalWorkflowService;
 use Modules\Leave\Services\LeaveBalanceService;
 use Modules\Leave\Services\LeaveRequestService;
 use Modules\Leave\Support\LeaveAccess;
@@ -25,12 +26,19 @@ class LeaveMetaController extends Controller
         ]);
     }
 
-    public function applyRules(LeaveRequestService $requests): JsonResponse
+    public function applyRules(LeaveRequestService $requests, LeaveApprovalWorkflowService $workflow): JsonResponse
     {
+        $staffId = LeaveAccess::staffId();
+
         return response()->json([
             'data' => [
                 'min_notice_days' => $requests->minNoticeDays(),
                 'earliest_start_date' => $requests->earliestAllowedStartDate(),
+                'workflow_enabled' => $workflow->isEnabled(),
+                'default_hod' => $staffId ? $workflow->defaultHodForStaff($staffId) : null,
+                'workflow_preview' => $staffId && $workflow->isEnabled()
+                    ? $workflow->previewForStaff($staffId)
+                    : [],
             ],
         ]);
     }

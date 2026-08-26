@@ -74,7 +74,16 @@ class LeaveRequestService
             $path = $document->store('leave/'.date('Y'), 'public');
         }
 
-        return StaffLeave::query()->create([
+        $workflow = app(LeaveApprovalWorkflowService::class);
+        $hodId = (int) ($data['division_head'] ?? 0);
+        if ($workflow->isEnabled() && $hodId < 1) {
+            $hodId = (int) ($workflow->defaultHodForStaff($staffId)['staff_id'] ?? 0);
+        }
+        if ($workflow->isEnabled() && $hodId < 1) {
+            throw new \InvalidArgumentException('Select a Head of Division for this leave request.');
+        }
+
+        $leave = StaffLeave::query()->create([
             'staff_id' => $staffId,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
@@ -88,7 +97,7 @@ class LeaveRequestService
             'contract_id' => $contract?->staff_contract_id ?? 0,
             'supervisor_id' => $contract?->first_supervisor ?? 0,
             'supervisor2_id' => $contract?->second_supervisor ?? 0,
-            'division_head' => $data['division_head'] ?? 0,
+            'division_head' => $hodId,
             'supporting_documentation' => $path,
             'approval_status' => 'Pending',
             'approval_status1' => 'Pending',
@@ -96,6 +105,12 @@ class LeaveRequestService
             'approval_status3' => 'Pending',
             'overall_status' => 'Pending',
         ]);
+
+        if ($workflow->isEnabled()) {
+            $workflow->snapshotForRequest($leave, $hodId);
+        }
+
+        return $leave;
     }
 
     public function approve(int $requestId, string $role, string $message): bool

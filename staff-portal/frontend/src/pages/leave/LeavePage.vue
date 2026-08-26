@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import LeavePlanPanel from '@/components/leave/LeavePlanPanel.vue'
+import LeaveApprovalTrail from '@/components/leave/LeaveApprovalTrail.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
@@ -53,6 +54,7 @@ const reqPage = ref(1)
 const reqPerPage = ref(25)
 const apprPage = ref(1)
 const apprPerPage = ref(25)
+const expandedRequestId = ref<number | null>(null)
 
 const isHr = computed(() => !!auth.me?.profile?.is_hr || auth.me?.profile?.role_id === 20)
 const canViewAll = computed(
@@ -154,6 +156,33 @@ function statusColor(status: string): string {
   if (status === 'Approved') return 'success'
   if (status === 'Rejected') return 'error'
   return 'warning'
+}
+
+function hasWorkflow(req: LeaveRequestDto): boolean {
+  return Boolean(req.workflow?.steps?.length)
+}
+
+function canActOn(req: LeaveRequestDto): boolean {
+  return Boolean(req.workflow?.steps?.some((step) => step.can_act))
+}
+
+function workflowSummary(req: LeaveRequestDto): string {
+  const steps = req.workflow?.steps
+  if (!steps?.length) return ''
+  if (req.overall_status === 'Approved') return `Complete · ${steps.length} steps`
+  if (req.overall_status === 'Rejected') return 'Rejected'
+  const current = steps.find((step) => step.is_current)
+  const done = steps.filter((step) => step.status === 'Approved').length
+  if (current) return `${done + 1}/${steps.length} · ${current.label}`
+  return `${steps.length} steps`
+}
+
+function toggleWorkflow(id: number) {
+  expandedRequestId.value = expandedRequestId.value === id ? null : id
+}
+
+function requestColspan(): number {
+  return (showAllStaff.value ? 8 : 6) + 1
 }
 
 function pageSlice<T>(list: T[], page: number, perPage: number): T[] {
@@ -839,36 +868,66 @@ onMounted(() => {
               <th>To</th>
               <th>Days</th>
               <th>Status</th>
+              <th>Workflow</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="(req, index) in reqRows" :key="req.request_id">
-              <td>
-                <span class="portal-dt-row-num">{{ (reqPage - 1) * reqPerPage + index + 1 }}</span>
-              </td>
-              <td v-if="showAllStaff">
-                <div class="leave-staff-cell">
-                  <i class="fa-solid fa-user leave-staff-cell__icon" aria-hidden="true" />
-                  {{ req.staff_name }}
-                </div>
-              </td>
-              <td v-if="showAllStaff">
-                <code v-if="req.sap_number" class="leave-sap">{{ req.sap_number }}</code>
-                <span v-else class="text-medium-emphasis">—</span>
-              </td>
-              <td>{{ req.leave_name }}</td>
-              <td>{{ req.start_date }}</td>
-              <td>{{ req.end_date }}</td>
-              <td>{{ req.requested_days }}</td>
-              <td>
-                <v-chip size="small" :color="statusColor(req.overall_status)" variant="tonal">
-                  {{ req.overall_status }}
-                </v-chip>
-              </td>
-            </tr>
-            <tr v-if="!reqRows.length">
+          <tbody v-for="(req, index) in reqRows" :key="req.request_id">
+              <tr
+                :class="{ 'leave-req-row--open': expandedRequestId === req.request_id }"
+                @click="hasWorkflow(req) && toggleWorkflow(req.request_id)"
+              >
+                <td>
+                  <span class="portal-dt-row-num">{{ (reqPage - 1) * reqPerPage + index + 1 }}</span>
+                </td>
+                <td v-if="showAllStaff">
+                  <div class="leave-staff-cell">
+                    <i class="fa-solid fa-user leave-staff-cell__icon" aria-hidden="true" />
+                    {{ req.staff_name }}
+                  </div>
+                </td>
+                <td v-if="showAllStaff">
+                  <code v-if="req.sap_number" class="leave-sap">{{ req.sap_number }}</code>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </td>
+                <td>{{ req.leave_name }}</td>
+                <td>{{ req.start_date }}</td>
+                <td>{{ req.end_date }}</td>
+                <td>{{ req.requested_days }}</td>
+                <td>
+                  <v-chip size="small" :color="statusColor(req.overall_status)" variant="tonal">
+                    {{ req.overall_status }}
+                  </v-chip>
+                </td>
+                <td>
+                  <button
+                    v-if="hasWorkflow(req)"
+                    type="button"
+                    class="leave-wf-link"
+                    @click.stop="toggleWorkflow(req.request_id)"
+                  >
+                    {{ workflowSummary(req) }}
+                    <i
+                      class="ms-1"
+                      :class="expandedRequestId === req.request_id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </td>
+              </tr>
+              <tr v-if="expandedRequestId === req.request_id && hasWorkflow(req)" class="leave-wf-row">
+                <td :colspan="requestColspan()">
+                  <div class="leave-wf-panel">
+                    <div class="leave-wf-panel__title">Approval workflow</div>
+                    <LeaveApprovalTrail :steps="req.workflow?.steps || []" />
+                  </div>
+                </td>
+              </tr>
+          </tbody>
+          <tbody v-if="!reqRows.length">
+            <tr>
               <td
-                :colspan="showAllStaff ? 8 : 6"
+                :colspan="requestColspan()"
                 class="text-medium-emphasis text-center py-6"
               >
                 No leave requests found.
@@ -976,72 +1035,112 @@ onMounted(() => {
               <th>Leave</th>
               <th>Days</th>
               <th>Period</th>
+              <th>Workflow</th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            <tr v-for="(req, index) in apprRows" :key="req.request_id">
-              <td>
-                <span class="portal-dt-row-num">{{ (apprPage - 1) * apprPerPage + index + 1 }}</span>
-              </td>
-              <td>
-                <div class="leave-staff-cell">
-                  <i class="fa-solid fa-user leave-staff-cell__icon" aria-hidden="true" />
-                  {{ req.staff_name }}
-                </div>
-              </td>
-              <td>
-                <code v-if="req.sap_number" class="leave-sap">{{ req.sap_number }}</code>
-                <span v-else class="text-medium-emphasis">—</span>
-              </td>
-              <td>{{ req.leave_name }}</td>
-              <td>{{ req.requested_days }}</td>
-              <td>{{ req.start_date }} – {{ req.end_date }}</td>
-              <td class="text-no-wrap">
-                <template v-if="approvalsHr || isHr">
-                  <v-btn
-                    size="x-small"
-                    color="success"
-                    class="me-1"
-                    @click="onDecide(req.request_id, 'hr', 'approve')"
-                  >
-                    <i class="fa-solid fa-check me-1" aria-hidden="true" />
-                    HR
-                  </v-btn>
-                  <v-btn
-                    size="x-small"
-                    variant="outlined"
-                    color="error"
-                    class="me-1"
-                    @click="onDecide(req.request_id, 'hr', 'reject')"
-                  >
-                    <i class="fa-solid fa-xmark me-1" aria-hidden="true" />
-                    HR
-                  </v-btn>
-                </template>
-                <v-btn
-                  size="x-small"
-                  variant="outlined"
-                  color="success"
-                  class="me-1"
-                  @click="onDecide(req.request_id, 'supervisor', 'approve')"
-                >
-                  <i class="fa-solid fa-user-check me-1" aria-hidden="true" />
-                  Supervisor
-                </v-btn>
-                <v-btn
-                  size="x-small"
-                  variant="outlined"
-                  color="primary"
-                  @click="onDecide(req.request_id, 'hod', 'approve')"
-                >
-                  <i class="fa-solid fa-building-user me-1" aria-hidden="true" />
-                  HOD
-                </v-btn>
-              </td>
-            </tr>
-            <tr v-if="!apprRows.length">
-              <td colspan="7" class="text-medium-emphasis text-center py-6">No pending approvals.</td>
+          <tbody v-for="(req, index) in apprRows" :key="req.request_id">
+              <tr>
+                <td>
+                  <span class="portal-dt-row-num">{{ (apprPage - 1) * apprPerPage + index + 1 }}</span>
+                </td>
+                <td>
+                  <div class="leave-staff-cell">
+                    <i class="fa-solid fa-user leave-staff-cell__icon" aria-hidden="true" />
+                    {{ req.staff_name }}
+                  </div>
+                </td>
+                <td>
+                  <code v-if="req.sap_number" class="leave-sap">{{ req.sap_number }}</code>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </td>
+                <td>{{ req.leave_name }}</td>
+                <td>{{ req.requested_days }}</td>
+                <td>{{ req.start_date }} – {{ req.end_date }}</td>
+                <td>
+                  <span v-if="hasWorkflow(req)" class="leave-wf-summary">{{ workflowSummary(req) }}</span>
+                  <span v-else class="text-medium-emphasis">Classic</span>
+                </td>
+                <td class="text-no-wrap">
+                  <template v-if="hasWorkflow(req)">
+                    <template v-if="canActOn(req)">
+                      <v-btn
+                        size="x-small"
+                        color="success"
+                        class="me-1"
+                        @click="onDecide(req.request_id, 'workflow', 'approve')"
+                      >
+                        <i class="fa-solid fa-check me-1" aria-hidden="true" />
+                        Approve
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        variant="outlined"
+                        color="error"
+                        @click="onDecide(req.request_id, 'workflow', 'reject')"
+                      >
+                        <i class="fa-solid fa-xmark me-1" aria-hidden="true" />
+                        Reject
+                      </v-btn>
+                    </template>
+                    <span v-else class="text-caption text-medium-emphasis">Waiting on another step</span>
+                  </template>
+                  <template v-else>
+                    <template v-if="approvalsHr || isHr">
+                      <v-btn
+                        size="x-small"
+                        color="success"
+                        class="me-1"
+                        @click="onDecide(req.request_id, 'hr', 'approve')"
+                      >
+                        <i class="fa-solid fa-check me-1" aria-hidden="true" />
+                        HR
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        variant="outlined"
+                        color="error"
+                        class="me-1"
+                        @click="onDecide(req.request_id, 'hr', 'reject')"
+                      >
+                        <i class="fa-solid fa-xmark me-1" aria-hidden="true" />
+                        HR
+                      </v-btn>
+                    </template>
+                    <v-btn
+                      size="x-small"
+                      variant="outlined"
+                      color="success"
+                      class="me-1"
+                      @click="onDecide(req.request_id, 'supervisor', 'approve')"
+                    >
+                      <i class="fa-solid fa-user-check me-1" aria-hidden="true" />
+                      Supervisor
+                    </v-btn>
+                    <v-btn
+                      size="x-small"
+                      variant="outlined"
+                      color="primary"
+                      @click="onDecide(req.request_id, 'hod', 'approve')"
+                    >
+                      <i class="fa-solid fa-building-user me-1" aria-hidden="true" />
+                      HOD
+                    </v-btn>
+                  </template>
+                </td>
+              </tr>
+              <tr v-if="hasWorkflow(req)" class="leave-wf-row">
+                <td colspan="8">
+                  <div class="leave-wf-panel">
+                    <div class="leave-wf-panel__title">Approval workflow</div>
+                    <LeaveApprovalTrail :steps="req.workflow?.steps || []" />
+                  </div>
+                </td>
+              </tr>
+          </tbody>
+          <tbody v-if="!apprRows.length">
+            <tr>
+              <td colspan="8" class="text-medium-emphasis text-center py-6">No pending approvals.</td>
             </tr>
           </tbody>
         </v-table>
@@ -1210,5 +1309,47 @@ onMounted(() => {
 .perf-kpi__icon {
   color: rgba(255, 255, 255, 0.35);
   font-size: 1.35rem;
+}
+
+.leave-wf-link,
+.leave-wf-summary {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #1d4ed8;
+  font-weight: 650;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.leave-wf-summary {
+  color: #334155;
+  cursor: default;
+}
+
+.leave-req-row--open {
+  background: #f8fafc;
+}
+
+.leave-wf-row td {
+  background: #f8fafc;
+  border-top: 0;
+}
+
+.leave-wf-panel {
+  max-width: 36rem;
+  padding: 0.35rem 0.25rem 0.55rem;
+}
+
+.leave-wf-panel__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 0.55rem;
 }
 </style>

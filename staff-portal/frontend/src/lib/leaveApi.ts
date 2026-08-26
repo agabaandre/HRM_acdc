@@ -38,6 +38,25 @@ export interface LeaveBalanceRow {
   balance: LeaveBalanceDto
 }
 
+export interface LeaveWorkflowStep {
+  id: number
+  sort_order: number
+  role: 'hod' | 'hr' | string
+  label: string
+  staff_id: number
+  staff_name?: string | null
+  status: string
+  comments?: string | null
+  acted_at?: string | null
+  is_current: boolean
+  can_act: boolean
+}
+
+export interface LeaveRequestWorkflow {
+  enabled: boolean
+  steps: LeaveWorkflowStep[]
+}
+
 export interface LeaveRequestDto {
   request_id: number
   staff_id: number
@@ -52,6 +71,7 @@ export interface LeaveRequestDto {
   email_leave?: string | null
   mobile_leave?: string | null
   remarks?: string | null
+  workflow?: LeaveRequestWorkflow | null
 }
 
 const BALANCES_SESSION_KEY = 'staff-portal:leave:balances'
@@ -104,12 +124,15 @@ const APPROVALS_SESSION_KEY = 'staff-portal:leave:approvals'
 
 export function readLeaveApprovalsSession(): {
   data: LeaveRequestDto[]
-  meta: { is_hr: boolean }
+  meta: { is_hr: boolean; workflow_enabled?: boolean }
 } | null {
   try {
     const raw = sessionStorage.getItem(APPROVALS_SESSION_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as { data: LeaveRequestDto[]; meta: { is_hr: boolean } }
+    const parsed = JSON.parse(raw) as {
+      data: LeaveRequestDto[]
+      meta: { is_hr: boolean; workflow_enabled?: boolean }
+    }
     if (!parsed || !Array.isArray(parsed.data)) return null
     return parsed
   } catch {
@@ -119,7 +142,7 @@ export function readLeaveApprovalsSession(): {
 
 function writeLeaveApprovalsSession(payload: {
   data: LeaveRequestDto[]
-  meta: { is_hr: boolean }
+  meta: { is_hr: boolean; workflow_enabled?: boolean }
 }): void {
   try {
     sessionStorage.setItem(APPROVALS_SESSION_KEY, JSON.stringify(payload))
@@ -130,9 +153,9 @@ function writeLeaveApprovalsSession(payload: {
 
 export async function fetchLeaveApprovals(): Promise<{
   data: LeaveRequestDto[]
-  meta: { is_hr: boolean }
+  meta: { is_hr: boolean; workflow_enabled?: boolean }
 }> {
-  const data = await cachedGet<{ data: LeaveRequestDto[]; meta: { is_hr: boolean } }>(
+  const data = await cachedGet<{ data: LeaveRequestDto[]; meta: { is_hr: boolean; workflow_enabled?: boolean } }>(
     'leave:approvals',
     '/api/v1/leave/approvals',
     20_000,
@@ -143,7 +166,7 @@ export async function fetchLeaveApprovals(): Promise<{
 
 export async function decideLeaveRequest(
   id: number,
-  payload: { role: string; action: 'approve' | 'reject'; message?: string },
+  payload: { role?: string; action: 'approve' | 'reject'; message?: string },
 ): Promise<void> {
   await api.post(`/api/v1/leave/requests/${id}/decide`, payload)
   clearApiCache('leave:requests')
@@ -172,6 +195,14 @@ export function invalidateLeaveTypesCache(): void {
 export interface LeaveApplyRules {
   min_notice_days: number
   earliest_start_date: string
+  workflow_enabled?: boolean
+  default_hod?: { staff_id: number; name: string } | null
+  workflow_preview?: Array<{
+    role: string
+    label: string
+    staff_id?: number | null
+    staff_name?: string | null
+  }>
 }
 
 export async function fetchLeaveApplyRules(): Promise<LeaveApplyRules> {
@@ -322,6 +353,49 @@ export async function fetchLeavePolicy(): Promise<Record<string, unknown>> {
 
 export async function saveLeavePolicy(policy: Record<string, unknown>): Promise<void> {
   await api.put('/api/v1/leave/settings/policy', { policy })
+}
+
+export interface LeaveApprovalLevelDto {
+  id: number
+  sort_order: number
+  role: 'hod' | 'hr' | string
+  staff_id?: number | null
+  staff_name?: string | null
+  label: string
+  locked?: boolean
+}
+
+export interface LeaveApprovalStaffOption {
+  staff_id: number
+  name: string
+  work_email?: string | null
+  sap_number?: string | null
+  label: string
+}
+
+export interface LeaveApprovalWorkflowDto {
+  enabled: boolean
+  levels: LeaveApprovalLevelDto[]
+  staff_options: LeaveApprovalStaffOption[]
+}
+
+export async function fetchLeaveApprovalWorkflow(): Promise<LeaveApprovalWorkflowDto> {
+  const { data } = await api.get<{ data: LeaveApprovalWorkflowDto }>(
+    '/api/v1/leave/settings/approval-workflow',
+  )
+  return data.data
+}
+
+export async function saveLeaveApprovalWorkflow(payload: {
+  enabled: boolean
+  levels: Array<{ role: string; staff_id?: number | null; label?: string }>
+}): Promise<LeaveApprovalWorkflowDto> {
+  const { data } = await api.put<{ data: LeaveApprovalWorkflowDto }>(
+    '/api/v1/leave/settings/approval-workflow',
+    payload,
+  )
+  clearApiCache('leave:')
+  return data.data
 }
 
 export interface LeaveHolidayRuleDto {

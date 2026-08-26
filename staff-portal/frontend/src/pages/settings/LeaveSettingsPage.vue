@@ -5,6 +5,7 @@ import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalBtn from '@/components/molecules/PortalBtn.vue'
 import LeaveHolidaysTab from '@/components/leave/LeaveHolidaysTab.vue'
+import LeaveApprovalWorkflowTab from '@/components/leave/LeaveApprovalWorkflowTab.vue'
 import { useAuthStore } from '@/stores/auth'
 import { LEAVE_PERMS } from '@/lib/leavePermissions'
 import {
@@ -18,7 +19,7 @@ import {
 const auth = useAuthStore()
 const router = useRouter()
 
-const tab = ref<'policy' | 'types' | 'holidays'>('policy')
+const tab = ref<'policy' | 'types' | 'workflow' | 'holidays'>('policy')
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -156,7 +157,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="d-flex justify-space-between align-center mb-3">
-      <CbpPageHeading title="Leave configuration" subtitle="Policy rules, leave types, and public holidays." />
+      <CbpPageHeading title="Leave configuration" subtitle="Policy rules, approval workflow, leave types, and public holidays." />
       <RouterLink to="/leave" style="text-decoration:none">
         <PortalBtn variant="outlined" color="primary" size="small">Back to Leave</PortalBtn>
       </RouterLink>
@@ -169,6 +170,7 @@ onMounted(async () => {
     <template v-else>
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab v-if="canManageSettings" value="policy">Accumulation &amp; policy rules</v-tab>
+        <v-tab v-if="canManageSettings" value="workflow">Approval workflow</v-tab>
         <v-tab v-if="canManageSettings" value="types">Leave types</v-tab>
         <v-tab v-if="canManageHolidays" value="holidays">Holidays</v-tab>
       </v-tabs>
@@ -275,6 +277,11 @@ onMounted(async () => {
           <PortalBtn :loading="saving" @click="onSavePolicy">Save policy rules</PortalBtn>
         </v-card-actions>
       </v-card>
+
+      <LeaveApprovalWorkflowTab
+        v-else-if="tab === 'workflow'"
+        @status="onHolidayStatus"
+      />
 
       <v-row v-else-if="tab === 'types'">
         <v-col cols="12" lg="5">

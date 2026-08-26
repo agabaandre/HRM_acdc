@@ -24,6 +24,10 @@ class LeaveRequestController extends Controller
 
         $query = StaffLeave::query()
             ->with(['leaveType', 'staff'])
+            ->when(
+                \Illuminate\Support\Facades\Schema::hasTable('staff_leave_approval_steps'),
+                fn ($q) => $q->with('approvalSteps.approver'),
+            )
             ->when($scope !== 'all' && $staffId, fn ($q) => $q->where('staff_id', $staffId))
             ->when($request->filled('status'), fn ($q) => $q->where('overall_status', $request->query('status')))
             ->when($request->filled('start_date'), fn ($q) => $q->whereDate('start_date', '>=', $request->query('start_date')))
@@ -55,6 +59,7 @@ class LeaveRequestController extends Controller
             'email_leave' => 'required|email',
             'mobile_leave' => 'required|string|max:200',
             'supporting_staff' => 'required|integer|min:1|exists:staff,staff_id',
+            'division_head' => 'nullable|integer|min:1|exists:staff,staff_id',
             'remarks' => 'nullable|string|max:2000',
             'document' => 'nullable|file|max:2048|mimes:pdf,doc,docx,png,jpg,jpeg',
         ]);
@@ -64,6 +69,14 @@ class LeaveRequestController extends Controller
             return response()->json([
                 'message' => 'A medical certificate is required for this leave type.',
                 'errors' => ['document' => ['A medical certificate is required for this leave type.']],
+            ], 422);
+        }
+
+        $workflow = app(\Modules\Leave\Services\LeaveApprovalWorkflowService::class);
+        if ($workflow->isEnabled() && empty($validated['division_head'])) {
+            return response()->json([
+                'message' => 'Select a Head of Division for this leave request.',
+                'errors' => ['division_head' => ['Select a Head of Division for this leave request.']],
             ], 422);
         }
 
@@ -77,13 +90,18 @@ class LeaveRequestController extends Controller
                 'email_leave' => $validated['email_leave'],
                 'mobile_leave' => $validated['mobile_leave'],
                 'supporting_staff' => (string) $validated['supporting_staff'],
+                'division_head' => $validated['division_head'] ?? 0,
                 'remarks' => $validated['remarks'] ?? null,
             ], $request->file('document'));
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $leave->load(['leaveType', 'staff']);
+        $with = ['leaveType', 'staff'];
+        if (\Illuminate\Support\Facades\Schema::hasTable('staff_leave_approval_steps')) {
+            $with[] = 'approvalSteps.approver';
+        }
+        $leave->load($with);
         PortalReadCache::bust('leave');
 
         return response()->json([

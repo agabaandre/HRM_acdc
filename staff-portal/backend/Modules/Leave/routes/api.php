@@ -36,6 +36,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
 
     Route::get('leave/settings/policy', [LeaveSettingsController::class, 'showPolicy']);
     Route::put('leave/settings/policy', [LeaveSettingsController::class, 'updatePolicy']);
+    Route::get('leave/settings/approval-workflow', [LeaveSettingsController::class, 'showApprovalWorkflow']);
+    Route::put('leave/settings/approval-workflow', [LeaveSettingsController::class, 'updateApprovalWorkflow']);
     Route::get('leave/settings/types', [LeaveSettingsController::class, 'types']);
     Route::post('leave/settings/types', [LeaveSettingsController::class, 'storeType']);
     Route::put('leave/settings/types/{leaveId}', [LeaveSettingsController::class, 'updateType'])
