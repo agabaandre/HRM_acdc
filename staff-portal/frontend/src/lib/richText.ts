@@ -53,22 +53,17 @@ export function performanceQuillToolbar(): unknown[] {
 export function buildPerformanceQuillOptions(params: {
   placeholder?: string
   readOnly?: boolean
+  toolbar?: boolean
 } = {}): Record<string, unknown> {
-  if (params.readOnly) {
-    return {
-      theme: 'snow',
-      readOnly: true,
-      modules: { toolbar: false },
-      placeholder: params.placeholder ?? '',
-    }
-  }
+  const readOnly = Boolean(params.readOnly)
+  const showToolbar = params.toolbar ?? !readOnly
 
   return {
     theme: 'snow',
-    readOnly: false,
-    placeholder: params.placeholder ?? 'Enter text…',
+    readOnly,
+    placeholder: params.placeholder ?? (readOnly ? '' : 'Enter text…'),
     modules: {
-      toolbar: performanceQuillToolbar(),
+      toolbar: showToolbar ? performanceQuillToolbar() : false,
       clipboard: { matchVisual: false },
     },
   }

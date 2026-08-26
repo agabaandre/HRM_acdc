@@ -3,12 +3,11 @@ import { computed } from 'vue'
 import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import CompetencyRatingTable from '@/components/performance/CompetencyRatingTable.vue'
-import { hasRichTextContent } from '@/lib/richText'
+import PerformanceObjectivesTable from '@/components/performance/PerformanceObjectivesTable.vue'
 import {
   normalizePerformanceSkillIds,
   performanceSkillItems,
   type PerformanceFormState,
-  type PerformanceObjective,
   type PerformancePhase,
   type PerformanceSkillCatalogItem,
   type PerformanceCompetencyCatalogItem,
@@ -36,21 +35,6 @@ const props = defineProps<{
   competencyLabels: Record<string, string>
   readonly: boolean
 }>()
-
-const ratingOptions = [
-  { title: '5 Exceptional', value: 5 },
-  { title: '4 Exceeds Expectations', value: 4 },
-  { title: '3 Meets Expectations', value: 3 },
-  { title: '2 Needs Improvement', value: 2 },
-  { title: '1 Unsatisfactory', value: 1 },
-]
-
-const visibleObjectives = computed(() =>
-  Object.entries(props.form.objectives)
-    .map(([key, value]) => ({ index: Number(key), value }))
-    .filter(({ value }) => hasRichTextContent(String(value.objective || '')))
-    .sort((a, b) => a.index - b.index),
-)
 
 const skillItems = computed(() => performanceSkillItems(props.skills))
 
@@ -84,10 +68,6 @@ const reviewSummary = computed(() => [
   { label: 'Recommended AUC Courses', value: props.form.recommended_trainings || '', rich: true },
   { label: 'Other Courses', value: props.form.recommended_trainings_details || '', rich: true },
 ])
-
-function objectiveAt(index: number): PerformanceObjective {
-  return props.form.objectives[index]
-}
 
 function getReviewField(field: ReviewTextField): string {
   return props.form[field]
@@ -140,53 +120,11 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
         Fill out the staff self-appraisal and the appraiser rating for each active objective.
       </v-card-subtitle>
       <v-card-text>
-        <div v-if="visibleObjectives.length" class="d-flex flex-column ga-4">
-          <div
-            v-for="{ index, value } in visibleObjectives"
-            :key="index"
-            class="perf-objective-row"
-          >
-            <div class="text-subtitle-2 mb-3">Objective {{ index }}</div>
-            <v-row dense>
-              <v-col cols="12" md="4">
-                <PortalRichText :value="value.objective" label="Objective" />
-              </v-col>
-              <v-col cols="12" md="2">
-                <v-text-field :model-value="value.timeline" label="Timeline" variant="outlined" readonly />
-              </v-col>
-              <v-col cols="12" md="3">
-                <PortalRichText :value="value.indicator" label="Deliverables and KPI's" />
-              </v-col>
-              <v-col cols="12" md="1">
-                <v-text-field :model-value="value.weight" label="Weight" variant="outlined" readonly />
-              </v-col>
-              <v-col cols="12" md="4">
-                <PortalRichText
-                  v-if="readonly"
-                  :value="objectiveAt(index).self_appraisal"
-                  label="Staff Self Appraisal"
-                />
-                <PortalRichTextEditor
-                  v-else
-                  v-model="objectiveAt(index).self_appraisal"
-                  label="Staff Self Appraisal"
-                  :min-rows="4"
-                />
-              </v-col>
-              <v-col cols="12" md="2">
-                <v-select
-                  v-model="objectiveAt(index).appraiser_rating"
-                  :items="ratingOptions"
-                  :readonly="readonly"
-                  :disabled="readonly"
-                  label="Appraiser's Rating"
-                  variant="outlined"
-                />
-              </v-col>
-            </v-row>
-          </div>
-        </div>
-        <v-alert v-else type="info" variant="tonal" density="compact">No objectives available for this review yet.</v-alert>
+        <PerformanceObjectivesTable
+          :form="form"
+          variant="review"
+          :readonly="readonly"
+        />
       </v-card-text>
     </v-card>
 
@@ -312,13 +250,3 @@ const recommendedTrainingsDetailsField = computed<ReviewTextField>(() =>
     </v-card>
   </div>
 </template>
-
-<style scoped>
-
-.perf-objective-row,
-.perf-competency-row {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  padding: 1rem;
-}
-</style>

@@ -14,6 +14,8 @@ const props = withDefaults(
     label?: string
     placeholder?: string
     disabled?: boolean
+    /** Keep the Quill toolbar visible even when the editor is read-only. */
+    keepToolbar?: boolean
     minRows?: number
     hint?: string
   }>(),
@@ -21,6 +23,7 @@ const props = withDefaults(
     modelValue: '',
     placeholder: '',
     disabled: false,
+    keepToolbar: false,
     minRows: 4,
   },
 )
@@ -34,10 +37,12 @@ const editorMinPx = computed(() => editorMinHeightPx(props.minRows))
 const editorStyle = computed(() => ({
   '--portal-rich-editor-min': `${editorMinPx.value}px`,
 }))
+const showToolbar = computed(() => !props.disabled || props.keepToolbar)
 const quillOptions = computed(() =>
   buildPerformanceQuillOptions({
-    placeholder: props.placeholder || props.label || 'Enter text…',
+    placeholder: props.placeholder || props.label || (showToolbar.value ? 'Enter text…' : ''),
     readOnly: props.disabled,
+    toolbar: showToolbar.value,
   }),
 )
 
@@ -61,7 +66,10 @@ function onReady(quill: unknown): void {
 <template>
   <div
     class="portal-rich-field"
-    :class="{ 'portal-rich-field--disabled': disabled }"
+    :class="{
+      'portal-rich-field--disabled': disabled,
+      'portal-rich-field--keep-toolbar': keepToolbar,
+    }"
     :style="editorStyle"
   >
     <div v-if="label" class="portal-rich-field__label">{{ label }}</div>
@@ -148,12 +156,17 @@ function onReady(quill: unknown): void {
   color: #90a4ae;
 }
 
-.portal-rich-field--disabled :deep(.ql-toolbar) {
+.portal-rich-field--disabled:not(.portal-rich-field--keep-toolbar) :deep(.ql-toolbar) {
   display: none;
 }
 
-.portal-rich-field--disabled :deep(.ql-container.ql-snow) {
+.portal-rich-field--disabled:not(.portal-rich-field--keep-toolbar) :deep(.ql-container.ql-snow) {
   border-radius: 8px;
   background: #fafbfc;
+}
+
+.portal-rich-field--disabled.portal-rich-field--keep-toolbar :deep(.ql-toolbar) {
+  pointer-events: none;
+  opacity: 0.85;
 }
 </style>
