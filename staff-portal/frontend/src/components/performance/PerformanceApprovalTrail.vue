@@ -5,6 +5,7 @@ import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { toAbsoluteMediaUrl } from '@/lib/personAvatar'
+import { hasRichTextContent } from '@/lib/richText'
 import type {
   PerformancePhase,
   PerformanceSubmissionWindow,
@@ -83,6 +84,9 @@ const showSubmissionWindow = computed(
 const showSecondSupervisorAgreement = computed(
   () => props.phase === 'endterm' && props.state?.step === 'supervisor_2' && props.canApprove,
 )
+
+const hasSubmissionComments = computed(() => hasRichTextContent(props.submissionComments))
+const hasWorkflowComments = computed(() => hasRichTextContent(props.comments))
 
 type TrailDisplayItem = {
   key: string
@@ -174,6 +178,30 @@ function actionColor(action: string, pending?: boolean): string {
   return 'secondary'
 }
 
+function actionKind(action: string, pending?: boolean): 'pending' | 'approved' | 'returned' | 'submitted' | 'other' {
+  if (pending) return 'pending'
+  const a = action.toLowerCase()
+  if (a.includes('approv') || a.includes('consent')) return 'approved'
+  if (a.includes('return') || a.includes('reject')) return 'returned'
+  if (a.includes('submit')) return 'submitted'
+  return 'other'
+}
+
+function actionIcon(action: string, pending?: boolean): string {
+  switch (actionKind(action, pending)) {
+    case 'approved':
+      return 'fa-solid fa-check'
+    case 'returned':
+      return 'fa-solid fa-rotate-left'
+    case 'submitted':
+      return 'fa-solid fa-clock'
+    case 'pending':
+      return 'fa-solid fa-ellipsis'
+    default:
+      return 'fa-solid fa-circle'
+  }
+}
+
 function photoUrl(item: TrailDisplayItem): string | null {
   return toAbsoluteMediaUrl(resolveAvatarUrl(String(item.photo_url || '')))
 }
@@ -224,12 +252,30 @@ function photoUrl(item: TrailDisplayItem): string | null {
       :class="{ 'flex-grow-1': variant === 'actions' }"
     >
       <div v-if="showEmployeeSubmit" class="d-flex flex-column ga-3 flex-shrink-0">
-        <PortalRichTextEditor
-          :model-value="submissionComments"
-          :label="submissionCommentLabel"
-          :min-rows="2"
-          @update:model-value="emit('update:submissionComments', $event)"
-        />
+        <v-expansion-panels variant="accordion" class="perf-comment-panel">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <span>{{ submissionCommentLabel }}</span>
+              <v-chip
+                v-if="hasSubmissionComments"
+                size="x-small"
+                color="success"
+                variant="tonal"
+                class="ms-2"
+              >
+                Added
+              </v-chip>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <PortalRichTextEditor
+                :model-value="submissionComments"
+                :placeholder="submissionCommentLabel"
+                :min-rows="2"
+                @update:model-value="emit('update:submissionComments', $event)"
+              />
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
         <div class="d-flex flex-wrap ga-2">
           <v-btn color="warning" :loading="busy" @click="emit('save-draft')">Save Draft</v-btn>
           <v-btn color="success" :loading="busy" @click="emit('submit')">Submit</v-btn>
@@ -237,12 +283,30 @@ function photoUrl(item: TrailDisplayItem): string | null {
       </div>
 
       <div v-if="variant === 'actions' && showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
-        <PortalRichTextEditor
-          :model-value="comments"
-          label="Comments"
-          :min-rows="2"
-          @update:model-value="emit('update:comments', $event)"
-        />
+        <v-expansion-panels variant="accordion" class="perf-comment-panel">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <span>Comments</span>
+              <v-chip
+                v-if="hasWorkflowComments"
+                size="x-small"
+                color="success"
+                variant="tonal"
+                class="ms-2"
+              >
+                Added
+              </v-chip>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <PortalRichTextEditor
+                :model-value="comments"
+                placeholder="Comments"
+                :min-rows="2"
+                @update:model-value="emit('update:comments', $event)"
+              />
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
 
         <v-checkbox
           v-if="showSecondSupervisorAgreement"
@@ -309,16 +373,25 @@ function photoUrl(item: TrailDisplayItem): string | null {
             v-for="item in displayItems"
             :key="item.key"
             class="perf-trail-item"
-            :class="{ 'is-pending': item.pending }"
+            :class="[`is-${actionKind(item.action, item.pending)}`, { 'is-pending': item.pending }]"
           >
-            <CbpAvatar
-              size="sm"
-              :name="item.staff_name"
-              :image-url="photoUrl(item)"
-            />
+            <div class="perf-trail-item__avatar">
+              <CbpAvatar
+                size="lg"
+                :name="item.staff_name"
+                :image-url="photoUrl(item)"
+              />
+            </div>
+            <div
+              class="perf-trail-item__badge"
+              :class="`is-${actionKind(item.action, item.pending)}`"
+            >
+              <i :class="actionIcon(item.action, item.pending)" aria-hidden="true" />
+            </div>
             <div class="perf-trail-item__body">
-              <div class="d-flex align-center justify-space-between ga-2 flex-wrap">
-                <div class="font-weight-medium">{{ item.staff_name }}</div>
+              <div class="perf-trail-item__time">{{ item.pending ? 'Pending' : formatDate(item.created_at) }}</div>
+              <div class="perf-trail-item__title">
+                <span>{{ item.staff_name }}</span>
                 <v-chip
                   size="x-small"
                   :color="actionColor(item.action, item.pending)"
@@ -330,13 +403,17 @@ function photoUrl(item: TrailDisplayItem): string | null {
               <div v-if="item.step_label" class="text-caption text-medium-emphasis">
                 {{ item.step_label }}
               </div>
-              <div class="text-caption text-medium-emphasis">{{ formatDate(item.created_at) }}</div>
-              <PortalRichText
+              <div
                 v-if="item.comments"
-                class="mt-1"
-                compact
-                :value="item.comments"
-              />
+                class="perf-trail-item__remarks"
+              >
+                <strong>Remarks:</strong>
+                <PortalRichText
+                  class="mt-1"
+                  compact
+                  :value="item.comments"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -376,6 +453,24 @@ function photoUrl(item: TrailDisplayItem): string | null {
   width: 100%;
 }
 
+.perf-comment-panel {
+  border: 1px solid rgba(58, 71, 82, 0.12);
+  border-radius: 0.55rem;
+  overflow: hidden;
+}
+
+.perf-comment-panel :deep(.v-expansion-panel-title) {
+  min-height: 2.6rem;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #3a4752;
+}
+
+.perf-comment-panel :deep(.v-expansion-panel-text__wrapper) {
+  padding: 0 0.9rem 0.9rem;
+}
+
 .perf-trail-card__body {
   min-height: 0;
   overflow: hidden !important;
@@ -396,28 +491,111 @@ function photoUrl(item: TrailDisplayItem): string | null {
 }
 
 .perf-trail-list {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  padding: 0.15rem 0;
+}
+
+.perf-trail-list::before {
+  content: '';
+  position: absolute;
+  left: 23px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: #e9ecef;
 }
 
 .perf-trail-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid rgba(58, 71, 82, 0.1);
-  border-radius: 0.55rem;
-  background: #fff;
+  gap: 0.5rem;
+  position: relative;
+  margin: 0 0 1.85rem;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
-.perf-trail-item.is-pending {
-  border-color: rgba(17, 154, 72, 0.28);
-  background: rgba(17, 154, 72, 0.04);
+.perf-trail-item:last-child {
+  margin-bottom: 0;
+}
+
+.perf-trail-item__avatar {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  position: relative;
+  z-index: 1;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.perf-trail-item__badge {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-top: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #119a48;
+  color: #119a48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  z-index: 1;
+}
+
+.perf-trail-item__badge.is-approved {
+  border-color: #119a48;
+  color: #119a48;
+}
+
+.perf-trail-item__badge.is-returned {
+  border-color: #d97706;
+  color: #d97706;
+}
+
+.perf-trail-item__badge.is-submitted {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.perf-trail-item__badge.is-pending,
+.perf-trail-item__badge.is-other {
+  border-color: #64748b;
+  color: #64748b;
 }
 
 .perf-trail-item__body {
   flex: 1 1 auto;
   min-width: 0;
+  padding-top: 0.1rem;
+}
+
+.perf-trail-item__time {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 0.15rem;
+}
+
+.perf-trail-item__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.perf-trail-item__remarks {
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  background: #f8fafc;
+  border-radius: 0.45rem;
+  color: #455a64;
+  font-size: 0.875rem;
 }
 </style>
