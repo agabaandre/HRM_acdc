@@ -10,7 +10,9 @@
         'submissionWindows' => app(\Modules\Performance\Services\PpaSettingsService::class)->allSubmissionWindowStatuses(),
     ])
 
-    <x-performance::submission-window-alert :status="$submissionWindow" :phase-label="$phase->label()" class="mb-3" />
+    @if (($state['status_key'] ?? '') !== 'approved')
+        <x-performance::submission-window-alert :status="$submissionWindow" :phase-label="$phase->label()" class="mb-3" />
+    @endif
 
     @if ($contractMissing)
         <div class="alert alert-warning">No staff contract on file. Contact HR before submitting.</div>

@@ -57,6 +57,12 @@ const showActionArea = computed(
   () => props.canApprove || props.canReturn || props.canConsent,
 )
 
+const isApproved = computed(() => props.state?.status_key === 'approved')
+
+const showSubmissionWindow = computed(
+  () => props.variant === 'actions' && !!props.submissionWindow && !isApproved.value,
+)
+
 const showSecondSupervisorAgreement = computed(
   () => props.phase === 'endterm' && props.state?.step === 'supervisor_2' && props.canApprove,
 )
@@ -187,13 +193,13 @@ function photoUrl(item: TrailDisplayItem): string | null {
         </v-chip>
       </div>
       <v-alert
-        v-if="variant === 'actions' && submissionWindow"
+        v-if="showSubmissionWindow"
         density="compact"
-        :type="submissionWindow.open ? 'success' : 'warning'"
+        :type="submissionWindow?.open ? 'success' : 'warning'"
         variant="tonal"
         class="perf-trail-card__window"
       >
-        <strong>{{ submissionWindow.label }}:</strong> {{ submissionWindow.message }}
+        <strong>{{ submissionWindow?.label }}:</strong> {{ submissionWindow?.message }}
       </v-alert>
     </div>
 
