@@ -52,7 +52,7 @@
   .rating-panel { border: 1px solid #dbe3ea; overflow: hidden; margin: 8px 0 16px; }
   .rating-panel__hero {
     padding: 16px 18px;
-    background: #0d7a3a;
+    background: #37474f;
     color: #fff;
   }
   .rating-panel__kicker { font-size: 8.5pt; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; }
@@ -62,10 +62,6 @@
   .rating-panel__note { margin: 0 0 10px; color: #334155; font-size: 10pt; }
   .rating-panel__scale { margin: 0; padding: 0; list-style: none; font-size: 8.5pt; color: #64748b; }
   .rating-panel__scale li { margin: 0 0 3px; }
-  .rating-panel--outstanding .rating-panel__hero { background: #0d7a3a; }
-  .rating-panel--satisfactory .rating-panel__hero { background: #0369a1; }
-  .rating-panel--poor .rating-panel__hero { background: #b91c1c; }
-  .rating-panel--not_rated .rating-panel__hero { background: #64748b; }
 
   .trail { margin-top: 8px; }
   .trail-intro { color: #64748b; font-size: 9.5pt; margin: 0 0 12px; }
