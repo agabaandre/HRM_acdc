@@ -5,26 +5,26 @@ namespace App\Jobs;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskSetting;
 use App\Services\BusinessUnitMailboxIntakeService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class PollBusinessUnitMailboxesJob implements ShouldQueue
+/**
+ * Runs inline from the scheduler (not queued) so mailbox intake does not depend
+ * on the helpdesk queue worker. Preview is HTTP; logging must be equally direct.
+ */
+class PollBusinessUnitMailboxesJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, SerializesModels;
 
-    public function __construct()
-    {
-        $this->onQueue('helpdesk');
-    }
+    public int $timeout = 300;
 
     public function handle(BusinessUnitMailboxIntakeService $intake): void
     {
         if (! HelpdeskSetting::emailTicketIntakeEnabled()) {
+            Log::info('helpdesk.email_intake.skipped', ['reason' => 'master_disabled']);
+
             return;
         }
 
@@ -39,13 +39,14 @@ class PollBusinessUnitMailboxesJob implements ShouldQueue
         foreach ($units as $unit) {
             try {
                 $result = $intake->pollUnit($unit);
-                if (($result['created'] ?? 0) > 0 || ($result['errors'] ?? 0) > 0) {
+                if (($result['created'] ?? 0) > 0 || ($result['errors'] ?? 0) > 0 || ($result['reason'] ?? null)) {
                     Log::info('helpdesk.email_intake.poll', [
                         'business_unit_id' => $unit->id,
                         'mailbox' => $unit->support_mailbox,
                         'created' => $result['created'],
                         'skipped' => $result['skipped'],
                         'errors' => $result['errors'],
+                        'reason' => $result['reason'] ?? null,
                     ]);
                 }
             } catch (Throwable $e) {

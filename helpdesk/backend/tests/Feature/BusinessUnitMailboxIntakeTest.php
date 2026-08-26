@@ -3,13 +3,17 @@
 namespace Tests\Feature;
 
 use App\Jobs\CategorizeTicketWithAi;
+use App\Jobs\PollBusinessUnitMailboxesJob;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskEmailMessage;
+use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
+use App\Models\User;
 use App\Services\BusinessUnitMailboxIntakeService;
 use App\Services\ExchangeGraphMailReader;
 use Database\Seeders\HelpdeskCategorySeeder;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
@@ -201,6 +205,11 @@ class BusinessUnitMailboxIntakeTest extends TestCase
         Bus::fake([CategorizeTicketWithAi::class]);
         $this->seed(HelpdeskCategorySeeder::class);
 
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
         $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
         $unit->update([
             'email_intake_enabled' => false,
@@ -218,6 +227,171 @@ class BusinessUnitMailboxIntakeTest extends TestCase
 
         $result = app(BusinessUnitMailboxIntakeService::class)->pollUnit($unit->fresh());
         $this->assertSame(0, $result['created']);
+        $this->assertSame('unit_disabled', $result['reason'] ?? null);
         Bus::assertNothingDispatched();
+    }
+
+    public function test_master_switch_off_skips_mailbox_with_reason(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '0']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $fake = new class extends ExchangeGraphMailReader
+        {
+            public function listUnreadInbox(string $mailboxUpn, int $top = 25): array
+            {
+                $this->fail('Should not list mail when master intake switch is off');
+            }
+        };
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $result = app(BusinessUnitMailboxIntakeService::class)->pollUnit($unit->fresh());
+        $this->assertSame(0, $result['created']);
+        $this->assertSame('master_disabled', $result['reason'] ?? null);
+        Bus::assertNothingDispatched();
+    }
+
+    public function test_admin_process_email_intake_explains_when_master_off(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '0']
+        );
+
+        $this->actingAs($this->helpdeskAdmin())
+            ->postJson('/api/v1/admin/business-units/'.$unit->id.'/process-email-intake')
+            ->assertStatus(422)
+            ->assertJsonFragment(['master_disabled']);
+    }
+
+    public function test_admin_process_email_intake_creates_ticket(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $fake = new class extends ExchangeGraphMailReader
+        {
+            public function listUnreadInbox(string $mailboxUpn, int $top = 25): array
+            {
+                return [[
+                    'id' => 'msg-process-now',
+                    'internetMessageId' => '<now@b>',
+                    'subject' => 'Process now',
+                    'bodyPreview' => 'Please log this',
+                    'body' => ['contentType' => 'Text', 'content' => 'Please log this'],
+                    'from' => ['emailAddress' => ['name' => 'Ada', 'address' => 'ada@example.org']],
+                    'receivedDateTime' => now()->toIso8601String(),
+                ]];
+            }
+
+            public function listMessageAttachments(string $mailboxUpn, string $messageId): array
+            {
+                return [];
+            }
+
+            public function markReadAndMoveToProcessed(string $mailboxUpn, string $messageId): void {}
+        };
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $this->actingAs($this->helpdeskAdmin())
+            ->postJson('/api/v1/admin/business-units/'.$unit->id.'/process-email-intake')
+            ->assertOk()
+            ->assertJsonPath('data.created', 1);
+
+        $this->assertSame(1, HelpdeskTicket::query()->where('source', 'email')->count());
+        $this->assertSame(1, HelpdeskEmailMessage::query()->count());
+    }
+
+    public function test_mailbox_poll_job_runs_inline_from_the_scheduler(): void
+    {
+        $this->assertFalse((new PollBusinessUnitMailboxesJob) instanceof ShouldQueue);
+    }
+
+    public function test_email_message_is_stored_before_attachments_are_imported(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $fake = new class extends ExchangeGraphMailReader
+        {
+            public function listUnreadInbox(string $mailboxUpn, int $top = 25): array
+            {
+                return [[
+                    'id' => 'msg-att-throw',
+                    'internetMessageId' => '<throw@b>',
+                    'subject' => 'Has attachments',
+                    'bodyPreview' => 'See file',
+                    'body' => ['contentType' => 'Text', 'content' => 'See file'],
+                    'from' => ['emailAddress' => ['name' => 'Ada', 'address' => 'ada@example.org']],
+                    'receivedDateTime' => now()->toIso8601String(),
+                ]];
+            }
+
+            public function listMessageAttachments(string $mailboxUpn, string $messageId): array
+            {
+                throw new \RuntimeException('Graph attachments exploded');
+            }
+
+            public function markReadAndMoveToProcessed(string $mailboxUpn, string $messageId): void {}
+        };
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $result = app(BusinessUnitMailboxIntakeService::class)->pollUnit($unit->fresh());
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(1, HelpdeskTicket::query()->where('source', 'email')->count());
+        $this->assertSame(1, HelpdeskEmailMessage::query()->count());
+    }
+
+    private function helpdeskAdmin(): User
+    {
+        $admin = User::factory()->create();
+        HelpdeskProfile::query()->create([
+            'user_id' => $admin->id,
+            'role' => HelpdeskProfile::ROLE_ADMIN,
+            'staff_id' => 1,
+            'grant_helpdesk_admin' => true,
+        ]);
+
+        return $admin;
     }
 }

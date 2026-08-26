@@ -206,7 +206,7 @@ class VerifyProductionReadinessCommand extends Command
         $this->newLine();
         $this->line('Runtime (ops) checklist — confirm on the server:');
         $this->line('  • systemctl is-active helpdesk-queue.service helpdesk-scheduler.timer');
-        $this->line('  • queue worker listens: default,helpdesk,helpdesk-ai  (see deploy/bin/helpdesk-queue.sh)');
+        $this->line('  • scheduler runs mailbox intake inline; queue worker still needed for helpdesk-ai');
         $this->line('  • Staff cbp_modules.system_name = "HelpDesk" for helpdesk_itsm');
         $this->line('  • Graph app has Mail.ReadWrite (or read+move) on each intake mailbox');
         $this->newLine();

@@ -473,8 +473,8 @@ function roleLabel(c: CandidateRow): string {
           <span class="toggle-copy">
             <strong>Allow email submission of tickets</strong>
             <span class="toggle-hint">
-              Off by default. When on, the scheduler polls each unit with intake enabled (e.g. helpdesk@africacdc.org for IT &amp; MIS), creates tickets, categorizes, and assigns.
-              Use <strong>Test read</strong> on a Business Unit to verify Graph access without creating tickets.
+              Off by default. When on, the scheduler logs unread mailbox mail every minute.
+              Test read only previews Inbox; use <strong>Log unread</strong> on a Business Unit to create tickets immediately.
               New mail keeps only the latest message (reply threads are stripped). If category routing finds no agent, tickets are assigned to supervisors (then admins) by open workload — grant Supervisor under Agents.
             </span>
           </span>

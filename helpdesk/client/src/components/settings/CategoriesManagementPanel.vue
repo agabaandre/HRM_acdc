@@ -99,6 +99,7 @@ const catEditingId = ref<number | null>(null)
 const buModalOpen = ref(false)
 const buEditingId = ref<number | null>(null)
 const testReadBusyId = ref<number | null>(null)
+const processIntakeBusyId = ref<number | null>(null)
 const testReadOpen = ref(false)
 const testReadTitle = ref('Mailbox test read')
 const testReadResult = ref<{
@@ -505,6 +506,39 @@ async function testEmailReadFromModal() {
   })
 }
 
+async function processEmailIntake(row: BusinessUnitOption) {
+  if (!row.support_mailbox?.trim()) {
+    notifyError('Set a support mailbox on this business unit first.')
+    return
+  }
+  processIntakeBusyId.value = row.id
+  try {
+    const { data } = await api.post<{
+      message: string
+      data: { created: number; skipped: number; errors: number; reason?: string | null }
+    }>(`/api/v1/admin/business-units/${row.id}/process-email-intake`)
+    notifySuccess(data.message || 'Mailbox intake finished.')
+  } catch (e: unknown) {
+    notifyError(apiErrorMessage(e, 'Could not log mailbox mail'))
+  } finally {
+    processIntakeBusyId.value = null
+  }
+}
+
+async function processEmailIntakeFromModal() {
+  if (!buEditingId.value) {
+    notifyError('Save the business unit first, then log unread mail.')
+    return
+  }
+  const row = units.value.find((u) => u.id === buEditingId.value)
+  if (!row) return
+  await processEmailIntake({
+    ...row,
+    support_mailbox: buDraft.support_mailbox.trim() || row.support_mailbox,
+    email_intake_enabled: buDraft.email_intake_enabled,
+  })
+}
+
 onMounted(() => {
   void load()
 })
@@ -684,6 +718,17 @@ onMounted(() => {
               >
                 Test read
               </UButton>
+              <UButton
+                type="button"
+                color="primary"
+                variant="soft"
+                size="small"
+                :loading="processIntakeBusyId === item.id"
+                :disabled="!item.support_mailbox"
+                @click="processEmailIntake(item)"
+              >
+                Log unread
+              </UButton>
               <UButton type="button" color="warning" variant="soft" size="small" :disabled="buBusyId === item.id" @click="openBuRemap(item)">Remap</UButton>
             </div>
           </template>
@@ -752,18 +797,31 @@ onMounted(() => {
               />
             </UFormField>
             <div v-if="buEditingId" class="full">
-              <UButton
-                type="button"
-                color="neutral"
-                variant="outline"
-                :loading="testReadBusyId === buEditingId"
-                :disabled="!buDraft.support_mailbox.trim()"
-                @click="testEmailReadFromModal"
-              >
-                Test read mailbox
-              </UButton>
+              <div class="mailbox-actions">
+                <UButton
+                  type="button"
+                  color="neutral"
+                  variant="outline"
+                  :loading="testReadBusyId === buEditingId"
+                  :disabled="!buDraft.support_mailbox.trim()"
+                  @click="testEmailReadFromModal"
+                >
+                  Test read mailbox
+                </UButton>
+                <UButton
+                  type="button"
+                  color="primary"
+                  variant="outline"
+                  :loading="processIntakeBusyId === buEditingId"
+                  :disabled="!buDraft.support_mailbox.trim()"
+                  @click="processEmailIntakeFromModal"
+                >
+                  Log unread as tickets
+                </UButton>
+              </div>
               <p class="test-read-hint muted">
-                Lists unread Inbox messages via Exchange Graph. Does not create tickets. Global “Allow email submission” in General settings controls live intake.
+                Test read lists unread Inbox mail without creating tickets.
+                Log unread creates tickets (requires “Allow email submission” in General settings).
               </p>
             </div>
           </UForm>
@@ -964,6 +1022,7 @@ onMounted(() => {
   color: #64748b;
 }
 .test-read-hint { margin: 0.4rem 0 0; font-size: 0.8rem; line-height: 1.4; }
+.mailbox-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .test-read-err { margin: 0; color: #b91c1c; font-size: 0.9rem; }
 .test-read-body { display: flex; flex-direction: column; gap: 0.75rem; }
 .test-read-list {

@@ -138,6 +138,7 @@ class ExchangeGraphMailReader
 
         $response = Http::withToken($this->accessToken())
             ->acceptJson()
+            ->timeout(30)
             ->get($url, ['$top' => 50]);
 
         if (! $response->successful()) {
@@ -159,7 +160,7 @@ class ExchangeGraphMailReader
             rawurlencode(trim($attachmentId))
         );
 
-        $response = Http::withToken($this->accessToken())->get($url);
+        $response = Http::withToken($this->accessToken())->timeout(30)->get($url);
 
         if (! $response->successful()) {
             $this->lastError = $response->body();

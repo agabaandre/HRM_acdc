@@ -144,6 +144,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/business-units', [AdminHelpdeskBusinessUnitController::class, 'store']);
         Route::put('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'update']);
         Route::post('/admin/business-units/{businessUnit}/test-email-read', [AdminHelpdeskBusinessUnitController::class, 'testEmailRead']);
+        Route::post('/admin/business-units/{businessUnit}/process-email-intake', [AdminHelpdeskBusinessUnitController::class, 'processEmailIntake']);
         Route::post('/admin/business-units/{businessUnit}/remap', [AdminHelpdeskBusinessUnitController::class, 'remap']);
         Route::delete('/admin/business-units/{businessUnit}', [AdminHelpdeskBusinessUnitController::class, 'destroy']);
         Route::get('/admin/risk-matrix', [AdminHelpdeskRiskMatrixController::class, 'index']);

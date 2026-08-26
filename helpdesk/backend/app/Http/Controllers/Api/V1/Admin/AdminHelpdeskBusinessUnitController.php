@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\HelpdeskBusinessUnit;
+use App\Models\HelpdeskSetting;
 use App\Services\BusinessUnitMailboxIntakeService;
 use App\Services\CategoryBusinessUnitRemapService;
 use Illuminate\Http\JsonResponse;
@@ -164,6 +165,64 @@ class AdminHelpdeskBusinessUnitController extends Controller
         return response()->json([
             'message' => 'Mailbox read OK — listing unread messages (dry run; no tickets created).',
             'data' => $preview,
+        ]);
+    }
+
+    /**
+     * Create tickets from unread mailbox messages (same Graph path as Test read).
+     */
+    public function processEmailIntake(
+        Request $request,
+        HelpdeskBusinessUnit $businessUnit,
+        BusinessUnitMailboxIntakeService $intake,
+    ): JsonResponse {
+        $this->ensureHelpdeskAdmin($request);
+
+        if (! HelpdeskSetting::emailTicketIntakeEnabled()) {
+            return response()->json([
+                'message' => 'Turn on “Allow email submission of tickets” under Settings → General before logging mailbox mail.',
+                'reason' => 'master_disabled',
+            ], 422);
+        }
+
+        if (! $businessUnit->email_intake_enabled) {
+            return response()->json([
+                'message' => 'Enable email intake on this business unit first.',
+                'reason' => 'unit_disabled',
+            ], 422);
+        }
+
+        try {
+            $result = $intake->pollUnit($businessUnit);
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Could not log mailbox mail: '.$e->getMessage(),
+            ], 502);
+        }
+
+        $created = (int) ($result['created'] ?? 0);
+        $skipped = (int) ($result['skipped'] ?? 0);
+        $errors = (int) ($result['errors'] ?? 0);
+        $reason = $result['reason'] ?? null;
+
+        $message = match (true) {
+            $created > 0 => "Logged {$created} ticket".($created === 1 ? '' : 's')." from the mailbox.",
+            $errors > 0 => "No tickets created ({$errors} message".($errors === 1 ? '' : 's').' failed). Check helpdesk logs.',
+            $skipped > 0 => "No new tickets. {$skipped} message".($skipped === 1 ? '' : 's').' already imported or skipped.',
+            $reason === 'no_mailbox' => 'This business unit has no valid support mailbox.',
+            default => 'No unread mailbox messages to log.',
+        };
+
+        return response()->json([
+            'message' => $message,
+            'data' => [
+                'created' => $created,
+                'skipped' => $skipped,
+                'errors' => $errors,
+                'reason' => $reason,
+            ],
         ]);
     }
 }

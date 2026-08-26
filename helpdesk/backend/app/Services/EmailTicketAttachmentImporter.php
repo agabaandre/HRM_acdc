@@ -122,6 +122,11 @@ class EmailTicketAttachmentImporter
             return null;
         }
 
+        $declaredSize = (int) ($item['size'] ?? 0);
+        if ($declaredSize > self::MAX_BYTES) {
+            return null;
+        }
+
         if (HelpdeskTicketAttachment::query()
             ->where('ticket_id', $ticket->id)
             ->where('original_name', $name)

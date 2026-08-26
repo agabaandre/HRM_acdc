@@ -61,25 +61,26 @@ class BusinessUnitMailboxIntakeService
     }
 
     /**
-     * @return array{created:int,skipped:int,errors:int}
+     * @return array{created:int,skipped:int,errors:int,reason:?string}
      */
     public function pollUnit(HelpdeskBusinessUnit $unit): array
     {
         $created = 0;
         $skipped = 0;
         $errors = 0;
+        $reason = null;
 
         if (! HelpdeskSetting::emailTicketIntakeEnabled()) {
-            return compact('created', 'skipped', 'errors');
+            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'master_disabled'];
         }
 
         if (! $unit->email_intake_enabled) {
-            return compact('created', 'skipped', 'errors');
+            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'unit_disabled'];
         }
 
         $mailbox = trim((string) $unit->support_mailbox);
         if ($mailbox === '' || ! filter_var($mailbox, FILTER_VALIDATE_EMAIL)) {
-            return compact('created', 'skipped', 'errors');
+            return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'reason' => 'no_mailbox'];
         }
 
         $messages = $this->reader->listUnreadInbox($mailbox, 25);
@@ -102,7 +103,7 @@ class BusinessUnitMailboxIntakeService
             }
 
             try {
-                $lock = Cache::lock('email-intake:'.$graphId, 30);
+                $lock = Cache::lock('email-intake:'.$graphId, 120);
                 if (! $lock->block(5)) {
                     $skipped++;
                     continue;
@@ -114,7 +115,7 @@ class BusinessUnitMailboxIntakeService
                         continue;
                     }
 
-                    $ticket = $this->createTicketFromMessage($unit, $message, $mailbox);
+                    $ticket = $this->createTicketFromMessage($unit, $message);
                     HelpdeskEmailMessage::query()->create([
                         'business_unit_id' => $unit->id,
                         'graph_message_id' => $graphId,
@@ -130,6 +131,8 @@ class BusinessUnitMailboxIntakeService
                             'conversationId' => $message['conversationId'] ?? null,
                         ],
                     ]);
+
+                    $this->importAttachmentsAfterTicket($ticket, $mailbox, $graphId, $message);
 
                     $duty = null;
                     if ($ticket->requester_staff_id) {
@@ -162,13 +165,49 @@ class BusinessUnitMailboxIntakeService
             }
         }
 
-        return compact('created', 'skipped', 'errors');
+        return compact('created', 'skipped', 'errors', 'reason');
     }
 
     /**
      * @param  array<string, mixed>  $message
      */
-    private function createTicketFromMessage(HelpdeskBusinessUnit $unit, array $message, string $mailbox): HelpdeskTicket
+    private function importAttachmentsAfterTicket(
+        HelpdeskTicket $ticket,
+        string $mailbox,
+        string $graphId,
+        array $message,
+    ): void {
+        if ($graphId === '') {
+            return;
+        }
+
+        [$rawBody, $rawType] = $this->rawBody($message);
+
+        try {
+            $withFiles = $this->emailAttachments->importForMessage(
+                $ticket,
+                $mailbox,
+                $graphId,
+                $rawBody,
+                $rawType,
+            );
+            if ($withFiles !== $ticket->description) {
+                $ticket->description = $withFiles;
+                $ticket->save();
+            }
+        } catch (Throwable $e) {
+            Log::warning('helpdesk.email_intake.attachments_failed', [
+                'ticket_id' => $ticket->id,
+                'graph_message_id' => $graphId,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $message
+     */
+    private function createTicketFromMessage(HelpdeskBusinessUnit $unit, array $message): HelpdeskTicket
     {
         $fromEmail = $this->fromAddress($message);
         $fromName = $this->fromName($message);
@@ -215,29 +254,6 @@ class BusinessUnitMailboxIntakeService
             'division_id' => $resolved['division_id'] ?? null,
             'meta' => $meta,
         ]);
-
-        $graphId = trim((string) ($message['id'] ?? ''));
-        if ($graphId !== '') {
-            try {
-                $withFiles = $this->emailAttachments->importForMessage(
-                    $ticket,
-                    $mailbox,
-                    $graphId,
-                    $rawBody,
-                    $rawType,
-                );
-                if ($withFiles !== $ticket->description) {
-                    $ticket->description = $withFiles;
-                    $ticket->save();
-                }
-            } catch (Throwable $e) {
-                Log::warning('helpdesk.email_intake.attachments_failed', [
-                    'ticket_id' => $ticket->id,
-                    'graph_message_id' => $graphId,
-                    'message' => $e->getMessage(),
-                ]);
-            }
-        }
 
         return $ticket;
     }
