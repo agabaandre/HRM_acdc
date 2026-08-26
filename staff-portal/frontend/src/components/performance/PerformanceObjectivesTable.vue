@@ -245,6 +245,10 @@ function objectiveAt(index: number): PerformanceObjective {
   width: calc(5.5rem - 10px);
 }
 
+.perf-obj-table:not(.perf-obj-table--review) .perf-obj-table__col-weight {
+  width: calc((5.5rem - 10px) * 1.1);
+}
+
 .perf-obj-table__col-rating {
   width: 8.75rem;
 }
@@ -267,6 +271,10 @@ function objectiveAt(index: number): PerformanceObjective {
 
 .perf-obj-table__weight {
   width: calc(5.5rem - 10px);
+}
+
+.perf-obj-table:not(.perf-obj-table--review) .perf-obj-table__weight {
+  width: calc((5.5rem - 10px) * 1.1);
 }
 
 .perf-obj-table__rating {
