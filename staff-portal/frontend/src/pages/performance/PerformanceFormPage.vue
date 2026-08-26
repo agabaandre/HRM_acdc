@@ -603,24 +603,8 @@ watch(
       </v-alert>
 
       <div class="perf-form-top mb-4">
-        <PerformanceStaffDetailsCard
-          :form="form"
-          :contract="payload.contract"
-          :period-label="payload.period_label"
-          :title="activePhase === 'ppa' ? 'A. Staff Details' : 'A. Personal Details'"
-          :initiation-label="activePhase === 'ppa' ? 'Initiation Date' : 'In this Position Since'"
-          :division-label="activePhase === 'ppa' ? 'Division/Directorate' : 'Directorate/Department'"
-          :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
-          :can-change-supervisors="canChangeSupervisors"
-          :supervisor-options="payload.catalogs.supervisor_options || []"
-          :supervisor-busy="busy"
-          @update:supervisor-id="form.supervisor_id = $event"
-          @update:supervisor2-id="form.supervisor2_id = $event || 0"
-          @save-supervisors="saveSupervisorsAction"
-        />
         <PerformanceApprovalTrail
           variant="actions"
-          class="mt-4"
           :phase="activePhase"
           :submission-window="payload.submission_window"
           :state="payload.workflow.state"
@@ -646,6 +630,22 @@ watch(
           @consent="consentAction"
           @save-draft="saveDraftAction"
           @submit="submitAction"
+        />
+        <PerformanceStaffDetailsCard
+          class="mt-4"
+          :form="form"
+          :contract="payload.contract"
+          :period-label="payload.period_label"
+          :title="activePhase === 'ppa' ? 'A. Staff Details' : 'A. Personal Details'"
+          :initiation-label="activePhase === 'ppa' ? 'Initiation Date' : 'In this Position Since'"
+          :division-label="activePhase === 'ppa' ? 'Division/Directorate' : 'Directorate/Department'"
+          :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
+          :can-change-supervisors="canChangeSupervisors"
+          :supervisor-options="payload.catalogs.supervisor_options || []"
+          :supervisor-busy="busy"
+          @update:supervisor-id="form.supervisor_id = $event"
+          @update:supervisor2-id="form.supervisor2_id = $event || 0"
+          @save-supervisors="saveSupervisorsAction"
         />
       </div>
 
