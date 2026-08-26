@@ -28,8 +28,9 @@ const props = withDefaults(
     supervisor2Agreement: boolean
     acceptRating: boolean
     busy?: boolean
+    variant?: 'actions' | 'history'
   }>(),
-  { busy: false, returnLabel: 'Return to employee' },
+  { busy: false, returnLabel: 'Return to employee', variant: 'actions' },
 )
 
 const emit = defineEmits<{
@@ -156,14 +157,27 @@ function photoUrl(item: TrailDisplayItem): string | null {
 </script>
 
 <template>
-  <v-card variant="outlined" class="perf-trail-card h-100 d-flex flex-column">
+  <v-card
+    variant="outlined"
+    class="perf-trail-card d-flex flex-column"
+    :class="{
+      'h-100': variant === 'actions',
+      'perf-trail-card--history': variant === 'history',
+    }"
+  >
     <div class="perf-trail-card__header flex-shrink-0">
       <div class="d-flex align-center justify-space-between ga-2 flex-wrap perf-trail-card__title">
         <span class="text-subtitle-1 font-weight-medium">
-          <i class="fa-solid fa-route me-2" style="color: #119a48" aria-hidden="true" />
-          Workflow &amp; approval trail
+          <i
+            class="me-2"
+            :class="variant === 'history' ? 'fa-solid fa-clock-rotate-left' : 'fa-solid fa-route'"
+            style="color: #119a48"
+            aria-hidden="true"
+          />
+          {{ variant === 'history' ? 'Approval trail' : 'Workflow' }}
         </span>
         <v-chip
+          v-if="variant === 'actions'"
           :color="stateColor"
           size="small"
           :variant="stateColor === 'warning' ? 'flat' : 'tonal'"
@@ -173,7 +187,7 @@ function photoUrl(item: TrailDisplayItem): string | null {
         </v-chip>
       </div>
       <v-alert
-        v-if="submissionWindow"
+        v-if="variant === 'actions' && submissionWindow"
         density="compact"
         :type="submissionWindow.open ? 'success' : 'warning'"
         variant="tonal"
@@ -183,8 +197,11 @@ function photoUrl(item: TrailDisplayItem): string | null {
       </v-alert>
     </div>
 
-    <v-card-text class="perf-trail-card__body d-flex flex-column ga-3 flex-grow-1">
-      <div v-if="showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
+    <v-card-text
+      class="perf-trail-card__body d-flex flex-column ga-3"
+      :class="{ 'flex-grow-1': variant === 'actions' }"
+    >
+      <div v-if="variant === 'actions' && showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
         <PortalRichTextEditor
           :model-value="comments"
           label="Comments"
@@ -244,7 +261,14 @@ function photoUrl(item: TrailDisplayItem): string | null {
         </div>
       </div>
 
-      <div class="perf-trail-card__scroll">
+      <div
+        v-else-if="variant === 'actions'"
+        class="text-body-2 text-medium-emphasis"
+      >
+        No action is required from you at this step.
+      </div>
+
+      <div v-if="variant === 'history'" class="perf-trail-card__scroll">
         <div v-if="displayItems.length" class="perf-trail-list">
           <div
             v-for="item in displayItems"
@@ -326,8 +350,14 @@ function photoUrl(item: TrailDisplayItem): string | null {
 .perf-trail-card__scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
-  padding-right: 0.15rem;
+}
+
+.perf-trail-card--history {
+  overflow: visible !important;
+}
+
+.perf-trail-card--history .perf-trail-card__body {
+  overflow: visible !important;
 }
 
 .perf-trail-list {

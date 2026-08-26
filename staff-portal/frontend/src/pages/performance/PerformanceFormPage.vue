@@ -579,8 +579,9 @@ watch(
             :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
           />
         </div>
-        <div class="perf-form-top__trail">
+        <div class="perf-form-top__actions">
           <PerformanceApprovalTrail
+            variant="actions"
             :phase="activePhase"
             :submission-window="payload.submission_window"
             :state="payload.workflow.state"
@@ -640,6 +641,23 @@ watch(
           <v-btn color="success" :loading="busy" @click="submitAction">Submit</v-btn>
         </v-card-actions>
       </v-card>
+
+      <div v-if="!isCreate" class="mt-4">
+        <PerformanceApprovalTrail
+          variant="history"
+          :phase="activePhase"
+          :submission-window="null"
+          :state="payload.workflow.state"
+          :timeline="payload.workflow.timeline"
+          :items="payload.workflow.trail"
+          :can-approve="false"
+          :can-return="false"
+          :can-consent="false"
+          comments=""
+          :supervisor2-agreement="false"
+          :accept-rating="false"
+        />
+      </div>
     </template>
   </div>
 </template>
@@ -665,31 +683,23 @@ watch(
   gap: 1rem;
 }
 
-.perf-form-top__trail {
-  min-height: 18rem;
+.perf-form-top__actions {
+  min-height: 0;
 }
 
 @media (min-width: 1280px) {
-  /* Section A sets row height; trail matches and scrolls overflow. */
   .perf-form-top {
     grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
-    align-items: stretch;
+    align-items: start;
   }
 
   .perf-form-top__details :deep(.perf-staff-details) {
     min-height: 22.5rem;
   }
 
-  .perf-form-top__trail {
-    min-height: 22.5rem;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .perf-form-top__trail :deep(.perf-trail-card) {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: 100%;
+  .perf-form-top__actions {
+    position: sticky;
+    top: 0.75rem;
   }
 }
 </style>
