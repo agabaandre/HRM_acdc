@@ -112,6 +112,8 @@ const testReadResult = ref<{
     received_at?: string | null
     preview?: string
     already_imported?: boolean
+    ticket_missing?: boolean
+    ticket_number?: string | null
   }>
 } | null>(null)
 const testReadError = ref<string | null>(null)
@@ -480,6 +482,8 @@ async function testEmailRead(row: BusinessUnitOption) {
           received_at?: string | null
           preview?: string
           already_imported?: boolean
+          ticket_missing?: boolean
+          ticket_number?: string | null
         }>
       }
     }>(`/api/v1/admin/business-units/${row.id}/test-email-read`, { top: 10 })
@@ -858,7 +862,8 @@ onMounted(() => {
                   {{ m.from_name || m.from_email || 'Unknown sender' }}
                   <template v-if="m.from_email && m.from_name"> · {{ m.from_email }}</template>
                   <template v-if="m.received_at"> · {{ m.received_at }}</template>
-                  <template v-if="m.already_imported"> · already imported</template>
+                  <template v-if="m.already_imported && m.ticket_number"> · ticket {{ m.ticket_number }}</template>
+                  <template v-else-if="m.ticket_missing"> · logged before, ticket missing (will re-import)</template>
                 </span>
                 <span v-if="m.preview" class="preview">{{ m.preview }}</span>
               </li>

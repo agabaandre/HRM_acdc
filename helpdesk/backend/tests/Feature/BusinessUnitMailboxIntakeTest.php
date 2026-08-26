@@ -382,6 +382,101 @@ class BusinessUnitMailboxIntakeTest extends TestCase
         $this->assertSame(1, HelpdeskEmailMessage::query()->count());
     }
 
+    public function test_preview_names_the_ticket_when_mail_was_logged(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $fake = $this->singleMessageGraphFake('msg-preview-ticket', 'Test Email push');
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $svc = app(BusinessUnitMailboxIntakeService::class);
+        $svc->pollUnit($unit->fresh());
+        $ticket = HelpdeskTicket::query()->where('source', 'email')->first();
+        $this->assertNotNull($ticket);
+
+        $preview = $svc->previewUnread($unit->fresh(), 10);
+        $this->assertTrue($preview['messages'][0]['already_imported']);
+        $this->assertSame($ticket->ticket_number, $preview['messages'][0]['ticket_number']);
+        $this->assertFalse($preview['messages'][0]['ticket_missing']);
+    }
+
+    public function test_deleted_ticket_is_not_treated_as_imported_and_can_be_relogged(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $fake = $this->singleMessageGraphFake('msg-deleted-ticket', 'Test Email push');
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $svc = app(BusinessUnitMailboxIntakeService::class);
+        $svc->pollUnit($unit->fresh());
+        $ticket = HelpdeskTicket::query()->where('source', 'email')->firstOrFail();
+        $ticket->delete();
+
+        $preview = $svc->previewUnread($unit->fresh(), 10);
+        $this->assertFalse($preview['messages'][0]['already_imported']);
+        $this->assertTrue($preview['messages'][0]['ticket_missing']);
+        $this->assertNull($preview['messages'][0]['ticket_number']);
+
+        $result = $svc->pollUnit($unit->fresh());
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(1, HelpdeskTicket::query()->where('source', 'email')->count());
+    }
+
+    /**
+     * @return ExchangeGraphMailReader
+     */
+    private function singleMessageGraphFake(string $graphId, string $subject): ExchangeGraphMailReader
+    {
+        return new class($graphId, $subject) extends ExchangeGraphMailReader
+        {
+            public function __construct(private string $graphId, private string $subject) {}
+
+            public function listUnreadInbox(string $mailboxUpn, int $top = 25): array
+            {
+                return [[
+                    'id' => $this->graphId,
+                    'internetMessageId' => '<'.$this->graphId.'@b>',
+                    'subject' => $this->subject,
+                    'bodyPreview' => 'Body',
+                    'body' => ['contentType' => 'Text', 'content' => 'Body'],
+                    'from' => ['emailAddress' => ['name' => 'Ada', 'address' => 'ada@example.org']],
+                    'receivedDateTime' => now()->toIso8601String(),
+                ]];
+            }
+
+            public function listMessageAttachments(string $mailboxUpn, string $messageId): array
+            {
+                return [];
+            }
+
+            public function markReadAndMoveToProcessed(string $mailboxUpn, string $messageId): void {}
+        };
+    }
+
     private function helpdeskAdmin(): User
     {
         $admin = User::factory()->create();

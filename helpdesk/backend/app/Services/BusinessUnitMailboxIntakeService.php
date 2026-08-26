@@ -41,6 +41,9 @@ class BusinessUnitMailboxIntakeService
                 continue;
             }
             $from = $message['from']['emailAddress'] ?? [];
+            $graphId = trim((string) ($message['id'] ?? ''));
+            $imported = $graphId !== '' ? $this->importedTicketState($graphId) : ['ticket' => null, 'row' => null];
+            $ticket = $imported['ticket'];
             $messages[] = [
                 'id' => $message['id'] ?? null,
                 'subject' => $message['subject'] ?? null,
@@ -48,8 +51,10 @@ class BusinessUnitMailboxIntakeService
                 'from_email' => is_array($from) ? ($from['address'] ?? null) : null,
                 'received_at' => $message['receivedDateTime'] ?? null,
                 'preview' => mb_substr((string) ($message['bodyPreview'] ?? ''), 0, 240),
-                'already_imported' => ! empty($message['id'])
-                    && HelpdeskEmailMessage::query()->where('graph_message_id', (string) $message['id'])->exists(),
+                'already_imported' => $ticket !== null,
+                'ticket_missing' => $imported['row'] !== null && $ticket === null,
+                'ticket_number' => $ticket?->ticket_number,
+                'ticket_id' => $ticket?->id,
             ];
         }
 
@@ -97,7 +102,7 @@ class BusinessUnitMailboxIntakeService
                 continue;
             }
 
-            if (HelpdeskEmailMessage::query()->where('graph_message_id', $graphId)->exists()) {
+            if ($this->forgetOrphanedImport($graphId) === false) {
                 $skipped++;
                 continue;
             }
@@ -110,7 +115,7 @@ class BusinessUnitMailboxIntakeService
                 }
 
                 try {
-                    if (HelpdeskEmailMessage::query()->where('graph_message_id', $graphId)->exists()) {
+                    if ($this->forgetOrphanedImport($graphId) === false) {
                         $skipped++;
                         continue;
                     }
@@ -256,6 +261,39 @@ class BusinessUnitMailboxIntakeService
         ]);
 
         return $ticket;
+    }
+
+    /**
+     * @return array{ticket:?HelpdeskTicket,row:?HelpdeskEmailMessage}
+     */
+    private function importedTicketState(string $graphId): array
+    {
+        $row = HelpdeskEmailMessage::query()->where('graph_message_id', $graphId)->first();
+        if (! $row) {
+            return ['ticket' => null, 'row' => null];
+        }
+
+        $ticket = $row->ticket_id
+            ? HelpdeskTicket::query()->find($row->ticket_id)
+            : null;
+
+        return ['ticket' => $ticket, 'row' => $row];
+    }
+
+    /**
+     * Drop mailbox rows whose ticket was deleted so the message can be logged again.
+     *
+     * @return bool false when a live ticket already exists (caller should skip)
+     */
+    private function forgetOrphanedImport(string $graphId): bool
+    {
+        $state = $this->importedTicketState($graphId);
+        if ($state['ticket'] !== null) {
+            return false;
+        }
+        $state['row']?->delete();
+
+        return true;
     }
 
     /**
