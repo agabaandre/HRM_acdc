@@ -272,6 +272,115 @@ class PerformanceFormApiTest extends TestCase
         $this->assertFalse($payload['data']['can_return']);
     }
 
+    public function test_hr_admin_can_return_submitted_ppa_without_being_supervisor(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-hr-return',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $payload = $this->showEntry('ppa-entry-hr-return');
+
+        $this->assertFalse($payload['can_approve']);
+        $this->assertTrue($payload['can_return']);
+        $this->assertSame('employee', $payload['return_target']);
+
+        $response = app(PerformanceFormApiController::class)->returnEntry(
+            'ppa-entry-hr-return',
+            Request::create('/api/v1/performance/entries/ppa-entry-hr-return/return', 'POST', [
+                'phase' => 'ppa',
+                'comments' => 'HR sending this back to the employee.',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(1, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-return')->value('draft_status'));
+        $this->assertSame(
+            'Returned',
+            DB::table('ppa_approval_trail')->where('entry_id', 'ppa-entry-hr-return')->where('staff_id', 999)->value('action')
+        );
+    }
+
+    public function test_hr_admin_can_return_approved_ppa_to_draft(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-hr-draft',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'staff_sign_off' => 1,
+        ]);
+        DB::table('ppa_approval_trail')->insert([
+            'entry_id' => 'ppa-entry-hr-draft',
+            'staff_id' => 50,
+            'comments' => 'Looks good',
+            'action' => 'Approved',
+            'created_at' => now()->toDateTimeString(),
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $payload = $this->showEntry('ppa-entry-hr-draft');
+
+        $this->assertTrue($payload['can_return']);
+        $this->assertSame('draft', $payload['return_target']);
+
+        app(PerformanceFormApiController::class)->returnEntry(
+            'ppa-entry-hr-draft',
+            Request::create('/api/v1/performance/entries/ppa-entry-hr-draft/return', 'POST', [
+                'phase' => 'ppa',
+                'comments' => 'Reopening this approved PPA.',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(1, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-draft')->value('draft_status'));
+
+        DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-draft')->update(['draft_status' => 0]);
+        $entry = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-hr-draft')->first();
+        $state = app(PerformanceWorkflowService::class)->resolveState($entry, PerformancePhase::Ppa);
+
+        $this->assertSame('supervisor_1', $state['step']);
+        $this->assertSame(50, $state['actor_staff_id']);
+    }
+
+    public function test_show_does_not_offer_return_while_ppa_is_still_draft(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-hr-still-draft',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'draft_status' => 1,
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $payload = $this->showEntry('ppa-entry-hr-still-draft');
+
+        $this->assertFalse($payload['can_return']);
+        $this->assertNull($payload['return_target']);
+    }
+
     public function test_hub_response_exposes_only_spa_edit_urls(): void
     {
         session()->put($this->portalSession(100));
@@ -548,6 +657,30 @@ class PerformanceFormApiTest extends TestCase
 
             throw $e;
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function showEntry(string $entryId, string $phase = 'ppa'): array
+    {
+        $response = app(PerformanceFormApiController::class)->show(
+            $entryId,
+            Request::create('/api/v1/performance/entries/'.$entryId, 'GET', [
+                'phase' => $phase,
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+
+        return $response->getData(true)['data'];
     }
 
     /**

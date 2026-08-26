@@ -24,6 +24,7 @@ use Modules\Performance\Services\PpaContractService;
 use Modules\Performance\Services\PpaFormService;
 use Modules\Performance\Services\PpaSettingsService;
 use Modules\Performance\Services\SupervisorResolver;
+use Modules\Performance\Support\PerformanceFormAccess;
 use Modules\Performance\Support\PerformancePeriod;
 use Modules\Performance\Support\PerformanceRichText;
 
@@ -272,10 +273,11 @@ class PerformanceFormApiController extends Controller
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
-        if (! $workflow->canActorApprove($entry, $phase, $actorStaffId)) {
-            abort(403, 'You are not allowed to return this entry.');
-        }
-        if (! $this->allowSupervisorReturn($settings) || ! PortalPermission::can(83)) {
+        $canConsent = $phase === PerformancePhase::Endterm
+            && ($workflow->resolveState($entry, $phase)['step'] ?? '') === 'employee_consent'
+            && $actorStaffId === (int) $entry->staff_id;
+        $phaseDraft = (int) ($entry->{$phase->draftStatusColumn()} ?? 1);
+        if (! $this->actorCanReturn($phaseDraft, $canConsent, $settings)) {
             abort(403, 'You are not allowed to return this entry.');
         }
 
@@ -799,6 +801,7 @@ class PerformanceFormApiController extends Controller
             'can_save' => $submissionWindow['open'] && $isOwner,
             'can_approve' => false,
             'can_return' => false,
+            'return_target' => null,
             'can_consent' => false,
             'midterm_exists' => false,
             'endterm_exists' => false,
@@ -861,10 +864,9 @@ class PerformanceFormApiController extends Controller
         $canConsent = $phase === PerformancePhase::Endterm
             && ($state['step'] ?? '') === 'employee_consent'
             && $actorStaffId === (int) $entry->staff_id;
-        $canReturn = $canAct
-            && ! $canConsent
-            && $this->allowSupervisorReturn($settings)
-            && PortalPermission::can(83);
+        $phaseDraft = (int) ($entry->{$phase->draftStatusColumn()} ?? 1);
+        $canReturn = $this->actorCanReturn($phaseDraft, $canConsent, $settings);
+        $returnTarget = $canReturn ? ($phaseDraft === 2 ? 'draft' : 'employee') : null;
         $activeReadonly = match ($phase) {
             PerformancePhase::Ppa => $readonly,
             PerformancePhase::Midterm => $midreadonly,
@@ -913,6 +915,7 @@ class PerformanceFormApiController extends Controller
             'can_save' => $isOwner && $submissionOpen && $activeReadonly === '',
             'can_approve' => $canAct && ! $canConsent,
             'can_return' => $canReturn,
+            'return_target' => $returnTarget,
             'can_consent' => $canConsent,
             'midterm_exists' => $forms->midtermExists((string) $entry->entry_id),
             'endterm_exists' => $forms->endtermExists((string) $entry->entry_id),
@@ -1079,7 +1082,7 @@ class PerformanceFormApiController extends Controller
             $supervisors['supervisor_2'] ?? null,
         ]), true);
 
-        if (! $isOwner && ! $isSupervisor) {
+        if (! $isOwner && ! $isSupervisor && ! PerformanceFormAccess::canViewAnyEntry()) {
             abort(403, 'You are not allowed to access this entry.');
         }
     }
@@ -1146,6 +1149,19 @@ class PerformanceFormApiController extends Controller
     protected function allowSupervisorReturn(PpaSettingsService $settings): bool
     {
         return (bool) ($settings->settings()->allow_supervisor_return ?? true);
+    }
+
+    protected function actorCanReturn(int $phaseDraft, bool $canConsent, PpaSettingsService $settings): bool
+    {
+        if ($canConsent) {
+            return false;
+        }
+
+        if (! $this->allowSupervisorReturn($settings) || ! PerformanceFormAccess::canReturnOverride()) {
+            return false;
+        }
+
+        return in_array($phaseDraft, [0, 2], true);
     }
 
     protected function phaseSupervisorValue(?object $entry, PerformancePhase $phase, bool $first): ?int

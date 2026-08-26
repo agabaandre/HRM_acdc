@@ -97,10 +97,21 @@ class PerformanceApprovalService
         $this->appendTrail($entryId, $phase, $actorStaffId, 'Returned', $comments);
 
         $col = $phase->draftStatusColumn();
-        DB::table('ppa_entries')->where('entry_id', $entryId)->update([
+        $update = [
             $col => 1,
             'updated_at' => now(),
-        ]);
+        ];
+
+        if ($phase === PerformancePhase::Endterm) {
+            $update['endterm_updated_at'] = now();
+            $update['endterm_staff_discussion_confirmed'] = 0;
+            $update['endterm_staff_rating_acceptance'] = null;
+            $update['endterm_staff_consent_at'] = null;
+            $update['endterm_supervisor1_discussion_confirmed'] = 0;
+            $update['endterm_supervisor2_agreement'] = null;
+        }
+
+        DB::table('ppa_entries')->where('entry_id', $entryId)->update($update);
     }
 
     public function recordEmployeeConsent(string $entryId, int $staffId, string $comments, bool $acceptRating): void

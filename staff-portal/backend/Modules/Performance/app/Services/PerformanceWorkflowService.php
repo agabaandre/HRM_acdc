@@ -139,14 +139,12 @@ class PerformanceWorkflowService
         }
 
         $sup = $this->supervisorIdsForPhase($entry, $phase);
-        $s1Action = $this->lastTrailAction($entry->entry_id, $phase, $sup['supervisor_1']);
-        $s2Action = $this->lastTrailAction($entry->entry_id, $phase, $sup['supervisor_2']);
 
         if ($phase === PerformancePhase::Endterm) {
-            return $this->resolveEndtermState($entry, $sup, $s1Action, $s2Action);
+            return $this->resolveEndtermState($entry, $sup);
         }
 
-        if ($s1Action !== 'Approved') {
+        if (! $this->supervisorHasCurrentApproval($entry->entry_id, $phase, $sup['supervisor_1'])) {
             return [
                 'step' => 'supervisor_1',
                 'label' => 'Pending first supervisor',
@@ -156,7 +154,7 @@ class PerformanceWorkflowService
             ];
         }
 
-        if ($this->requiresSecondSupervisor($phase, $sup) && $s2Action !== 'Approved') {
+        if ($this->requiresSecondSupervisor($phase, $sup) && ! $this->supervisorHasCurrentApproval($entry->entry_id, $phase, $sup['supervisor_2'])) {
             return [
                 'step' => 'supervisor_2',
                 'label' => 'Pending second supervisor',
@@ -180,6 +178,31 @@ class PerformanceWorkflowService
         return $state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $actorStaffId;
     }
 
+    public function supervisorHasCurrentApproval(string $entryId, PerformancePhase $phase, ?int $staffId): bool
+    {
+        if (! $staffId) {
+            return false;
+        }
+
+        $table = $phase->trailTable();
+        $approval = DB::table($table)
+            ->where('entry_id', $entryId)
+            ->where('staff_id', $staffId)
+            ->where('action', 'Approved')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $approval) {
+            return false;
+        }
+
+        return ! DB::table($table)
+            ->where('entry_id', $entryId)
+            ->where('action', 'Returned')
+            ->where('id', '>', $approval->id)
+            ->exists();
+    }
+
     public function lastTrailAction(string $entryId, PerformancePhase $phase, ?int $staffId): ?string
     {
         if (! $staffId) {
@@ -199,9 +222,9 @@ class PerformanceWorkflowService
     /**
      * @param  array{supervisor_1: ?int, supervisor_2: ?int}  $sup
      */
-    protected function resolveEndtermState(object $entry, array $sup, ?string $s1Action, ?string $s2Action): array
+    protected function resolveEndtermState(object $entry, array $sup): array
     {
-        if ($s1Action !== 'Approved') {
+        if (! $this->supervisorHasCurrentApproval($entry->entry_id, PerformancePhase::Endterm, $sup['supervisor_1'])) {
             return [
                 'step' => 'supervisor_1',
                 'label' => 'Pending first supervisor',
@@ -221,7 +244,7 @@ class PerformanceWorkflowService
             ];
         }
 
-        if ($this->requiresSecondSupervisor(PerformancePhase::Endterm, $sup) && $s2Action !== 'Approved') {
+        if ($this->requiresSecondSupervisor(PerformancePhase::Endterm, $sup) && ! $this->supervisorHasCurrentApproval($entry->entry_id, PerformancePhase::Endterm, $sup['supervisor_2'])) {
             return [
                 'step' => 'supervisor_2',
                 'label' => 'Pending second supervisor',

@@ -84,6 +84,9 @@ const readonly = computed(() => activeReadonly.value.includes('readonly'))
 const canSave = computed(() => !!payload.value?.can_save && !readonly.value)
 const canApprove = computed(() => !!payload.value?.can_approve)
 const canReturn = computed(() => !!payload.value?.can_return)
+const returnLabel = computed(() =>
+  payload.value?.return_target === 'draft' ? 'Return to draft' : 'Return to employee',
+)
 const canConsent = computed(() => !!payload.value?.can_consent)
 const showReviewGate = computed(
   () => activePhase.value !== 'ppa' && !!payload.value && !payload.value.ppa_approved,
@@ -433,11 +436,13 @@ async function returnAction(): Promise<void> {
   success.value = null
 
   try {
+    const target = payload.value.return_target
     const next = await returnPerformanceEntry(payload.value.entry.entry_id, activePhase.value, {
       comments: workflowComments.value,
     })
     applyPayload(next)
-    success.value = 'Returned for revision.'
+    success.value =
+      target === 'draft' ? 'Returned to draft.' : 'Returned to the employee for revision.'
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not return form')
   } finally {
@@ -583,6 +588,7 @@ watch(
             :items="payload.workflow.trail"
             :can-approve="canApprove"
             :can-return="canReturn"
+            :return-label="returnLabel"
             :can-consent="canConsent"
             :comments="workflowComments"
             :supervisor2-agreement="supervisor2Agreement"

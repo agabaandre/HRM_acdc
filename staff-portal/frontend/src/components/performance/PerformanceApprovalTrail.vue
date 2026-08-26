@@ -22,13 +22,14 @@ const props = withDefaults(
     items: PerformanceTrailEntry[]
     canApprove: boolean
     canReturn: boolean
+    returnLabel?: string
     canConsent: boolean
     comments: string
     supervisor2Agreement: boolean
     acceptRating: boolean
     busy?: boolean
   }>(),
-  { busy: false },
+  { busy: false, returnLabel: 'Return to employee' },
 )
 
 const emit = defineEmits<{
@@ -237,7 +238,7 @@ function photoUrl(item: TrailDisplayItem): string | null {
               :loading="busy"
               @click="emit('return')"
             >
-              Return
+              {{ returnLabel }}
             </v-btn>
           </template>
         </div>

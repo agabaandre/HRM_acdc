@@ -181,6 +181,7 @@ export interface PerformanceFormPayload {
   can_save: boolean
   can_approve: boolean
   can_return: boolean
+  return_target: 'draft' | 'employee' | null
   can_consent: boolean
   midterm_exists: boolean
   endterm_exists: boolean
