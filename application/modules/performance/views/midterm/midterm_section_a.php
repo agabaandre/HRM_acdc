@@ -23,7 +23,7 @@
       <th>Direct Supervisor</th>
       <td>
         <?= staff_name(!empty($ppa->midterm_supervisor_1) ? $ppa->midterm_supervisor_1 : $contract->first_supervisor) ?>
-        <?php if (!empty($ppa) && (!isset($ppa->midterm_draft_status) || (int) $ppa->midterm_draft_status !== 2)): ?>
+        <?php if (!empty($ppa) && function_exists('ppa_phase_is_draft') && ppa_phase_is_draft($ppa, 'midterm')): ?>
           <?php $this->load->view('performance/partials/change_supervisor_modal', [
               'ppa' => $ppa,
               'type' => 'midterm',

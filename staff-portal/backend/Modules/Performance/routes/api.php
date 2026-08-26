@@ -13,6 +13,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     Route::get('performance/entries/{entryId}', [PerformanceFormApiController::class, 'show']);
     Route::put('performance/entries/{entryId}', [PerformanceFormApiController::class, 'update']);
     Route::post('performance/entries/{entryId}/submit', [PerformanceFormApiController::class, 'submit']);
+    Route::post('performance/entries/{entryId}/supervisors', [PerformanceFormApiController::class, 'updateSupervisors']);
     Route::post('performance/entries/{entryId}/approve', [PerformanceFormApiController::class, 'approve']);
     Route::post('performance/entries/{entryId}/return', [PerformanceFormApiController::class, 'returnEntry']);
     Route::post('performance/entries/{entryId}/consent', [PerformanceFormApiController::class, 'consent']);

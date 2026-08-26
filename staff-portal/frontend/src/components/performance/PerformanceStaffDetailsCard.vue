@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PerformanceContract, PerformanceFormState } from '@/lib/performanceApi'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     form: PerformanceFormState
     contract: PerformanceContract
@@ -11,13 +12,32 @@ withDefaults(
     initiationLabel?: string
     divisionLabel?: string
     supervisorLabel?: string
+    canChangeSupervisors?: boolean
+    supervisorOptions?: Array<{ staff_id: number; name: string }>
+    supervisorBusy?: boolean
   }>(),
   {
     title: 'A. Staff Details',
     initiationLabel: 'Initiation Date',
     divisionLabel: 'Division/Directorate',
     supervisorLabel: 'First Supervisor',
+    canChangeSupervisors: false,
+    supervisorOptions: () => [],
+    supervisorBusy: false,
   },
+)
+
+const emit = defineEmits<{
+  'update:supervisorId': [value: number]
+  'update:supervisor2Id': [value: number | null]
+  'save-supervisors': []
+}>()
+
+const staffItems = computed(() =>
+  props.supervisorOptions.map((row) => ({
+    title: row.name,
+    value: row.staff_id,
+  })),
 )
 </script>
 
@@ -47,9 +67,53 @@ withDefaults(
           </tr>
           <tr>
             <th class="perf-label">{{ supervisorLabel }}</th>
-            <td>{{ contract.first_supervisor_name || '—' }}</td>
+            <td>
+              <v-autocomplete
+                v-if="canChangeSupervisors"
+                :model-value="form.supervisor_id || null"
+                :items="staffItems"
+                :loading="supervisorBusy"
+                density="compact"
+                variant="outlined"
+                hide-details
+                placeholder="Select first supervisor"
+                @update:model-value="emit('update:supervisorId', Number($event || 0))"
+              />
+              <template v-else>{{ contract.first_supervisor_name || '—' }}</template>
+            </td>
             <th class="perf-label">Second Supervisor</th>
-            <td>{{ contract.second_supervisor_name || '—' }}</td>
+            <td>
+              <v-autocomplete
+                v-if="canChangeSupervisors"
+                :model-value="form.supervisor2_id || null"
+                :items="staffItems"
+                :loading="supervisorBusy"
+                density="compact"
+                variant="outlined"
+                hide-details
+                clearable
+                placeholder="Optional"
+                @update:model-value="emit('update:supervisor2Id', $event ? Number($event) : null)"
+              />
+              <template v-else>{{ contract.second_supervisor_name || '—' }}</template>
+            </td>
+          </tr>
+          <tr v-if="canChangeSupervisors">
+            <td colspan="4" class="perf-staff-details__actions">
+              <v-btn
+                size="small"
+                variant="tonal"
+                color="primary"
+                :loading="supervisorBusy"
+                :disabled="!form.supervisor_id"
+                @click="emit('save-supervisors')"
+              >
+                Update supervisors
+              </v-btn>
+              <span class="text-caption text-medium-emphasis ms-2">
+                Draft forms only. Approved records stay unchanged.
+              </span>
+            </td>
           </tr>
           <tr>
             <th class="perf-label">Funder</th>
@@ -88,5 +152,10 @@ withDefaults(
   padding-top: 0.85rem !important;
   padding-bottom: 0.85rem !important;
   line-height: 1.45;
+}
+
+.perf-staff-details__actions {
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
 }
 </style>

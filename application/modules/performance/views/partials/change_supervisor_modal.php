@@ -92,18 +92,12 @@ if (!empty($missing_supervisor_ids)) {
     $active_staff = array_merge($active_staff, $missing_supervisors);
 }
 
-// Only show if user has permission 83 AND this phase is not yet approved
+// Only show if this phase is still a draft AND the actor is the owner or has permission 83
 $show_modal = false;
-if ($has_permission) {
-    if ($type === 'ppa') {
-        $show_modal = isset($ppa->draft_status) && (int) $ppa->draft_status !== 2;
-    } elseif ($type === 'midterm') {
-        $show_modal = ! isset($ppa->midterm_draft_status) || (int) $ppa->midterm_draft_status !== 2;
-    } elseif ($type === 'endterm') {
-        $not_overall_approved = ($ppa->overall_end_term_status ?? '') !== 'Approved';
-        $not_draft_approved = !isset($ppa->endterm_draft_status) || (int) $ppa->endterm_draft_status !== 2;
-        $show_modal = $not_overall_approved && $not_draft_approved;
-    }
+$session_staff_id = (int) ($session->staff_id ?? 0);
+$is_owner = $session_staff_id > 0 && $session_staff_id === (int) ($ppa->staff_id ?? 0);
+if (($has_permission || $is_owner) && function_exists('ppa_phase_is_draft') && ppa_phase_is_draft($ppa, $type)) {
+    $show_modal = true;
 }
 ?>
 

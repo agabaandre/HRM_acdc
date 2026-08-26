@@ -8,7 +8,6 @@ import PerformanceApprovalTrail from '@/components/performance/PerformanceApprov
 import PerformanceStaffDetailsCard from '@/components/performance/PerformanceStaffDetailsCard.vue'
 import PpaSections from '@/components/performance/PpaSections.vue'
 import ReviewSections from '@/components/performance/ReviewSections.vue'
-import PortalRichTextEditor from '@/components/atoms/PortalRichTextEditor.vue'
 import { openApiPdf } from '@/lib/exportDownload'
 import { hasRichTextContent } from '@/lib/richText'
 import { useLocaleStore } from '@/stores/locale'
@@ -25,6 +24,7 @@ import {
   returnPerformanceEntry,
   savePerformanceDraft,
   submitPerformanceEntry,
+  updatePerformanceSupervisors,
 } from '@/lib/performanceApi'
 
 const route = useRoute()
@@ -88,6 +88,7 @@ const returnLabel = computed(() =>
   payload.value?.return_target === 'draft' ? 'Return to draft' : 'Return to employee',
 )
 const canConsent = computed(() => !!payload.value?.can_consent)
+const canChangeSupervisors = computed(() => !!payload.value?.can_change_supervisors)
 const showReviewGate = computed(
   () => activePhase.value !== 'ppa' && !!payload.value && !payload.value.ppa_approved,
 )
@@ -450,6 +451,40 @@ async function returnAction(): Promise<void> {
   }
 }
 
+async function saveSupervisorsAction(): Promise<void> {
+  if (!payload.value || !form.value) {
+    return
+  }
+  if (!form.value.supervisor_id) {
+    error.value = 'Select a first supervisor before updating.'
+    return
+  }
+
+  if (isCreate.value) {
+    await saveDraftAction()
+    return
+  }
+
+  busy.value = true
+  error.value = null
+  success.value = null
+
+  try {
+    const next = await updatePerformanceSupervisors(
+      payload.value.entry.entry_id,
+      activePhase.value,
+      Number(form.value.supervisor_id),
+      form.value.supervisor2_id ? Number(form.value.supervisor2_id) : null,
+    )
+    applyPayload(next)
+    success.value = 'Supervisors updated.'
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Could not update supervisors')
+  } finally {
+    busy.value = false
+  }
+}
+
 async function consentAction(): Promise<void> {
   if (!payload.value) {
     return
@@ -568,41 +603,50 @@ watch(
       </v-alert>
 
       <div class="perf-form-top mb-4">
-        <div class="perf-form-top__details">
-          <PerformanceStaffDetailsCard
-            :form="form"
-            :contract="payload.contract"
-            :period-label="payload.period_label"
-            :title="activePhase === 'ppa' ? 'A. Staff Details' : 'A. Personal Details'"
-            :initiation-label="activePhase === 'ppa' ? 'Initiation Date' : 'In this Position Since'"
-            :division-label="activePhase === 'ppa' ? 'Division/Directorate' : 'Directorate/Department'"
-            :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
-          />
-        </div>
-        <div class="perf-form-top__actions">
-          <PerformanceApprovalTrail
-            variant="actions"
-            :phase="activePhase"
-            :submission-window="payload.submission_window"
-            :state="payload.workflow.state"
-            :timeline="payload.workflow.timeline"
-            :items="payload.workflow.trail"
-            :can-approve="canApprove"
-            :can-return="canReturn"
-            :return-label="returnLabel"
-            :can-consent="canConsent"
-            :comments="workflowComments"
-            :supervisor2-agreement="supervisor2Agreement"
-            :accept-rating="acceptRating"
-            :busy="busy"
-            @update:comments="workflowComments = $event"
-            @update:supervisor2Agreement="supervisor2Agreement = $event"
-            @update:acceptRating="acceptRating = $event"
-            @approve="approveAction"
-            @return="returnAction"
-            @consent="consentAction"
-          />
-        </div>
+        <PerformanceStaffDetailsCard
+          :form="form"
+          :contract="payload.contract"
+          :period-label="payload.period_label"
+          :title="activePhase === 'ppa' ? 'A. Staff Details' : 'A. Personal Details'"
+          :initiation-label="activePhase === 'ppa' ? 'Initiation Date' : 'In this Position Since'"
+          :division-label="activePhase === 'ppa' ? 'Division/Directorate' : 'Directorate/Department'"
+          :supervisor-label="activePhase === 'ppa' ? 'First Supervisor' : 'Direct Supervisor'"
+          :can-change-supervisors="canChangeSupervisors"
+          :supervisor-options="payload.catalogs.supervisor_options || []"
+          :supervisor-busy="busy"
+          @update:supervisor-id="form.supervisor_id = $event"
+          @update:supervisor2-id="form.supervisor2_id = $event || 0"
+          @save-supervisors="saveSupervisorsAction"
+        />
+        <PerformanceApprovalTrail
+          variant="actions"
+          class="mt-4"
+          :phase="activePhase"
+          :submission-window="payload.submission_window"
+          :state="payload.workflow.state"
+          :timeline="payload.workflow.timeline"
+          :items="payload.workflow.trail"
+          :can-approve="canApprove"
+          :can-return="canReturn"
+          :return-label="returnLabel"
+          :can-consent="canConsent"
+          :can-save="canSave"
+          :submission-comments="submissionComments"
+          :submission-comment-label="submissionCommentLabel"
+          :comments="workflowComments"
+          :supervisor2-agreement="supervisor2Agreement"
+          :accept-rating="acceptRating"
+          :busy="busy"
+          @update:comments="workflowComments = $event"
+          @update:submission-comments="submissionComments = $event"
+          @update:supervisor2Agreement="supervisor2Agreement = $event"
+          @update:acceptRating="acceptRating = $event"
+          @approve="approveAction"
+          @return="returnAction"
+          @consent="consentAction"
+          @save-draft="saveDraftAction"
+          @submit="submitAction"
+        />
       </div>
 
       <PpaSections
@@ -622,25 +666,6 @@ watch(
         :competency-labels="payload.catalogs.competency_labels"
         :readonly="readonly"
       />
-
-      <v-card
-        v-if="canSave"
-        variant="outlined"
-        class="mt-4"
-      >
-        <v-card-title class="text-h6">F. Staff Submission / Sign Off</v-card-title>
-        <v-card-text>
-          <PortalRichTextEditor
-            v-model="submissionComments"
-            :label="submissionCommentLabel"
-            :min-rows="3"
-          />
-        </v-card-text>
-        <v-card-actions class="px-4 pb-4">
-          <v-btn color="warning" :loading="busy" @click="saveDraftAction">Save Draft</v-btn>
-          <v-btn color="success" :loading="busy" @click="submitAction">Submit</v-btn>
-        </v-card-actions>
-      </v-card>
 
       <div v-if="!isCreate" class="mt-4">
         <PerformanceApprovalTrail
@@ -678,28 +703,6 @@ watch(
 }
 
 .perf-form-top {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-.perf-form-top__actions {
-  min-height: 0;
-}
-
-@media (min-width: 1280px) {
-  .perf-form-top {
-    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
-    align-items: start;
-  }
-
-  .perf-form-top__details :deep(.perf-staff-details) {
-    min-height: 22.5rem;
-  }
-
-  .perf-form-top__actions {
-    position: sticky;
-    top: 0.75rem;
-  }
+  display: block;
 }
 </style>

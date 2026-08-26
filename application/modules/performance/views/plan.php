@@ -268,7 +268,7 @@ if($showApprovalBtns!='show'){
     <td><b>First Supervisor</b></td>
     <td colspan="1">
       <?= staff_name((!empty($ppa) && is_object($ppa) && !empty($ppa->supervisor_id)) ? $ppa->supervisor_id : $contract->first_supervisor) ?>
-      <?php if (!empty($ppa) && is_object($ppa) && (!isset($ppa->draft_status) || (int) $ppa->draft_status !== 2)): ?>
+      <?php if (!empty($ppa) && is_object($ppa) && function_exists('ppa_phase_is_draft') && ppa_phase_is_draft($ppa, 'ppa')): ?>
         <?php $this->load->view('performance/partials/change_supervisor_modal', [
             'ppa' => $ppa,
             'type' => 'ppa',

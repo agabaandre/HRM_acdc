@@ -184,6 +184,66 @@ class PerformanceFormApiController extends Controller
         );
     }
 
+    public function updateSupervisors(
+        string $entryId,
+        Request $request,
+        PpaFormService $forms,
+        PpaContractService $contracts,
+        PpaSettingsService $settings,
+        CompetencyService $competencies,
+        PerformanceWorkflowService $workflow,
+        PerformanceApprovalService $approval,
+        PerformanceService $performance
+    ): JsonResponse {
+        PortalPermission::authorize(74);
+
+        $phase = $this->resolvePhase($request);
+        $actorStaffId = $this->actorStaffId();
+        $entry = $forms->findEntry($entryId);
+        if (! $entry) {
+            abort(404, 'Entry not found.');
+        }
+
+        $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
+        $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
+
+        if (! PerformanceFormAccess::canChangeSupervisors($entry, $phase, $actorStaffId)) {
+            throw ValidationException::withMessages([
+                'supervisors' => ['Supervisors can only be changed on draft PPA, midterm, and endterm forms.'],
+            ]);
+        }
+
+        $validated = $request->validate([
+            'supervisor_id' => 'required|integer|min:1',
+            'supervisor2_id' => 'nullable|integer|min:1',
+        ]);
+
+        $forms->updateSupervisors(
+            $entry,
+            $phase,
+            (int) $validated['supervisor_id'],
+            isset($validated['supervisor2_id']) ? (int) $validated['supervisor2_id'] : null,
+        );
+
+        $entry = $forms->findEntry($entryId) ?? $entry;
+
+        return response()->json([
+            'message' => 'Supervisors updated.',
+            'data' => $this->buildExistingPayload(
+                $entry,
+                $phase,
+                $actorStaffId,
+                $forms,
+                $contracts,
+                $settings,
+                $competencies,
+                $workflow,
+                $approval,
+                $performance,
+            ),
+        ]);
+    }
+
     public function approve(
         string $entryId,
         Request $request,
@@ -652,6 +712,13 @@ class PerformanceFormApiController extends Controller
         $this->authorizeTargetStaffAccess($staffId, $actorStaffId, $supervisors);
         $this->ensureOwnerCanEdit($phase, $staffId, $actorStaffId, $settings);
 
+        if (! PerformanceFormAccess::canChangeSupervisors($existing, $phase, $actorStaffId)) {
+            $request->merge([
+                'supervisor_id' => $this->phaseSupervisorValue($existing, $phase, true),
+                'supervisor2_id' => $this->phaseSupervisorValue($existing, $phase, false),
+            ]);
+        }
+
         if ($phase !== PerformancePhase::Ppa && ! $existing) {
             abort(404, 'Entry not found.');
         }
@@ -716,6 +783,19 @@ class PerformanceFormApiController extends Controller
         }
         if (! $entry) {
             abort(404, 'Entry not found.');
+        }
+
+        if (
+            PerformanceFormAccess::canChangeSupervisors($existing, $phase, $actorStaffId)
+            && (int) ($payload['supervisor_id'] ?? 0) > 0
+        ) {
+            $forms->updateSupervisors(
+                $entry,
+                $phase,
+                (int) $payload['supervisor_id'],
+                ! empty($payload['supervisor2_id']) ? (int) $payload['supervisor2_id'] : null,
+            );
+            $entry = $forms->findEntry((string) $entry->entry_id) ?? $entry;
         }
 
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
@@ -791,6 +871,13 @@ class PerformanceFormApiController extends Controller
                 'skills' => $this->normalizeRows($forms->trainingSkills()),
                 'competency_groups' => $this->normalizeGroupedRows($competencies->groupedByCategory()),
                 'competency_labels' => $competencies->categoryLabels(),
+                'supervisor_options' => $this->supervisorCatalog(
+                    null,
+                    $phase,
+                    $isOwner,
+                    (int) ($resolved['supervisor_1'] ?? 0),
+                    (int) ($resolved['supervisor_2'] ?? 0),
+                ),
             ],
             'workflow' => [
                 'state' => null,
@@ -804,6 +891,7 @@ class PerformanceFormApiController extends Controller
             'endreadonly' => '',
             'is_owner' => $isOwner,
             'can_save' => $submissionWindow['open'] && $isOwner,
+            'can_change_supervisors' => $isOwner,
             'can_approve' => false,
             'can_return' => false,
             'return_target' => null,
@@ -879,6 +967,7 @@ class PerformanceFormApiController extends Controller
         };
 
         $form = $this->formStateFromEntry($entry, $phase, $forms);
+        $canChangeSupervisors = PerformanceFormAccess::canChangeSupervisors($entry, $phase, $actorStaffId);
 
         return [
             'phase' => $phase->value,
@@ -905,6 +994,13 @@ class PerformanceFormApiController extends Controller
                 'skills' => $this->normalizeRows($forms->trainingSkills()),
                 'competency_groups' => $this->normalizeGroupedRows($competencies->groupedByCategory()),
                 'competency_labels' => $competencies->categoryLabels(),
+                'supervisor_options' => $this->supervisorCatalog(
+                    $entry,
+                    $phase,
+                    $canChangeSupervisors,
+                    (int) ($form['supervisor_id'] ?? 0),
+                    (int) ($form['supervisor2_id'] ?? 0),
+                ),
             ],
             'workflow' => [
                 'state' => $state,
@@ -918,6 +1014,7 @@ class PerformanceFormApiController extends Controller
             'endreadonly' => $endreadonly,
             'is_owner' => $isOwner,
             'can_save' => $isOwner && $submissionOpen && $activeReadonly === '',
+            'can_change_supervisors' => $canChangeSupervisors,
             'can_approve' => $canAct && ! $canConsent,
             'can_return' => $canReturn,
             'return_target' => $returnTarget,
@@ -943,6 +1040,28 @@ class PerformanceFormApiController extends Controller
         $contract['second_supervisor_name'] = $supervisors->staffName($secondId ?: null);
 
         return $contract;
+    }
+
+    /**
+     * @return list<array{staff_id: int, name: string}>
+     */
+    protected function supervisorCatalog(
+        ?object $entry,
+        PerformancePhase $phase,
+        bool $canChange,
+        int $supervisor1Id = 0,
+        int $supervisor2Id = 0
+    ): array {
+        if (! $canChange) {
+            return [];
+        }
+
+        return app(SupervisorResolver::class)->activeStaffOptions([
+            $supervisor1Id,
+            $supervisor2Id,
+            $this->phaseSupervisorValue($entry, $phase, true),
+            $this->phaseSupervisorValue($entry, $phase, false),
+        ]);
     }
 
     /**

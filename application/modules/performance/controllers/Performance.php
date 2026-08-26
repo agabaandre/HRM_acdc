@@ -670,18 +670,6 @@ public function ppa_contract($contract_id){
                    !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
         
-        // Check if user has permission 83 (allow_return_ppa)
-        $permissions = $this->session->userdata('user')->permissions ?? [];
-        if (!in_array('83', $permissions)) {
-            $error_msg = 'You do not have permission to change supervisors';
-            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
-                return;
-            }
-            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
-            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
-            return;
-        }
-        
         $entry_id = $this->input->post('entry_id');
         $supervisor_1 = $this->input->post('supervisor_1');
         $supervisor_2 = $this->input->post('supervisor_2');
@@ -717,20 +705,22 @@ public function ppa_contract($contract_id){
             redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
             return;
         }
-        
-        // Check if this phase is approved - if so, don't allow changes
-        $is_approved = false;
-        if ($type === 'endterm') {
-            $is_approved = (isset($ppa->overall_end_term_status) && $ppa->overall_end_term_status === 'Approved')
-                || (isset($ppa->endterm_draft_status) && (int) $ppa->endterm_draft_status === 2);
-        } elseif ($type === 'midterm') {
-            $is_approved = isset($ppa->midterm_draft_status) && (int) $ppa->midterm_draft_status === 2;
-        } else {
-            $is_approved = (int) $ppa->draft_status === 2;
+
+        $permissions = $this->session->userdata('user')->permissions ?? [];
+        $actor_staff_id = (int) ($this->session->userdata('user')->staff_id ?? 0);
+        $is_owner = $actor_staff_id > 0 && $actor_staff_id === (int) ($ppa->staff_id ?? 0);
+        if (!in_array('83', $permissions) && !$is_owner) {
+            $error_msg = 'You do not have permission to change supervisors';
+            if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
+                return;
+            }
+            Modules::run('utility/setFlash', ['msg' => $error_msg, 'type' => 'error']);
+            redirect($_SERVER['HTTP_REFERER'] ?? 'performance');
+            return;
         }
-        
-        if ($is_approved) {
-            $error_msg = 'Cannot change supervisors for approved ' . ucfirst($type);
+
+        if (!function_exists('ppa_phase_is_draft') || !ppa_phase_is_draft($ppa, $type)) {
+            $error_msg = 'Supervisors can only be changed on draft ' . ucfirst($type ?: 'PPA') . ' forms.';
             if ($this->_send_json_response(false, $error_msg, $is_ajax)) {
                 return;
             }

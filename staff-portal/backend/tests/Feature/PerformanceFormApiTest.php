@@ -6,6 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Modules\Core\Services\CsvExportService;
 use Modules\Core\Services\PdfService;
@@ -602,6 +603,86 @@ class PerformanceFormApiTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_change_supervisors_on_draft_ppa_midterm_and_endterm(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-draft-supervisors',
+            'draft_status' => 1,
+            'midterm_draft_status' => 1,
+            'endterm_draft_status' => 1,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'endterm_created_at' => now()->toDateTimeString(),
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        foreach (['ppa', 'midterm', 'endterm'] as $phase) {
+            $payload = $this->showEntry('ppa-draft-supervisors', $phase);
+            $this->assertTrue($payload['can_change_supervisors'], $phase.' should allow supervisor changes while draft');
+        }
+
+        $this->callUpdateSupervisors('ppa-draft-supervisors', 'ppa', 51, 50);
+        $this->assertSame(51, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->value('supervisor_id'));
+        $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->value('supervisor2_id'));
+        $this->assertSame(51, (int) DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('first_supervisor'));
+
+        $this->callUpdateSupervisors('ppa-draft-supervisors', 'midterm', 51, null);
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->first();
+        $this->assertSame(51, (int) $row->midterm_supervisor_1);
+        $this->assertNull($row->midterm_supervisor_2);
+
+        $this->callUpdateSupervisors('ppa-draft-supervisors', 'endterm', 50, 51);
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->first();
+        $this->assertSame(50, (int) $row->endterm_supervisor_1);
+        $this->assertSame(51, (int) $row->endterm_supervisor_2);
+    }
+
+    public function test_hr_can_change_supervisors_on_draft_but_approved_forms_stay_intact(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-approved-supervisors',
+            'draft_status' => 2,
+            'midterm_draft_status' => 2,
+            'endterm_draft_status' => 2,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'midterm_supervisor_1' => 50,
+            'endterm_supervisor_1' => 50,
+        ]);
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-submitted-supervisors',
+            'draft_status' => 0,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83]));
+
+        $this->assertFalse($this->showEntry('ppa-approved-supervisors', 'ppa')['can_change_supervisors']);
+        $this->assertFalse($this->showEntry('ppa-approved-supervisors', 'midterm')['can_change_supervisors']);
+        $this->assertFalse($this->showEntry('ppa-approved-supervisors', 'endterm')['can_change_supervisors']);
+        $this->assertFalse($this->showEntry('ppa-submitted-supervisors')['can_change_supervisors']);
+
+        foreach (['ppa', 'midterm', 'endterm'] as $phase) {
+            try {
+                $this->callUpdateSupervisors('ppa-approved-supervisors', $phase, 51, 50);
+                $this->fail('Expected supervisor changes to be blocked for approved '.$phase);
+            } catch (ValidationException $e) {
+                $this->assertNotEmpty($e->errors());
+            }
+        }
+
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-approved-supervisors')->first();
+        $this->assertSame(50, (int) $row->supervisor_id);
+        $this->assertSame(51, (int) $row->supervisor2_id);
+        $this->assertSame(50, (int) $row->midterm_supervisor_1);
+        $this->assertSame(50, (int) $row->endterm_supervisor_1);
+    }
+
     public function test_print_entry_requires_same_entry_access_as_show(): void
     {
         $this->insertPpaEntry([
@@ -919,6 +1000,33 @@ class PerformanceFormApiTest extends TestCase
             $entryId,
             Request::create('/api/v1/performance/entries/'.$entryId, 'GET', [
                 'phase' => $phase,
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+
+        return $response->getData(true)['data'];
+    }
+
+    protected function callUpdateSupervisors(
+        string $entryId,
+        string $phase,
+        int $supervisorId,
+        ?int $supervisor2Id
+    ): array {
+        $response = app(PerformanceFormApiController::class)->updateSupervisors(
+            $entryId,
+            Request::create('/api/v1/performance/entries/'.$entryId.'/supervisors', 'POST', [
+                'phase' => $phase,
+                'supervisor_id' => $supervisorId,
+                'supervisor2_id' => $supervisor2Id,
             ]),
             app(PpaFormService::class),
             app(PpaContractService::class),

@@ -2730,6 +2730,26 @@ if (!function_exists('ppa_phase_requires_second_supervisor')) {
     }
 }
 
+if (!function_exists('ppa_phase_is_draft')) {
+    function ppa_phase_is_draft($ppa, $type = 'ppa')
+    {
+        if (empty($ppa) || !is_object($ppa)) {
+            return $type === 'ppa';
+        }
+        if ($type === 'midterm') {
+            return !isset($ppa->midterm_draft_status) || (int) $ppa->midterm_draft_status === 1;
+        }
+        if ($type === 'endterm') {
+            if (($ppa->overall_end_term_status ?? '') === 'Approved') {
+                return false;
+            }
+            return !isset($ppa->endterm_draft_status) || (int) $ppa->endterm_draft_status === 1;
+        }
+
+        return !isset($ppa->draft_status) || (int) $ppa->draft_status === 1;
+    }
+}
+
 if (!function_exists('ppa_endterm_requires_employee_consent')) {
     function ppa_endterm_requires_employee_consent()
     {

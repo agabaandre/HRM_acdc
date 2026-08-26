@@ -42,11 +42,9 @@
           <!-- Read-only display -->
           <?= staff_name(!empty($ppa->endterm_supervisor_1) ? $ppa->endterm_supervisor_1 : $contract->first_supervisor) ?>
           <?php
-          $endterm_not_approved = (!empty($ppa)
-              && ($ppa->overall_end_term_status ?? '') !== 'Approved'
-              && (!isset($ppa->endterm_draft_status) || (int) $ppa->endterm_draft_status !== 2));
+          $endterm_is_draft = function_exists('ppa_phase_is_draft') && ppa_phase_is_draft($ppa, 'endterm');
           ?>
-          <?php if ($endterm_not_approved): ?>
+          <?php if ($endterm_is_draft): ?>
             <?php $this->load->view('performance/partials/change_supervisor_modal', [
                 'ppa' => $ppa,
                 'type' => 'endterm',

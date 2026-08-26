@@ -3,6 +3,7 @@
 namespace Modules\Performance\Services;
 
 use Illuminate\Support\Facades\DB;
+use Modules\Performance\Enums\PerformancePhase;
 use Modules\Performance\Support\PerformancePeriod;
 
 class PpaFormService
@@ -289,5 +290,38 @@ class PpaFormService
         }
 
         return array_values($ids);
+    }
+
+    public function updateSupervisors(
+        object $entry,
+        PerformancePhase $phase,
+        int $supervisor1,
+        ?int $supervisor2
+    ): void {
+        $supervisor2 = $supervisor2 ?: null;
+        $save = match ($phase) {
+            PerformancePhase::Ppa => [
+                'supervisor_id' => $supervisor1,
+                'supervisor2_id' => $supervisor2,
+            ],
+            PerformancePhase::Midterm => [
+                'midterm_supervisor_1' => $supervisor1,
+                'midterm_supervisor_2' => $supervisor2,
+            ],
+            PerformancePhase::Endterm => [
+                'endterm_supervisor_1' => $supervisor1,
+                'endterm_supervisor_2' => $supervisor2,
+            ],
+        };
+        $save['updated_at'] = now();
+
+        DB::table('ppa_entries')->where('entry_id', $entry->entry_id)->update($save);
+
+        if ((int) ($entry->staff_contract_id ?? 0) > 0) {
+            DB::table('staff_contracts')->where('staff_contract_id', $entry->staff_contract_id)->update([
+                'first_supervisor' => $supervisor1,
+                'second_supervisor' => $supervisor2,
+            ]);
+        }
     }
 }

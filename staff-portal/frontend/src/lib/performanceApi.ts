@@ -166,6 +166,7 @@ export interface PerformanceFormPayload {
     skills: PerformanceSkillCatalogItem[]
     competency_groups: Record<string, PerformanceCompetencyCatalogItem[]>
     competency_labels: Record<string, string>
+    supervisor_options?: Array<{ staff_id: number; name: string }>
   }
   workflow: {
     state: PerformanceWorkflowState | null
@@ -179,6 +180,7 @@ export interface PerformanceFormPayload {
   endreadonly: string
   is_owner: boolean
   can_save: boolean
+  can_change_supervisors?: boolean
   can_approve: boolean
   can_return: boolean
   return_target: 'draft' | 'employee' | null
@@ -309,6 +311,23 @@ export async function submitPerformanceEntry(
     {
       ...payload,
       phase,
+    },
+  )
+  return unwrapPerformanceForm(data)
+}
+
+export async function updatePerformanceSupervisors(
+  entryId: string,
+  phase: PerformancePhase,
+  supervisorId: number,
+  supervisor2Id: number | null,
+): Promise<PerformanceFormPayload> {
+  const { data } = await api.post<{ data: PerformanceFormPayload }>(
+    `/api/v1/performance/entries/${entryId}/supervisors`,
+    {
+      phase,
+      supervisor_id: supervisorId,
+      supervisor2_id: supervisor2Id || null,
     },
   )
   return unwrapPerformanceForm(data)

@@ -3,6 +3,7 @@
 namespace Modules\Performance\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Resolves supervisors from the staff member's latest contract (CI3 parity).
@@ -52,5 +53,52 @@ class SupervisorResolver
             ->first(['fname', 'lname']);
 
         return $row ? trim($row->fname.' '.$row->lname) : 'Staff #'.$staffId;
+    }
+
+    /**
+     * Active staff for supervisor pickers (CI3: latest contract status Active/Due).
+     *
+     * @param  list<int|null>  $alwaysIncludeIds
+     * @return list<array{staff_id: int, name: string}>
+     */
+    public function activeStaffOptions(array $alwaysIncludeIds = []): array
+    {
+        $query = DB::table('staff as s')
+            ->select(['s.staff_id', 's.fname', 's.lname']);
+
+        if (Schema::hasColumn('staff_contracts', 'status_id')) {
+            $latest = DB::table('staff_contracts')
+                ->selectRaw('MAX(staff_contract_id)')
+                ->groupBy('staff_id');
+            $query->join('staff_contracts as sc', 'sc.staff_id', '=', 's.staff_id')
+                ->whereIn('sc.staff_contract_id', $latest)
+                ->whereIn('sc.status_id', [1, 2])
+                ->groupBy('s.staff_id', 's.fname', 's.lname');
+        }
+
+        $rows = $query->orderBy('s.fname')->orderBy('s.lname')->get();
+        $options = [];
+        $seen = [];
+        foreach ($rows as $row) {
+            $id = (int) $row->staff_id;
+            $seen[$id] = true;
+            $options[] = [
+                'staff_id' => $id,
+                'name' => trim(($row->fname ?? '').' '.($row->lname ?? '')) ?: ('Staff #'.$id),
+            ];
+        }
+
+        foreach (array_unique(array_filter($alwaysIncludeIds)) as $id) {
+            $id = (int) $id;
+            if ($id < 1 || isset($seen[$id])) {
+                continue;
+            }
+            $options[] = [
+                'staff_id' => $id,
+                'name' => $this->staffName($id),
+            ];
+        }
+
+        return $options;
     }
 }

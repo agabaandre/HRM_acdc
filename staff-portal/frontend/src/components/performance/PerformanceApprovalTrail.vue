@@ -29,17 +29,30 @@ const props = withDefaults(
     acceptRating: boolean
     busy?: boolean
     variant?: 'actions' | 'history'
+    canSave?: boolean
+    submissionComments?: string
+    submissionCommentLabel?: string
   }>(),
-  { busy: false, returnLabel: 'Return to employee', variant: 'actions' },
+  {
+    busy: false,
+    returnLabel: 'Return to employee',
+    variant: 'actions',
+    canSave: false,
+    submissionComments: '',
+    submissionCommentLabel: 'Comments for Submission',
+  },
 )
 
 const emit = defineEmits<{
   'update:comments': [value: string]
   'update:supervisor2Agreement': [value: boolean]
   'update:acceptRating': [value: boolean]
+  'update:submissionComments': [value: string]
   approve: []
   return: []
   consent: []
+  'save-draft': []
+  submit: []
 }>()
 
 const stateColor = computed(() => {
@@ -55,6 +68,10 @@ const stateColor = computed(() => {
 
 const showActionArea = computed(
   () => props.canApprove || props.canReturn || props.canConsent,
+)
+
+const showEmployeeSubmit = computed(
+  () => props.variant === 'actions' && props.canSave,
 )
 
 const isApproved = computed(() => props.state?.status_key === 'approved')
@@ -167,7 +184,6 @@ function photoUrl(item: TrailDisplayItem): string | null {
     variant="outlined"
     class="perf-trail-card d-flex flex-column"
     :class="{
-      'h-100': variant === 'actions',
       'perf-trail-card--history': variant === 'history',
     }"
   >
@@ -207,6 +223,19 @@ function photoUrl(item: TrailDisplayItem): string | null {
       class="perf-trail-card__body d-flex flex-column ga-3"
       :class="{ 'flex-grow-1': variant === 'actions' }"
     >
+      <div v-if="showEmployeeSubmit" class="d-flex flex-column ga-3 flex-shrink-0">
+        <PortalRichTextEditor
+          :model-value="submissionComments"
+          :label="submissionCommentLabel"
+          :min-rows="2"
+          @update:model-value="emit('update:submissionComments', $event)"
+        />
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn color="warning" :loading="busy" @click="emit('save-draft')">Save Draft</v-btn>
+          <v-btn color="success" :loading="busy" @click="emit('submit')">Submit</v-btn>
+        </div>
+      </div>
+
       <div v-if="variant === 'actions' && showActionArea" class="d-flex flex-column ga-3 flex-shrink-0">
         <PortalRichTextEditor
           :model-value="comments"
@@ -268,7 +297,7 @@ function photoUrl(item: TrailDisplayItem): string | null {
       </div>
 
       <div
-        v-else-if="variant === 'actions'"
+        v-else-if="variant === 'actions' && !showEmployeeSubmit"
         class="text-body-2 text-medium-emphasis"
       >
         No action is required from you at this step.
