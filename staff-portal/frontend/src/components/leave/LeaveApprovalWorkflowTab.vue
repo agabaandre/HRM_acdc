@@ -16,6 +16,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const saving = ref(false)
 const enabled = ref(false)
+const oicEnabled = ref(true)
 const levels = ref<LeaveApprovalLevelDto[]>([])
 const staffOptions = ref<LeaveApprovalStaffOption[]>([])
 
@@ -51,7 +52,7 @@ function ensureHodFirst(rows: LeaveApprovalLevelDto[]): LeaveApprovalLevelDto[] 
     label: 'Head of Division',
     locked: true,
   }
-  const hr = rows.filter((row) => row.role !== 'hod')
+  const hr = rows.filter((row) => row.role === 'hr')
   return [{ ...hod, locked: true, staff_id: null }, ...hr]
 }
 
@@ -61,6 +62,7 @@ async function load() {
   try {
     const data = await fetchLeaveApprovalWorkflow()
     enabled.value = !!data.enabled
+    oicEnabled.value = data.oic_enabled !== false
     levels.value = ensureHodFirst(data.levels || [])
     staffOptions.value = data.staff_options || []
   } catch (e) {
@@ -68,6 +70,10 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function levelNumber(index: number): number {
+  return (oicEnabled.value ? 2 : 1) + index
 }
 
 function addHrLevel() {
@@ -112,6 +118,7 @@ async function save() {
     }
     const data = await saveLeaveApprovalWorkflow({
       enabled: enabled.value,
+      oic_enabled: oicEnabled.value,
       levels: levels.value
         .filter((row) => row.role === 'hod' || row.staff_id)
         .map((row) => ({
@@ -121,6 +128,7 @@ async function save() {
         })),
     })
     enabled.value = !!data.enabled
+    oicEnabled.value = data.oic_enabled !== false
     levels.value = ensureHodFirst(data.levels || [])
     staffOptions.value = data.staff_options || staffOptions.value
     emit('status', { success: 'Leave approval workflow saved.' })
@@ -143,17 +151,30 @@ onMounted(() => {
       <template v-else>
         <h3 class="text-h6 text-primary mb-2">Sequential leave approval</h3>
         <p class="text-body-2 text-medium-emphasis mb-4">
-          When enabled, each request is first approved by the employee’s Head of Division, then by the HR
-          approvers below in order. Staff can change the HOD when they apply, because acting heads vary.
+          When enabled, each request moves through the supporting officer / OIC (if required), the
+          employee’s Head of Division, then the HR approvers below in order. Staff pick the OIC and
+          can change the HOD when they apply.
         </p>
 
         <v-switch
           v-model="enabled"
           color="primary"
           hide-details
-          class="mb-6"
-          label="Enable sequential HOD → HR approval workflow"
+          class="mb-2"
+          label="Enable sequential approval workflow"
         />
+        <v-switch
+          v-model="oicEnabled"
+          color="primary"
+          hide-details
+          class="mb-6"
+          :disabled="!enabled"
+          label="Require supporting officer / OIC approval before the Head of Division"
+        />
+        <p class="text-caption text-medium-emphasis mb-6" style="margin-top: -0.85rem">
+          Enabled by default. The OIC is the colleague chosen on the apply form to cover while the
+          staff member is on leave.
+        </p>
 
         <div class="d-flex align-center justify-space-between mb-3">
           <h4 class="text-subtitle-1 font-weight-medium mb-0">Approval levels</h4>
@@ -164,16 +185,35 @@ onMounted(() => {
         </div>
 
         <div
+          v-if="oicEnabled"
+          class="leave-wf-level leave-wf-level--locked"
+        >
+          <div class="leave-wf-level__index">1</div>
+          <div class="leave-wf-level__fields">
+            <v-text-field
+              model-value="Supporting officer / OIC"
+              label="Level 1 · Supporting officer / OIC"
+              density="comfortable"
+              hide-details="auto"
+              disabled
+            />
+            <div class="text-caption text-medium-emphasis mt-1">
+              Taken from the supporting officer / OIC selected on the apply form.
+            </div>
+          </div>
+        </div>
+
+        <div
           v-for="(level, index) in levels"
           :key="`${level.role}-${index}`"
           class="leave-wf-level"
           :class="{ 'leave-wf-level--locked': level.role === 'hod' }"
         >
-          <div class="leave-wf-level__index">{{ index + 1 }}</div>
+          <div class="leave-wf-level__index">{{ levelNumber(index) }}</div>
           <div class="leave-wf-level__fields">
             <v-text-field
               v-model="level.label"
-              :label="level.role === 'hod' ? 'Level 1 · Head of Division' : `Level ${index + 1} · HR approver`"
+              :label="level.role === 'hod' ? `Level ${levelNumber(index)} · Head of Division` : `Level ${levelNumber(index)} · HR approver`"
               density="comfortable"
               hide-details="auto"
               :disabled="!enabled"

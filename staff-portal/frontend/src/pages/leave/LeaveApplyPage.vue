@@ -79,8 +79,16 @@ const workflowPreview = computed(() => {
   const preview = applyRules.value.workflow_preview || []
   if (!preview.length) return []
   const selectedHod = hodOptions.value.find((row) => row.value === Number(divisionHead.value))
-  return preview.map((step, index) => {
-    if (index === 0 || step.role === 'hod') {
+  const selectedOic = officerOptions.value.find((row) => row.value === Number(supportingStaff.value))
+  return preview.map((step) => {
+    if (step.role === 'oic') {
+      return {
+        ...step,
+        staff_name: selectedOic?.title || step.staff_name,
+        staff_id: selectedOic?.value ?? step.staff_id,
+      }
+    }
+    if (step.role === 'hod') {
       return {
         ...step,
         staff_name: selectedHod?.title || step.staff_name,
@@ -551,7 +559,7 @@ onMounted(() => {
         <v-card-title class="text-h6 leave-apply__section-title">4. Approval workflow</v-card-title>
         <v-card-text>
           <p class="text-body-2 text-medium-emphasis mb-3">
-            Your request will move through these approvers in order. The Head of Division is first.
+            Your request will move through these approvers in order.
           </p>
           <ol class="leave-apply__preview">
             <li v-for="(step, index) in workflowPreview" :key="`${step.role}-${index}`">

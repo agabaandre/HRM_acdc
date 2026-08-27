@@ -42,6 +42,7 @@ class LeavePolicyService
             'working_days_per_week' => 5,
             'application_min_notice_days' => 7,
             'approval_workflow_enabled' => false,
+            'approval_workflow_oic_enabled' => true,
         ];
     }
 

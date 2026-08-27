@@ -31,7 +31,7 @@ class LeaveSettingsController extends Controller
         ]);
 
         $policyPayload = $data['policy'];
-        unset($policyPayload['approval_workflow_enabled']);
+        unset($policyPayload['approval_workflow_enabled'], $policyPayload['approval_workflow_oic_enabled']);
         if (array_key_exists('application_min_notice_days', $policyPayload)) {
             $policyPayload['application_min_notice_days'] = max(
                 0,
@@ -66,14 +66,19 @@ class LeaveSettingsController extends Controller
 
         $data = $request->validate([
             'enabled' => 'required|boolean',
+            'oic_enabled' => 'sometimes|boolean',
             'levels' => 'required|array|min:1',
-            'levels.*.role' => 'required|string|in:hod,hr',
+            'levels.*.role' => 'required|string|in:hod,hr,oic',
             'levels.*.staff_id' => 'nullable|integer|min:1',
             'levels.*.label' => 'nullable|string|max:120',
         ]);
 
         try {
-            $saved = $workflow->saveDefinition((bool) $data['enabled'], $data['levels']);
+            $saved = $workflow->saveDefinition(
+                (bool) $data['enabled'],
+                $data['levels'],
+                array_key_exists('oic_enabled', $data) ? (bool) $data['oic_enabled'] : true,
+            );
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

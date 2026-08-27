@@ -8,6 +8,7 @@ import LeaveApprovalTrail from '@/components/leave/LeaveApprovalTrail.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
+import { resolveAvatarUrl } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
 import { canManageLeaveBalances, LEAVE_PERMS } from '@/lib/leavePermissions'
@@ -19,6 +20,7 @@ import {
   readLeaveApprovalsSession,
   readLeaveBalancesSession,
   type LeaveBalanceRow,
+  type LeavePendingWith,
   type LeaveRequestDto,
 } from '@/lib/leaveApi'
 
@@ -54,7 +56,7 @@ const reqPage = ref(1)
 const reqPerPage = ref(25)
 const apprPage = ref(1)
 const apprPerPage = ref(25)
-const expandedRequestId = ref<number | null>(null)
+const detailRequest = ref<LeaveRequestDto | null>(null)
 const returnForId = ref<number | null>(null)
 const returnComment = ref('')
 const returning = ref(false)
@@ -62,6 +64,12 @@ const returnDialog = computed({
   get: () => returnForId.value != null,
   set: (open: boolean) => {
     if (!open) returnForId.value = null
+  },
+})
+const detailDialog = computed({
+  get: () => detailRequest.value != null,
+  set: (open: boolean) => {
+    if (!open) detailRequest.value = null
   },
 })
 
@@ -190,12 +198,52 @@ function workflowSummary(req: LeaveRequestDto): string {
   return `${steps.length} steps`
 }
 
-function toggleWorkflow(id: number) {
-  expandedRequestId.value = expandedRequestId.value === id ? null : id
+function pendingWith(req: LeaveRequestDto): LeavePendingWith | null {
+  if (req.pending_with) return req.pending_with
+  if (req.overall_status === 'Returned') {
+    return { staff_id: req.staff_id, staff_name: req.staff_name, label: 'Employee' }
+  }
+  if (req.overall_status !== 'Pending') return null
+  const current = req.workflow?.steps?.find((step) => step.is_current)
+  if (!current) return null
+  return {
+    staff_id: current.staff_id,
+    staff_name: current.staff_name,
+    label: current.label,
+  }
+}
+
+function documentHref(req: LeaveRequestDto): string | null {
+  return resolveAvatarUrl(req.document_url || req.supporting_documentation || '')
+}
+
+function formatSubmitted(value?: string | null): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function canRevise(req: LeaveRequestDto | null | undefined): boolean {
+  return !!req && req.overall_status === 'Returned' && req.staff_id === myStaffId.value
+}
+
+function reviseDetail() {
+  const req = detailRequest.value
+  if (!req) return
+  const id = req.request_id
+  detailRequest.value = null
+  void router.push({ path: '/leave/apply', query: { request_id: String(id) } })
 }
 
 function requestColspan(): number {
-  return (showAllStaff.value ? 8 : 6) + 1
+  return showAllStaff.value ? 10 : 8
 }
 
 function pageSlice<T>(list: T[], page: number, perPage: number): T[] {
@@ -267,18 +315,23 @@ function exportRequestsCsv() {
   exporting.value = true
   try {
     const headers = showAllStaff.value
-      ? ['Staff', 'SAP / OCN', 'Type', 'From', 'To', 'Days', 'Status']
-      : ['Type', 'From', 'To', 'Days', 'Status']
+      ? ['Staff', 'SAP / OCN', 'Type', 'From', 'To', 'Days', 'Status', 'Pending with']
+      : ['Type', 'From', 'To', 'Days', 'Status', 'Pending with']
     downloadClientCsv(
       'leave-requests.csv',
       headers,
       requests.value.map((req) => {
+        const waiting = pendingWith(req)
+        const pendingLabel = waiting
+          ? [waiting.staff_name, waiting.label].filter(Boolean).join(' · ')
+          : ''
         const cells = [
           req.leave_name,
           req.start_date,
           req.end_date,
           req.requested_days,
           req.overall_status,
+          pendingLabel,
         ]
         return showAllStaff.value
           ? [req.staff_name || '', req.sap_number || '', ...cells]
@@ -294,18 +347,23 @@ function exportRequestsPdf() {
   exporting.value = true
   try {
     const headers = showAllStaff.value
-      ? ['Staff', 'SAP / OCN', 'Type', 'From', 'To', 'Days', 'Status']
-      : ['Type', 'From', 'To', 'Days', 'Status']
+      ? ['Staff', 'SAP / OCN', 'Type', 'From', 'To', 'Days', 'Status', 'Pending with']
+      : ['Type', 'From', 'To', 'Days', 'Status', 'Pending with']
     openClientPdfTable(
       'Leave requests',
       headers,
       requests.value.map((req) => {
+        const waiting = pendingWith(req)
+        const pendingLabel = waiting
+          ? [waiting.staff_name, waiting.label].filter(Boolean).join(' · ')
+          : ''
         const cells = [
           req.leave_name,
           req.start_date,
           req.end_date,
           req.requested_days,
           req.overall_status,
+          pendingLabel,
         ]
         return showAllStaff.value
           ? [req.staff_name || '', req.sap_number || '', ...cells]
@@ -909,14 +967,12 @@ onMounted(() => {
               <th>To</th>
               <th>Days</th>
               <th>Status</th>
-              <th>Workflow</th>
+              <th>Pending with</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody v-for="(req, index) in reqRows" :key="req.request_id">
-              <tr
-                :class="{ 'leave-req-row--open': expandedRequestId === req.request_id }"
-                @click="hasWorkflow(req) && toggleWorkflow(req.request_id)"
-              >
+              <tr>
                 <td>
                   <span class="portal-dt-row-num">{{ (reqPage - 1) * reqPerPage + index + 1 }}</span>
                 </td>
@@ -938,41 +994,25 @@ onMounted(() => {
                   <v-chip size="small" :color="statusColor(req.overall_status)" variant="tonal">
                     {{ req.overall_status }}
                   </v-chip>
+                </td>
+                <td>
+                  <div v-if="pendingWith(req)" class="leave-pending">
+                    <div class="leave-pending__name">{{ pendingWith(req)?.staff_name || '—' }}</div>
+                    <div class="leave-pending__role">{{ pendingWith(req)?.label }}</div>
+                  </div>
+                  <span v-else class="text-medium-emphasis">—</span>
+                </td>
+                <td class="text-no-wrap">
+                  <v-btn size="x-small" variant="tonal" class="me-1" @click="detailRequest = req">
+                    View
+                  </v-btn>
                   <RouterLink
-                    v-if="req.overall_status === 'Returned' && req.staff_id === myStaffId"
-                    class="leave-wf-link ms-2"
+                    v-if="canRevise(req)"
+                    class="leave-wf-link"
                     :to="{ path: '/leave/apply', query: { request_id: String(req.request_id) } }"
-                    @click.stop
                   >
                     Revise
                   </RouterLink>
-                </td>
-                <td>
-                  <button
-                    v-if="hasWorkflow(req)"
-                    type="button"
-                    class="leave-wf-link"
-                    @click.stop="toggleWorkflow(req.request_id)"
-                  >
-                    {{ workflowSummary(req) }}
-                    <i
-                      class="ms-1"
-                      :class="expandedRequestId === req.request_id ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
-                      aria-hidden="true"
-                    />
-                  </button>
-                  <span v-else class="text-medium-emphasis">—</span>
-                </td>
-              </tr>
-              <tr v-if="expandedRequestId === req.request_id && hasWorkflow(req)" class="leave-wf-row">
-                <td :colspan="requestColspan()">
-                  <div class="leave-wf-panel">
-                    <div class="leave-wf-panel__title">Approval workflow</div>
-                    <LeaveApprovalTrail
-                      :steps="req.workflow?.steps || []"
-                      :trail="req.workflow?.trail || []"
-                    />
-                  </div>
                 </td>
               </tr>
           </tbody>
@@ -1114,6 +1154,9 @@ onMounted(() => {
                   <span v-else class="text-medium-emphasis">Classic</span>
                 </td>
                 <td class="text-no-wrap">
+                  <v-btn size="x-small" variant="tonal" class="me-1" @click="detailRequest = req">
+                    View
+                  </v-btn>
                   <template v-if="hasWorkflow(req)">
                     <template v-if="canActOn(req)">
                       <v-btn
@@ -1224,6 +1267,106 @@ onMounted(() => {
         </div>
       </v-card>
     </div>
+
+    <v-dialog v-model="detailDialog" max-width="760" scrollable>
+      <v-card v-if="detailRequest">
+        <v-card-title class="leave-detail__title">
+          <div>
+            <div class="text-subtitle-1 font-weight-medium">
+              {{ detailRequest.leave_name || 'Leave request' }}
+            </div>
+            <div class="text-caption text-medium-emphasis">
+              {{ detailRequest.staff_name || 'Staff' }}
+              <span v-if="detailRequest.sap_number"> · {{ detailRequest.sap_number }}</span>
+            </div>
+          </div>
+          <v-chip size="small" :color="statusColor(detailRequest.overall_status)" variant="tonal">
+            {{ detailRequest.overall_status }}
+          </v-chip>
+        </v-card-title>
+        <v-card-text>
+          <div class="leave-detail__grid">
+            <div>
+              <div class="leave-detail__label">From</div>
+              <div class="leave-detail__value">{{ detailRequest.start_date || '—' }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">To</div>
+              <div class="leave-detail__value">{{ detailRequest.end_date || '—' }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Working days</div>
+              <div class="leave-detail__value">{{ detailRequest.requested_days }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Submitted</div>
+              <div class="leave-detail__value">{{ formatSubmitted(detailRequest.created_at) }}</div>
+            </div>
+            <div class="leave-detail__wide">
+              <div class="leave-detail__label">Pending with</div>
+              <div v-if="pendingWith(detailRequest)" class="leave-pending">
+                <div class="leave-pending__name">{{ pendingWith(detailRequest)?.staff_name || '—' }}</div>
+                <div class="leave-pending__role">{{ pendingWith(detailRequest)?.label }}</div>
+              </div>
+              <div v-else class="leave-detail__value">—</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Email while on leave</div>
+              <div class="leave-detail__value">{{ detailRequest.email_leave || '—' }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Phone number on leave</div>
+              <div class="leave-detail__value">{{ detailRequest.mobile_leave || '—' }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Supporting officer / OIC</div>
+              <div class="leave-detail__value">{{ detailRequest.supporting_staff_name || '—' }}</div>
+            </div>
+            <div>
+              <div class="leave-detail__label">Head of Division</div>
+              <div class="leave-detail__value">{{ detailRequest.division_head_name || '—' }}</div>
+            </div>
+            <div class="leave-detail__wide">
+              <div class="leave-detail__label">Supporting document</div>
+              <a
+                v-if="documentHref(detailRequest)"
+                class="leave-wf-link"
+                :href="documentHref(detailRequest) || undefined"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open document
+              </a>
+              <div v-else class="leave-detail__value">None attached</div>
+            </div>
+            <div v-if="detailRequest.remarks" class="leave-detail__wide">
+              <div class="leave-detail__label">Remarks</div>
+              <div class="leave-detail__value leave-detail__remarks">{{ detailRequest.remarks }}</div>
+            </div>
+          </div>
+
+          <div class="leave-detail__trail">
+            <div class="leave-wf-panel__title">Approval trail</div>
+            <LeaveApprovalTrail
+              :steps="detailRequest.workflow?.steps || []"
+              :trail="detailRequest.workflow?.trail || []"
+            />
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-spacer />
+          <v-btn variant="text" @click="detailRequest = null">Close</v-btn>
+          <v-btn
+            v-if="canRevise(detailRequest)"
+            color="primary"
+            variant="flat"
+            @click="reviseDetail"
+          >
+            Revise
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="returnDialog" max-width="480">
       <v-card>
@@ -1397,6 +1540,69 @@ onMounted(() => {
 .perf-kpi__icon {
   color: rgba(255, 255, 255, 0.35);
   font-size: 1.35rem;
+}
+
+.leave-pending {
+  line-height: 1.25;
+}
+
+.leave-pending__name {
+  font-weight: 650;
+  color: #1f2933;
+}
+
+.leave-pending__role {
+  margin-top: 0.08rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.leave-detail__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.leave-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.25rem;
+  margin-bottom: 1.15rem;
+}
+
+.leave-detail__wide {
+  grid-column: 1 / -1;
+}
+
+.leave-detail__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.leave-detail__value {
+  margin-top: 0.15rem;
+  color: #1f2933;
+  font-weight: 600;
+}
+
+.leave-detail__remarks {
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+.leave-detail__trail {
+  padding-top: 0.35rem;
+  border-top: 1px solid #e9ecef;
+}
+
+@media (max-width: 600px) {
+  .leave-detail__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .leave-wf-link,

@@ -26,7 +26,7 @@ class LeaveRequestController extends Controller
         }
 
         $query = StaffLeave::query()
-            ->with(['leaveType', 'staff'])
+            ->with(['leaveType', 'staff', 'supportingOfficer', 'divisionHeadStaff'])
             ->when(
                 Schema::hasTable('staff_leave_approval_steps'),
                 fn ($q) => $q->with('approvalSteps.approver'),
@@ -193,7 +193,7 @@ class LeaveRequestController extends Controller
      */
     protected function requestRelations(): array
     {
-        $with = ['leaveType', 'staff'];
+        $with = ['leaveType', 'staff', 'supportingOfficer', 'divisionHeadStaff'];
         if (Schema::hasTable('staff_leave_approval_steps')) {
             $with[] = 'approvalSteps.approver';
         }

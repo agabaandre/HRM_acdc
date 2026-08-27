@@ -41,7 +41,7 @@ export interface LeaveBalanceRow {
 export interface LeaveWorkflowStep {
   id: number
   sort_order: number
-  role: 'hod' | 'hr' | string
+  role: 'hod' | 'hr' | 'oic' | string
   label: string
   staff_id: number
   staff_name?: string | null
@@ -69,6 +69,12 @@ export interface LeaveRequestWorkflow {
   trail?: LeaveWorkflowTrailEntry[]
 }
 
+export interface LeavePendingWith {
+  staff_id: number
+  staff_name?: string | null
+  label: string
+}
+
 export interface LeaveRequestDto {
   request_id: number
   staff_id: number
@@ -84,8 +90,13 @@ export interface LeaveRequestDto {
   mobile_leave?: string | null
   remarks?: string | null
   supporting_staff?: string | number | null
+  supporting_staff_name?: string | null
   division_head?: number | null
+  division_head_name?: string | null
   supporting_documentation?: string | null
+  document_url?: string | null
+  created_at?: string | null
+  pending_with?: LeavePendingWith | null
   workflow?: LeaveRequestWorkflow | null
 }
 
@@ -211,6 +222,7 @@ export interface LeaveApplyRules {
   min_notice_days: number
   earliest_start_date: string
   workflow_enabled?: boolean
+  oic_enabled?: boolean
   default_hod?: { staff_id: number; name: string } | null
   workflow_preview?: Array<{
     role: string
@@ -383,7 +395,7 @@ export async function saveLeavePolicy(policy: Record<string, unknown>): Promise<
 export interface LeaveApprovalLevelDto {
   id: number
   sort_order: number
-  role: 'hod' | 'hr' | string
+  role: 'hod' | 'hr' | 'oic' | string
   staff_id?: number | null
   staff_name?: string | null
   label: string
@@ -400,6 +412,7 @@ export interface LeaveApprovalStaffOption {
 
 export interface LeaveApprovalWorkflowDto {
   enabled: boolean
+  oic_enabled?: boolean
   levels: LeaveApprovalLevelDto[]
   staff_options: LeaveApprovalStaffOption[]
 }
@@ -413,6 +426,7 @@ export async function fetchLeaveApprovalWorkflow(): Promise<LeaveApprovalWorkflo
 
 export async function saveLeaveApprovalWorkflow(payload: {
   enabled: boolean
+  oic_enabled?: boolean
   levels: Array<{ role: string; staff_id?: number | null; label?: string }>
 }): Promise<LeaveApprovalWorkflowDto> {
   const { data } = await api.put<{ data: LeaveApprovalWorkflowDto }>(

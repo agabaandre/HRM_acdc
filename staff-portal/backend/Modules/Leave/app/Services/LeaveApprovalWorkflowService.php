@@ -26,11 +26,18 @@ class LeaveApprovalWorkflowService
         return filter_var($value, FILTER_VALIDATE_BOOLEAN) || $value === 1 || $value === '1';
     }
 
+    public function isOicEnabled(): bool
+    {
+        $value = $this->policy->get('approval_workflow_oic_enabled', true);
+
+        return ! in_array($value, [false, 0, '0', 'false'], true);
+    }
+
     /**
      * @param  list<array{role?: string, staff_id?: int|null, label?: string|null}>  $levels
-     * @return array{enabled: bool, levels: list<array<string, mixed>>}
+     * @return array{enabled: bool, oic_enabled: bool, levels: list<array<string, mixed>>}
      */
-    public function saveDefinition(bool $enabled, array $levels): array
+    public function saveDefinition(bool $enabled, array $levels, bool $oicEnabled = true): array
     {
         $hodLabel = 'Head of Division';
         $hrLevels = [];
@@ -43,6 +50,9 @@ class LeaveApprovalWorkflowService
                     $hodLabel = $label;
                 }
 
+                continue;
+            }
+            if ($role === 'oic') {
                 continue;
             }
             if ($role !== 'hr') {
@@ -58,7 +68,7 @@ class LeaveApprovalWorkflowService
             ];
         }
 
-        DB::transaction(function () use ($enabled, $hodLabel, $hrLevels): void {
+        DB::transaction(function () use ($enabled, $oicEnabled, $hodLabel, $hrLevels): void {
             LeaveApprovalLevel::query()->delete();
             LeaveApprovalLevel::query()->create([
                 'sort_order' => 0,
@@ -74,19 +84,23 @@ class LeaveApprovalWorkflowService
                     'label' => $hr['label'],
                 ]);
             }
-            $this->policy->save(['approval_workflow_enabled' => $enabled]);
+            $this->policy->save([
+                'approval_workflow_enabled' => $enabled,
+                'approval_workflow_oic_enabled' => $oicEnabled,
+            ]);
         });
 
         return $this->definition();
     }
 
     /**
-     * @return array{enabled: bool, levels: list<array<string, mixed>>}
+     * @return array{enabled: bool, oic_enabled: bool, levels: list<array<string, mixed>>}
      */
     public function definition(): array
     {
         return [
             'enabled' => $this->isEnabled(),
+            'oic_enabled' => $this->isOicEnabled(),
             'levels' => $this->levels(),
         ];
     }
@@ -154,13 +168,22 @@ class LeaveApprovalWorkflowService
     /**
      * @return list<array<string, mixed>>
      */
-    public function previewForStaff(int $staffId, ?int $hodStaffId = null): array
+    public function previewForStaff(int $staffId, ?int $hodStaffId = null, ?int $oicStaffId = null): array
     {
         $hod = $hodStaffId && $hodStaffId > 0
             ? ['staff_id' => $hodStaffId, 'name' => $this->staffName($hodStaffId) ?: ('Staff #'.$hodStaffId)]
             : $this->defaultHodForStaff($staffId);
 
         $preview = [];
+        if ($this->isOicEnabled()) {
+            $oicId = $oicStaffId && $oicStaffId > 0 ? $oicStaffId : null;
+            $preview[] = [
+                'role' => 'oic',
+                'label' => 'Supporting officer / OIC',
+                'staff_id' => $oicId,
+                'staff_name' => $oicId ? ($this->staffName($oicId) ?: ('Staff #'.$oicId)) : null,
+            ];
+        }
         foreach ($this->levels() as $level) {
             if (($level['role'] ?? '') === 'hod') {
                 $preview[] = [
@@ -202,16 +225,36 @@ class LeaveApprovalWorkflowService
             $leave->save();
         }
 
-        StaffLeaveApprovalStep::query()->where('request_id', $leave->request_id)->delete();
-
-        foreach ($this->levels() as $index => $level) {
+        $rows = [];
+        if ($this->isOicEnabled()) {
+            $oicId = (int) $leave->supporting_staff;
+            if ($oicId < 1) {
+                throw new \InvalidArgumentException('Select a supporting officer / OIC for this leave request.');
+            }
+            $rows[] = [
+                'role' => 'oic',
+                'staff_id' => $oicId,
+                'label' => 'Supporting officer / OIC',
+            ];
+        }
+        foreach ($this->levels() as $level) {
             $role = (string) $level['role'];
-            StaffLeaveApprovalStep::query()->create([
-                'request_id' => (int) $leave->request_id,
-                'sort_order' => $index,
+            $rows[] = [
                 'role' => $role,
                 'staff_id' => $role === 'hod' ? $hodId : (int) ($level['staff_id'] ?? 0),
                 'label' => (string) $level['label'],
+            ];
+        }
+
+        StaffLeaveApprovalStep::query()->where('request_id', $leave->request_id)->delete();
+
+        foreach ($rows as $index => $row) {
+            StaffLeaveApprovalStep::query()->create([
+                'request_id' => (int) $leave->request_id,
+                'sort_order' => $index,
+                'role' => $row['role'],
+                'staff_id' => $row['staff_id'],
+                'label' => $row['label'],
                 'status' => 'Pending',
             ]);
         }
@@ -353,12 +396,27 @@ class LeaveApprovalWorkflowService
             ];
         }
 
+        $pending = null;
+        if ($overallStatus === 'Pending') {
+            foreach ($payload as $step) {
+                if ($step['is_current']) {
+                    $pending = [
+                        'staff_id' => $step['staff_id'],
+                        'staff_name' => $step['staff_name'],
+                        'label' => $step['label'],
+                    ];
+                    break;
+                }
+            }
+        }
+
         return [
             'enabled' => true,
             'steps' => $payload,
             'trail' => $this->serializeTrail(
                 (int) ($ordered->first()?->request_id ?? 0)
             ),
+            'pending_with' => $pending,
         ];
     }
 
@@ -609,6 +667,12 @@ class LeaveApprovalWorkflowService
 
     protected function syncLegacyColumn(StaffLeave $leave, StaffLeaveApprovalStep $step, string $status): void
     {
+        if ($step->role === 'oic') {
+            $leave->approval_status = $status;
+
+            return;
+        }
+
         if ($step->role === 'hod') {
             $leave->approval_status3 = $status;
 

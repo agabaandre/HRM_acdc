@@ -128,6 +128,8 @@ class LeaveApprovalController extends Controller
 
         $query = DB::table('staff_leave as sl')
             ->leftJoin('staff as s', 's.staff_id', '=', 'sl.staff_id')
+            ->leftJoin('staff as oic', 'oic.staff_id', '=', 'sl.supporting_staff')
+            ->leftJoin('staff as hod', 'hod.staff_id', '=', 'sl.division_head')
             ->leftJoin('leave_types as lt', 'lt.leave_id', '=', 'sl.leave_id')
             ->where('sl.overall_status', 'Pending')
             ->orderByDesc('sl.created_at')
@@ -143,11 +145,15 @@ class LeaveApprovalController extends Controller
                 'sl.email_leave',
                 'sl.mobile_leave',
                 'sl.remarks',
+                'sl.supporting_staff',
+                'sl.division_head',
                 'sl.supporting_documentation',
                 'sl.created_at',
                 'lt.leave_name',
                 DB::raw("TRIM(CONCAT(COALESCE(s.fname, ''), ' ', COALESCE(s.lname, ''))) as staff_name"),
                 's.SAPNO as sap_number',
+                DB::raw("TRIM(CONCAT(COALESCE(oic.fname, ''), ' ', COALESCE(oic.lname, ''))) as supporting_staff_name"),
+                DB::raw("TRIM(CONCAT(COALESCE(hod.fname, ''), ' ', COALESCE(hod.lname, ''))) as division_head_name"),
             ]);
 
         if ($hasStepsTable) {
@@ -188,6 +194,9 @@ class LeaveApprovalController extends Controller
                 ? (string) $row->sap_number
                 : null;
             $name = trim((string) ($row->staff_name ?? ''));
+            $oicName = trim((string) ($row->supporting_staff_name ?? ''));
+            $hodName = trim((string) ($row->division_head_name ?? ''));
+            $hodId = (int) ($row->division_head ?? 0);
 
             return [
                 'request_id' => (int) $row->request_id,
@@ -203,7 +212,12 @@ class LeaveApprovalController extends Controller
                 'email_leave' => $row->email_leave,
                 'mobile_leave' => $row->mobile_leave,
                 'remarks' => $row->remarks,
+                'supporting_staff' => $row->supporting_staff,
+                'supporting_staff_name' => $oicName !== '' ? $oicName : null,
+                'division_head' => $hodId > 0 ? $hodId : null,
+                'division_head_name' => $hodName !== '' ? $hodName : null,
                 'supporting_documentation' => $row->supporting_documentation,
+                'document_url' => LeaveRequestResource::publicDocumentUrl($row->supporting_documentation),
                 'created_at' => $row->created_at,
             ];
         })->values()->all();
@@ -213,7 +227,9 @@ class LeaveApprovalController extends Controller
             $staffId,
         );
         foreach ($rows as $i => $row) {
-            $rows[$i]['workflow'] = $workflows[$row['request_id']] ?? null;
+            $workflow = $workflows[$row['request_id']] ?? null;
+            $rows[$i]['workflow'] = $workflow;
+            $rows[$i]['pending_with'] = is_array($workflow) ? ($workflow['pending_with'] ?? null) : null;
         }
 
         return $rows;

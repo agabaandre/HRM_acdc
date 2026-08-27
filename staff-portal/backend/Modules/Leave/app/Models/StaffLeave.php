@@ -56,6 +56,16 @@ class StaffLeave extends Model
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
+    public function supportingOfficer(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'supporting_staff', 'staff_id');
+    }
+
+    public function divisionHeadStaff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'division_head', 'staff_id');
+    }
+
     public function leaveType(): BelongsTo
     {
         return $this->belongsTo(LeaveType::class, 'leave_id', 'leave_id');

@@ -50,12 +50,19 @@ class LeaveApprovalWorkflowTest extends TestCase
         ]);
 
         $this->assertTrue($saved['enabled']);
+        $this->assertTrue($saved['oic_enabled']);
         $this->assertSame('hod', $saved['levels'][0]['role']);
         $this->assertNull($saved['levels'][0]['staff_id']);
         $this->assertSame('Head of Division', $saved['levels'][0]['label']);
         $this->assertSame(4, $saved['levels'][1]['staff_id']);
         $this->assertSame(5, $saved['levels'][2]['staff_id']);
         $this->assertTrue($saved['levels'][0]['locked']);
+
+        $disabledOic = $workflow->saveDefinition(true, [
+            ['role' => 'hod', 'label' => 'Head of Division'],
+            ['role' => 'hr', 'staff_id' => 4, 'label' => 'HR Officer'],
+        ], false);
+        $this->assertFalse($disabledOic['oic_enabled']);
 
         $this->expectException(\InvalidArgumentException::class);
         $workflow->saveDefinition(true, [
@@ -71,7 +78,7 @@ class LeaveApprovalWorkflowTest extends TestCase
         $this->assertStringContainsString('Dana', $hod['name']);
     }
 
-    public function test_submit_snapshots_hod_then_hr_series_and_allows_hod_override(): void
+    public function test_submit_snapshots_oic_then_hod_then_hr_and_allows_hod_override(): void
     {
         $this->enableWorkflow();
 
@@ -94,13 +101,42 @@ class LeaveApprovalWorkflowTest extends TestCase
             ->orderBy('sort_order')
             ->get();
 
+        $this->assertCount(4, $steps);
+        $this->assertSame('oic', $steps[0]->role);
+        $this->assertSame(2, (int) $steps[0]->staff_id);
+        $this->assertSame('Supporting officer / OIC', $steps[0]->label);
+        $this->assertSame('hod', $steps[1]->role);
+        $this->assertSame(2, (int) $steps[1]->staff_id);
+        $this->assertSame('hr', $steps[2]->role);
+        $this->assertSame(4, (int) $steps[2]->staff_id);
+        $this->assertSame(5, (int) $steps[3]->staff_id);
+        $this->assertSame('Pending', $steps[0]->status);
+
+        $serialized = app(LeaveApprovalWorkflowService::class)->serializeSteps($steps, 1, 'Pending');
+        $this->assertSame(2, $serialized['pending_with']['staff_id']);
+        $this->assertSame('Supporting officer / OIC', $serialized['pending_with']['label']);
+
+        $preview = app(LeaveApprovalWorkflowService::class)->previewForStaff(1, 3, 2);
+        $this->assertSame('oic', $preview[0]['role']);
+        $this->assertSame(2, $preview[0]['staff_id']);
+        $this->assertSame('hod', $preview[1]['role']);
+        $this->assertSame(3, $preview[1]['staff_id']);
+    }
+
+    public function test_disabled_oic_keeps_hod_first_on_snapshot(): void
+    {
+        $this->enableWorkflow(false);
+
+        $leave = $this->submitLeave();
+        $steps = StaffLeaveApprovalStep::query()
+            ->where('request_id', $leave->request_id)
+            ->orderBy('sort_order')
+            ->get();
+
         $this->assertCount(3, $steps);
         $this->assertSame('hod', $steps[0]->role);
-        $this->assertSame(2, (int) $steps[0]->staff_id);
+        $this->assertSame(3, (int) $steps[0]->staff_id);
         $this->assertSame('hr', $steps[1]->role);
-        $this->assertSame(4, (int) $steps[1]->staff_id);
-        $this->assertSame(5, (int) $steps[2]->staff_id);
-        $this->assertSame('Pending', $steps[0]->status);
     }
 
     public function test_hr_cannot_approve_before_hod_and_full_chain_approves_overall(): void
@@ -111,15 +147,35 @@ class LeaveApprovalWorkflowTest extends TestCase
 
         try {
             $workflow->decide((int) $leave->request_id, 4, 'approve');
-            $this->fail('HR must not skip the HOD step.');
+            $this->fail('HR must not skip the OIC step.');
         } catch (\InvalidArgumentException $e) {
             $this->assertStringContainsString('current', strtolower($e->getMessage()));
         }
+
+        try {
+            $workflow->decide((int) $leave->request_id, 3, 'approve', 'HOD ok');
+            $this->fail('HOD must not skip the OIC step.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('current', strtolower($e->getMessage()));
+        }
+
+        $workflow->decide((int) $leave->request_id, 2, 'approve', 'OIC ok');
+        $leave->refresh();
+        $this->assertSame('Pending', $leave->overall_status);
+        $this->assertSame('Approved', $leave->approval_status);
 
         $workflow->decide((int) $leave->request_id, 3, 'approve', 'HOD ok');
         $leave->refresh();
         $this->assertSame('Pending', $leave->overall_status);
         $this->assertSame('Approved', $leave->approval_status3);
+
+        $afterHod = StaffLeaveApprovalStep::query()
+            ->where('request_id', $leave->request_id)
+            ->orderBy('sort_order')
+            ->get();
+        $pending = $workflow->serializeSteps($afterHod, 1, 'Pending')['pending_with'];
+        $this->assertSame(4, $pending['staff_id']);
+        $this->assertSame('HR Officer', $pending['label']);
 
         $workflow->decide((int) $leave->request_id, 4, 'approve');
         $leave->refresh();
@@ -136,6 +192,7 @@ class LeaveApprovalWorkflowTest extends TestCase
         $leave = $this->submitLeave();
         $workflow = app(LeaveApprovalWorkflowService::class);
 
+        $workflow->decide((int) $leave->request_id, 2, 'approve', 'OIC ok');
         $workflow->decide((int) $leave->request_id, 3, 'reject', 'Not now');
         $leave->refresh();
         $this->assertSame('Rejected', $leave->overall_status);
@@ -182,6 +239,7 @@ class LeaveApprovalWorkflowTest extends TestCase
         ]);
 
         $workflow = app(LeaveApprovalWorkflowService::class);
+        $workflow->decide((int) $leave->request_id, 2, 'approve');
         $workflow->decide((int) $leave->request_id, 3, 'approve');
         $workflow->decide((int) $leave->request_id, 4, 'approve');
         $workflow->decide((int) $leave->request_id, 5, 'approve');
@@ -197,6 +255,7 @@ class LeaveApprovalWorkflowTest extends TestCase
         $workflow = app(LeaveApprovalWorkflowService::class);
         $requestId = (int) $leave->request_id;
 
+        $workflow->decide($requestId, 2, 'approve', 'OIC ok');
         $workflow->decide($requestId, 3, 'approve', 'HOD ok');
         $workflow->decide($requestId, 4, 'return', 'Please fix the dates');
 
@@ -208,7 +267,7 @@ class LeaveApprovalWorkflowTest extends TestCase
             ->orderBy('id')
             ->pluck('action')
             ->all();
-        $this->assertSame(['Submitted', 'Approved', 'Returned'], $actions);
+        $this->assertSame(['Submitted', 'Approved', 'Approved', 'Returned'], $actions);
 
         $leave = app(LeaveRequestService::class)->resubmit($requestId, 1, [
             'leave_id' => 1,
@@ -224,7 +283,7 @@ class LeaveApprovalWorkflowTest extends TestCase
 
         $this->assertSame('Pending', $leave->overall_status);
         $this->assertSame(
-            ['Submitted', 'Approved', 'Returned', 'Submitted'],
+            ['Submitted', 'Approved', 'Approved', 'Returned', 'Submitted'],
             StaffLeaveApprovalTrail::query()
                 ->where('request_id', $requestId)
                 ->orderBy('id')
@@ -232,15 +291,15 @@ class LeaveApprovalWorkflowTest extends TestCase
                 ->all()
         );
 
-        $hod = StaffLeaveApprovalStep::query()
+        $oic = StaffLeaveApprovalStep::query()
             ->where('request_id', $requestId)
-            ->where('role', 'hod')
+            ->where('role', 'oic')
             ->first();
-        $this->assertSame('Pending', $hod->status);
+        $this->assertSame('Pending', $oic->status);
 
-        $workflow->decide($requestId, 3, 'approve');
+        $workflow->decide($requestId, 2, 'approve');
         $this->assertSame(
-            ['Submitted', 'Approved', 'Returned', 'Submitted', 'Approved'],
+            ['Submitted', 'Approved', 'Approved', 'Returned', 'Submitted', 'Approved'],
             StaffLeaveApprovalTrail::query()
                 ->where('request_id', $requestId)
                 ->orderBy('id')
@@ -256,7 +315,7 @@ class LeaveApprovalWorkflowTest extends TestCase
         $workflow = app(LeaveApprovalWorkflowService::class);
 
         try {
-            $workflow->decide((int) $leave->request_id, 3, 'return', '');
+            $workflow->decide((int) $leave->request_id, 2, 'return', '');
             $this->fail('Return must require comments.');
         } catch (\InvalidArgumentException $e) {
             $this->assertStringContainsString('comment', strtolower($e->getMessage()));
@@ -266,13 +325,13 @@ class LeaveApprovalWorkflowTest extends TestCase
         $workflow->decide((int) $leave->request_id, 4, 'return', 'Fix this');
     }
 
-    protected function enableWorkflow(): void
+    protected function enableWorkflow(bool $oicEnabled = true): void
     {
         app(LeaveApprovalWorkflowService::class)->saveDefinition(true, [
             ['role' => 'hod', 'label' => 'Head of Division'],
             ['role' => 'hr', 'staff_id' => 4, 'label' => 'HR Officer'],
             ['role' => 'hr', 'staff_id' => 5, 'label' => 'Head of HR'],
-        ]);
+        ], $oicEnabled);
     }
 
     protected function submitLeave(): StaffLeave

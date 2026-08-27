@@ -35,6 +35,7 @@ class LeaveMetaController extends Controller
                 'min_notice_days' => $requests->minNoticeDays(),
                 'earliest_start_date' => $requests->earliestAllowedStartDate(),
                 'workflow_enabled' => $workflow->isEnabled(),
+                'oic_enabled' => $workflow->isOicEnabled(),
                 'default_hod' => $staffId ? $workflow->defaultHodForStaff($staffId) : null,
                 'workflow_preview' => $staffId && $workflow->isEnabled()
                     ? $workflow->previewForStaff($staffId)
