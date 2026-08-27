@@ -101,6 +101,26 @@ class TicketApiTest extends TestCase
         $this->assertSame('colleague@example.org', $res->json('data.requester_email'));
     }
 
+    public function test_agent_can_create_ticket_for_self_without_requester_staff_id(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+        $agent = $this->actingHelpdeskUser(88201, HelpdeskProfile::ROLE_AGENT);
+        $agent->helpdeskAgentCategories()->sync([$cat->id]);
+        Sanctum::actingAs($agent);
+
+        $res = $this->postJson('/api/v1/tickets', [
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'description' => '<p>Need help with my own account</p>',
+        ]);
+
+        $res->assertCreated();
+        $this->assertSame(88201, (int) $res->json('data.requester_staff_id'));
+        $this->assertSame($agent->email, $res->json('data.requester_email'));
+        $this->assertFalse((bool) $res->json('data.agent_logged_for_requester'));
+    }
+
     public function test_ticket_list_supports_sort_direction(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

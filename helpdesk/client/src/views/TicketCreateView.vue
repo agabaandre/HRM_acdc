@@ -371,6 +371,8 @@ async function submit() {
       body.is_anonymous = true
     } else if (needsDirectoryPicker.value) {
       body.requester_staff_id = selectedStaffId.value
+    } else if (auth.me?.profile?.staff_id) {
+      body.requester_staff_id = auth.me.profile.staff_id
     }
     await api.post('/api/v1/tickets', body, {
       headers: { 'Idempotency-Key': ticketCreateIdempotencyKey.value },

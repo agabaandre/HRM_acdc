@@ -4,7 +4,6 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskCategory;
-use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskSetting;
 use App\Models\HelpdeskTicket;
 use App\Services\HtmlSanitizer;
@@ -25,7 +24,6 @@ class StoreTicketRequest extends FormRequest
      */
     public function rules(): array
     {
-        $isEndUser = $this->user()?->helpdeskProfile?->role === HelpdeskProfile::ROLE_USER;
         $showCategory = HelpdeskSetting::showIssueCategoryOnRequestForm();
 
         return [
@@ -41,7 +39,6 @@ class StoreTicketRequest extends FormRequest
             'source' => ['nullable', 'string', 'in:web,whatsapp,teams,email'],
             'is_anonymous' => ['sometimes', 'boolean'],
             'requester_staff_id' => [
-                Rule::requiredIf(! $isEndUser && ! $this->boolean('is_anonymous')),
                 'nullable',
                 'integer',
                 'min:1',

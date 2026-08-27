@@ -171,7 +171,6 @@ class TicketController extends Controller
 
         $isAnonymous = $request->boolean('is_anonymous') && $businessUnit->allows_anonymous;
 
-        $isEndUser = $profile->role === HelpdeskProfile::ROLE_USER;
         if ($isAnonymous) {
             $requesterStaffId = null;
             $requesterName = 'Anonymous';
@@ -180,7 +179,7 @@ class TicketController extends Controller
             $ticketDirectorateId = null;
             $ticketDivisionId = null;
             $requesterDutyStation = null;
-        } elseif ($isEndUser) {
+        } else {
             $selfStaffId = (int) $profile->staff_id;
             $forOther = $request->filled('requester_staff_id')
                 && (int) $request->input('requester_staff_id') !== $selfStaffId;
@@ -214,21 +213,6 @@ class TicketController extends Controller
                 $ticketDivisionId = $profile->division_id;
             }
             $requesterDutyStation = $directoryLookup->dutyStationForStaffId((int) $requesterStaffId);
-        } else {
-            $requesterStaffId = (int) $request->validated('requester_staff_id');
-            $resolved = $directoryLookup->resolveByStaffId($requesterStaffId);
-            if ($resolved === null) {
-                abort(422, 'Requester not found in the Staff directory. Run directory sync in Settings → Jobs or pick another staff member.');
-            }
-            $requesterEmail = $resolved['work_email'];
-            if ($requesterEmail === '') {
-                abort(422, 'Selected requester has no work email in the Staff directory.');
-            }
-            $requesterName = $resolved['name'];
-            $agentLogged = true;
-            $ticketDirectorateId = $resolved['directorate_id'] ?? $profile->directorate_id;
-            $ticketDivisionId = $resolved['division_id'] ?? $profile->division_id;
-            $requesterDutyStation = $directoryLookup->dutyStationForStaffId($requesterStaffId);
         }
 
         $subjectName = $isAnonymous ? 'Anonymous' : $requesterName;
