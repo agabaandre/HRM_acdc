@@ -37,6 +37,8 @@ class LeaveRequestResource extends JsonResource
             'email_leave' => $this->email_leave,
             'mobile_leave' => $this->mobile_leave,
             'remarks' => $this->remarks,
+            'supporting_staff' => $this->supporting_staff,
+            'division_head' => (int) $this->division_head,
             'supporting_documentation' => $this->supporting_documentation,
             'created_at' => $this->created_at?->toIso8601String(),
             'workflow' => $this->workflowPayload(),

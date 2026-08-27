@@ -9,6 +9,7 @@ use Modules\Leave\Models\LeaveApprovalLevel;
 use Modules\Leave\Models\LeaveType;
 use Modules\Leave\Models\StaffLeave;
 use Modules\Leave\Models\StaffLeaveApprovalStep;
+use Modules\Leave\Models\StaffLeaveApprovalTrail;
 use Modules\Staff\Models\Staff;
 use Modules\Staff\Models\StaffContract;
 
@@ -41,6 +42,7 @@ class LeaveApprovalWorkflowService
                 if ($label !== '') {
                     $hodLabel = $label;
                 }
+
                 continue;
             }
             if ($role !== 'hr') {
@@ -167,6 +169,7 @@ class LeaveApprovalWorkflowService
                     'staff_id' => $hod['staff_id'] ?? null,
                     'staff_name' => $hod['name'] ?? null,
                 ];
+
                 continue;
             }
             $preview[] = [
@@ -214,6 +217,32 @@ class LeaveApprovalWorkflowService
         }
     }
 
+    public function recordSubmission(StaffLeave $leave): void
+    {
+        $this->appendTrail(
+            (int) $leave->request_id,
+            (int) $leave->staff_id,
+            'Submitted',
+            $leave->remarks,
+            null,
+            'employee',
+            'Employee',
+        );
+    }
+
+    public function resetStepsForResubmit(StaffLeave $leave, ?int $hodStaffId = null): void
+    {
+        $this->snapshotForRequest($leave, $hodStaffId);
+        $leave->approval_status = 'Pending';
+        $leave->approval_status1 = 'Pending';
+        $leave->approval_status2 = 'Pending';
+        $leave->approval_status3 = 'Pending';
+        $leave->overall_status = 'Pending';
+        $leave->reject_reason = null;
+        $leave->save();
+        $this->recordSubmission($leave);
+    }
+
     public function requestHasSteps(int $requestId): bool
     {
         if (! Schema::hasTable('staff_leave_approval_steps')) {
@@ -238,7 +267,26 @@ class LeaveApprovalWorkflowService
             throw new \InvalidArgumentException('You are not the current approver for this leave request.');
         }
 
+        $action = strtolower(trim($action));
+        $note = trim((string) $comments);
+
+        if ($action === 'return') {
+            if ($note === '') {
+                throw new \InvalidArgumentException('A comment is required when returning a leave request.');
+            }
+            $this->appendTrail($requestId, $actorStaffId, 'Returned', $note, $step);
+            $leave->overall_status = 'Returned';
+            $leave->reject_reason = $note;
+            $leave->updated_at = now();
+            $leave->save();
+
+            return;
+        }
+
         $approved = $action === 'approve';
+        if (! $approved && $action !== 'reject') {
+            throw new \InvalidArgumentException('Unknown approval action.');
+        }
         $status = $approved ? 'Approved' : 'Rejected';
         $step->status = $status;
         $step->comments = $comments;
@@ -246,6 +294,7 @@ class LeaveApprovalWorkflowService
         $step->acted_by = $actorStaffId;
         $step->save();
 
+        $this->appendTrail($requestId, $actorStaffId, $status, $note !== '' ? $note : null, $step);
         $this->syncLegacyColumn($leave, $step, $status);
 
         $wasOverall = (string) $leave->overall_status;
@@ -307,7 +356,29 @@ class LeaveApprovalWorkflowService
         return [
             'enabled' => true,
             'steps' => $payload,
+            'trail' => $this->serializeTrail(
+                (int) ($ordered->first()?->request_id ?? 0)
+            ),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function serializeTrail(int $requestId): array
+    {
+        if ($requestId < 1 || ! Schema::hasTable('staff_leave_approval_trail')) {
+            return [];
+        }
+
+        return StaffLeaveApprovalTrail::query()
+            ->with('actor')
+            ->where('request_id', $requestId)
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (StaffLeaveApprovalTrail $row): array => $this->serializeTrailRow($row))
+            ->values()
+            ->all();
     }
 
     /**
@@ -478,6 +549,50 @@ class LeaveApprovalWorkflowService
             'staff_name' => null,
             'label' => 'Head of Division',
             'locked' => true,
+        ];
+    }
+
+    protected function appendTrail(
+        int $requestId,
+        int $staffId,
+        string $action,
+        ?string $comments = null,
+        ?StaffLeaveApprovalStep $step = null,
+        ?string $role = null,
+        ?string $label = null,
+    ): void {
+        if (! Schema::hasTable('staff_leave_approval_trail')) {
+            return;
+        }
+
+        StaffLeaveApprovalTrail::query()->create([
+            'request_id' => $requestId,
+            'staff_id' => $staffId,
+            'step_id' => $step?->id,
+            'role' => $role ?? $step?->role,
+            'label' => $label ?? $step?->label,
+            'action' => $action,
+            'comments' => $comments,
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function serializeTrailRow(StaffLeaveApprovalTrail $row): array
+    {
+        $name = $row->actor?->fullName() ?: $this->staffName((int) $row->staff_id);
+
+        return [
+            'id' => (int) $row->id,
+            'staff_id' => (int) $row->staff_id,
+            'staff_name' => $name,
+            'role' => $row->role,
+            'label' => $row->label,
+            'action' => (string) $row->action,
+            'comments' => $row->comments,
+            'created_at' => $row->created_at?->toIso8601String(),
         ];
     }
 

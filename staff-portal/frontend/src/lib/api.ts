@@ -82,6 +82,17 @@ api.interceptors.request.use((config) => {
   if (t) {
     config.headers.Authorization = `Bearer ${t}`
   }
+  // Never force multipart Content-Type — the browser must set the boundary.
+  // A header without a boundary makes PHP skip the body and Laravel 419s CSRF.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    const headers = config.headers as { delete?: (name: string) => void } & Record<string, unknown>
+    if (typeof headers.delete === 'function') {
+      headers.delete('Content-Type')
+    } else {
+      delete headers['Content-Type']
+      delete headers['content-type']
+    }
+  }
   return config
 })
 

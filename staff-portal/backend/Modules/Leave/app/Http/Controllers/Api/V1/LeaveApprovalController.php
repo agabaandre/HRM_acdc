@@ -49,14 +49,28 @@ class LeaveApprovalController extends Controller
     public function decide(Request $request, int $id, LeaveRequestService $requests): JsonResponse
     {
         $validated = $request->validate([
-            'role' => 'nullable|string|in:supporting_staff,hr,supervisor,hod,workflow',
-            'action' => 'required|string|in:approve,reject',
+            'action' => 'required|string|in:approve,reject,return',
             'message' => 'nullable|string|max:500',
+            'role' => 'nullable|string|in:supporting_staff,hr,supervisor,hod,workflow',
         ]);
 
         $workflow = app(LeaveApprovalWorkflowService::class);
+        $action = $validated['action'];
         $message = $validated['message']
-            ?? ($validated['action'] === 'approve' ? 'Approved' : 'Rejected');
+            ?? ($action === 'approve' ? 'Approved' : ($action === 'return' ? 'Returned' : 'Rejected'));
+        $outcome = match ($action) {
+            'approve' => 'approved',
+            'return' => 'returned for revision',
+            default => 'rejected',
+        };
+
+        if ($workflow->requestHasSteps($id) && $action === 'return' && trim((string) ($validated['message'] ?? '')) === '') {
+            return response()->json(['message' => 'A comment is required when returning a leave request.'], 422);
+        }
+
+        if (! $workflow->requestHasSteps($id) && $action === 'return') {
+            return response()->json(['message' => 'Return is only available when the sequential approval workflow is enabled.'], 422);
+        }
 
         if ($workflow->requestHasSteps($id)) {
             $actorId = LeaveAccess::staffId();
@@ -96,7 +110,7 @@ class LeaveApprovalController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'message' => 'Leave request '.$message.'.',
+            'message' => 'Leave request '.$outcome.'.',
             'data' => new LeaveRequestResource($leave),
         ]);
     }

@@ -14,6 +14,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('leave/balances', LeaveBalanceController::class);
     Route::get('leave/requests', [LeaveRequestController::class, 'index']);
     Route::post('leave/requests', [LeaveRequestController::class, 'store']);
+    Route::get('leave/requests/{id}', [LeaveRequestController::class, 'show'])->whereNumber('id');
+    Route::post('leave/requests/{id}/resubmit', [LeaveRequestController::class, 'update'])->whereNumber('id');
     Route::get('leave/approvals', [LeaveApprovalController::class, 'index']);
     Route::post('leave/requests/{id}/decide', [LeaveApprovalController::class, 'decide'])
         ->whereNumber('id');

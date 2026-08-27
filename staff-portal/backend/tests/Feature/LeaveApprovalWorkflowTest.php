@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 use Modules\Leave\Models\LeaveType;
 use Modules\Leave\Models\StaffLeave;
 use Modules\Leave\Models\StaffLeaveApprovalStep;
+use Modules\Leave\Models\StaffLeaveApprovalTrail;
 use Modules\Leave\Models\StaffLeaveCompensatoryCredit;
 use Modules\Leave\Services\LeaveApprovalWorkflowService;
 use Modules\Leave\Services\LeavePolicyService;
@@ -189,6 +190,82 @@ class LeaveApprovalWorkflowTest extends TestCase
         $this->assertSame(1.0, (float) $credit->days_used);
     }
 
+    public function test_trail_keeps_submit_approve_and_return_history_across_resubmit(): void
+    {
+        $this->enableWorkflow();
+        $leave = $this->submitLeave();
+        $workflow = app(LeaveApprovalWorkflowService::class);
+        $requestId = (int) $leave->request_id;
+
+        $workflow->decide($requestId, 3, 'approve', 'HOD ok');
+        $workflow->decide($requestId, 4, 'return', 'Please fix the dates');
+
+        $leave->refresh();
+        $this->assertSame('Returned', $leave->overall_status);
+
+        $actions = StaffLeaveApprovalTrail::query()
+            ->where('request_id', $requestId)
+            ->orderBy('id')
+            ->pluck('action')
+            ->all();
+        $this->assertSame(['Submitted', 'Approved', 'Returned'], $actions);
+
+        $leave = app(LeaveRequestService::class)->resubmit($requestId, 1, [
+            'leave_id' => 1,
+            'start_date' => '2026-09-14',
+            'end_date' => '2026-09-15',
+            'requested_days' => 2,
+            'email_leave' => 'a@b.c',
+            'mobile_leave' => '1',
+            'supporting_staff' => '2',
+            'division_head' => 3,
+            'remarks' => 'Updated dates',
+        ]);
+
+        $this->assertSame('Pending', $leave->overall_status);
+        $this->assertSame(
+            ['Submitted', 'Approved', 'Returned', 'Submitted'],
+            StaffLeaveApprovalTrail::query()
+                ->where('request_id', $requestId)
+                ->orderBy('id')
+                ->pluck('action')
+                ->all()
+        );
+
+        $hod = StaffLeaveApprovalStep::query()
+            ->where('request_id', $requestId)
+            ->where('role', 'hod')
+            ->first();
+        $this->assertSame('Pending', $hod->status);
+
+        $workflow->decide($requestId, 3, 'approve');
+        $this->assertSame(
+            ['Submitted', 'Approved', 'Returned', 'Submitted', 'Approved'],
+            StaffLeaveApprovalTrail::query()
+                ->where('request_id', $requestId)
+                ->orderBy('id')
+                ->pluck('action')
+                ->all()
+        );
+    }
+
+    public function test_return_requires_comments_and_cannot_be_done_by_later_step(): void
+    {
+        $this->enableWorkflow();
+        $leave = $this->submitLeave();
+        $workflow = app(LeaveApprovalWorkflowService::class);
+
+        try {
+            $workflow->decide((int) $leave->request_id, 3, 'return', '');
+            $this->fail('Return must require comments.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('comment', strtolower($e->getMessage()));
+        }
+
+        $this->expectException(\InvalidArgumentException::class);
+        $workflow->decide((int) $leave->request_id, 4, 'return', 'Fix this');
+    }
+
     protected function enableWorkflow(): void
     {
         app(LeaveApprovalWorkflowService::class)->saveDefinition(true, [
@@ -322,6 +399,17 @@ class LeaveApprovalWorkflowTest extends TestCase
             $table->timestamp('acted_at')->nullable();
             $table->unsignedInteger('acted_by')->nullable();
             $table->timestamps();
+        });
+        Schema::create('staff_leave_approval_trail', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedInteger('request_id');
+            $table->unsignedInteger('staff_id')->default(0);
+            $table->unsignedInteger('step_id')->nullable();
+            $table->string('role', 20)->nullable();
+            $table->string('label', 120)->nullable();
+            $table->string('action', 40);
+            $table->text('comments')->nullable();
+            $table->timestamp('created_at')->nullable();
         });
     }
 

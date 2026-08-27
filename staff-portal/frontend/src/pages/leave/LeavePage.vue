@@ -55,6 +55,17 @@ const reqPerPage = ref(25)
 const apprPage = ref(1)
 const apprPerPage = ref(25)
 const expandedRequestId = ref<number | null>(null)
+const returnForId = ref<number | null>(null)
+const returnComment = ref('')
+const returning = ref(false)
+const returnDialog = computed({
+  get: () => returnForId.value != null,
+  set: (open: boolean) => {
+    if (!open) returnForId.value = null
+  },
+})
+
+const myStaffId = computed(() => Number(auth.me?.profile?.staff_id || 0))
 
 const isHr = computed(() => !!auth.me?.profile?.is_hr || auth.me?.profile?.role_id === 20)
 const canViewAll = computed(
@@ -155,6 +166,7 @@ function formatDays(value: number | string | null | undefined): string {
 function statusColor(status: string): string {
   if (status === 'Approved') return 'success'
   if (status === 'Rejected') return 'error'
+  if (status === 'Returned') return 'info'
   return 'warning'
 }
 
@@ -171,6 +183,7 @@ function workflowSummary(req: LeaveRequestDto): string {
   if (!steps?.length) return ''
   if (req.overall_status === 'Approved') return `Complete · ${steps.length} steps`
   if (req.overall_status === 'Rejected') return 'Rejected'
+  if (req.overall_status === 'Returned') return 'Returned to employee'
   const current = steps.find((step) => step.is_current)
   const done = steps.filter((step) => step.status === 'Approved').length
   if (current) return `${done + 1}/${steps.length} · ${current.label}`
@@ -442,15 +455,42 @@ const leaveTabItems = computed<PortalPillNavItem[]>(() => [
   },
 ])
 
-async function onDecide(id: number, role: string, action: 'approve' | 'reject') {
+async function onDecide(id: number, role: string, action: 'approve' | 'reject' | 'return', message?: string) {
   success.value = null
   error.value = null
   try {
-    await decideLeaveRequest(id, { role, action })
-    success.value = `Leave request ${action === 'approve' ? 'Approved' : 'Rejected'}.`
+    await decideLeaveRequest(id, { role, action, message })
+    success.value =
+      action === 'approve'
+        ? 'Leave request approved.'
+        : action === 'return'
+          ? 'Leave request returned for revision.'
+          : 'Leave request rejected.'
     await loadTab()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not update leave request')
+  }
+}
+
+function openReturn(id: number) {
+  returnForId.value = id
+  returnComment.value = ''
+}
+
+async function confirmReturn() {
+  if (!returnForId.value) return
+  const note = returnComment.value.trim()
+  if (!note) {
+    error.value = 'A comment is required when returning a leave request.'
+    return
+  }
+  returning.value = true
+  try {
+    await onDecide(returnForId.value, 'workflow', 'return', note)
+    returnForId.value = null
+    returnComment.value = ''
+  } finally {
+    returning.value = false
   }
 }
 
@@ -809,6 +849,7 @@ onMounted(() => {
               :items="[
                 { title: 'All statuses', value: '' },
                 { title: 'Pending', value: 'Pending' },
+                { title: 'Returned', value: 'Returned' },
                 { title: 'Approved', value: 'Approved' },
                 { title: 'Rejected', value: 'Rejected' },
               ]"
@@ -897,6 +938,14 @@ onMounted(() => {
                   <v-chip size="small" :color="statusColor(req.overall_status)" variant="tonal">
                     {{ req.overall_status }}
                   </v-chip>
+                  <RouterLink
+                    v-if="req.overall_status === 'Returned' && req.staff_id === myStaffId"
+                    class="leave-wf-link ms-2"
+                    :to="{ path: '/leave/apply', query: { request_id: String(req.request_id) } }"
+                    @click.stop
+                  >
+                    Revise
+                  </RouterLink>
                 </td>
                 <td>
                   <button
@@ -919,7 +968,10 @@ onMounted(() => {
                 <td :colspan="requestColspan()">
                   <div class="leave-wf-panel">
                     <div class="leave-wf-panel__title">Approval workflow</div>
-                    <LeaveApprovalTrail :steps="req.workflow?.steps || []" />
+                    <LeaveApprovalTrail
+                      :steps="req.workflow?.steps || []"
+                      :trail="req.workflow?.trail || []"
+                    />
                   </div>
                 </td>
               </tr>
@@ -1077,10 +1129,20 @@ onMounted(() => {
                         size="x-small"
                         variant="outlined"
                         color="error"
+                        class="me-1"
                         @click="onDecide(req.request_id, 'workflow', 'reject')"
                       >
                         <i class="fa-solid fa-xmark me-1" aria-hidden="true" />
                         Reject
+                      </v-btn>
+                      <v-btn
+                        size="x-small"
+                        variant="tonal"
+                        color="warning"
+                        @click="openReturn(req.request_id)"
+                      >
+                        <i class="fa-solid fa-rotate-left me-1" aria-hidden="true" />
+                        Return
                       </v-btn>
                     </template>
                     <span v-else class="text-caption text-medium-emphasis">Waiting on another step</span>
@@ -1133,7 +1195,10 @@ onMounted(() => {
                 <td colspan="8">
                   <div class="leave-wf-panel">
                     <div class="leave-wf-panel__title">Approval workflow</div>
-                    <LeaveApprovalTrail :steps="req.workflow?.steps || []" />
+                    <LeaveApprovalTrail
+                      :steps="req.workflow?.steps || []"
+                      :trail="req.workflow?.trail || []"
+                    />
                   </div>
                 </td>
               </tr>
@@ -1159,6 +1224,29 @@ onMounted(() => {
         </div>
       </v-card>
     </div>
+
+    <v-dialog v-model="returnDialog" max-width="480">
+      <v-card>
+        <v-card-title>Return for revision</v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-medium-emphasis mb-3">
+            The employee can update the request and resubmit. This is recorded on the approval trail.
+          </p>
+          <v-textarea
+            v-model="returnComment"
+            label="Comment for the employee"
+            rows="3"
+            auto-grow
+            hide-details="auto"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="returnForId = null">Cancel</v-btn>
+          <v-btn color="warning" :loading="returning" @click="confirmReturn">Return</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 

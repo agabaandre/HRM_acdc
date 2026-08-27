@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import CbpPageHeading from '@cbp/common/CbpPageHeading.vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalBtn from '@/components/molecules/PortalBtn.vue'
@@ -9,8 +9,10 @@ import {
   fetchActiveLeaveTypes,
   fetchBalanceForType,
   fetchLeaveApplyRules,
+  fetchLeaveRequest,
   fetchSupportingOfficers,
   fetchWorkingDays,
+  resubmitLeaveRequest,
   submitLeaveRequest,
   type LeaveApplyRules,
   type LeaveBalanceDto,
@@ -20,6 +22,9 @@ import {
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const revisingId = ref<number | null>(null)
+const existingDocument = ref(false)
 
 const types = ref<LeaveTypeDto[]>([])
 const officers = ref<LeaveSupportingOfficer[]>([])
@@ -32,7 +37,6 @@ const emailLeave = ref(auth.me?.email ?? '')
 const mobileLeave = ref('')
 const supportingStaff = ref<number | null>(null)
 const divisionHead = ref<number | null>(null)
-const remarks = ref('')
 const documentFile = ref<File | null>(null)
 const balance = ref<LeaveBalanceDto | null>(null)
 const loading = ref(false)
@@ -153,7 +157,24 @@ async function loadFormMeta() {
     types.value = leaveTypes
     officers.value = supportingOfficers
     applyRules.value = rules
-    if (rules.default_hod?.staff_id) {
+    const requestId = Number(route.query.request_id || 0)
+    if (requestId > 0) {
+      const existing = await fetchLeaveRequest(requestId)
+      if (existing.overall_status !== 'Returned') {
+        error.value = 'Only returned leave requests can be revised.'
+      } else {
+        revisingId.value = existing.request_id
+        leaveId.value = existing.leave_id
+        startDate.value = existing.start_date || ''
+        endDate.value = existing.end_date || ''
+        requestedDays.value = existing.requested_days
+        emailLeave.value = existing.email_leave || emailLeave.value
+        mobileLeave.value = existing.mobile_leave || ''
+        supportingStaff.value = existing.supporting_staff ? Number(existing.supporting_staff) : null
+        divisionHead.value = existing.division_head ? Number(existing.division_head) : null
+        existingDocument.value = Boolean(existing.supporting_documentation)
+      }
+    } else if (rules.default_hod?.staff_id) {
       divisionHead.value = Number(rules.default_hod.staff_id)
     }
   } catch (e) {
@@ -248,7 +269,7 @@ async function onSubmit() {
     return
   }
   if (!mobileLeave.value.trim()) {
-    error.value = 'Mobile while on leave is required.'
+    error.value = 'Phone number on leave is required.'
     return
   }
   const officerId = Number(supportingStaff.value)
@@ -260,7 +281,7 @@ async function onSubmit() {
     error.value = 'Select a Head of Division.'
     return
   }
-  if (documentRequired.value && !documentFile.value) {
+  if (documentRequired.value && !documentFile.value && !existingDocument.value) {
     error.value = 'A medical certificate is required for this leave type.'
     return
   }
@@ -276,17 +297,20 @@ async function onSubmit() {
   if (workflowEnabled.value && divisionHead.value) {
     form.append('division_head', String(divisionHead.value))
   }
-  form.append('remarks', remarks.value)
   if (documentFile.value) {
     form.append('document', documentFile.value)
   }
 
   submitting.value = true
   try {
-    await submitLeaveRequest(form)
+    if (revisingId.value) {
+      await resubmitLeaveRequest(revisingId.value, form)
+    } else {
+      await submitLeaveRequest(form)
+    }
     await router.push({ path: '/leave', query: { view: 'requests' } })
   } catch (e) {
-    error.value = apiErrorMessage(e, 'Could not submit leave request')
+    error.value = apiErrorMessage(e, revisingId.value ? 'Could not resubmit leave request' : 'Could not submit leave request')
   } finally {
     submitting.value = false
   }
@@ -301,7 +325,10 @@ onMounted(() => {
 <template>
   <div class="leave-apply">
     <div class="d-flex justify-space-between align-center mb-3">
-      <CbpPageHeading title="Apply for leave" subtitle="Submit a leave request for approval." />
+      <CbpPageHeading
+        :title="revisingId ? 'Revise leave request' : 'Apply for leave'"
+        :subtitle="revisingId ? 'Update the returned request and resubmit it for approval.' : 'Submit a leave request for approval.'"
+      />
       <RouterLink to="/leave" style="text-decoration: none">
         <v-btn variant="outlined" size="small">Back</v-btn>
       </RouterLink>
@@ -311,8 +338,8 @@ onMounted(() => {
     <div v-if="loading" class="text-medium-emphasis">Loading…</div>
 
     <form v-else class="leave-apply__form" @submit.prevent="onSubmit">
-      <v-card variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">1. Leave details</v-card-title>
+      <v-card variant="outlined" class="leave-apply__section mb-4">
+        <v-card-title class="text-h6 leave-apply__section-title">1. Leave details</v-card-title>
         <v-card-text>
           <v-row>
             <v-col cols="12" md="7">
@@ -371,8 +398,8 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
-      <v-card variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">2. Contact while away</v-card-title>
+      <v-card variant="outlined" class="leave-apply__section mb-4">
+        <v-card-title class="text-h6 leave-apply__section-title">2. Contact while away</v-card-title>
         <v-card-text>
           <v-row>
             <v-col cols="12" md="6">
@@ -387,7 +414,8 @@ onMounted(() => {
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="mobileLeave"
-                label="Mobile while on leave"
+                type="tel"
+                label="Phone number on leave"
                 density="comfortable"
                 hide-details="auto"
               />
@@ -396,8 +424,8 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
-      <v-card variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">3. Coverage &amp; documents</v-card-title>
+      <v-card variant="outlined" class="leave-apply__section mb-4">
+        <v-card-title class="text-h6 leave-apply__section-title">3. Coverage &amp; documents</v-card-title>
         <v-card-text>
           <v-row>
             <v-col cols="12" md="6">
@@ -519,8 +547,8 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
-      <v-card v-if="workflowEnabled" variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">4. Approval workflow</v-card-title>
+      <v-card v-if="workflowEnabled" variant="outlined" class="leave-apply__section mb-4">
+        <v-card-title class="text-h6 leave-apply__section-title">4. Approval workflow</v-card-title>
         <v-card-text>
           <p class="text-body-2 text-medium-emphasis mb-3">
             Your request will move through these approvers in order. The Head of Division is first.
@@ -534,35 +562,30 @@ onMounted(() => {
         </v-card-text>
       </v-card>
 
-      <v-card variant="outlined" class="mb-3">
-        <v-card-title class="leave-apply__section-title">
-          {{ workflowEnabled ? '5. Remarks' : '4. Remarks' }}
-        </v-card-title>
-        <v-card-text>
-          <v-textarea
-            v-model="remarks"
-            label="Remarks / reason"
-            rows="3"
-            density="comfortable"
-            hide-details="auto"
-            placeholder="Optional notes for approvers"
-          />
-        </v-card-text>
-        <v-card-actions class="px-4 pb-4">
-          <v-spacer />
-          <PortalBtn type="submit" :loading="submitting">Submit request</PortalBtn>
-        </v-card-actions>
-      </v-card>
+      <div class="leave-apply__actions">
+        <PortalBtn type="submit" :loading="submitting">
+          {{ revisingId ? 'Resubmit request' : 'Submit request' }}
+        </PortalBtn>
+      </div>
     </form>
   </div>
 </template>
 
 <style scoped>
 .leave-apply__section-title {
-  font-size: 1rem;
-  font-weight: 650;
+  font-weight: 500;
   color: #3a4752;
-  padding-bottom: 0;
+  padding-top: 1.15rem;
+  padding-bottom: 0.85rem;
+}
+.leave-apply__section :deep(.v-card-text) {
+  padding-top: 0.85rem;
+  padding-bottom: 1.25rem;
+}
+.leave-apply__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.25rem 0 0.5rem;
 }
 .leave-apply__selection {
   overflow: hidden;

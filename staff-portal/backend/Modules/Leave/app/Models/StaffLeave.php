@@ -67,4 +67,10 @@ class StaffLeave extends Model
             ->orderBy('sort_order')
             ->orderBy('id');
     }
+
+    public function approvalTrails(): HasMany
+    {
+        return $this->hasMany(StaffLeaveApprovalTrail::class, 'request_id', 'request_id')
+            ->orderBy('id');
+    }
 }

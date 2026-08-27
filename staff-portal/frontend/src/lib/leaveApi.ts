@@ -52,9 +52,21 @@ export interface LeaveWorkflowStep {
   can_act: boolean
 }
 
+export interface LeaveWorkflowTrailEntry {
+  id: number
+  staff_id: number
+  staff_name?: string | null
+  role?: string | null
+  label?: string | null
+  action: string
+  comments?: string | null
+  created_at?: string | null
+}
+
 export interface LeaveRequestWorkflow {
   enabled: boolean
   steps: LeaveWorkflowStep[]
+  trail?: LeaveWorkflowTrailEntry[]
 }
 
 export interface LeaveRequestDto {
@@ -71,6 +83,9 @@ export interface LeaveRequestDto {
   email_leave?: string | null
   mobile_leave?: string | null
   remarks?: string | null
+  supporting_staff?: string | number | null
+  division_head?: number | null
+  supporting_documentation?: string | null
   workflow?: LeaveRequestWorkflow | null
 }
 
@@ -166,7 +181,7 @@ export async function fetchLeaveApprovals(): Promise<{
 
 export async function decideLeaveRequest(
   id: number,
-  payload: { role?: string; action: 'approve' | 'reject'; message?: string },
+  payload: { role?: string; action: 'approve' | 'reject' | 'return'; message?: string },
 ): Promise<void> {
   await api.post(`/api/v1/leave/requests/${id}/decide`, payload)
   clearApiCache('leave:requests')
@@ -262,11 +277,21 @@ export async function fetchSupportingOfficers(): Promise<LeaveSupportingOfficer[
 }
 
 export async function submitLeaveRequest(form: FormData): Promise<void> {
-  await api.post('/api/v1/leave/requests', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  await api.post('/api/v1/leave/requests', form)
   clearApiCache('leave:requests')
   clearApiCache('leave:balances')
+}
+
+export async function fetchLeaveRequest(id: number): Promise<LeaveRequestDto> {
+  const { data } = await api.get<{ data: LeaveRequestDto }>(`/api/v1/leave/requests/${id}`)
+  return data.data
+}
+
+export async function resubmitLeaveRequest(id: number, form: FormData): Promise<void> {
+  await api.post(`/api/v1/leave/requests/${id}/resubmit`, form)
+  clearApiCache('leave:requests')
+  clearApiCache('leave:balances')
+  clearApiCache('leave:approvals')
 }
 
 export interface LeavePlanEntryDto {
