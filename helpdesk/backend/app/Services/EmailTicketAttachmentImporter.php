@@ -93,7 +93,9 @@ class EmailTicketAttachmentImporter
 
         $decoded = $this->bodyNormalizer->decodeOverEscapedHtml($rawBody);
 
-        return $this->bodyNormalizer->stripHtmlReplies($decoded);
+        return $this->bodyNormalizer->stripHtmlSignatures(
+            $this->bodyNormalizer->stripHtmlReplies($decoded)
+        );
     }
 
     /**
@@ -113,7 +115,7 @@ class EmailTicketAttachmentImporter
         }
 
         $name = basename(str_replace('\\', '/', (string) ($item['name'] ?? 'attachment')));
-        if ($name === '' || $this->isBlockedName($name)) {
+        if ($name === '' || $this->isBlockedName($name) || $this->isSignatureAttachment($name, $item)) {
             return null;
         }
 
@@ -134,14 +136,18 @@ class EmailTicketAttachmentImporter
             return null;
         }
 
+        $contentId = $this->normalizeContentId(isset($item['contentId']) ? (string) $item['contentId'] : null);
+        $referenced = $contentId !== null && $this->bodyReferencesCid($workingBody, $contentId);
+        $isImage = str_starts_with($mime, 'image/') || (bool) preg_match('/\.(jpe?g|png|gif|webp|bmp)$/i', $name);
+        if ($isImage && $this->isInlineFlag($item) && ! $referenced) {
+            return null;
+        }
+
         $bytes = $this->attachmentBytes($mailbox, $graphMessageId, $item);
         if ($bytes === null) {
             return null;
         }
 
-        $contentId = $this->normalizeContentId(isset($item['contentId']) ? (string) $item['contentId'] : null);
-        $referenced = $contentId !== null && $this->bodyReferencesCid($workingBody, $contentId);
-        $isImage = str_starts_with($mime, 'image/') || (bool) preg_match('/\.(jpe?g|png|gif|webp|bmp)$/i', $name);
         $storeInline = $referenced && $isImage;
 
         $dir = $storeInline
@@ -209,6 +215,31 @@ class EmailTicketAttachmentImporter
     private function isBlockedName(string $name): bool
     {
         return in_array(strtolower($name), self::BLOCKED_NAMES, true);
+    }
+
+    /**
+     * CodeTwo / Exchange signature assets (social icons, banners, logo slices).
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function isSignatureAttachment(string $name, array $item): bool
+    {
+        $hay = strtolower($name.' '.(string) ($item['contentId'] ?? ''));
+
+        return str_contains($hay, 'c2_signature_');
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function isInlineFlag(array $item): bool
+    {
+        $flag = $item['isInline'] ?? false;
+        if (is_bool($flag)) {
+            return $flag;
+        }
+
+        return filter_var($flag, FILTER_VALIDATE_BOOLEAN) || $flag === 1 || $flag === '1';
     }
 
     private function isAllowed(string $name, string $mime): bool

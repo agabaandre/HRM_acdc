@@ -203,6 +203,111 @@ class BusinessUnitMailboxIntakeTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('public')->exists($pdfRow->path));
     }
 
+    public function test_email_signature_images_are_not_stored_as_ticket_attachments(): void
+    {
+        Bus::fake([CategorizeTicketWithAi::class]);
+        $this->seed(HelpdeskCategorySeeder::class);
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        HelpdeskSetting::query()->updateOrCreate(
+            ['key' => HelpdeskSetting::KEY_EMAIL_TICKET_INTAKE_ENABLED],
+            ['value' => '1']
+        );
+
+        $unit = HelpdeskBusinessUnit::query()->where('slug', 'it-mis')->firstOrFail();
+        $unit->update([
+            'email_intake_enabled' => true,
+            'support_mailbox' => 'helpdesk@africacdc.org',
+        ]);
+
+        $png = base64_encode(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true) ?: 'png');
+        $pdf = base64_encode('%PDF-1.4 fake');
+
+        $fake = new class($png, $pdf) extends ExchangeGraphMailReader
+        {
+            public function __construct(private string $png, private string $pdf) {}
+
+            public function listUnreadInbox(string $mailboxUpn, int $top = 25): array
+            {
+                return [[
+                    'id' => 'msg-sig-1',
+                    'internetMessageId' => '<sig@b>',
+                    'subject' => 'Processing Email tickets',
+                    'bodyPreview' => 'Test email tickets',
+                    'body' => [
+                        'contentType' => 'html',
+                        'content' => '<p>Test email tickets</p>'
+                            .'<div id="Signature">'
+                            .'<p>Agaba Andrew<br>Software Developer<br>Africa Centres for Disease Control and Prevention<br>'
+                            .'Ring Road, 16/17, Haile Garment Square, P.O. Box 3243, Addis Ababa, Ethiopia</p>'
+                            .'<img src="cid:C2_signature_facebook_11560c04-a2fe-43e8-b56d-aab6d2b04dfc.png">'
+                            .'<img src="cid:C2_signature_emailbanner-02_f69248d2-b624-4cd3-a187-207e1ac42140.jpg">'
+                            .'</div>',
+                    ],
+                    'from' => ['emailAddress' => ['name' => 'Agaba Andrew', 'address' => 'AndrewA@africacdc.org']],
+                    'receivedDateTime' => now()->toIso8601String(),
+                ]];
+            }
+
+            public function listMessageAttachments(string $mailboxUpn, string $messageId): array
+            {
+                return [
+                    [
+                        '@odata.type' => '#microsoft.graph.fileAttachment',
+                        'id' => 'att-fb',
+                        'name' => 'C2_signature_facebook_11560c04-a2fe-43e8-b56d-aab6d2b04dfc.png',
+                        'contentType' => 'image/png',
+                        'size' => 80,
+                        'isInline' => true,
+                        'contentId' => 'C2_signature_facebook_11560c04-a2fe-43e8-b56d-aab6d2b04dfc.png',
+                        'contentBytes' => $this->png,
+                    ],
+                    [
+                        '@odata.type' => '#microsoft.graph.fileAttachment',
+                        'id' => 'att-banner',
+                        'name' => 'C2_signature_emailbanner-02_f69248d2-b624-4cd3-a187-207e1ac42140.jpg',
+                        'contentType' => 'image/jpeg',
+                        'size' => 80,
+                        'isInline' => true,
+                        'contentId' => 'C2_signature_emailbanner-02_f69248d2-b624-4cd3-a187-207e1ac42140.jpg',
+                        'contentBytes' => $this->png,
+                    ],
+                    [
+                        '@odata.type' => '#microsoft.graph.fileAttachment',
+                        'id' => 'att-pdf',
+                        'name' => 'error-log.pdf',
+                        'contentType' => 'application/pdf',
+                        'size' => 20,
+                        'isInline' => false,
+                        'contentBytes' => $this->pdf,
+                    ],
+                ];
+            }
+
+            public function ensureProcessedFolderId(string $mailboxUpn): string
+            {
+                return 'folder-processed';
+            }
+
+            public function markReadAndMoveToProcessed(string $mailboxUpn, string $messageId): void {}
+        };
+
+        $this->app->instance(ExchangeGraphMailReader::class, $fake);
+
+        $result = app(BusinessUnitMailboxIntakeService::class)->pollUnit($unit->fresh());
+        $this->assertSame(1, $result['created']);
+
+        $ticket = HelpdeskTicket::query()->where('source', 'email')->first();
+        $this->assertNotNull($ticket);
+        $ticket->load('attachments');
+        $this->assertStringContainsString('Test email tickets', (string) $ticket->description);
+        $this->assertStringNotContainsString('Agaba Andrew', (string) $ticket->description);
+        $this->assertStringNotContainsString('C2_signature_', (string) $ticket->description);
+
+        $names = $ticket->attachments->pluck('original_name')->all();
+        $this->assertSame(['error-log.pdf'], $names);
+    }
+
     public function test_disabled_intake_skips_mailbox(): void
     {
         Bus::fake([CategorizeTicketWithAi::class]);
