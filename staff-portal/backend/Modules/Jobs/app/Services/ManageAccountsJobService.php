@@ -10,13 +10,14 @@ class ManageAccountsJobService
     public function __construct(private StaffPortalAccountService $accounts) {}
 
     /**
-     * @return array{created:int, enabled:int, disabled:int}
+     * @return array{created:int, enabled:int, disabled:int, renamed:int}
      */
     public function syncAll(): array
     {
         $created = 0;
         $enabled = 0;
         $disabled = 0;
+        $renamed = 0;
 
         $staffIds = DB::table('staff')
             ->whereRaw("TRIM(COALESCE(work_email, '')) != ''")
@@ -31,10 +32,11 @@ class ManageAccountsJobService
                 'created' => $created++,
                 'enabled' => $enabled++,
                 'disabled' => $disabled++,
+                'updated_name' => $renamed++,
                 default => null,
             };
         }
 
-        return compact('created', 'enabled', 'disabled');
+        return compact('created', 'enabled', 'disabled', 'renamed');
     }
 }

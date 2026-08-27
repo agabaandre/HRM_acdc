@@ -3,6 +3,7 @@
 namespace Modules\Staff\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class StaffPortalAccountService
 {
@@ -46,15 +47,26 @@ class StaffPortalAccountService
 
         $eligible = in_array($statusId, $this->eligibleContractStatusIds(), true);
         $existing = DB::table('user')->where('auth_staff_id', $staffId)->first();
+        $displayName = trim(($staff->fname ?? '').' '.($staff->lname ?? ''));
 
         if ($eligible) {
             if ($existing) {
+                $payload = [];
+                if ($displayName !== '' && (string) $existing->name !== $displayName) {
+                    $payload['name'] = $displayName;
+                }
                 if ((int) $existing->status !== 1) {
+                    $payload['status'] = 1;
+                }
+                if ($payload !== []) {
                     $changed = DB::table('user')
                         ->where('auth_staff_id', $staffId)
-                        ->update(['status' => 1]) > 0;
+                        ->update($payload) > 0;
 
-                    return ['action' => 'enabled', 'changed' => $changed];
+                    return [
+                        'action' => isset($payload['status']) ? 'enabled' : 'updated_name',
+                        'changed' => $changed,
+                    ];
                 }
 
                 return ['action' => 'already_active', 'changed' => false];
@@ -62,12 +74,12 @@ class StaffPortalAccountService
 
             $defaultPassword = (string) (DB::table('setting')->value('default_password') ?: 'africacdc.org');
             $payload = [
-                'name' => trim(($staff->lname ?? '').' '.($staff->fname ?? '')),
+                'name' => $displayName,
                 'status' => 1,
                 'password' => password_hash($defaultPassword, PASSWORD_ARGON2ID),
                 'role' => 17,
             ];
-            if (\Illuminate\Support\Facades\Schema::hasColumn('user', 'allow_email_login')) {
+            if (Schema::hasColumn('user', 'allow_email_login')) {
                 $payload['allow_email_login'] = 0;
             }
             $changed = DB::table('user')->updateOrInsert(

@@ -282,6 +282,7 @@ private function handle_login($user_data, $email) {
   $contract = $this->staff_mdl->get_latest_contracts($user_data->auth_staff_id);
   $users = array_merge((array)$user_data, (array)$contract);
   unset($users['password']);
+  $users = staff_apply_session_display_name($users);
 
   $users['permissions'] = $this->auth_mdl->user_permissions($users['role'],$users['user_id']);
   $users['is_admin'] = false;
@@ -359,6 +360,7 @@ public function cred_login()
     $users_array = (array)$data['users'];
     $contract_array = (array)$data['contract'];
     $users = array_merge($users_array, $contract_array);
+    $users = staff_apply_session_display_name($users);
     
     // Use the stored hash from the database
     $dbpassword = $data['users']->password;
@@ -419,6 +421,7 @@ public function impersonate($user_id)
     $user_array = (array)$user;
     $contract_array = (array)$contract;
     $merged = array_merge($user_array, $contract_array);
+    $merged = staff_apply_session_display_name($merged);
 
     unset($merged['password']);
     $merged['permissions'] = $this->auth_mdl->user_permissions($merged['role'],$merged['user_id']);
@@ -1270,7 +1273,7 @@ public function revert()
   $final=array();
   $staffs =  $this->db->query("SELECT staff.*, staff_contracts.division_id,staff_contracts.staff_contract_id from staff join staff_contracts on staff.staff_id=staff_contracts.staff_id where work_email!='' and staff_contracts.status_id in (1,2,7) and staff.staff_id not in (SELECT DISTINCT auth_staff_id from user)")->result();
     foreach ($staffs as $staff):
-      $users['name'] = $staff->lname . ' ' . $staff->fname;
+      $users['name'] = trim($staff->fname . ' ' . $staff->lname);
       $users['status'] = 1;
       $users['auth_staff_id'] = $staff->staff_id;
       $users['password'] =$this->argonhash->make(setting()->default_password);

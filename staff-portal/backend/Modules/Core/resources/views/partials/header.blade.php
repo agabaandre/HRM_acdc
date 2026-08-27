@@ -4,7 +4,10 @@
 --}}
 @php
     $user = session('user', []);
-    $userName = $user['name'] ?? auth()->user()?->name ?? 'User';
+    $userName = trim(($user['fname'] ?? '').' '.($user['lname'] ?? ''));
+    if ($userName === '') {
+        $userName = $user['name'] ?? auth()->user()?->name ?? 'User';
+    }
     // PortalNavigation::cbpModulesPayload() → core::partials.cbp-modules-dropdown
     $cbpNav = \Modules\Core\Support\PortalNavigation::cbpModulesPayload();
 @endphp

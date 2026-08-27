@@ -117,18 +117,19 @@
 				<a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 
 					<?php
-					$full_name = $this->session->userdata('user')->name;
+					$sessionUser = $this->session->userdata('user');
+					$full_name = staff_session_display_name($sessionUser);
 					$name_parts = explode(" ", trim($full_name), 2);
 					$surname = isset($name_parts[1]) ? $name_parts[1] : '';
 					$other_name = $name_parts[0];
-					$image_path = staff_secure_upload_url('photo', $this->session->userdata('user')->photo ?? '');
-					$photo = $this->session->userdata('user')->photo;
+					$image_path = staff_secure_upload_url('photo', $sessionUser->photo ?? '');
+					$photo = $sessionUser->photo ?? '';
 					echo  $staff_photo = generate_user_avatar($other_name, $surname, $image_path, $photo);
 
 					?>
 
 					<div class="user-info ps-3">
-						<p class="user-name mb-0"><?php echo $this->session->userdata('user')->name; ?></p>
+						<p class="user-name mb-0"><?php echo htmlspecialchars($full_name); ?></p>
 						<p class="designattion mb-0"></p>
 					</div>
 				</a>

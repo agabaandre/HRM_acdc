@@ -1052,6 +1052,49 @@ if (!function_exists('endterm_reminder_period')) {
     }
 }
 
+if (!function_exists('staff_session_display_name')) {
+    /**
+     * Live display name from staff first/last name (same source as new Staff Portal).
+     *
+     * @param  object|array|null  $user
+     */
+    function staff_session_display_name($user = null): string
+    {
+        if ($user === null) {
+            $ci = &get_instance();
+            $user = $ci->session->userdata('user');
+        }
+        if (is_array($user)) {
+            $user = (object) $user;
+        }
+        if (! is_object($user)) {
+            return '';
+        }
+        $composed = trim((string) ($user->fname ?? '') . ' ' . (string) ($user->lname ?? ''));
+        if ($composed !== '') {
+            return $composed;
+        }
+
+        return trim((string) ($user->name ?? ''));
+    }
+}
+
+if (!function_exists('staff_apply_session_display_name')) {
+    /**
+     * @param  array<string, mixed>  $users
+     * @return array<string, mixed>
+     */
+    function staff_apply_session_display_name(array $users): array
+    {
+        $composed = trim((string) ($users['fname'] ?? '') . ' ' . (string) ($users['lname'] ?? ''));
+        if ($composed !== '') {
+            $users['name'] = $composed;
+        }
+
+        return $users;
+    }
+}
+
 if (!function_exists('get_staff_name')) {
 
     function staff_name($id)

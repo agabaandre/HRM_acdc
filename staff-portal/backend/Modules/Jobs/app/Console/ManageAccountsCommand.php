@@ -15,10 +15,11 @@ class ManageAccountsCommand extends Command
     {
         $stats = $service->syncAll();
         $this->info(sprintf(
-            'created=%d enabled=%d disabled=%d',
+            'created=%d enabled=%d disabled=%d renamed=%d',
             $stats['created'],
             $stats['enabled'],
             $stats['disabled'],
+            $stats['renamed'] ?? 0,
         ));
 
         return self::SUCCESS;

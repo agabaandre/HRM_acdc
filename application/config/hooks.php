@@ -21,6 +21,14 @@ $hook['pre_controller'][] = array(
 
 $hook['post_controller_constructor'][] = array(
     'class'    => '',
+    'function' => 'refresh_session_staff_identity',
+    'filename' => 'RefreshSessionStaffIdentity.php',
+    'filepath' => 'hooks',
+    'params'   => array()
+);
+
+$hook['post_controller_constructor'][] = array(
+    'class'    => '',
     'function' => 'log_user_route_access',
     'filename' => 'LogUserAccess.php',
     'filepath' => 'hooks',

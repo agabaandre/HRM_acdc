@@ -80,10 +80,17 @@
                         <div class="user-box dropdown">
                             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret"
                                 href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                @php
+                                    $apmUser = session('user', []);
+                                    $apmDisplayName = trim(($apmUser['fname'] ?? '').' '.($apmUser['lname'] ?? ''));
+                                    if ($apmDisplayName === '') {
+                                        $apmDisplayName = (string) ($apmUser['name'] ?? session('user.name', ''));
+                                    }
+                                @endphp
                                 {!!user_info()!!}
 
                                 <div class="user-info ps-3">
-                                    <p class="user-name mb-0">{{ session('user.name', '') }}</p>
+                                    <p class="user-name mb-0">{{ $apmDisplayName }}</p>
                                     <p class="designattion mb-0"></p>
                                 </div>
                             </a>
