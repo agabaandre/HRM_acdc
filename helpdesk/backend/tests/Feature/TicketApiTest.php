@@ -132,6 +132,82 @@ class TicketApiTest extends TestCase
         $this->assertSame([$firstId, $secondId], array_slice($ascIds, 0, 2));
     }
 
+    public function test_ticket_list_puts_latest_unassigned_ahead_of_assigned(): void
+    {
+        $this->seed(HelpdeskCategorySeeder::class);
+        $cat = HelpdeskCategory::query()->firstOrFail();
+        $admin = $this->actingHelpdeskUser(88101, HelpdeskProfile::ROLE_ADMIN);
+        $agent = $this->actingHelpdeskUser(88102, HelpdeskProfile::ROLE_AGENT);
+        Sanctum::actingAs($admin);
+
+        $unassignedOlder = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-SORT-U1',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Unassigned older',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'email',
+            'assigned_user_id' => null,
+            'requester_name' => 'Ada',
+            'requester_email' => 'ada@example.org',
+        ]);
+        $assignedOlder = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-SORT-A',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Assigned older',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'email',
+            'assigned_user_id' => $agent->id,
+            'requester_name' => 'Bea',
+            'requester_email' => 'bea@example.org',
+        ]);
+        $unassignedLatest = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-SORT-U2',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Unassigned latest',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'email',
+            'assigned_user_id' => null,
+            'requester_name' => 'Cara',
+            'requester_email' => 'cara@example.org',
+        ]);
+        $assignedNewest = HelpdeskTicket::query()->create([
+            'ticket_number' => 'HD-SORT-B',
+            'business_unit_id' => $cat->business_unit_id,
+            'category_id' => $cat->id,
+            'subject' => 'Assigned newest',
+            'description' => 'x',
+            'priority' => 'medium',
+            'status' => 'open',
+            'source' => 'portal',
+            'assigned_user_id' => $agent->id,
+            'requester_name' => 'Dee',
+            'requester_email' => 'dee@example.org',
+        ]);
+
+        $res = $this->getJson('/api/v1/tickets');
+        $res->assertOk();
+        $ids = array_map('intval', array_column($res->json('data'), 'id'));
+        $this->assertSame(
+            [$unassignedLatest->id, $unassignedOlder->id, $assignedNewest->id, $assignedOlder->id],
+            array_values(array_intersect($ids, [
+                $unassignedLatest->id,
+                $unassignedOlder->id,
+                $assignedNewest->id,
+                $assignedOlder->id,
+            ])),
+        );
+        $this->assertSame($unassignedLatest->id, $ids[0]);
+    }
+
     public function test_admin_can_delete_ticket(): void
     {
         $this->seed(HelpdeskCategorySeeder::class);

@@ -10,32 +10,32 @@ use App\Jobs\AssignEndUserTicket;
 use App\Jobs\CategorizeTicketWithAi;
 use App\Models\HelpdeskBusinessUnit;
 use App\Models\HelpdeskCategory;
-use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskInformationSystem;
+use App\Models\HelpdeskItAsset;
 use App\Models\HelpdeskProfile;
-use App\Support\InformationSystemStatus;
-use App\Support\TicketListDatePreset;
 use App\Models\HelpdeskSetting;
+use App\Models\HelpdeskSupportGroup;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketComment;
-use App\Models\HelpdeskSupportGroup;
 use App\Models\User;
 use App\Services\AgentCategoryRoutingService;
 use App\Services\HtmlSanitizer;
 use App\Services\RequesterTicketFollowUpService;
 use App\Services\StaffDirectoryLookupService;
 use App\Services\TicketAssigneeService;
+use App\Services\TicketAssignmentNotifier;
 use App\Services\TicketHistoryLogger;
 use App\Services\TicketNumberGenerator;
 use App\Services\TicketPriorityResolver;
 use App\Services\TicketReadCache;
 use App\Services\TicketSubjectGenerator;
+use App\Support\InformationSystemStatus;
 use App\Support\StaffPhotoUrl;
 use App\Support\TicketCreateIdempotency;
-use App\Mail\TicketClosedMail;
+use App\Support\TicketListDatePreset;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -698,7 +698,7 @@ class TicketController extends Controller
 
         $assignees->sync($ticket, $newAssigneeIds, $newPrimaryId);
 
-        app(\App\Services\TicketAssignmentNotifier::class)->notifyAddedAssignees(
+        app(TicketAssignmentNotifier::class)->notifyAddedAssignees(
             $ticket->fresh(['category']),
             $oldAssigneeIds,
             $newAssigneeIds,
@@ -862,7 +862,7 @@ class TicketController extends Controller
         );
     }
 
-    private function applyTicketSearch(\Illuminate\Database\Eloquent\Builder $query, string $term): void
+    private function applyTicketSearch(Builder $query, string $term): void
     {
         if ($term === '') {
             return;
@@ -885,10 +885,18 @@ class TicketController extends Controller
         });
     }
 
-    private function applyTicketSort(\Illuminate\Database\Eloquent\Builder $query, Request $request): void
+    private function applyTicketSort(Builder $query, Request $request): void
     {
         $sortBy = (string) $request->query('sort_by', 'id');
         $sortDir = strtolower((string) $request->query('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $pinUnassigned = ! $request->boolean('assigned_to_me')
+            && (int) $request->query('assigned_user_id', 0) < 1;
+
+        if ($pinUnassigned) {
+            $query->orderByRaw(
+                '(CASE WHEN helpdesk_tickets.assigned_user_id IS NULL AND helpdesk_tickets.assigned_group_id IS NULL THEN 0 ELSE 1 END) ASC'
+            );
+        }
 
         $columns = [
             'id' => 'helpdesk_tickets.id',
@@ -908,6 +916,7 @@ class TicketController extends Controller
                     ->limit(1),
                 $sortDir
             );
+            $query->orderByDesc('helpdesk_tickets.id');
 
             return;
         }
@@ -919,5 +928,8 @@ class TicketController extends Controller
         }
 
         $query->orderBy($columns[$sortBy], $sortDir);
+        if ($sortBy !== 'id') {
+            $query->orderByDesc('helpdesk_tickets.id');
+        }
     }
 }
