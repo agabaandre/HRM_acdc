@@ -151,12 +151,14 @@
         watch(
             () => state.q,
             () => {
+                if (state.q == null) state.q = '';
                 syncDerived();
                 const len = (state.q || '').trim().length;
                 if (len < MIN_CHARS) {
                     state.results = [];
                     state.error = '';
                     state.loading = false;
+                    if (len === 0) state.panelOpen = false;
                     if (debounceTimer) clearTimeout(debounceTimer);
                     return;
                 }
