@@ -183,6 +183,12 @@ class PendingApprovalsController extends Controller
                     'index' => route('pending-approvals.index'),
                     'api' => route('pending-approvals.api'),
                 ],
+                'documentSearch' => [
+                    'searchUrl' => route('document-search.search'),
+                    'yearsUrl' => route('document-search.years'),
+                    'defaultYear' => (int) date('Y'),
+                    'placeholder' => 'Document number or title…',
+                ],
             ],
         ]);
     }

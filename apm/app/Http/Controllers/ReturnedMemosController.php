@@ -65,6 +65,12 @@ class ReturnedMemosController extends Controller
                     'index' => route('returned-memos.index'),
                     'api' => route('returned-memos.api'),
                 ],
+                'documentSearch' => [
+                    'searchUrl' => route('document-search.search'),
+                    'yearsUrl' => route('document-search.years'),
+                    'defaultYear' => (int) date('Y'),
+                    'placeholder' => 'Document number or title…',
+                ],
             ],
         ]);
     }

@@ -68,7 +68,7 @@
         window.ApmVuetifyPage.destroy(MOUNT_ID);
         mountEl.innerHTML = '';
 
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, reactive, watch, onMounted } = Vue;
         const { createVuetify } = Vuetify;
 
         const vuetify = createVuetify({
@@ -102,6 +102,9 @@
             setup() {
                 const search = ref('');
                 const category = ref(cfg.filters.category || 'all');
+                const docSearch = (window.ApmDocumentSearch && window.ApmDocumentSearch.setupSearchState)
+                    ? window.ApmDocumentSearch.setupSearchState(cfg.documentSearch || {}, { reactive, watch, onMounted, computed })
+                    : null;
                 const snackbar = ref({ show: false, text: '', color: 'info' });
                 const archiveDialog = ref(false);
                 const deleteDialog = ref(false);
@@ -256,6 +259,7 @@
                     cfg,
                     search,
                     category,
+                    docSearch,
                     snackbar,
                     archiveDialog,
                     deleteDialog,
@@ -289,6 +293,76 @@
           <v-btn variant="outlined" color="warning" prepend-icon="mdi-download" size="small" @click="exportSoon">Export</v-btn>
         </div>
       </v-card-title>
+      <v-card-text v-if="docSearch" class="pt-0 pb-4">
+        <div class="text-caption text-medium-emphasis mb-2">Look up a document by number or title</div>
+        <div class="apm-doc-search position-relative">
+          <v-row dense align="center">
+            <v-col cols="12" sm="3" md="2">
+              <v-select
+                v-model="docSearch.year"
+                :items="docSearch.yearItems"
+                label="Year"
+                hide-details
+              ></v-select>
+            </v-col>
+            <v-col cols="12" sm="9" md="10">
+              <v-text-field
+                v-model="docSearch.q"
+                :label="docSearch.placeholder"
+                prepend-inner-icon="mdi-magnify"
+                hide-details
+                clearable
+                autocomplete="off"
+                @focus="docSearch.onFocus"
+              ></v-text-field>
+            </v-col>
+          </v-row>
+          <v-progress-linear
+            v-if="docSearch.loading"
+            indeterminate
+            color="primary"
+            class="mt-2"
+            height="2"
+          ></v-progress-linear>
+          <v-card
+            v-if="docSearch.panelOpen && (docSearch.hint || docSearch.error || docSearch.results.length || (!docSearch.loading && (docSearch.q || '').trim().length >= docSearch.minChars))"
+            class="apm-doc-search-results mt-2"
+            elevation="3"
+          >
+            <v-list density="compact" lines="two">
+              <v-list-item v-if="docSearch.hint && (docSearch.q || '').trim().length < docSearch.minChars">
+                <v-list-item-title class="text-medium-emphasis">{{ docSearch.hint }}</v-list-item-title>
+              </v-list-item>
+              <v-list-item v-else-if="docSearch.error">
+                <v-list-item-title class="text-error">{{ docSearch.error }}</v-list-item-title>
+              </v-list-item>
+              <v-list-item v-else-if="!docSearch.loading && docSearch.results.length === 0 && (docSearch.q || '').trim().length >= docSearch.minChars">
+                <v-list-item-title class="text-medium-emphasis">No documents found for this year</v-list-item-title>
+              </v-list-item>
+              <v-list-item
+                v-for="item in docSearch.results"
+                :key="item.document_type + '-' + item.id"
+                :href="item.show_url"
+                @click.prevent="docSearch.openResult(item)"
+              >
+                <template #prepend>
+                  <v-chip size="x-small" color="primary" variant="tonal" class="me-2">{{ item.document_type }}</v-chip>
+                </template>
+                <v-list-item-title class="font-weight-medium">
+                  {{ item.document_number || '—' }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  <span class="text-capitalize">{{ item.overall_status || '—' }}</span>
+                  <span v-if="item.title"> · {{ item.title }}</span>
+                </v-list-item-subtitle>
+                <template #append>
+                  <v-icon icon="mdi-chevron-right" size="small"></v-icon>
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </div>
+      </v-card-text>
     </v-card>
 
     <v-row dense class="mb-4">

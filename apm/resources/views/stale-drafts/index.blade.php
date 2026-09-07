@@ -35,6 +35,8 @@
         </div>
     </div>
 
+    @include('partials.apm-document-search', ['docSearchMountId' => 'stale-drafts-document-search'])
+
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
             <h5 class="mb-0"><i class="bx bx-time-five me-1 text-warning"></i> Your stale drafts ({{ count($pendingStale) }})</h5>
