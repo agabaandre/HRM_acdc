@@ -55,7 +55,7 @@ class ApproverDashboardController extends Controller
                     'searchUrl' => route('document-search.search'),
                     'yearsUrl' => route('document-search.years'),
                     'defaultYear' => (int) date('Y'),
-                    'placeholder' => 'Document number…',
+                    'placeholder' => 'Document number or title…',
                 ],
                 'months' => [
                     ['value' => '', 'title' => 'All months'],

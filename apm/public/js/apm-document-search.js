@@ -42,7 +42,7 @@
             loading: false,
             error: '',
             panelOpen: false,
-            placeholder: (cfg && cfg.placeholder) || 'Document number…',
+            placeholder: (cfg && cfg.placeholder) || 'Document number or title…',
             minChars: MIN_CHARS,
             yearItems: [],
             hint: '',
@@ -56,7 +56,7 @@
         function syncDerived() {
             state.yearItems = (state.years || []).map((y) => ({ title: String(y), value: String(y) }));
             const len = (state.q || '').trim().length;
-            if (len === 0) state.hint = 'Type a document number to search';
+            if (len === 0) state.hint = 'Type a document number or title to search';
             else if (len < MIN_CHARS) state.hint = 'Type at least 3 characters';
             else state.hint = '';
         }

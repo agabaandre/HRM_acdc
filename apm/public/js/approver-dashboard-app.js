@@ -133,7 +133,7 @@
                         searchUrl: (cfg.routes && cfg.routes.documentSearch) || '',
                         yearsUrl: (cfg.routes && cfg.routes.documentSearchYears) || '',
                         defaultYear: new Date().getFullYear(),
-                        placeholder: 'Document number…',
+                        placeholder: 'Document number or title…',
                     }, { reactive, watch, onMounted, computed })
                     : null;
                 const filters = ref({
@@ -895,7 +895,7 @@
       </v-card-title>
       <v-card-text>
         <div v-if="docSearch" class="mb-4">
-          <div class="text-caption text-medium-emphasis mb-2">Look up a document by number</div>
+          <div class="text-caption text-medium-emphasis mb-2">Look up a document by number or title</div>
           <div class="apm-doc-search position-relative">
             <v-row dense align="center">
               <v-col cols="12" sm="3" md="2">

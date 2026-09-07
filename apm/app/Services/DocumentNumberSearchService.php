@@ -228,7 +228,10 @@ class DocumentNumberSearchService
                     }
                 })
                 ->where($matricesTable.'.year', $year)
-                ->where($activitiesTable.'.document_number', 'like', $like);
+                ->where(function ($query) use ($activitiesTable, $like) {
+                    $query->where($activitiesTable.'.document_number', 'like', $like)
+                        ->orWhere($activitiesTable.'.activity_title', 'like', $like);
+                });
 
             if ($divisionIds !== null) {
                 if ($divisionIds === []) {
@@ -273,7 +276,15 @@ class DocumentNumberSearchService
 
         $q = $model::query()
             ->whereYear('created_at', $year)
-            ->where('document_number', 'like', $like);
+            ->where(function ($query) use ($documentType, $like) {
+                $query->where('document_number', 'like', $like);
+                if ($documentType === DocumentCounter::TYPE_SERVICE_REQUEST) {
+                    $query->orWhere('title', 'like', $like)
+                        ->orWhere('service_title', 'like', $like);
+                } else {
+                    $query->orWhere('activity_title', 'like', $like);
+                }
+            });
 
         if ($divisionIds !== null) {
             if ($divisionIds === []) {
