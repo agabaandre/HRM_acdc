@@ -24,7 +24,7 @@ APM home is a module launcher; users have no fast way to jump to a document by n
 - “All years” option (year always set to keep repeats unambiguous).
 - Reusing JWT `memo-list` or `documents/{type}/{status}` from Blade pages.
 - Changing signature-verify lookup UX.
-- Other Memo in v1 search set (unless show-route mapping is already consistent; default exclude).
+- Other Memo in v1 search set (explicitly excluded; can add later with show-route mapping).
 - Mobile JWT endpoint in v1 (service may be reused later).
 
 ## Decisions (from brainstorming)
