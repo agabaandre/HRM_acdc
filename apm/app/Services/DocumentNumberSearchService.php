@@ -53,7 +53,7 @@ class DocumentNumberSearchService
         $rows = collect();
 
         foreach (self::DOC_TYPES as $type) {
-            $rows = $rows->concat($this->rowsForType($type, $year, $like, $divisionIds));
+            $rows = $rows->concat($this->rowsForType($type, $year, $like, $divisionIds, $staffId));
         }
 
         $labels = DocumentCounter::getDocumentTypes();
@@ -199,7 +199,7 @@ class DocumentNumberSearchService
      * @param  list<int>|null  $divisionIds
      * @return Collection<int, array<string, mixed>>
      */
-    private function rowsForType(string $documentType, int $year, string $like, ?array $divisionIds): Collection
+    private function rowsForType(string $documentType, int $year, string $like, ?array $divisionIds, ?int $staffId): Collection
     {
         $rows = collect();
 
@@ -227,22 +227,34 @@ class DocumentNumberSearchService
                         });
                     }
                 })
-                ->where($matricesTable.'.year', $year)
+                // Year filter, but always keep drafts/archived (stale drafts + archived stale) findable.
+                ->where(function ($query) use ($activitiesTable, $matricesTable, $year) {
+                    $query->where($matricesTable.'.year', $year)
+                        ->orWhereYear($activitiesTable.'.created_at', $year)
+                        ->orWhereYear($activitiesTable.'.updated_at', $year)
+                        ->orWhereIn($activitiesTable.'.overall_status', ['draft', 'archived']);
+                })
                 ->where(function ($query) use ($activitiesTable, $like) {
                     $query->where($activitiesTable.'.document_number', 'like', $like)
                         ->orWhere($activitiesTable.'.activity_title', 'like', $like);
                 });
 
             if ($divisionIds !== null) {
-                if ($divisionIds === []) {
+                if ($divisionIds === [] && ! ($staffId && $staffId > 0)) {
                     return $rows;
                 }
-                $q->where(function ($query) use ($activitiesTable, $matricesTable, $divisionIds) {
-                    $query->whereIn($activitiesTable.'.division_id', $divisionIds)
-                        ->orWhere(function ($q2) use ($activitiesTable, $matricesTable, $divisionIds) {
-                            $q2->whereNull($activitiesTable.'.division_id')
-                                ->whereIn($matricesTable.'.division_id', $divisionIds);
-                        });
+                $q->where(function ($query) use ($activitiesTable, $matricesTable, $divisionIds, $staffId) {
+                    if ($divisionIds !== []) {
+                        $query->whereIn($activitiesTable.'.division_id', $divisionIds)
+                            ->orWhere(function ($q2) use ($activitiesTable, $matricesTable, $divisionIds) {
+                                $q2->whereNull($activitiesTable.'.division_id')
+                                    ->whereIn($matricesTable.'.division_id', $divisionIds);
+                            });
+                    }
+                    if ($staffId && $staffId > 0) {
+                        $query->orWhere($activitiesTable.'.staff_id', $staffId)
+                            ->orWhere($activitiesTable.'.responsible_person_id', $staffId);
+                    }
                 });
             }
 
@@ -275,7 +287,11 @@ class DocumentNumberSearchService
         }
 
         $q = $model::query()
-            ->whereYear('created_at', $year)
+            ->where(function ($query) use ($year) {
+                $query->whereYear('created_at', $year)
+                    ->orWhereYear('updated_at', $year)
+                    ->orWhereIn('overall_status', ['draft', 'archived']);
+            })
             ->where(function ($query) use ($documentType, $like) {
                 $query->where('document_number', 'like', $like);
                 if ($documentType === DocumentCounter::TYPE_SERVICE_REQUEST) {
@@ -287,10 +303,20 @@ class DocumentNumberSearchService
             });
 
         if ($divisionIds !== null) {
-            if ($divisionIds === []) {
+            if ($divisionIds === [] && ! ($staffId && $staffId > 0)) {
                 return $rows;
             }
-            $q->whereIn('division_id', $divisionIds);
+            $q->where(function ($query) use ($divisionIds, $staffId, $documentType) {
+                if ($divisionIds !== []) {
+                    $query->whereIn('division_id', $divisionIds);
+                }
+                if ($staffId && $staffId > 0) {
+                    $query->orWhere('staff_id', $staffId);
+                    if ($documentType !== DocumentCounter::TYPE_NON_TRAVEL_MEMO) {
+                        $query->orWhere('responsible_person_id', $staffId);
+                    }
+                }
+            });
         }
 
         foreach ($q->orderByDesc('created_at')->limit(self::LIMIT)->get() as $m) {
