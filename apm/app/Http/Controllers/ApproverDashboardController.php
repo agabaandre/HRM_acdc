@@ -48,6 +48,14 @@ class ApproverDashboardController extends Controller
                     'staffPhoto' => route('staff-uploads.photo'),
                     'pendingApprovals' => route('pending-approvals.index'),
                     'timingReport' => route('reports.approver-document-timing.index'),
+                    'documentSearch' => route('document-search.search'),
+                    'documentSearchYears' => route('document-search.years'),
+                ],
+                'documentSearch' => [
+                    'searchUrl' => route('document-search.search'),
+                    'yearsUrl' => route('document-search.years'),
+                    'defaultYear' => (int) date('Y'),
+                    'placeholder' => 'Document number…',
                 ],
                 'months' => [
                     ['value' => '', 'title' => 'All months'],

@@ -18,6 +18,12 @@ class HomeController extends Controller
                 'totalPending' => array_sum($pendingCounts),
                 'showWeeklyBrief' => DivisionWeeklyBriefGate::canAccessModule(),
                 'modules' => $this->buildModules($pendingCounts),
+                'documentSearch' => [
+                    'searchUrl' => route('document-search.search'),
+                    'yearsUrl' => route('document-search.years'),
+                    'defaultYear' => (int) date('Y'),
+                    'placeholder' => 'Document number…',
+                ],
             ],
         ]);
     }

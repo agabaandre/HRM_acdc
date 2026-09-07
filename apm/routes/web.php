@@ -365,6 +365,10 @@ Route::get('/api/approver-dashboard/workflow-stats', [App\Http\Controllers\Appro
 Route::get('/api/approver-dashboard/timing-trend', [App\Http\Controllers\ApproverDashboardController::class, 'getTimingTrend'])->name('approver-dashboard.timing-trend');
 Route::get('/api/approver-dashboard/approver-staff-ids', [App\Http\Controllers\ApproverDashboardController::class, 'getApproverStaffIds'])->name('approver-dashboard.approver-staff-ids');
 
+// Cross-type document number search (home / approver dashboard widget)
+Route::get('/api/document-search', [App\Http\Controllers\DocumentSearchController::class, 'search'])->name('document-search.search');
+Route::get('/api/document-search/years', [App\Http\Controllers\DocumentSearchController::class, 'years'])->name('document-search.years');
+
 // Audit Logs Routes
 Route::get('/audit-logs', [App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit-logs.index');
 Route::get('/audit-logs/data', [App\Http\Controllers\AuditLogsController::class, 'data'])->name('audit-logs.data');

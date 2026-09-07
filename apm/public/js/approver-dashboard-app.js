@@ -95,7 +95,7 @@
         appInstance = null;
         mountEl.innerHTML = '';
 
-        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+        const { createApp, ref, computed, watch, onMounted, nextTick, reactive } = Vue;
         const { createVuetify } = Vuetify;
 
         const vuetify = createVuetify({
@@ -128,6 +128,14 @@
         appInstance = createApp({
             setup() {
                 const search = ref('');
+                const docSearch = (window.ApmDocumentSearch && window.ApmDocumentSearch.setupSearchState)
+                    ? window.ApmDocumentSearch.setupSearchState(cfg.documentSearch || {
+                        searchUrl: (cfg.routes && cfg.routes.documentSearch) || '',
+                        yearsUrl: (cfg.routes && cfg.routes.documentSearchYears) || '',
+                        defaultYear: new Date().getFullYear(),
+                        placeholder: 'Document number…',
+                    }, { reactive, watch, onMounted, computed })
+                    : null;
                 const filters = ref({
                     division_id: '',
                     doc_type: '',
@@ -828,6 +836,7 @@
                 return {
                     cfg,
                     search,
+                    docSearch,
                     filters,
                     divisionItems,
                     docTypeItems,
@@ -885,6 +894,76 @@
         <v-btn color="primary" variant="tonal" prepend-icon="mdi-refresh" @click="refreshDashboard">Refresh</v-btn>
       </v-card-title>
       <v-card-text>
+        <div v-if="docSearch" class="mb-4">
+          <div class="text-caption text-medium-emphasis mb-2">Look up a document by number</div>
+          <div class="apm-doc-search position-relative">
+            <v-row dense align="center">
+              <v-col cols="12" sm="3" md="2">
+                <v-select
+                  v-model="docSearch.year"
+                  :items="docSearch.yearItems"
+                  label="Year"
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="9" md="10">
+                <v-text-field
+                  v-model="docSearch.q"
+                  :label="docSearch.placeholder"
+                  prepend-inner-icon="mdi-magnify"
+                  hide-details
+                  clearable
+                  autocomplete="off"
+                  @focus="docSearch.onFocus"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+            <v-progress-linear
+              v-if="docSearch.loading"
+              indeterminate
+              color="primary"
+              class="mt-2"
+              height="2"
+            ></v-progress-linear>
+            <v-card
+              v-if="docSearch.panelOpen && (docSearch.hint || docSearch.error || docSearch.results.length || (!docSearch.loading && (docSearch.q || '').trim().length >= docSearch.minChars))"
+              class="apm-doc-search-results mt-2"
+              elevation="3"
+            >
+              <v-list density="compact" lines="two">
+                <v-list-item v-if="docSearch.hint && (docSearch.q || '').trim().length < docSearch.minChars">
+                  <v-list-item-title class="text-medium-emphasis">{{ docSearch.hint }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item v-else-if="docSearch.error">
+                  <v-list-item-title class="text-error">{{ docSearch.error }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item v-else-if="!docSearch.loading && docSearch.results.length === 0 && (docSearch.q || '').trim().length >= docSearch.minChars">
+                  <v-list-item-title class="text-medium-emphasis">No documents found for this year</v-list-item-title>
+                </v-list-item>
+                <v-list-item
+                  v-for="item in docSearch.results"
+                  :key="item.document_type + '-' + item.id"
+                  :href="item.show_url"
+                  @click.prevent="docSearch.openResult(item)"
+                >
+                  <template #prepend>
+                    <v-chip size="x-small" color="primary" variant="tonal" class="me-2">{{ item.document_type }}</v-chip>
+                  </template>
+                  <v-list-item-title class="font-weight-medium">
+                    {{ item.document_number || '—' }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle>
+                    <span class="text-capitalize">{{ item.overall_status || '—' }}</span>
+                    <span v-if="item.title"> · {{ item.title }}</span>
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-icon icon="mdi-chevron-right" size="small"></v-icon>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </div>
+        </div>
         <v-row dense class="mb-2">
           <v-col v-for="kpi in summaryKpis" :key="kpi.key" cols="6" lg="3">
             <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
