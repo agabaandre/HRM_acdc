@@ -51,8 +51,17 @@ class CbpModulesNavService
 
     public static function staffWebBaseUrl(): string
     {
-        $u = rtrim((string) session('user.base_url', config('services.staff_api.base_url', 'http://localhost/staff/')), '/');
+        $fromSession = rtrim((string) data_get(session('user'), 'base_url', ''), '/');
+        $fromSession = rtrim(str_replace(['/finance', '/backend'], '', $fromSession), '/');
+        if ($fromSession !== '') {
+            return $fromSession;
+        }
 
-        return rtrim(str_replace('/finance', '', $u), '/');
+        // Public SPA base (/staff), not Share API mount (/staff/backend).
+        $public = rtrim((string) env('BASE_URL', env('CI_BASE_URL', 'http://localhost/staff')), '/');
+        $public = rtrim(preg_replace('#/backend$#', '', $public) ?? $public, '/');
+        $public = rtrim(str_replace('/finance', '', $public), '/');
+
+        return $public !== '' ? $public : 'http://localhost/staff';
     }
 }
