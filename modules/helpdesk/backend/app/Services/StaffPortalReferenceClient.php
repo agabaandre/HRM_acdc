@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * Calls CodeIgniter Staff Share API using the same URL + Basic Auth pattern as APM
- * (`staff:sync`, `divisions:sync` — same `BASE_URL`, path `/share/...`, URL token, and `STAFF_API_*` credentials).
+ * Calls Laravel Staff Share API using the same URL + Basic Auth pattern as APM
+ * (`staff:sync`, `divisions:sync` — `{base}/share/.../{token}` with `STAFF_API_*` credentials).
  */
 class StaffPortalReferenceClient
 {

@@ -32,9 +32,6 @@ final class StaffApiBaseUrl
         return self::ensureLaravelShareMount($base);
     }
 
-    /**
-     * Map legacy CI portal host (/staff) onto Laravel Share (/staff/backend).
-     */
     public static function ensureLaravelShareMount(string $base): string
     {
         $base = rtrim($base, '/');
@@ -45,7 +42,6 @@ final class StaffApiBaseUrl
             return $base.'/backend';
         }
 
-        // Already on backend, or a custom internal URL.
         return $base;
     }
 

@@ -6,15 +6,7 @@ use Modules\Share\Http\Controllers\ShareReferenceApiController;
 use Modules\Share\Http\Middleware\AuthenticateShareApi;
 
 /**
- * CI3-compatible Share paths (no /api prefix) for APM STAFF_API_* clients.
- *
- * Examples:
- *   GET /share/get_current_staff
- *   GET /share/get_current_staff/{STAFF_API_TOKEN}
- *   GET /share/divisions
- *   GET /share/directorates
- *   POST /share/token
- *   GET /share/docs
+ * CI3-compatible Share paths (no /api prefix) for APM / Helpdesk / Finance STAFF_API_* clients.
  */
 Route::prefix('share')->group(function (): void {
     Route::get('/', fn () => redirect('/share/docs'));
@@ -25,6 +17,8 @@ Route::prefix('share')->group(function (): void {
     Route::post('token', [ShareReferenceApiController::class, 'issueToken']);
 
     Route::get('validate_session', [ShareApiController::class, 'validateSession']);
+    Route::get('refresh_token', [ShareApiController::class, 'refreshToken']);
+    Route::post('refresh_token', [ShareApiController::class, 'refreshToken']);
 
     Route::middleware(AuthenticateShareApi::class)->group(function (): void {
         Route::get('get_current_staff/{token?}', [ShareReferenceApiController::class, 'getCurrentStaff'])
@@ -32,6 +26,18 @@ Route::prefix('share')->group(function (): void {
         Route::get('divisions/{token?}', [ShareReferenceApiController::class, 'divisions'])
             ->where('token', '[^/]+');
         Route::get('directorates/{token?}', [ShareReferenceApiController::class, 'directorates'])
+            ->where('token', '[^/]+');
+        Route::get('users/{token?}', [ShareReferenceApiController::class, 'users'])
+            ->where('token', '[^/]+');
+        Route::get('cbp_modules/{token?}', [ShareReferenceApiController::class, 'cbpModules'])
+            ->where('token', '[^/]+');
+        Route::get('get_signature/{token?}', [ShareReferenceApiController::class, 'getSignature'])
+            ->where('token', '[^/]+');
+        Route::get('get_photo/{token?}', [ShareReferenceApiController::class, 'getPhoto'])
+            ->where('token', '[^/]+');
+        Route::get('helpdesk_agents_in_divisions/{token?}', [ShareReferenceApiController::class, 'helpdeskAgentsInDivisions'])
+            ->where('token', '[^/]+');
+        Route::post('mark_helpdesk_agents/{token?}', [ShareReferenceApiController::class, 'markHelpdeskAgents'])
             ->where('token', '[^/]+');
     });
 });

@@ -184,4 +184,199 @@ class ShareReferenceDataService
             return $arr;
         })->values()->all();
     }
+
+    /**
+     * GET /share/users — portal user rows for APM users:sync (CI parity).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function users(?int $limit = null, ?int $start = null): array
+    {
+        if (! Schema::hasTable('user')) {
+            return [];
+        }
+
+        $q = DB::table('user as u')
+            ->leftJoin('staff as s', 's.staff_id', '=', 'u.auth_staff_id')
+            ->selectRaw("u.user_id, u.password, COALESCE(NULLIF(TRIM(CONCAT(COALESCE(s.fname, ''), ' ', COALESCE(s.lname, ''))), ''), u.name) AS name, u.role, u.auth_staff_id, u.status, u.created_at, u.changed, u.isChanged, u.photo, u.signature, u.is_approved, u.is_verfied, u.langauge, u.allow_email_login, s.work_email AS email")
+            ->orderBy('u.user_id');
+
+        if ($limit !== null && $limit > 0) {
+            $q->limit($limit)->offset(max(0, (int) ($start ?? 0)));
+        }
+
+        return $q->get()->map(fn ($r) => (array) $r)->values()->all();
+    }
+
+    /**
+     * GET /share/cbp_modules — nav payload for sibling apps.
+     *
+     * @param  list<string|int>  $permissionIds
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+     */
+    public function cbpModules(
+        int $staffId,
+        string $excludeModuleKey = '',
+        string $activeModuleKey = '',
+        array $permissionIds = [],
+    ): array {
+        if ($staffId < 1 || ! Schema::hasTable('user')) {
+            throw new \InvalidArgumentException('staff_id parameter is required');
+        }
+
+        $user = \Modules\Auth\Models\PortalUser::query()
+            ->where('auth_staff_id', $staffId)
+            ->where('status', 1)
+            ->first();
+
+        if (! $user) {
+            throw new \RuntimeException('Staff member not found or has no portal user account', 404);
+        }
+
+        $session = $user->toSessionArray();
+        $permissionIds = array_values(array_unique(array_filter(array_map(
+            static fn ($id) => trim((string) $id),
+            $permissionIds
+        ), static fn (string $id) => $id !== '')));
+        if ($permissionIds !== []) {
+            $session['permissions'] = $permissionIds;
+        }
+
+        return \Modules\Core\Support\CbpModulesNav::payload(
+            $session,
+            '',
+            $excludeModuleKey,
+            $activeModuleKey,
+        );
+    }
+
+    /**
+     * @return array{success: bool, staff_id: int, signature_data: string}
+     */
+    public function signatureBase64(int $staffId): array
+    {
+        return $this->mediaBase64($staffId, 'signature', 'staff/signature');
+    }
+
+    /**
+     * @return array{success: bool, staff_id: int, photo_data: string}
+     */
+    public function photoBase64(int $staffId): array
+    {
+        $out = $this->mediaBase64($staffId, 'photo', 'staff');
+
+        return [
+            'success' => true,
+            'staff_id' => $staffId,
+            'photo_data' => $out['signature_data'],
+        ];
+    }
+
+    /**
+     * GET /share/helpdesk_agents_in_divisions
+     *
+     * @param  list<int>  $divisionIds
+     * @return list<array<string, mixed>>
+     */
+    public function helpdeskAgentsInDivisions(array $divisionIds): array
+    {
+        if (! Schema::hasTable('staff') || ! Schema::hasTable('staff_contracts')) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $divisionIds), fn (int $n) => $n > 0)));
+
+        $q = DB::table('staff as s')
+            ->join('staff_contracts as sc', 'sc.staff_id', '=', 's.staff_id')
+            ->whereIn('sc.staff_contract_id', function ($sub): void {
+                $sub->selectRaw('MAX(staff_contract_id)')
+                    ->from('staff_contracts')
+                    ->groupBy('staff_id');
+            })
+            ->whereIn('sc.status_id', [1, 2, 3, 7])
+            ->select([
+                's.staff_id',
+                's.fname',
+                's.lname',
+                's.work_email',
+                's.photo',
+                's.helpdesk_agent_at',
+                'sc.division_id',
+            ])
+            ->orderBy('s.fname');
+
+        if ($ids !== []) {
+            $q->whereIn('sc.division_id', $ids);
+        }
+
+        return $q->get()->map(fn ($r) => (array) $r)->values()->all();
+    }
+
+    /**
+     * POST /share/mark_helpdesk_agents
+     *
+     * @param  list<int>  $staffIds
+     * @return array{success: bool, updated: int, mark: bool}
+     */
+    public function markHelpdeskAgents(array $staffIds, bool $mark): array
+    {
+        if (! Schema::hasTable('staff') || ! Schema::hasColumn('staff', 'helpdesk_agent_at')) {
+            throw new \RuntimeException('staff.helpdesk_agent_at is not available');
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn (int $n) => $n > 0)));
+        if ($ids === []) {
+            throw new \InvalidArgumentException('No staff_ids supplied');
+        }
+
+        $value = $mark ? now() : null;
+        $updated = DB::table('staff')->whereIn('staff_id', $ids)->update(['helpdesk_agent_at' => $value]);
+
+        return [
+            'success' => true,
+            'updated' => (int) $updated,
+            'mark' => $mark,
+        ];
+    }
+
+    /**
+     * @return array{success: bool, staff_id: int, signature_data: string}
+     */
+    private function mediaBase64(int $staffId, string $column, string $subdir): array
+    {
+        if ($staffId < 1 || ! Schema::hasTable('staff')) {
+            throw new \InvalidArgumentException('staff_id parameter is required');
+        }
+
+        $row = DB::table('staff')->where('staff_id', $staffId)->first([$column, 'staff_id']);
+        if (! $row) {
+            throw new \RuntimeException('Staff member not found', 404);
+        }
+
+        $filename = trim((string) ($row->{$column} ?? ''));
+        if ($filename === '') {
+            throw new \RuntimeException(ucfirst($column).' not found for this staff member', 404);
+        }
+
+        $path = \Staff\Shared\StaffStorage::ciPath($subdir.'/'.basename($filename));
+        if (! is_file($path)) {
+            throw new \RuntimeException(ucfirst($column).' file not found', 404);
+        }
+
+        $size = filesize($path);
+        if ($size === false || $size <= 0 || $size > 2_097_152) {
+            throw new \RuntimeException(ucfirst($column).' file is too large or invalid', 400);
+        }
+
+        $bytes = file_get_contents($path);
+        if ($bytes === false) {
+            throw new \RuntimeException('Failed to read '.$column.' file', 500);
+        }
+
+        return [
+            'success' => true,
+            'staff_id' => $staffId,
+            'signature_data' => base64_encode($bytes),
+        ];
+    }
 }

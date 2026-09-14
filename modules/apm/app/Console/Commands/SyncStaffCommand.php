@@ -41,10 +41,10 @@ class SyncStaffCommand extends Command
                 throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
             }
 
-            // Get dynamic API URL using BASE_URL
-            $apiBaseUrl = config('services.staff_api.base_url');
+            // Get dynamic API URL (Laravel Share at /staff/backend)
+            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
             $apiToken = config('services.staff_api.token');
-            $apiEndpoint = config('services.staff_api.endpoints.staff', '/staff/share/get_current_staff');
+            $apiEndpoint = config('services.staff_api.endpoints.staff', '/share/get_current_staff');
             $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint . '/' . $apiToken;
             
             $this->info('Making API request to: ' . $apiUrl);

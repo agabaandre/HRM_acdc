@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * CodeIgniter Staff Share API (same contract as Helpdesk reference sync).
+ * Staff portal Laravel Share API (same contract as Helpdesk reference sync).
  */
 class StaffPortalShareClient
 {

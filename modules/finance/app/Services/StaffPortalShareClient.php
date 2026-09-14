@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\StaffApiBaseUrl;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -65,7 +66,7 @@ class StaffPortalShareClient
 
     private function buildUrl(string $endpointKey): string
     {
-        $base = rtrim((string) config('services.staff_api.base_url'), '/');
+        $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
         $path = trim((string) config('services.staff_api.endpoints.'.$endpointKey));
         if ($path === '') {
             throw new RuntimeException('Missing staff_api endpoint: '.$endpointKey);
@@ -75,7 +76,7 @@ class StaffPortalShareClient
             throw new RuntimeException('Missing STAFF_API_TOKEN.');
         }
 
-        return $base.$path.'/'.$token;
+        return rtrim($base, '/').$path.'/'.$token;
     }
 
     /**

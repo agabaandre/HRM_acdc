@@ -41,10 +41,10 @@ class SyncDirectoratesCommand extends Command
                 throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
             }
 
-            // Get dynamic API URL using BASE_URL
-            $apiBaseUrl = config('services.staff_api.base_url');
+            // Get dynamic API URL (Laravel Share at /staff/backend)
+            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
             $apiToken = config('services.staff_api.token', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI');
-            $apiEndpoint = config('services.staff_api.endpoints.directorates', '/staff/share/directorates');
+            $apiEndpoint = config('services.staff_api.endpoints.directorates', '/share/directorates');
             $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint . '/' . $apiToken;
             
             $this->info('Making API request to: ' . $apiUrl);

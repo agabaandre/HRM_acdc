@@ -36,11 +36,10 @@ return [
     ],
 
     'staff_api' => [
-        // Prefer Laravel Share: http://localhost/staff/staff-portal/backend
-        // Legacy CI host (/staff) 307-redirects get_current_staff|divisions|directorates to Laravel.
+        // Laravel Share API (modules/staff-portal/backend). Legacy /staff is rewritten by StaffApiBaseUrl.
         'base_url' => env(
             'STAFF_API_INTERNAL_BASE_URL',
-            env('BASE_URL', 'http://localhost/staff/')
+            env('STAFF_API_BASE_URL', env('BASE_URL', 'http://127.0.0.1/staff/backend'))
         ),
         'uploads_path' => env('STAFF_UPLOADS_PATH'), // optional; e.g. /var/www/staff/uploads for staff photo resolution
         'token' => env('STAFF_API_TOKEN', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI'),

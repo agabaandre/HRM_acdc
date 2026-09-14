@@ -75,7 +75,7 @@ helpdesk_inherit_sensitive_from_portal_env() {
         local internal
         internal="$(dotenv_get "$backend_env" HELPDESK_STAFF_API_INTERNAL_BASE_URL 2>/dev/null || true)"
         if ! dotenv_value_present "$internal"; then
-            dotenv_set "$backend_env" HELPDESK_STAFF_API_INTERNAL_BASE_URL "http://127.0.0.1/staff"
+            dotenv_set "$backend_env" HELPDESK_STAFF_API_INTERNAL_BASE_URL "http://127.0.0.1/staff/backend"
         fi
     fi
 

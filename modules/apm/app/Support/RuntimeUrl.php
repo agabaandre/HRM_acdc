@@ -62,7 +62,7 @@ final class RuntimeUrl
     }
 
     /**
-     * Staff portal (CodeIgniter) base URL without trailing slash, e.g. https://cbp.africacdc.org/staff
+     * Staff portal public base URL without trailing slash, e.g. https://cbp.africacdc.org/staff
      */
     public static function staffPortalBaseUrl(): string
     {

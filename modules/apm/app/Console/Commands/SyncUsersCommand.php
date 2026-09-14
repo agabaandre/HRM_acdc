@@ -30,9 +30,9 @@ class SyncUsersCommand extends Command
                 throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env to call the staff API.');
             }
 
-            $apiBaseUrl = rtrim(config('services.staff_api.base_url'), '/');
+            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
             $apiEndpoint = config('services.staff_api.endpoints.users', '/share/users');
-            $apiUrl = $apiBaseUrl . $apiEndpoint;
+            $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint;
 
             $this->info('Fetching users from: ' . $apiUrl);
 

@@ -21,11 +21,11 @@ final class StaffSsoSession
 
     public static function validateUrl(): string
     {
-        return rtrim(RuntimeUrl::staffPortalBaseUrl(), '/').'/share/validate_session';
+        return rtrim(StaffApiBaseUrl::resolve(RuntimeUrl::staffPortalBaseUrl()), '/').'/share/validate_session';
     }
 
     public static function refreshUrl(): string
     {
-        return rtrim(RuntimeUrl::staffPortalBaseUrl(), '/').'/share/refresh_token';
+        return rtrim(StaffApiBaseUrl::resolve(RuntimeUrl::staffPortalBaseUrl()), '/').'/share/refresh_token';
     }
 }

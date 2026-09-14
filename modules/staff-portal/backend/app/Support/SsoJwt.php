@@ -26,7 +26,7 @@ final class SsoJwt
         return $h.'.'.$p.'.'.self::base64UrlEncode($sig);
     }
 
-    public static function decode(string $token): ?array
+    public static function decode(string $token, bool $allowExpired = false): ?array
     {
         $token = trim($token);
         if ($token === '') {
@@ -48,7 +48,7 @@ final class SsoJwt
                 return null;
             }
             $exp = isset($payload['exp']) ? (int) $payload['exp'] : 0;
-            if ($exp > 0 && $exp < time()) {
+            if (! $allowExpired && $exp > 0 && $exp < time()) {
                 return null;
             }
 

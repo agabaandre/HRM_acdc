@@ -122,7 +122,7 @@ return [
             'HELPDESK_STAFF_API_INTERNAL_BASE_URL',
             env(
                 'HELPDESK_STAFF_API_BASE_URL',
-                env('STAFF_API_BASE_URL', env('BASE_URL', env('HELPDESK_STAFF_PORTAL_URL', 'http://localhost/staff')))
+                env('STAFF_API_BASE_URL', env('BASE_URL', env('HELPDESK_STAFF_PORTAL_URL', 'http://127.0.0.1/staff/backend')))
             )
         ),
         'token' => env('HELPDESK_STAFF_API_TOKEN', env('STAFF_API_TOKEN')),

@@ -5,8 +5,8 @@ namespace App\Support;
 /**
  * Normalize Staff Share API base URLs for server-side HTTP calls.
  *
- * Browsers often resolve mDNS hostnames (e.g. Users-MacBook-Pro.local) while PHP/cURL
- * cannot, which breaks Helpdesk → Staff Share API calls on local Apache setups.
+ * Prefer Laravel Share at /staff/backend. Legacy CI hosts (/staff) are rewritten.
+ * Browsers often resolve mDNS hostnames (e.g. *.local) while PHP/cURL cannot.
  */
 final class StaffApiBaseUrl
 {
@@ -14,21 +14,34 @@ final class StaffApiBaseUrl
     {
         $base = rtrim(trim($configured), '/');
         if ($base === '') {
-            return 'http://localhost/staff';
+            return 'http://127.0.0.1/staff/backend';
         }
 
         $host = parse_url($base, PHP_URL_HOST);
         if (! is_string($host) || $host === '') {
-            return $base;
+            return self::ensureLaravelShareMount($base);
         }
 
         $hostLower = strtolower($host);
         if (self::isLoopbackHost($hostLower)) {
-            return $base;
+            return self::ensureLaravelShareMount($base);
         }
 
         if (str_ends_with($hostLower, '.local')) {
-            return self::rewriteHost($base, 'localhost', 'http');
+            return self::ensureLaravelShareMount(self::rewriteHost($base, 'localhost', 'http'));
+        }
+
+        return self::ensureLaravelShareMount($base);
+    }
+
+    public static function ensureLaravelShareMount(string $base): string
+    {
+        $base = rtrim($base, '/');
+        $path = (string) (parse_url($base, PHP_URL_PATH) ?? '');
+        $path = rtrim($path, '/');
+
+        if ($path === '/staff' || $path === '/demo_staff') {
+            return $base.'/backend';
         }
 
         return $base;

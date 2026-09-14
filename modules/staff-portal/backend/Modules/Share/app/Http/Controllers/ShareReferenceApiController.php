@@ -63,6 +63,126 @@ class ShareReferenceApiController extends Controller
         }
     }
 
+    public function users(Request $request): JsonResponse
+    {
+        $limit = $request->filled('limit') ? (int) $request->query('limit') : null;
+        $start = $request->filled('start') ? (int) $request->query('start') : null;
+
+        try {
+            return response()->json(
+                $this->data->users($limit, $start),
+                200,
+                [],
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            );
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Database error: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function cbpModules(Request $request): JsonResponse
+    {
+        $staffId = (int) $request->query('staff_id', 0);
+        if ($staffId < 1) {
+            return response()->json(['success' => false, 'error' => 'staff_id parameter is required'], 400);
+        }
+
+        $permissionCsv = trim((string) $request->query('permission_ids', ''));
+        $permissionIds = $permissionCsv !== ''
+            ? array_values(array_filter(array_map('trim', explode(',', $permissionCsv))))
+            : [];
+
+        try {
+            $payload = $this->data->cbpModules(
+                $staffId,
+                trim((string) $request->query('exclude_module_key', '')),
+                trim((string) $request->query('active_module_key', '')),
+                $permissionIds,
+            );
+
+            return response()->json(['success' => true, 'data' => $payload], 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (\RuntimeException $e) {
+            $code = $e->getCode() === 404 ? 404 : 500;
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], $code);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Database error: '.$e->getMessage()], 500);
+        }
+    }
+
+    public function getSignature(Request $request): JsonResponse
+    {
+        $staffId = (int) $request->query('staff_id', 0);
+        if ($staffId < 1) {
+            return response()->json(['success' => false, 'error' => 'staff_id parameter is required'], 400);
+        }
+
+        try {
+            return response()->json($this->data->signatureBase64($staffId));
+        } catch (\RuntimeException $e) {
+            $code = in_array($e->getCode(), [400, 404, 500], true) ? $e->getCode() : 404;
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], $code);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Database error: '.$e->getMessage()], 500);
+        }
+    }
+
+    public function getPhoto(Request $request): JsonResponse
+    {
+        $staffId = (int) $request->query('staff_id', 0);
+        if ($staffId < 1) {
+            return response()->json(['success' => false, 'error' => 'staff_id parameter is required'], 400);
+        }
+
+        try {
+            return response()->json($this->data->photoBase64($staffId));
+        } catch (\RuntimeException $e) {
+            $code = in_array($e->getCode(), [400, 404, 500], true) ? $e->getCode() : 404;
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], $code);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Database error: '.$e->getMessage()], 500);
+        }
+    }
+
+    public function helpdeskAgentsInDivisions(Request $request): JsonResponse
+    {
+        $raw = (string) $request->query('division_ids', '');
+        $ids = $raw !== ''
+            ? array_map('intval', explode(',', $raw))
+            : [];
+
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $this->data->helpdeskAgentsInDivisions($ids),
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => 'Database error: '.$e->getMessage()], 500);
+        }
+    }
+
+    public function markHelpdeskAgents(Request $request): JsonResponse
+    {
+        $staffIds = $request->input('staff_ids', []);
+        if (! is_array($staffIds)) {
+            $staffIds = [];
+        }
+        $mark = filter_var($request->input('mark', true), FILTER_VALIDATE_BOOL);
+
+        try {
+            return response()->json($this->data->markHelpdeskAgents($staffIds, $mark));
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Issue a Share API JWT using HTTP Basic Auth (same credentials as CI share).
      */

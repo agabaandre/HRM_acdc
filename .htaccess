@@ -53,8 +53,8 @@ Options -Indexes
     # Africa map from published SPA
     RewriteRule ^maps/([^/]+)$ modules/staff-portal/public-spa/maps/$1 [L]
 
-    # Staff Share reference API (APM sync)
-    RewriteRule ^share/(get_current_staff|divisions|directorates|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/backend/share/$1$2 [R=307,L,QSA]
+    # Staff Share reference API → Laravel backend (CI-compatible paths)
+    RewriteRule ^share/(get_current_staff|divisions|directorates|users|cbp_modules|get_signature|get_photo|helpdesk_agents_in_divisions|mark_helpdesk_agents|validate_session|refresh_token|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/backend/share/$1$2 [R=307,L,QSA]
 
     # CI3-compatible SSO launch / CSRF / session refresh → Laravel
     RewriteRule ^home/launch_module$ /staff/backend/home/launch_module [R=307,L,QSA]
