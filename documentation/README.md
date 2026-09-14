@@ -1,286 +1,242 @@
 # Central Business Platform (CBP) Documentation
 
-Welcome to the Africa CDC Central Business Platform (CBP) documentation. This is the main documentation hub for the entire staff management system, including the CodeIgniter-based Staff Portal, Laravel-based APM (Approvals Management), Node.js-based Finance module, and the Laravel + Vue Helpdesk / ITSM module.
+Welcome to the Africa CDC Central Business Platform (CBP) documentation hub for the staff management system: **Staff Portal** (Laravel + Vue), **APM** (Laravel), **Finance** (Laravel + Inertia), and **Helpdesk** (Laravel + Vue).
 
 ## 📚 Platform Overview
 
-The Africa CDC Central Business Platform is a comprehensive staff management system consisting of four main modules:
+1. **Staff Portal** (Laravel 12 + Vue 3) — Auth, directory, leave, payroll, performance, Share API, CBP module launcher  
+2. **APM** (Laravel) — Approvals, matrices, document workflows  
+3. **Finance** (Laravel + Inertia/React) — Advances, missions, budgets  
+4. **Helpdesk** (Laravel 11 + Vue) — Ticketing, SLA, KB, public TV dashboard  
 
-1. **Staff Portal** (CodeIgniter) - Core staff management, authentication, and profile management
-2. **APM** (Laravel) - Approvals Management System for workflows, matrices, and document processing
-3. **Finance** (Node.js/React) - Finance Management System for advances, missions, and budgets
-4. **Helpdesk** (Laravel + Vue) - Service Desk / ITSM with ticketing, SLA, knowledge base, and a public TV/lobby dashboard
+Apps live under `modules/`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, `/staff/helpdesk`.
 
 ## 🏗️ System Architecture
 
 ```
 staff/
-├── application/          # CodeIgniter Staff Portal (Core)
-├── apm/                 # Laravel APM (Approvals Management)
-├── finance/             # Node.js/React Finance Module
-├── helpdesk/            # Laravel + Vue Helpdesk / ITSM
-└── documentation/       # This directory - Main documentation hub
+├── .htaccess                 # Maps /staff/* into modules/
+├── modules/
+│   ├── staff-portal/         # Laravel API + Vue SPA
+│   ├── apm/                  # Approvals Management
+│   ├── finance/              # Finance (Inertia)
+│   └── helpdesk/             # Helpdesk / ITSM
+├── shared/                   # StaffStorage, SCRIPT_NAME helper
+├── docker/                   # CBP Compose image
+├── docs/                     # STORAGE.md, CI.md, …
+└── documentation/            # This hub
 ```
 
 ## 📖 Module Documentation
 
-### 1. Staff Portal (CodeIgniter)
+### 1. Staff Portal (Laravel + Vue)
 
-The core CodeIgniter application that handles:
-- User authentication and session management
-- Staff profiles and directory
-- Permission management
-- Base infrastructure for other modules
+Core portal for authentication, staff directory, HR workflows, and the Share reference API used by sibling apps.
+
+**URLs:** `/staff/` (SPA) · `/staff/backend/` (API) · `/staff/share/…` (rewritten to backend)
 
 **Documentation:**
-- [Environment Variables Configuration](../assets/ENVIRONMENT_VARIABLES.md) - Environment variable setup
-- [File storage & uploads](../docs/STORAGE.md) - Host-side uploads, migration, CI cache permissions
-- [Auth Module Improvements](../application/modules/auth/README_IMPROVEMENTS.md) - Authentication improvements
-- [Shared Header Usage](../application/modules/templates/views/partials/SHARED_HEADER_USAGE.md) - Header component documentation
+- [Staff Portal README](../modules/staff-portal/README.md) — layout, setup, env, deploy  
+- [Share API](../modules/staff-portal/backend/Modules/Share/README.md) — sync endpoints for APM/Helpdesk/Finance  
+- [Systemd workers](../modules/staff-portal/docs/SYSTEMD.md) — queue + scheduler  
+- [OAuth / OIDC clients](../modules/staff-portal/docs/oauth-oidc-clients.md)  
+- [File storage & uploads](../docs/STORAGE.md)  
+- [Environment variables (legacy notes)](../assets/ENVIRONMENT_VARIABLES.md)  
 
 ### 2. APM (Approvals Management)
 
-Laravel-based system for managing approvals, workflows, and document processing.
+Laravel system for approvals, workflows, and document processing.
 
-> 📚 **Complete APM Documentation**: See [apm/documentation/README.md](../apm/documentation/README.md)
+> 📚 **Complete APM Documentation**: [modules/apm/documentation/README.md](../modules/apm/documentation/README.md)
 
 **Quick Links:**
-- [Approval Trail Management](../apm/documentation/APPROVAL_TRAIL_MANAGEMENT.md)
-- [Document Numbering System](../apm/documentation/DOCUMENT_NUMBERING_SYSTEM.md)
-- [Firebase / FCM push notifications](../apm/documentation/FIREBASE_PUSH_NOTIFICATIONS.md) — mobile pending-approval pushes; test with `php artisan notifications:test-fcm-pending-approvals`
-- [Queue Setup Guide](../apm/documentation/QUEUE_SETUP_GUIDE.md)
-- [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
-- [Deployment Guide](../apm/documentation/DEPLOYMENT.md)
-- [Cron Setup](../apm/documentation/CRON_SETUP.md)
-- [Database Backup System](../apm/README_BACKUP.md) - Automatic database backups with retention policies
+- [Approval Trail Management](../modules/apm/documentation/APPROVAL_TRAIL_MANAGEMENT.md)
+- [Document Numbering System](../modules/apm/documentation/DOCUMENT_NUMBERING_SYSTEM.md)
+- [Firebase / FCM push notifications](../modules/apm/documentation/FIREBASE_PUSH_NOTIFICATIONS.md)
+- [Queue Setup Guide](../modules/apm/documentation/QUEUE_SETUP_GUIDE.md)
+- [Systemd Queue Guide](../modules/apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
+- [Deployment Guide](../modules/apm/documentation/DEPLOYMENT.md)
+- [Cron Setup](../modules/apm/documentation/CRON_SETUP.md)
+- [Database Backup System](../modules/apm/README_BACKUP.md)
 
 ### 3. Finance Module
 
-Node.js/Express backend with React frontend for finance management.
+Laravel + Inertia/React for finance management.
 
-> 📚 **Complete Finance Documentation**: See [finance/documentation/README.md](../finance/documentation/README.md)
+> 📚 **Complete Finance Documentation**: [modules/finance/documentation/README.md](../modules/finance/documentation/README.md)
 
 **Quick Links:**
-- [Frontend Architecture](../finance/documentation/FRONTEND_ARCHITECTURE.md)
-- [Server Architecture](../finance/documentation/SERVER_ARCHITECTURE.md)
-- [Installation Guide](../finance/documentation/INSTALLATION.md)
-- [Migrations Guide](../finance/documentation/MIGRATIONS.md)
-- [Session Implementation](../finance/documentation/SESSION_IMPLEMENTATION.md)
+- [Frontend Architecture](../modules/finance/documentation/FRONTEND_ARCHITECTURE.md)
+- [Server Architecture](../modules/finance/documentation/SERVER_ARCHITECTURE.md)
+- [Installation Guide](../modules/finance/documentation/INSTALLATION.md)
+- [Migrations Guide](../modules/finance/documentation/MIGRATIONS.md)
+- [Session Implementation](../modules/finance/documentation/SESSION_IMPLEMENTATION.md)
 
 ### 4. Helpdesk Module
 
-Laravel 11 JSON API + Vue 3.5 SPA delivering an Service Desk / ITSM experience: ticketing, SLA tracking, agent routing, knowledge base, an agent workspace, a public TV/lobby dashboard, and ISO 27001 / 27014 audit logging.
+Laravel 11 JSON API + Vue 3.5 SPA: ticketing, SLA, agent routing, knowledge base, public TV dashboard, ISO audit logging.
 
-> 📚 **Complete Helpdesk Documentation**: See [helpdesk/documentation/README.md](../helpdesk/documentation/README.md)
+> 📚 **Complete Helpdesk Documentation**: [modules/helpdesk/documentation/README.md](../modules/helpdesk/documentation/README.md)
 
 **Quick Links:**
-- [User Guide](../helpdesk/documentation/USER_GUIDE.md) — requesters, agents, admins (includes step-by-step **ticket creation** walkthrough)
-- [Developer Guide](../helpdesk/documentation/DEVELOPER_GUIDE.md) — stack, schema, REST API, extension points, runbooks
-- [Architecture](../helpdesk/documentation/ARCHITECTURE.md) — one-page overview
-- [Integration](../helpdesk/documentation/INTEGRATION.md) — Staff portal SSO, Staff Share API, WhatsApp & Teams webhooks
-- [OpenAPI stub](../helpdesk/documentation/openapi.yaml)
-- [Quick Start](../helpdesk/README.md)
+- [User Guide](../modules/helpdesk/documentation/USER_GUIDE.md)
+- [Developer Guide](../modules/helpdesk/documentation/DEVELOPER_GUIDE.md)
+- [Architecture](../modules/helpdesk/documentation/ARCHITECTURE.md)
+- [Integration](../modules/helpdesk/documentation/INTEGRATION.md)
+- [OpenAPI stub](../modules/helpdesk/documentation/openapi.yaml)
+- [Quick Start](../modules/helpdesk/README.md)
 
 ## 🚀 Getting Started
 
 ### For New Developers
 
-1. **Start with the Staff Portal**
-   - Review [Environment Variables](../assets/ENVIRONMENT_VARIABLES.md)
-   - Understand authentication flow
-   - Set up CodeIgniter environment
+1. **Staff Portal**
+   - Read [modules/staff-portal/README.md](../modules/staff-portal/README.md)
+   - `cd modules/staff-portal && ./setup.sh`
+   - Match `JWT_SECRET` across all CBP apps
 
-2. **Explore APM Module**
-   - Read [APM Documentation](../apm/documentation/README.md)
-   - Set up Laravel environment
-   - Configure queues and cron jobs
+2. **APM**
+   - [APM Documentation](../modules/apm/documentation/README.md)
+   - `cd modules/apm && composer install` …
+   - Point `STAFF_API_INTERNAL_BASE_URL` at `/staff/backend`
 
-3. **Set up Finance Module**
-   - Read [Finance Documentation](../finance/documentation/README.md)
-   - Install Node.js dependencies
-   - Configure session transfer
+3. **Finance**
+   - [Finance Documentation](../modules/finance/documentation/README.md)
+   - `cd modules/finance && ./setup.sh`
 
-4. **Set up Helpdesk Module**
-   - Read the [Helpdesk Developer Guide](../helpdesk/documentation/DEVELOPER_GUIDE.md)
-   - Configure Apache for `/staff/helpdesk/` (SPA) and `/staff/helpdesk/backend/` (Laravel API)
-   - Match `JWT_SECRET` with the Staff portal root `.env` and copy `STAFF_API_*` from `apm/.env`
+4. **Helpdesk**
+   - [Developer Guide](../modules/helpdesk/documentation/DEVELOPER_GUIDE.md)
+   - Configure `/staff/helpdesk/` + `/staff/helpdesk/backend/`
+   - Match `JWT_SECRET` and Staff Share API settings
 
 ### For System Administrators
 
 1. **Production Deployment**
-   - Review [APM Deployment Guide](../apm/documentation/DEPLOYMENT.md)
-   - Configure reverse proxy (see Finance docs)
-   - Set up queue workers and cron jobs
+   - [Staff Portal README — Deployment](../modules/staff-portal/README.md#deployment)
+   - [APM Deployment Guide](../modules/apm/documentation/DEPLOYMENT.md)
+   - Optional: [Docker](../docker/README.md) · [CI / GHCR](../docs/CI.md)
 
-2. **Infrastructure Setup**
-   - [Queue Setup](../apm/documentation/QUEUE_SETUP_GUIDE.md)
-   - [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
-   - [Cron Configuration](../apm/documentation/CRON_SETUP.md)
+2. **Infrastructure**
+   - [APM Queue Setup](../modules/apm/documentation/QUEUE_SETUP_GUIDE.md)
+   - [Staff Portal systemd](../modules/staff-portal/docs/SYSTEMD.md)
+   - [APM Cron](../modules/apm/documentation/CRON_SETUP.md)
 
 ## 🔗 Integration Points
 
 ### Session Management
 
-All modules share authentication through the CodeIgniter Staff Portal:
+Authentication is owned by the **Staff Portal** Laravel app:
 
-- **Staff Portal**: Primary authentication and session storage
-- **APM**: POST SSO launch → session; background refresh via `/auth/refresh_sso_session` + `/apm/sso/refresh`
-- **Finance**: POST SSO launch (same pattern as APM)
-- **Helpdesk**: POST SSO launch → Sanctum token; background refresh via `/auth/refresh_sso_session` + `/api/v1/auth/staff-sso`
+- **Staff Portal**: Primary auth (Sanctum / Microsoft OAuth) + SSO JWT (`JWT_SECRET`)
+- **APM / Finance / Helpdesk**: POST SSO launch; background refresh via Staff `/auth/refresh_sso_session` (and app-specific refresh routes)
 
-Cross-module client: `assets/js/cbp-session-refresh.js` (polls Staff portal, dispatches `cbp:sso-refreshed`).
+Cross-module client: `assets/js/cbp-session-refresh.js` (when present).
 
 See:
-- [Finance Session Implementation](../finance/documentation/SESSION_IMPLEMENTATION.md)
-- [APM Session Expiry Setup](../apm/documentation/SESSION_EXPIRY_SETUP.md)
-- [Helpdesk Integration (SSO + Staff Share API)](../helpdesk/documentation/INTEGRATION.md)
+- [Finance Session Implementation](../modules/finance/documentation/SESSION_IMPLEMENTATION.md)
+- [APM Session Expiry Setup](../modules/apm/documentation/SESSION_EXPIRY_SETUP.md)
+- [Helpdesk Integration (SSO + Staff Share API)](../modules/helpdesk/documentation/INTEGRATION.md)
+- [Share API](../modules/staff-portal/backend/Modules/Share/README.md)
 
 ### Navigation Integration
 
-Modules are integrated through the CBP Modules menu and secure POST launch:
-
-- Staff Portal → APM / Finance / Helpdesk (`POST home/launch_module`)
-- APM / Finance / Helpdesk → Staff Portal (CBP Home link)
-- Finance ↔ APM (cross-links with SSO token in session storage, not URL)
+- Staff Portal → APM / Finance / Helpdesk (`POST` launch module / SSO hand-off)
+- Sibling apps → Staff Portal (CBP Home `/staff/`)
 
 ### Permission System
 
-All modules use the same permission system from the Staff Portal:
+Shared permissions from Staff Portal (examples):
 
-- Permission 92: Finance access
-- Permission 93: Finance settings
-- Permission 85 / 92 / 93: Helpdesk access (configurable via `HELPDESK_SSO_PERMISSION_CODES`)
-- Various permissions for APM workflows
+- Permission 92: Finance access  
+- Permission 93: Finance settings  
+- Permission 85 / 92 / 93: Helpdesk access (configurable)  
+- Various APM workflow permissions  
 
 ## 📝 Common Tasks
 
 ### Setting Up Development Environment
 
-1. **CodeIgniter Setup**
+1. **Staff Portal**
    ```bash
-   # Configure database in application/config/database.php
-   # Set up .env or environment variables
+   cd modules/staff-portal
+   ./setup.sh
+   # or: npm run install:all && cd backend && php artisan migrate
    ```
 
-2. **APM Setup**
+2. **APM**
    ```bash
-   cd apm
+   cd modules/apm
    composer install
    cp .env.example .env
    php artisan key:generate
    php artisan migrate
    ```
 
-3. **Finance Setup**
+3. **Finance**
    ```bash
-   cd finance
-   npm run install:all
-   # Configure .env files
-   npm run dev:all
+   cd modules/finance
+   ./setup.sh
    ```
 
-4. **Helpdesk Setup**
+4. **Helpdesk**
    ```bash
-   cd helpdesk
+   cd modules/helpdesk
    ./setup.sh
-   cd backend && composer install \
-     && cp .env.example .env \
-     && php artisan key:generate \
-     && php artisan migrate --seed
-   cd ../frontend && npm install --cache ./.npm-cache --legacy-peer-deps \
-     && npm run build
    ```
 
 ### Production Deployment
 
-1. **Configure Reverse Proxy**
-   - APM: Standard Laravel deployment
-   - Finance: See [Apache Reverse Proxy](../finance/documentation/APACHE_REVERSE_PROXY.md)
-
-2. **Set Up Queue Workers**
-   - See [APM Queue Setup](../apm/documentation/QUEUE_SETUP_GUIDE.md)
-   - Or [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
-
-3. **Configure Cron Jobs**
-   - See [APM Cron Setup](../apm/documentation/CRON_SETUP.md)
+1. Configure Apache DocumentRoot / Alias so `/staff` is the CBP repo root (see root `.htaccess`).
+2. Deploy each module under `modules/`; run `setup-production.sh` where provided.
+3. Queue workers: APM + Helpdesk (+ Staff Portal systemd if used).
+4. Optional container path: [docker/README.md](../docker/README.md).
 
 ## 🐛 Troubleshooting
 
-### Common Issues
-
-1. **Session not transferring between modules**
-   - Check token generation in Staff Portal
-   - Verify session configuration in APM/Finance
-   - Review [Finance Session Implementation](../finance/documentation/SESSION_IMPLEMENTATION.md)
-
-2. **Queue workers not processing**
-   - See [APM Queue Troubleshooting](../apm/documentation/QUEUE_TROUBLESHOOTING.md)
-   - Check [Systemd Queue Guide](../apm/documentation/SYSTEMD_QUEUE_GUIDE.md)
-
-3. **Permission issues**
-   - Verify user permissions in Staff Portal
-   - Check permission checks in module code
-   - Review permission middleware
+1. **Session not transferring between modules** — verify shared `JWT_SECRET`; check SSO launch + refresh routes.  
+2. **Share / sync failures** — confirm `STAFF_API_INTERNAL_BASE_URL` ends at `/staff/backend` (not `/staff` or `/staff/staff-portal/backend`).  
+3. **SPA 404 / asset 500** — rebuild + `./scripts/publish-spa.sh` in `modules/staff-portal`.  
+4. **Queue workers** — [APM Queue Troubleshooting](../modules/apm/documentation/QUEUE_TROUBLESHOOTING.md).  
 
 ## 📂 Documentation Structure
 
 ```
 staff/
-├── README.md                           # Main project README
-├── documentation/                      # Main documentation hub (this directory)
-│   └── README.md                      # This file
-├── assets/
-│   └── ENVIRONMENT_VARIABLES.md       # Environment variables guide
-├── application/
-│   └── modules/
-│       ├── auth/
-│       │   └── README_IMPROVEMENTS.md # Auth improvements
-│       └── templates/
-│           └── views/partials/
-│               └── SHARED_HEADER_USAGE.md
-├── apm/
-│   ├── README.md                      # APM main README
-│   ├── documentation/                 # APM documentation
+├── README.md
+├── documentation/README.md              # This hub
+├── docs/
+│   ├── CI.md
+│   └── STORAGE.md
+├── modules/
+│   ├── staff-portal/
 │   │   ├── README.md
-│   │   ├── APPROVAL_TRAIL_MANAGEMENT.md
-│   │   ├── QUEUE_SETUP_GUIDE.md
-│   │   └── ...
-│   └── IMPROVED_SYNC_GUIDE.md
-├── finance/
-│   ├── README.md                      # Finance main README
-│   └── documentation/                 # Finance documentation
-│       ├── README.md
-│       ├── FRONTEND_ARCHITECTURE.md
-│       ├── SERVER_ARCHITECTURE.md
-│       └── ...
-└── helpdesk/
-    ├── README.md                      # Helpdesk main README
-    └── documentation/                 # Helpdesk documentation
-        ├── README.md                  # Index
-        ├── USER_GUIDE.md              # End-user walkthroughs (incl. ticket creation)
-        ├── DEVELOPER_GUIDE.md         # Engineer reference
-        ├── ARCHITECTURE.md
-        ├── INTEGRATION.md
-        └── openapi.yaml
+│   │   ├── docs/SYSTEMD.md
+│   │   └── backend/Modules/Share/README.md
+│   ├── apm/documentation/
+│   ├── finance/documentation/
+│   └── helpdesk/documentation/
+├── docker/README.md
+└── assets/ENVIRONMENT_VARIABLES.md
 ```
 
 ## 🔗 Quick Reference
 
 ### Module READMEs
-- [Staff Portal](../README.md) - Main project README
-- [APM Module](../apm/README.md) - APM main README
-- [Finance Module](../finance/README.md) - Finance main README
-- [Helpdesk Module](../helpdesk/README.md) - Helpdesk main README
+- [Staff Portal](../modules/staff-portal/README.md)
+- [APM](../modules/apm/README.md)
+- [Finance](../modules/finance/README.md)
+- [Helpdesk](../modules/helpdesk/README.md)
+- [Root project README](../README.md)
 
 ### Documentation Indexes
-- [APM Documentation Index](../apm/documentation/README.md)
-- [Finance Documentation Index](../finance/documentation/README.md)
-- [Helpdesk Documentation Index](../helpdesk/documentation/README.md)
+- [APM](../modules/apm/documentation/README.md)
+- [Finance](../modules/finance/documentation/README.md)
+- [Helpdesk](../modules/helpdesk/documentation/README.md)
 
-### Key Configuration Files
-- Environment Variables: [assets/ENVIRONMENT_VARIABLES.md](../assets/ENVIRONMENT_VARIABLES.md)
-- File storage: [docs/STORAGE.md](../docs/STORAGE.md)
-- Apache Config: [000-default.conf](../000-default.conf)
+### Key configuration
+- [docs/STORAGE.md](../docs/STORAGE.md)
+- [docs/CI.md](../docs/CI.md)
+- [docker/README.md](../docker/README.md)
 
 ### Operations scripts
 
@@ -288,25 +244,20 @@ staff/
 |--------|---------|
 | [scripts/storage/migrate-all.sh](../scripts/storage/migrate-all.sh) | Copy uploads to `/var/staffdata/{site-id}/` |
 | [scripts/storage/fix-staff-storage-permissions.sh](../scripts/storage/fix-staff-storage-permissions.sh) | Host data directory permissions |
-| [scripts/fix-ci-app-permissions.sh](../scripts/fix-ci-app-permissions.sh) | CI3 `application/cache` and `application/logs` |
-| [apm/fix-storage-permissions.sh](../apm/fix-storage-permissions.sh) | APM Laravel `storage/` permissions |
-
-Knowledge Hub admins can also manage staff storage at **Settings → Storage Management → Staff ecosystem** when `STAFF_REPO_ROOT` is configured.
+| [scripts/fix-laravel-storage-permissions.sh](../scripts/fix-laravel-storage-permissions.sh) | Laravel `storage/` under modules |
+| [modules/apm/fix-storage-permissions.sh](../modules/apm/fix-storage-permissions.sh) | APM storage permissions |
 
 ## 📞 Support
 
-For issues or questions:
-
-1. Check the relevant module documentation
-2. Review troubleshooting sections
-3. Check application logs:
-   - CodeIgniter: `application/logs/`
-   - Laravel (APM): `apm/storage/logs/`
-   - Laravel (Helpdesk): `helpdesk/backend/storage/logs/` (plus `helpdesk-iso.jsonl` when the `iso_json` channel is enabled)
-   - Node.js: Check console output
+1. Check the relevant module documentation  
+2. Review troubleshooting above  
+3. Logs:
+   - Staff Portal: `modules/staff-portal/backend/storage/logs/`
+   - APM: `modules/apm/storage/logs/`
+   - Finance: `modules/finance/storage/logs/`
+   - Helpdesk: `modules/helpdesk/backend/storage/logs/`
 
 ---
 
-**Last Updated**: July 2026
-**Version**: 1.0.0
-
+**Last Updated**: September 2026  
+**Layout**: `modules/` monorepo (stable `/staff/*` URLs)

@@ -214,17 +214,13 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 3. Set up queue workers and cron jobs
 4. Configure [Queue Setup](./modules/apm/documentation/QUEUE_SETUP_GUIDE.md)
 5. Set up [Cron Configuration](./modules/apm/documentation/CRON_SETUP.md)
-6. Configure Staff Portal scheduler (single cron entry):
+6. Configure Staff Portal scheduler (Laravel):
 
 ```bash
-* * * * * /usr/bin/php /path/to/staff/index.php jobs/run/tick >> /path/to/staff/application/logs/cron-tick.log 2>&1
+* * * * * cd /path/to/staff/modules/staff-portal/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Default scheduler timings are configured in `application/modules/jobs/controllers/Run.php`:
-- `performance_notifications` at `07:00`
-- `performance_approval_reminder` at `10:00` (daily pending approvals reminder)
-- `mark_due_contracts` at `23:00`
-- `staff_birthday` at `03:00`
+(Plus APM / Helpdesk schedule entries as documented in each module.)
 
 </details>
 
@@ -237,7 +233,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | 📖 Documentation | 📝 Description |
 |-----------------|----------------|
 | [**📚 Main Documentation Hub**](./documentation/README.md) | Central documentation for the entire platform |
-| [**👥 Staff Portal Docs**](./assets/ENVIRONMENT_VARIABLES.md) | Configuration and setup guides |
+| [**👥 Staff Portal Docs**](./modules/staff-portal/README.md) | Laravel + Vue setup, Share API, deploy |
 | [**📋 APM Documentation**](./modules/apm/documentation/README.md) | Laravel Approvals Management System |
 | [**📡 APM API Documentation**](./modules/apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
 | [**🌱 APM Environment Guide**](./modules/apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`modules/apm/.env.example`) |

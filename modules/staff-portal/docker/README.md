@@ -1,13 +1,18 @@
-# Staff Portal — optional Docker stack
+# Staff Portal — optional Docker sidecar
 
-Same role as [`helpdesk/docker`](../../helpdesk/docker): optional **Redis** (and optional **MySQL**) for local development. Production still runs on host Apache + PHP like Helpdesk.
+Optional **Redis** (and optional **MySQL**) for local development of this module only — same idea as `modules/helpdesk/docker`.
 
-The main Staff + APM web container lives at the **repo root** (`../docker-compose.yml`). This folder is only for staff-portal sidecar services.
+For the **full CBP stack** (Apache + PHP + Redis for all apps), use the **repository root** Compose project instead:
 
-## Quick start
+- [../../docker/README.md](../../docker/README.md)
+- [../../docker-compose.yml](../../docker-compose.yml)
+
+Production still typically runs on host Apache + PHP; root Compose is the supported container path for local/prod-ish runs.
+
+## Quick start (sidecar)
 
 ```bash
-cd staff-portal/docker
+cd modules/staff-portal/docker
 docker compose up -d
 ```
 
@@ -38,6 +43,8 @@ QUEUE_CONNECTION=redis
 SESSION_DRIVER=redis
 ```
 
+When using **root** Compose, set `REDIS_HOST=redis` instead (Docker network DNS).
+
 Default staff-portal setup can keep `database` queue/cache; Redis is optional.
 
 ### Bundled MySQL
@@ -51,17 +58,17 @@ DB_USERNAME=staff
 DB_PASSWORD=staff
 ```
 
-Prefer the shared host `staff` database when developing against real CI3/APM data (`DB_HOST=127.0.0.1`, port `3306`).
+Prefer the shared host `staff` database when developing against real CBP data (`DB_HOST=127.0.0.1`, port `3306`).
 
 ## Stop
 
 ```bash
-cd staff-portal/docker
+cd modules/staff-portal/docker
 docker compose --profile bundled-mysql down
 ```
 
 ## Related
 
 - [staff-portal README](../README.md)
-- [Helpdesk docker compose](../../helpdesk/docker/docker-compose.yml)
-- [Repo-root Staff + APM Docker](../../docker/README.md)
+- [Helpdesk docker](../../helpdesk/docker/)
+- [Repo-root CBP Docker](../../docker/README.md)
