@@ -24,6 +24,8 @@ node_modules
 compser.lock
 package-lock.json
 !helpdesk/frontend/package-lock.json
+!modules/helpdesk/frontend/package-lock.json
+!modules/staff-portal/frontend/package-lock.json
 
 # Local data files (not for version control)
 Africa CDC Funding Portfolio.xlsx
