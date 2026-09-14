@@ -51,7 +51,7 @@ Share internal base: `http://127.0.0.1/staff/backend` (host) or `http://web/staf
 
 ## Systemd
 
-On Linux with `systemctl`:
+On Linux with `systemctl`, installers **stop, disable, and remove** prior units for that app before writing new ones (avoids duplicate queue/scheduler workers). APM also retires legacy unit names (`laravel-queue-worker`, `laravel-queue-cleanup`, `laravel12-queue-apm`).
 
 - **staff-portal** / **helpdesk** — existing `scripts/install-systemd.sh` (sets `INSTALL_SYSTEMD=true`)
 - **APM** — `scripts/setup/install-apm-systemd.sh` installs `laravel-queue-apm.service` + `laravel-scheduler.service` with `WorkingDirectory=…/modules/apm`
@@ -61,6 +61,8 @@ Under **Docker Compose**, prefer:
 ```bash
 docker compose --env-file docker/.env --profile workers up -d
 ```
+
+Do not run host systemd workers and Compose `--profile workers` against the same queue at once.
 
 ## Related
 

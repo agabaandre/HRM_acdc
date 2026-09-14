@@ -12,19 +12,29 @@ BIN_SRC="$REPO_ROOT/deploy/bin"
 ENV_EXAMPLE="$SYSTEMD_SRC/staff-portal.env.example"
 ENV_DEST="/etc/staff-portal/staff-portal.env"
 
+STAFF_ROOT="$(cd "$REPO_ROOT/../.." && pwd)"
+# shellcheck source=../../../../scripts/setup/systemd-cleanup.sh
+if [[ -f "$STAFF_ROOT/scripts/setup/systemd-cleanup.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$STAFF_ROOT/scripts/setup/systemd-cleanup.sh"
+else
+  systemd_retire_units() { :; }
+fi
+
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "Run as root: sudo $0" >&2
   exit 1
 fi
 
 NONINTERACTIVE="${STAFF_PORTAL_INSTALL_NONINTERACTIVE:-0}"
+DEFAULT_HEALTH="http://127.0.0.1/staff/backend/up"
 
 if [[ "$NONINTERACTIVE" == "1" ]]; then
   STAFF_PORTAL_ROOT="${STAFF_PORTAL_ROOT:-$REPO_ROOT/backend}"
   STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
   STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-$STAFF_PORTAL_USER}"
   PHP_BIN="${PHP_BIN:-/usr/bin/php}"
-  STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-http://127.0.0.1/staff/staff-portal/backend/up}"
+  STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-$DEFAULT_HEALTH}"
 else
   read -r -p "STAFF_PORTAL_ROOT (Laravel backend) [$REPO_ROOT/backend]: " input_root
   STAFF_PORTAL_ROOT="${input_root:-$REPO_ROOT/backend}"
@@ -34,11 +44,20 @@ else
   STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-$STAFF_PORTAL_USER}"
   read -r -p "PHP binary [/usr/bin/php]: " PHP_BIN
   PHP_BIN="${PHP_BIN:-/usr/bin/php}"
-  read -r -p "Health URL [http://127.0.0.1/staff/staff-portal/backend/up]: " STAFF_PORTAL_HEALTH_URL
-  STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-http://127.0.0.1/staff/staff-portal/backend/up}"
+  read -r -p "Health URL [$DEFAULT_HEALTH]: " STAFF_PORTAL_HEALTH_URL
+  STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-$DEFAULT_HEALTH}"
 fi
 
 STAFF_PORTAL_ROOT="$(cd "$STAFF_PORTAL_ROOT" && pwd)"
+
+echo "==> Retiring existing staff-portal systemd units (avoid duplicate workers)"
+systemd_retire_units \
+  staff-portal.target \
+  staff-portal-queue.service \
+  staff-portal-scheduler.service \
+  staff-portal-scheduler.timer \
+  staff-portal-health.service \
+  staff-portal-health.timer
 
 DEPLOY_BIN="/opt/staff-portal/bin"
 mkdir -p /etc/staff-portal "$DEPLOY_BIN"

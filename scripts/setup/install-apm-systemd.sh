@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Install APM queue + scheduler systemd units with modules/apm WorkingDirectory.
+# Retires legacy/duplicate APM units first to avoid clashing workers.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=systemd-cleanup.sh
+source "$ROOT/scripts/setup/systemd-cleanup.sh"
+
 APM_ROOT="${APM_ROOT:-$ROOT/modules/apm}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
 SERVICE_USER="${APM_SERVICE_USER:-www-data}"
@@ -59,6 +63,15 @@ if [[ "$(id -u)" -ne 0 ]]; then
     SYSTEMD_DIR="$SYSTEMD_DIR" \
     bash "$0"
 fi
+
+echo "==> Retiring legacy / duplicate APM systemd units"
+# Current targets (stop before rewrite) + obsolete aliases that would double-run queues.
+systemd_retire_units \
+  laravel-queue-apm.service \
+  laravel-scheduler.service \
+  laravel-queue-worker.service \
+  laravel-queue-cleanup.service \
+  laravel12-queue-apm.service
 
 write_unit "laravel-queue-apm.service" \
   "Laravel Queue Worker for Africa CDC APM" \

@@ -12,6 +12,14 @@ BIN_SRC="$REPO_ROOT/deploy/bin"
 ENV_EXAMPLE="$SYSTEMD_SRC/helpdesk.env.example"
 ENV_DEST="/etc/helpdesk/helpdesk.env"
 
+STAFF_ROOT="$(cd "$REPO_ROOT/../.." && pwd)"
+# shellcheck source=../../../../scripts/setup/systemd-cleanup.sh
+if [[ -f "$STAFF_ROOT/scripts/setup/systemd-cleanup.sh" ]]; then
+  source "$STAFF_ROOT/scripts/setup/systemd-cleanup.sh"
+else
+  systemd_retire_units() { :; }
+fi
+
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "Run as root: sudo $0" >&2
   exit 1
@@ -39,6 +47,15 @@ else
 fi
 
 HELPDESK_ROOT="$(cd "$HELPDESK_ROOT" && pwd)"
+
+echo "==> Retiring existing helpdesk systemd units (avoid duplicate workers)"
+systemd_retire_units \
+  helpdesk.target \
+  helpdesk-queue.service \
+  helpdesk-scheduler.service \
+  helpdesk-scheduler.timer \
+  helpdesk-health.service \
+  helpdesk-health.timer
 
 DEPLOY_BIN="/opt/helpdesk/bin"
 mkdir -p /etc/helpdesk "$DEPLOY_BIN"
@@ -75,3 +92,5 @@ systemctl restart helpdesk.target 2>/dev/null || systemctl start helpdesk.target
 echo ""
 echo "systemd installed for $HELPDESK_ROOT"
 systemctl is-active helpdesk-queue.service 2>/dev/null && systemctl status helpdesk-queue.service --no-pager -l | head -15 || true
+
+: "${ENV_EXAMPLE:=}"
