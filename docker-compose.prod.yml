@@ -1,0 +1,30 @@
+# Production-ish override: bake image, no source bind-mount, restart policies.
+#
+#   docker compose --env-file docker/.env \
+#     -f docker-compose.yml -f docker-compose.prod.yml \
+#     --profile workers up -d --build
+#
+# Requires module .env files present in the build context (or inject secrets
+# via your orchestrator). Do not use profile bundled-db in production.
+
+services:
+  web:
+    build:
+      target: prod
+    volumes: []
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  queue-apm:
+    build:
+      target: prod
+    volumes: []
+    restart: unless-stopped
+
+  queue-helpdesk:
+    build:
+      target: prod
+    volumes: []
+    restart: unless-stopped
