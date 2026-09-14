@@ -503,7 +503,7 @@ class SignatureManagerService
      */
     protected function fetchApproverStaffIdsFromLegacyCache(): array
     {
-        $path = dirname(base_path(), 2).'/application/cache/apm_approver_staff_ids.json';
+        $path = dirname(base_path(), 2).'/cache/apm_approver_staff_ids.json';
         if (! is_file($path)) {
             return [];
         }

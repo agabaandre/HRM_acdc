@@ -14,9 +14,9 @@ export function apiPublicBaseUrl(): string {
   }
   if (typeof window !== 'undefined') {
     const { protocol, host } = window.location
-    return `${protocol}//${host}/staff/staff-portal/backend`
+    return `${protocol}//${host}/staff/backend`
   }
-  return '/staff/staff-portal/backend'
+  return '/staff/backend'
 }
 
 function resolveApiPublicBase(): string {
@@ -32,10 +32,10 @@ export function apiDocsUrl(): string {
 /** SPA login URL (never bounce through Laravel Livewire /login). */
 export function loginUrl(): string {
   if (typeof window !== 'undefined') {
-    const base = (import.meta.env.BASE_URL || '/staff/staff-portal/').replace(/\/?$/, '/')
+    const base = (import.meta.env.BASE_URL || '/staff/').replace(/\/?$/, '/')
     return `${window.location.origin}${base}login`
   }
-  return '/staff/staff-portal/login'
+  return '/staff/login'
 }
 
 export function microsoftLoginUrl(): string {

@@ -91,6 +91,6 @@ dotenv_load_file "$SETUP_ENV"
 
 echo ""
 echo "Staff Portal setup complete."
-echo "  SPA:  ${STAFF_PORTAL_SPA_URL:-http://localhost/staff/staff-portal/}"
-echo "  API:  ${APP_URL:-http://localhost/staff/staff-portal/backend}/up"
+echo "  SPA:  ${STAFF_PORTAL_SPA_URL:-http://localhost/staff/}"
+echo "  API:  ${APP_URL:-http://localhost/staff/backend}/up"
 echo "  Dev:  npm run dev:all   (API :8081 + Vite :5175)"

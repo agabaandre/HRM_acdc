@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Staff Portal — single production deploy script (beside Staff at /staff/staff-portal/).
+# Staff Portal — single production deploy script (beside Staff at /staff/).
 #
 # First time on a server:
 #   cp setup.env.example setup.env
@@ -87,7 +87,7 @@ PHP_BIN="${PHP_BIN:-/usr/bin/php}"
 
 # URL prefix follows the parent folder name for demo deploys:
 #   .../demo_staff/staff-portal → /demo_staff/staff-portal/
-#   .../staff/staff-portal     → /staff/staff-portal/
+#   .../staff/staff-portal     → /staff/
 staff_portal_web_prefix() {
     local parent
     parent="$(basename "$(cd "$ROOT/.." && pwd)")"
@@ -99,15 +99,15 @@ staff_portal_web_prefix() {
 }
 WEB_PREFIX="$(staff_portal_web_prefix)"
 # Always align Vite paths to this deploy (stale .env.production.local was pointing
-# /demo_staff HTML at /staff/staff-portal/assets → 500s on the wrong tree).
-VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/staff-portal/backend}"
+# /demo_staff HTML at /staff/assets → 500s on the wrong tree).
+VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/backend}"
 VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-${WEB_PREFIX}/staff-portal/}"
 # If setup.env still has /staff/... but we are under demo_staff, override.
 if [[ "$WEB_PREFIX" == "/demo_staff" ]]; then
     case "${VITE_STAFF_PORTAL_BASE_PATH}" in
         /staff/*)
             VITE_STAFF_PORTAL_BASE_PATH="/demo_staff/staff-portal/"
-            VITE_STAFF_PORTAL_API_BASE_URL="/demo_staff/staff-portal/backend"
+            VITE_STAFF_PORTAL_API_BASE_URL="/demo_staff/backend"
             warn "Deploy path is demo_staff — forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH}"
             ;;
     esac
@@ -452,7 +452,7 @@ fi
 
 echo ""
 echo "Staff Portal production setup complete."
-echo "  SPA:     ${SPA_URL:-/staff/staff-portal/}"
+echo "  SPA:     ${SPA_URL:-/staff/}"
 echo "  API:     ${API_UP_URL:-}"
 echo ""
 echo "Post-deploy:"

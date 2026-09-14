@@ -8,7 +8,7 @@
 ![Landing Page](./assets/images/landing.png)
 
 [![Documentation](https://img.shields.io/badge/Documentation-Complete-blue)](./documentation/README.md)
-[![Staff Portal](https://img.shields.io/badge/Staff%20Portal-CodeIgniter-orange)](./application/)
+[![Staff Portal](https://img.shields.io/badge/Staff%20Portal-Laravel%2BVue-blue)](./staff-portal/)
 [![APM](https://img.shields.io/badge/APM-Laravel-red)](./apm/)
 [![Finance](https://img.shields.io/badge/Finance-Laravel%2BInertia-green)](./finance/)
 [![Helpdesk](https://img.shields.io/badge/Helpdesk-Laravel%2BVue-teal)](./helpdesk/)

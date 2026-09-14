@@ -34,12 +34,12 @@ class StaffJobsScheduleService
 
     public function path(): string
     {
-        return $this->staffRoot().'/application/cache/staff_jobs_schedule.json';
+        return $this->staffRoot().'/cache/staff_jobs_schedule.json';
     }
 
     public function displayPath(): string
     {
-        return 'application/cache/staff_jobs_schedule.json';
+        return 'cache/staff_jobs_schedule.json';
     }
 
     /**

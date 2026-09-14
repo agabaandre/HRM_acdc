@@ -1,7 +1,7 @@
 <?php
 /**
  * Staff Portal static/SPA front controller.
- * Used when Apache would otherwise hand /staff/staff-portal/* to CodeIgniter
+ * Used when Apache would otherwise hand /staff/* to legacy front controller
  * (which returns HTTP 500 + text/html for missing Vite assets).
  */
 declare(strict_types=1);
@@ -46,7 +46,7 @@ $send = static function (string $path) use ($mime): void {
     exit;
 };
 
-// /staff/staff-portal/assets/<file>  (via ?f=)
+// /staff/assets/<file>  (via ?f=)
 if ($asset !== '') {
     if (str_contains($asset, '..') || ! preg_match('/^[A-Za-z0-9._-]+$/', $asset)) {
         http_response_code(400);

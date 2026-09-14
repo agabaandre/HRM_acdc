@@ -1,0 +1,2 @@
+# Deny web access to shared cache files
+Require all denied

@@ -29,3 +29,10 @@ package-lock.json
 Africa CDC Funding Portfolio.xlsx
 
 /apm/vendor/
+
+# Shared portal cache (jobs schedule, etc.)
+/cache/*
+!/cache/.htaccess
+
+# Symlink to staff-portal/backend
+/backend

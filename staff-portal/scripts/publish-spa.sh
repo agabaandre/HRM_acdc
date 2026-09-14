@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish Vite build to staff-portal root as REAL files (no symlinks).
-# Fixes Apache 500 on /staff/staff-portal/assets/* when rewrite/CI catch-all breaks.
+# Fixes Apache 500 on /staff/assets/* when rewrite/CI catch-all breaks.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -50,6 +50,6 @@ sample="$(find "$ROOT/assets" -maxdepth 1 -type f -name '*.js' | head -n 1 || tr
 echo "    index.html  → $ROOT/index.html"
 echo "    assets/     → $js_count js, $css_count css"
 if [[ -n "$sample" ]]; then
-  echo "    sample      → /staff/staff-portal/assets/$(basename "$sample")"
+  echo "    sample      → /staff/assets/$(basename "$sample")"
 fi
 echo "==> Done. Hard-refresh the browser (Ctrl+Shift+R)."

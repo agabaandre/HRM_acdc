@@ -11,10 +11,10 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
 
   const proxyTarget =
-    env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/staff-portal/backend'
+    env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/backend'
 
   const base = isProd
-    ? (env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/staff-portal/')
+    ? (env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/')
     : '/'
 
   return {

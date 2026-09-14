@@ -43,7 +43,7 @@ class StaffJobsSettingsController extends Controller
         $payload = $this->schedule->fromRequest($request->all());
         if (! $this->schedule->write($payload)) {
             return response()->json([
-                'message' => 'Could not save schedule. Ensure application/cache is writable by the web server.',
+                'message' => 'Could not save schedule. Ensure cache/ is writable by the web server.',
             ], 500);
         }
 
