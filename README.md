@@ -249,6 +249,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 | [**🧑‍💻 Helpdesk Developer Guide**](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
 | [**🔁 CI (GitHub + Azure)**](./docs/CI.md) | Build gates and GHCR image publish |
+| [**🛠️ Root setup**](./docs/SETUP.md) | Interactive env + installers + systemd |
 
 </div>
 
