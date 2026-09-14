@@ -2,9 +2,25 @@
 .github
 **/.DS_Store
 **/Thumbs.db
-apm/node_modules
-apm/storage/debugbar
-apm/storage/logs/*.log
 **/npm-debug.log
 **/.phpunit.result.cache
 .gitignore
+
+# Node / frontend junk (SPA is published into public-spa separately)
+**/node_modules
+modules/**/frontend/node_modules
+modules/**/frontend/dist
+modules/apm/node_modules
+
+# Runtime noise
+**/storage/logs/*
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/debugbar
+!**/.gitkeep
+
+# Tests / docs not needed in prod image bake
+**/tests
+**/phpunit.xml
+docs/superpowers
