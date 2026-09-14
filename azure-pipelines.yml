@@ -1,26 +1,118 @@
-# PHP
-# Test and package your PHP project.
-# Add steps that run tests, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/php
+# CBP CI + GHCR publish (parity with .github/workflows/ci.yml).
+#
+# Required for publish job (Azure DevOps → Pipelines → Variables):
+#   GHCR_USERNAME  — GitHub username or org bot
+#   GHCR_TOKEN     — GitHub PAT with write:packages (secret)
+#   GHCR_IMAGE     — ghcr.io/<owner>/<repo>/cbp  (lowercase)
+#
+# See docs/CI.md
 
 trigger:
-- main
+  branches:
+    include:
+      - main
+  tags:
+    include:
+      - v*
+
+pr:
+  branches:
+    include:
+      - main
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
-  phpVersion: 8.1
+  phpVersion: "8.2"
+  nodeVersion: "20.x"
+  # Override in the Azure pipeline UI if the default is wrong:
+  # GHCR_IMAGE: ghcr.io/your-org/your-repo/cbp
 
-steps:
-- script: |
-    sudo update-alternatives --set php /usr/bin/php$(phpVersion)
-    sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
-    sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
-    sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
-    sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
-    php -version
-  displayName: 'Use PHP version $(phpVersion)'
+stages:
+  - stage: CI
+    displayName: Build gates
+    jobs:
+      - job: build
+        displayName: Composer + SPA
+        steps:
+          - checkout: self
 
-- script: composer install --no-interaction --prefer-dist
-  displayName: 'composer install'
+          - script: |
+              set -euo pipefail
+              sudo apt-get update
+              sudo apt-get install -y software-properties-common
+              sudo add-apt-repository -y ppa:ondrej/php
+              sudo apt-get update
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                php$(phpVersion) php$(phpVersion)-cli php$(phpVersion)-mbstring \
+                php$(phpVersion)-xml php$(phpVersion)-curl php$(phpVersion)-zip \
+                php$(phpVersion)-mysql php$(phpVersion)-gd php$(phpVersion)-intl \
+                php$(phpVersion)-bcmath php$(phpVersion)-redis
+              sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+              php -v
+              curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+              composer --version
+            displayName: Setup PHP $(phpVersion) + Composer
+
+          - script: ./scripts/ci/composer-modules.sh
+            displayName: Composer install (modules)
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: Setup Node $(nodeVersion)
+
+          - script: ./scripts/ci/build-spa.sh
+            displayName: Build staff SPA
+
+  - stage: Publish
+    displayName: Publish GHCR image
+    dependsOn: CI
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/v')))
+    jobs:
+      - job: docker_publish
+        displayName: Docker build and push
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: Setup Node $(nodeVersion)
+
+          - script: ./scripts/ci/build-spa.sh
+            displayName: Build staff SPA (for Docker bake)
+
+          - script: |
+              set -euo pipefail
+              if [[ -z "${GHCR_USERNAME:-}" || -z "${GHCR_TOKEN:-}" ]]; then
+                echo "##vso[task.logissue type=error]Set secret variables GHCR_USERNAME and GHCR_TOKEN for GHCR publish"
+                exit 1
+              fi
+              if [[ -z "${GHCR_IMAGE:-}" ]]; then
+                echo "##vso[task.logissue type=error]Set GHCR_IMAGE (e.g. ghcr.io/org/repo/cbp)"
+                exit 1
+              fi
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            displayName: Login to GHCR
+            env:
+              GHCR_USERNAME: $(GHCR_USERNAME)
+              GHCR_TOKEN: $(GHCR_TOKEN)
+              GHCR_IMAGE: $(GHCR_IMAGE)
+
+          - script: |
+              set -euo pipefail
+              SHORT_SHA="$(echo "$(Build.SourceVersion)" | cut -c1-7)"
+              if [[ "$(Build.SourceBranch)" == refs/tags/* ]]; then
+                EXTRA="$(Build.SourceBranchName)"
+              else
+                EXTRA=main
+              fi
+              export IMAGE_NAME="$(echo "${GHCR_IMAGE}" | tr '[:upper:]' '[:lower:]')"
+              export IMAGE_TAG_SHA="${SHORT_SHA}"
+              export IMAGE_TAG_EXTRA="${EXTRA}"
+              ./scripts/ci/docker-publish.sh
+            displayName: Build and push image
+            env:
+              GHCR_IMAGE: $(GHCR_IMAGE)
