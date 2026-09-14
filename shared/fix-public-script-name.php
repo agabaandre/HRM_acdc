@@ -11,7 +11,8 @@ declare(strict_types=1);
     $replacements = [
         '#^/staff/modules/apm(?:/public)?#' => '/staff/apm',
         '#^/staff/modules/finance(?:/public)?#' => '/staff/finance',
-        '#^/staff/modules/helpdesk(?:/backend)?(?:/public)?#' => '/staff/helpdesk',
+        // Helpdesk Laravel API is mounted at /staff/helpdesk/backend (not /staff/helpdesk).
+        '#^/staff/modules/helpdesk/backend(?:/public)?#' => '/staff/helpdesk/backend',
         '#^/staff/modules/staff-portal/backend(?:/public)?#' => '/staff/backend',
     ];
 
