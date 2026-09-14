@@ -33,6 +33,24 @@
 | `setup.sh` | Wizard + orchestration |
 | `docs/SETUP.md` | Operator docs |
 | `README.md` | Link to setup |
+| `scripts/setup/install-apm-systemd.sh` | Install/update APM queue + scheduler units with `modules/apm` paths |
+
+### Systemd (background jobs) — integrated into Task 3
+
+After env + optional installers, prompt:
+
+`Install systemd background workers? 1) Yes  2) No` (default No on macOS / when `systemctl` missing; default Yes on Linux production profile).
+
+When Yes:
+
+| Module | Action |
+|--------|--------|
+| staff-portal | Set `INSTALL_SYSTEMD=true` in `setup.env`; set `STAFF_PORTAL_HEALTH_URL={base}/backend/up`; run `modules/staff-portal/scripts/install-systemd.sh` (sudo) |
+| helpdesk | Set `INSTALL_SYSTEMD=true`; health URL `{base}/helpdesk/backend/up` (or module default); run `modules/helpdesk/scripts/install-systemd.sh` |
+| apm | Run `scripts/setup/install-apm-systemd.sh` — template units from `modules/apm/laravel-*.service`, substitute `WorkingDirectory` → `$ROOT/modules/apm`, `User`/`PHP_BIN`, enable `laravel-queue-apm` + `laravel-scheduler` |
+| finance | Skip (no first-class systemd units in repo) unless added later |
+
+Docker deploy mode: print note that Compose `--profile workers` is preferred over host systemd for queues; still allow systemd if user insists (host workers against Docker DB).
 
 ---
 

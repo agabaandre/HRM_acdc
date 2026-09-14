@@ -115,6 +115,12 @@ The platform consists of four integrated modules working seamlessly together:
 
 ### 👨‍💻 For Developers
 
+```bash
+./setup.sh   # interactive env for all modules (+ optional installers / systemd)
+```
+
+Full guide: [docs/SETUP.md](./docs/SETUP.md)
+
 <details>
 <summary><b>Docker (CBP modules)</b></summary>
 

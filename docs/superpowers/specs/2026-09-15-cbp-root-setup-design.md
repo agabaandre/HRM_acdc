@@ -131,6 +131,19 @@ Choice of local vs production script: prompt “Installer profile: development |
 
 Docker: after env, print compose commands; do not require Docker daemon for env-only path.
 
+## Systemd background jobs
+
+Optional step after installers:
+
+| Module | Mechanism |
+|--------|-----------|
+| staff-portal | Existing `scripts/install-systemd.sh` + `deploy/systemd/` (queue, scheduler timer, health) |
+| helpdesk | Existing `scripts/install-systemd.sh` + `deploy/systemd/` |
+| apm | New helper installs `laravel-queue-apm.service` + `laravel-scheduler.service` with `WorkingDirectory=…/modules/apm` |
+| finance | Not in v1 (no unit pack) |
+
+Prompt only when Linux + `systemctl` present (or user forces). Set `INSTALL_SYSTEMD=true` in module `setup.env`. Prefer Compose workers under Docker deploy mode; document both.
+
 ## Files to add
 
 | Path | Role |
