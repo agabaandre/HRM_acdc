@@ -33,10 +33,10 @@ export function staffPortalHomeUrl(): string {
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `${protocol}//${hostname}/staff/home/index`
+      return `${protocol}//${hostname}/staff/`
     }
   }
-  return 'http://localhost/staff/home/index'
+  return 'http://localhost/staff/'
 }
 
 let redirectingToStaffPortal = false
@@ -50,7 +50,7 @@ export function redirectToStaffPortalHome(): void {
   window.location.href = staffPortalHomeUrl()
 }
 
-/** Base Staff portal URL (no `/home/index`) for shared assets, e.g. logo — same pattern as Finance. */
+/** Base Staff portal URL (no trailing home path) for shared assets, e.g. logo — same pattern as Finance. */
 export function staffPortalBaseUrl(): string {
   const explicit = import.meta.env.VITE_STAFF_BASE_URL as string | undefined
   if (explicit?.trim()) {

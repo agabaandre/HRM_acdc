@@ -24,7 +24,7 @@ const nav = ref<CbpNavPayload | null>(null)
 const navLoading = ref(false)
 const navError = ref<string | null>(null)
 
-const portalHome = computed(() => nav.value?.home?.href ?? `${base.value}/home/index`)
+const portalHome = computed(() => nav.value?.home?.href ?? `${base.value}/`)
 const portalHomeLabel = computed(() => nav.value?.home?.label ?? 'CBP Home')
 const systems = computed(() => nav.value?.modules ?? [])
 

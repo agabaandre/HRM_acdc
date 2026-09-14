@@ -64,6 +64,14 @@ Options -Indexes
     RewriteCond %{REQUEST_URI} /(demo_staff|staff)/auth/refresh_sso_session/?$ [NC]
     RewriteRule ^.*$ /staff/backend/auth/refresh_sso_session [R=307,L,QSA]
 
+    # CI3 CBP home → Vue SPA home
+    RewriteRule ^home/?$ /staff/ [R=301,L,QSA]
+    RewriteRule ^home/index/?$ /staff/ [R=301,L,QSA]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/?$ [NC]
+    RewriteRule ^.*$ /staff/ [R=301,L,QSA]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/index/?$ [NC]
+    RewriteRule ^.*$ /staff/ [R=301,L,QSA]
+
     # Existing files/dirs (including backend symlink, uploads, legacy assets/)
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d

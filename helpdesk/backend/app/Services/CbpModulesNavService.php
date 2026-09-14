@@ -78,7 +78,7 @@ class CbpModulesNavService
                 'id' => 'cbp_home',
                 'label' => 'CBP Home',
                 'description' => '',
-                'href' => $staffBase.'/home/index',
+                'href' => rtrim($staffBase, '/').'/',
                 'is_active' => false,
             ],
             'modules' => [

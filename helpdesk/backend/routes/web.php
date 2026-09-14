@@ -11,11 +11,11 @@ Route::get('/sso/accept', function () {
     $host = request()->getHost();
     $scheme = request()->getScheme();
     if ($host !== '' && (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1'))) {
-        return redirect($scheme.'://'.$host.'/staff/home/index?helpdesk_error=sso&helpdesk_error_reason=invalid');
+        return redirect($scheme.'://'.$host.'/staff/?helpdesk_error=sso&helpdesk_error_reason=invalid');
     }
     $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
 
-    return redirect()->away($base.'/home/index?helpdesk_error=sso&helpdesk_error_reason=invalid');
+    return redirect()->away(rtrim($base, '/').'/?helpdesk_error=sso&helpdesk_error_reason=invalid');
 })->name('sso.accept.get');
 
 Route::get('/', function () {

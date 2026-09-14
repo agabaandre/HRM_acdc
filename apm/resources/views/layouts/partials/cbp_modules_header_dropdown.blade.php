@@ -1,9 +1,9 @@
 {{-- Top-bar CBP Modules menu (shared pattern with Staff portal + Helpdesk). Wired via AppServiceProvider → CbpModulesNavService. --}}
 @php
-    $cbpNav = $cbpModulesNav ?? ['home' => ['label' => 'CBP Home', 'href' => ($staffWebBaseUrl ?? '') . '/home/index', 'is_active' => false], 'modules' => []];
+    $cbpNav = $cbpModulesNav ?? ['home' => ['label' => 'CBP Home', 'href' => rtrim((string) ($staffWebBaseUrl ?? ''), '/') . '/', 'is_active' => false], 'modules' => []];
     $cbpHome = $cbpNav['home'] ?? [];
     $cbpModules = $cbpNav['modules'] ?? [];
-    $cbpHomeHref = (string) ($cbpHome['href'] ?? ($staffWebBaseUrl ?? '') . '/home/index');
+    $cbpHomeHref = (string) ($cbpHome['href'] ?? (rtrim((string) ($staffWebBaseUrl ?? ''), '/') . '/'));
     $cbpHomeLabel = (string) ($cbpHome['label'] ?? 'CBP Home');
     $cbpHomeActive = !empty($cbpHome['is_active']);
     $cbpToggleActive = $cbpHomeActive;

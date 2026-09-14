@@ -107,7 +107,7 @@ class CbpModulesApiTest extends TestCase
         $response = $this->getJson('/api/v1/cbp-modules', ['HTTP_HOST' => 'localhost']);
 
         $response->assertOk()
-            ->assertJsonPath('data.home.href', 'http://localhost/staff/home/index');
+            ->assertJsonPath('data.home.href', 'http://localhost/staff/');
     }
 
     #[Test]

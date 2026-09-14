@@ -16,6 +16,19 @@ const router = createRouter({
       component: () => import('../pages/HomePage.vue'),
       meta: { requiresAuth: true },
     },
+    // CI3 CBP home bookmarks (APM / Helpdesk / Finance still link here).
+    {
+      path: '/home',
+      redirect: { name: 'home' },
+    },
+    {
+      path: '/home/index',
+      redirect: { name: 'home' },
+    },
+    {
+      path: '/home/:pathMatch(.*)*',
+      redirect: { name: 'home' },
+    },
     {
       path: '/profile',
       name: 'profile',
