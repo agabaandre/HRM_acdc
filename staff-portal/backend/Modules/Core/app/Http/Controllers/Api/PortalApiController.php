@@ -7,14 +7,23 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Support\CbpModulesNav;
+use Modules\Settings\Services\CbpModulesAdminService;
 
 class PortalApiController extends Controller
 {
+    public function __construct(
+        protected CbpModulesAdminService $cbpModulesAdmin,
+    ) {}
+
     public function cbpModules(Request $request): JsonResponse
     {
         $user = $request->user();
         if (! $user instanceof PortalUser) {
             return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if ($this->cbpModulesAdmin->tableExists()) {
+            $this->cbpModulesAdmin->ensureCoreModules();
         }
 
         $session = $user->toSessionArray();

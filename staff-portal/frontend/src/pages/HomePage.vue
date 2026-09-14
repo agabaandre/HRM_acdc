@@ -218,9 +218,9 @@ onMounted(async () => {
 }
 
 .cbp-home .settings-card {
-  min-height: 220px;
-  height: 100%;
-  padding: 1.75rem 1.25rem;
+  min-height: 0;
+  height: auto;
+  padding: 1rem 1.1rem 1.1rem;
   transition: var(--cbp-transition);
   font-size: 0.9rem;
   display: flex;
@@ -263,22 +263,26 @@ onMounted(async () => {
 
 .cbp-home .settings-card h6 {
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--cbp-text-dark);
-  margin-bottom: 0.65rem;
+  margin: 0 0 0.4rem;
   line-height: 1.3;
   position: relative;
   z-index: 2;
 }
 
 .cbp-home .settings-card p {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--cbp-text-muted);
   margin: 0;
-  line-height: 1.5;
-  flex-grow: 1;
+  line-height: 1.4;
+  flex-grow: 0;
   position: relative;
   z-index: 2;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cbp-home .widgets-icons {
@@ -291,9 +295,9 @@ onMounted(async () => {
 }
 
 .cbp-home .widgets-icons i {
-  width: 120px;
-  height: 120px;
-  font-size: 4.25rem;
+  width: 72px;
+  height: 72px;
+  font-size: 2.5rem;
   color: rgba(17, 154, 72, 0.1);
   display: flex;
   align-items: center;
@@ -331,7 +335,7 @@ onMounted(async () => {
   }
 
   .cbp-home .settings-card {
-    min-height: 200px;
+    padding: 0.9rem 1rem 1rem;
   }
 }
 

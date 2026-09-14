@@ -35,6 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/*',
             '*/api/*',
+            // Legacy CBP launch posts africacdc_csrf_token (not Laravel _token).
+            // Session auth + same-site cookie still required via auth middleware.
+            'home/launch_module',
         ]);
         $middleware->statefulApi();
     })

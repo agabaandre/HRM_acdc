@@ -33,7 +33,7 @@ Route::get('/', function (Request $request) {
             Log::error('Finance token processing error: '.$e->getMessage());
             $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
 
-            return redirect($base.'/auth/login');
+            return redirect($base.'/login');
         }
     }
 
@@ -44,8 +44,10 @@ Route::get('/', function (Request $request) {
 
     $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
 
-    return redirect($base.'/auth/login');
+    return redirect($base.'/login');
 });
+
+Route::post('/sso/accept', [AuthController::class, 'ssoAccept'])->name('sso.accept');
 
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 

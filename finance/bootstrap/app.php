@@ -19,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'finance.session' => EnsureFinanceSession::class,
         ]);
+        // Staff portal SSO auto-POST does not include Laravel's _token.
+        $middleware->validateCsrfTokens(except: [
+            'sso/accept',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

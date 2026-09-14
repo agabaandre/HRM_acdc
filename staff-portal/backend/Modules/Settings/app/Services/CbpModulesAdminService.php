@@ -12,6 +12,87 @@ class CbpModulesAdminService
 {
     public const AUTO_ASSIGN_GROUP_ID = 10;
 
+    /**
+     * Built-in CBP modules that must exist for home + SSO launch.
+     * New installs and settings pages call ensureCoreModules().
+     *
+     * @var list<array<string, mixed>>
+     */
+    public const CORE_MODULES = [
+        [
+            'module_key' => 'staff_portal',
+            'system_name' => 'Staff Portal',
+            'description' => 'Manage staff details, contracts, appraisals and access HR services efficiently.',
+            'base_url' => 'dashboard',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-users',
+            'permission_code' => '84',
+            'uses_staff_portal_token' => 0,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 1,
+            'alternate_base_url' => 'auth/profile',
+            'alternate_for_role_id' => 17,
+            'target_resolver' => 'codeigniter',
+            'sort_order' => 10,
+        ],
+        [
+            'module_key' => 'approvals_management',
+            'system_name' => 'Approvals Management (APM)',
+            'description' => 'Tracks submissions, reviews, and approvals for travel matrices, single and special memos, change, DSA and ARF requests.',
+            'base_url' => 'apm',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-sitemap',
+            'permission_code' => '85',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 0,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 20,
+        ],
+        [
+            'module_key' => 'finance_management',
+            'system_name' => 'Finance Management',
+            'description' => 'Manage financial reports, invoices, budgets, transactions, and vendor information.',
+            'base_url' => 'finance',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-wallet',
+            'permission_code' => '92',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 1,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 30,
+        ],
+        [
+            'module_key' => 'helpdesk_itsm',
+            'system_name' => 'HelpDesk',
+            'description' => 'Log incidents and service requests; session opens from the Staff portal (same sign-on as APM).',
+            'base_url' => 'helpdesk',
+            'base_url_development' => 'http://localhost/staff/helpdesk',
+            'base_url_production' => null,
+            'icon_class' => 'fa-headset',
+            'permission_code' => '93',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 0,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 35,
+        ],
+    ];
+
     /** @var list<string> */
     public const TARGET_RESOLVERS = ['codeigniter', 'staff_app_token', 'finance_host', 'external_microservice'];
 
@@ -60,6 +141,112 @@ class CbpModulesAdminService
     public function tableExists(): bool
     {
         return Schema::hasTable('cbp_modules');
+    }
+
+    /**
+     * Insert missing core modules and ensure each module permission is on the admin group.
+     * Safe to call on every settings load / nav bootstrap.
+     *
+     * @return array{inserted: list<string>, assigned: int}
+     */
+    public function ensureCoreModules(): array
+    {
+        $inserted = [];
+        $assigned = 0;
+        if (! $this->tableExists()) {
+            return ['inserted' => $inserted, 'assigned' => $assigned];
+        }
+
+        foreach (self::CORE_MODULES as $def) {
+            $key = (string) $def['module_key'];
+            $existing = DB::table('cbp_modules')->where('module_key', $key)->first();
+            if (! $existing) {
+                $permCode = (string) ($def['permission_code'] ?? '');
+                if ($permCode !== '' && Schema::hasTable('permissions')) {
+                    $this->ensureNamedPermissionExists((int) $permCode, $key, (string) $def['system_name']);
+                }
+                DB::table('cbp_modules')->insert([
+                    'module_key' => $key,
+                    'system_name' => mb_substr((string) $def['system_name'], 0, 191),
+                    'description' => $def['description'] ?? null,
+                    'base_url' => (string) ($def['base_url'] ?? ''),
+                    'base_url_development' => $this->nullableString($def['base_url_development'] ?? null),
+                    'base_url_production' => $this->nullableString($def['base_url_production'] ?? null),
+                    'icon_class' => mb_substr((string) ($def['icon_class'] ?? 'fa-th'), 0, 128),
+                    'permission_code' => mb_substr((string) ($def['permission_code'] ?? ''), 0, 32),
+                    'uses_staff_portal_token' => (int) ($def['uses_staff_portal_token'] ?? 0),
+                    'is_production' => (int) ($def['is_production'] ?? 1),
+                    'is_enabled' => (int) ($def['is_enabled'] ?? 1),
+                    'show_in_apm_menu' => (int) ($def['show_in_apm_menu'] ?? 0),
+                    'alternate_base_url' => $this->nullableString($def['alternate_base_url'] ?? null),
+                    'alternate_for_role_id' => $this->nullableUint($def['alternate_for_role_id'] ?? null),
+                    'target_resolver' => (string) ($def['target_resolver'] ?? 'codeigniter'),
+                    'sort_order' => (int) ($def['sort_order'] ?? 100),
+                ]);
+                $inserted[] = $key;
+                $existing = DB::table('cbp_modules')->where('module_key', $key)->first();
+            }
+
+            if ($existing) {
+                $before = $this->groupHasPermission((int) $existing->permission_code, self::AUTO_ASSIGN_GROUP_ID);
+                $this->ensureModulePermissionAssignedToAdmin((int) $existing->id);
+                if (! $before && $this->groupHasPermission((int) $existing->permission_code, self::AUTO_ASSIGN_GROUP_ID)) {
+                    $assigned++;
+                }
+            }
+        }
+
+        // Any other enabled modules also get admin auto-assign (new systems).
+        $rows = DB::table('cbp_modules')->select(['id', 'permission_code'])->get();
+        foreach ($rows as $row) {
+            $before = $this->groupHasPermission((int) $row->permission_code, self::AUTO_ASSIGN_GROUP_ID);
+            $this->ensureModulePermissionAssignedToAdmin((int) $row->id);
+            if (! $before && $this->groupHasPermission((int) $row->permission_code, self::AUTO_ASSIGN_GROUP_ID)) {
+                $assigned++;
+            }
+        }
+
+        return ['inserted' => $inserted, 'assigned' => $assigned];
+    }
+
+    protected function groupHasPermission(int $permissionId, int $groupId): bool
+    {
+        if ($permissionId < 1 || $groupId < 1 || ! Schema::hasTable('group_permissions')) {
+            return false;
+        }
+
+        return DB::table('group_permissions')
+            ->where('group_id', $groupId)
+            ->where('permission_id', $permissionId)
+            ->exists();
+    }
+
+    /**
+     * Ensure a permission row exists at a known id (legacy CBP codes 84/85/92/93).
+     */
+    protected function ensureNamedPermissionExists(int $id, string $moduleKey, string $systemName): void
+    {
+        if ($id < 1 || ! Schema::hasTable('permissions')) {
+            return;
+        }
+        if (DB::table('permissions')->where('id', $id)->exists()) {
+            return;
+        }
+
+        $name = 'cbp_'.trim((string) preg_replace('/[^a-z0-9_]+/', '_', strtolower($moduleKey)), '_');
+        $insert = [
+            'id' => $id,
+            'name' => $name,
+            'definition' => mb_substr('CBP module access: '.trim($systemName), 0, 255),
+        ];
+        if (Schema::hasColumn('permissions', 'module')) {
+            $insert['module'] = 'cbp';
+        }
+        try {
+            DB::table('permissions')->insert($insert);
+        } catch (\Throwable) {
+            // Auto-increment collision — leave existing registry alone.
+        }
     }
 
     /**

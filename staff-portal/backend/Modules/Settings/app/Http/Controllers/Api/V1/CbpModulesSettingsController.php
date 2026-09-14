@@ -18,6 +18,11 @@ class CbpModulesSettingsController extends Controller
     {
         PortalPermission::authorize(15);
 
+        $ensured = ['inserted' => [], 'assigned' => 0];
+        if ($this->modules->tableExists()) {
+            $ensured = $this->modules->ensureCoreModules();
+        }
+
         $tableExists = $this->modules->tableExists();
         $rows = $tableExists ? $this->modules->allOrdered() : [];
 
@@ -52,6 +57,7 @@ class CbpModulesSettingsController extends Controller
                 'icon_options' => CbpModulesAdminService::iconOptions(),
                 'resolver_options' => CbpModulesAdminService::targetResolverLabels(),
                 'auto_assign_group_id' => CbpModulesAdminService::AUTO_ASSIGN_GROUP_ID,
+                'ensured_core' => $ensured,
             ],
         ]);
     }

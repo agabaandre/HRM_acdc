@@ -26,19 +26,16 @@ Options -Indexes
 
     # ------------------------------------------------------------------
     # Legacy /staff/staff-portal/* → new root URLs (301)
+    # Use THE_REQUEST so this fires on the original client URL even when
+    # Apache has already mapped into the physical staff-portal/ directory.
     # ------------------------------------------------------------------
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal/backend(?:/(.*))?$ [NC]
-    RewriteRule ^.*$ /staff/backend/%2 [R=301,L,QSA]
-
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal/assets/([^/]+)$ [NC]
-    RewriteRule ^.*$ /staff/assets/%2 [R=301,L,QSA]
-
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/staff-portal(?:/(.*))?$ [NC]
-    RewriteRule ^.*$ /staff/%2 [R=301,L,QSA]
-
-    # Relative legacy paths (DocumentRoot = repo)
+    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal/backend[/?\s] [NC]
     RewriteRule ^staff-portal/backend(?:/(.*))?$ /staff/backend/$1 [R=301,L,QSA]
-    RewriteRule ^staff-portal/assets/([^/]+)$ /staff/assets/$1 [R=301,L,QSA]
+
+    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal/assets/ [NC]
+    RewriteRule ^staff-portal/assets/([^/\s]+)$ /staff/assets/$1 [R=301,L,QSA]
+
+    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal[/?\s] [NC]
     RewriteRule ^staff-portal(?:/(.*))?$ /staff/$1 [R=301,L,QSA]
 
     # ------------------------------------------------------------------
@@ -55,6 +52,17 @@ Options -Indexes
 
     # Staff Share reference API (APM sync)
     RewriteRule ^share/(get_current_staff|divisions|directorates|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/backend/share/$1$2 [R=307,L,QSA]
+
+    # CI3-compatible SSO launch / CSRF / session refresh → Laravel
+    RewriteRule ^home/launch_module$ /staff/backend/home/launch_module [R=307,L,QSA]
+    RewriteRule ^auth/refreshCSRF$ /staff/backend/auth/refreshCSRF [R=307,L,QSA]
+    RewriteRule ^auth/refresh_sso_session$ /staff/backend/auth/refresh_sso_session [R=307,L,QSA]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/launch_module/?$ [NC]
+    RewriteRule ^.*$ /staff/backend/home/launch_module [R=307,L,QSA]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/auth/refreshCSRF/?$ [NC]
+    RewriteRule ^.*$ /staff/backend/auth/refreshCSRF [R=307,L,QSA]
+    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/auth/refresh_sso_session/?$ [NC]
+    RewriteRule ^.*$ /staff/backend/auth/refresh_sso_session [R=307,L,QSA]
 
     # Existing files/dirs (including backend symlink, uploads, legacy assets/)
     RewriteCond %{REQUEST_FILENAME} -f [OR]

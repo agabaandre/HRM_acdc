@@ -1,4 +1,6 @@
-/** Secure CBP module launch via CI3 home/launch_module (JWT never in the URL). */
+/** Secure CBP module launch via Staff Portal API (JWT never in the URL). */
+
+import { api } from './api'
 
 function staffMountBaseUrl(): string {
   if (typeof window === 'undefined') {
@@ -12,50 +14,78 @@ function staffMountBaseUrl(): string {
   return `${window.location.origin}/staff`
 }
 
-const CSRF_TOKEN_NAME = 'africacdc_csrf_token'
-
-async function fetchStaffCsrfToken(base: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${base}/auth/refreshCSRF`, { credentials: 'same-origin' })
-    const data = (await res.json()) as { csrf_token?: string }
-    return data.csrf_token?.trim() ? data.csrf_token.trim() : null
-  } catch {
-    return null
+function postHiddenForm(action: string, fields: Record<string, string>, openInNewTab: boolean): void {
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = action
+  form.style.display = 'none'
+  if (openInNewTab) {
+    form.target = '_blank'
   }
+  for (const [name, value] of Object.entries(fields)) {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value
+    form.appendChild(input)
+  }
+  document.body.appendChild(form)
+  form.submit()
+  window.setTimeout(() => form.remove(), 1000)
 }
 
-/** POST to Staff portal home/launch_module. */
+/** Launch a CBP module (APM / Finance / Helpdesk) via authenticated API hand-off. */
 export async function launchCbpModule(moduleKey: string, openInNewTab = false): Promise<void> {
   const key = moduleKey.trim()
   if (!key) {
     return
   }
-  const base = staffMountBaseUrl()
-  const csrf = await fetchStaffCsrfToken(base)
-  if (!csrf) {
-    window.alert('Could not obtain a security token. Open CBP Home and try again.')
-    return
+
+  try {
+    const { data } = await api.post<{
+      accept_url?: string
+      staff_sso_jwt?: string
+      redirect_url?: string
+      label?: string
+    }>('/api/v1/cbp-modules/launch', { module_key: key })
+
+    if (data.redirect_url) {
+      if (openInNewTab) {
+        window.open(data.redirect_url, '_blank', 'noopener,noreferrer')
+      } else {
+        window.location.assign(data.redirect_url)
+      }
+      return
+    }
+
+    const acceptUrl = (data.accept_url || '').trim()
+    const jwt = (data.staff_sso_jwt || '').trim()
+    if (!acceptUrl || !jwt) {
+      window.alert('Could not obtain a security token. Open CBP Home and try again.')
+      return
+    }
+
+    postHiddenForm(acceptUrl, { staff_sso_jwt: jwt }, openInNewTab)
+  } catch {
+    // Fallback for environments that still expose the legacy CI-shaped routes.
+    const base = staffMountBaseUrl()
+    try {
+      const res = await fetch(`${base}/auth/refreshCSRF`, { credentials: 'same-origin' })
+      const csrfPayload = (await res.json()) as { csrf_token?: string }
+      const csrf = csrfPayload.csrf_token?.trim()
+      if (!csrf) {
+        window.alert('Could not obtain a security token. Open CBP Home and try again.')
+        return
+      }
+      postHiddenForm(
+        `${base}/home/launch_module`,
+        { module_key: key, africacdc_csrf_token: csrf },
+        openInNewTab,
+      )
+    } catch {
+      window.alert('Could not obtain a security token. Open CBP Home and try again.')
+    }
   }
-  const form = document.createElement('form')
-  form.method = 'POST'
-  form.action = `${base}/home/launch_module`
-  form.style.display = 'none'
-  if (openInNewTab) {
-    form.target = '_blank'
-  }
-  const mk = document.createElement('input')
-  mk.type = 'hidden'
-  mk.name = 'module_key'
-  mk.value = key
-  form.appendChild(mk)
-  const csrfInput = document.createElement('input')
-  csrfInput.type = 'hidden'
-  csrfInput.name = CSRF_TOKEN_NAME
-  csrfInput.value = csrf
-  form.appendChild(csrfInput)
-  document.body.appendChild(form)
-  form.submit()
-  window.setTimeout(() => form.remove(), 1000)
 }
 
 export function moduleLaunchKey(mod: {

@@ -44,7 +44,7 @@
 
   function fetchFreshSsoToken() {
     var base = staffBaseUrl();
-    return fetch(base + '/auth/refresh_sso_session', {
+    return fetch(base + '/backend/auth/refresh_sso_session', {
       method: 'GET',
       credentials: 'same-origin',
       headers: { Accept: 'application/json' },

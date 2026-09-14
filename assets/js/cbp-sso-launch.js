@@ -17,26 +17,31 @@
     return window.location.origin + '/staff';
   }
 
+  /** Laravel backend that replaced CI3 home/auth endpoints. */
+  function staffBackendBaseUrl() {
+    return staffBaseUrl() + '/backend';
+  }
+
   function csrfTokenName() {
     return global.CBP_CSRF_TOKEN_NAME || 'africacdc_csrf_token';
   }
 
   function fetchCsrfToken(base) {
-    return fetch(base + '/auth/refreshCSRF', { credentials: 'same-origin' })
+    return fetch(staffBackendBaseUrl() + '/auth/refreshCSRF', { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (data) { return data && data.csrf_token ? data.csrf_token : null; });
   }
 
   function postLaunch(moduleKey, targetWindow) {
-    var base = staffBaseUrl();
-    fetchCsrfToken(base).then(function (token) {
+    var backend = staffBackendBaseUrl();
+    fetchCsrfToken().then(function (token) {
       if (!token) {
         window.alert('Could not obtain a security token. Open CBP Home and try again.');
         return;
       }
       var form = document.createElement('form');
       form.method = 'POST';
-      form.action = base + '/home/launch_module';
+      form.action = backend + '/home/launch_module';
       form.style.display = 'none';
       if (targetWindow === '_blank') {
         form.target = '_blank';

@@ -55,8 +55,9 @@ function handleClick(mod: CbpModuleLink, e: Event) {
 .cbp-home-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
   justify-content: center;
+  align-items: start;
 }
 
 @media (min-width: 768px) {

@@ -3,9 +3,9 @@
 use Staff\Shared\StaffStorage;
 
 return [
-    'base_url' => env('STAFF_PORTAL_BASE_URL', env('BASE_URL', 'http://localhost/staff/staff-portal/backend/')),
+    'base_url' => env('STAFF_PORTAL_BASE_URL', env('BASE_URL', 'http://localhost/staff/backend/')),
 
-    /** CI3 staff app (PPA editor, prints) until fully ported to Laravel */
+    /** Staff mount (APM / Finance / Helpdesk siblings) */
     'legacy_base_url' => env('STAFF_LEGACY_BASE_URL', 'http://localhost/staff/'),
 
     /**
@@ -38,8 +38,8 @@ return [
     ],
 
     /** Vue SPA (same pattern as helpdesk/frontend). Laravel root = helpdesk/backend equivalent. */
-    'spa_enabled' => env('STAFF_PORTAL_SPA_ENABLED', false),
-    'spa_url' => env('STAFF_PORTAL_SPA_URL', '/staff/staff-portal/'),
+    'spa_enabled' => env('STAFF_PORTAL_SPA_ENABLED', true),
+    'spa_url' => env('STAFF_PORTAL_SPA_URL', '/staff/'),
 
     'sanctum' => [
         'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'cbp_staff_'),

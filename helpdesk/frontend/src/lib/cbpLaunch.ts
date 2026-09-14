@@ -2,9 +2,13 @@ import { staffPortalBaseUrl } from './sso'
 
 const CSRF_TOKEN_NAME = 'africacdc_csrf_token'
 
-async function fetchStaffCsrfToken(base: string): Promise<string | null> {
+function staffBackendBaseUrl(): string {
+  return `${staffPortalBaseUrl().replace(/\/$/, '')}/backend`
+}
+
+async function fetchStaffCsrfToken(): Promise<string | null> {
   try {
-    const res = await fetch(`${base}/auth/refreshCSRF`, { credentials: 'same-origin' })
+    const res = await fetch(`${staffBackendBaseUrl()}/auth/refreshCSRF`, { credentials: 'same-origin' })
     const data = (await res.json()) as { csrf_token?: string }
     return data.csrf_token?.trim() ? data.csrf_token.trim() : null
   } catch {
@@ -18,15 +22,15 @@ export async function launchCbpModule(moduleKey: string, openInNewTab = false): 
   if (!key) {
     return
   }
-  const base = staffPortalBaseUrl()
-  const csrf = await fetchStaffCsrfToken(base)
+  const backend = staffBackendBaseUrl()
+  const csrf = await fetchStaffCsrfToken()
   if (!csrf) {
     window.alert('Could not obtain a security token. Open CBP Home and try again.')
     return
   }
   const form = document.createElement('form')
   form.method = 'POST'
-  form.action = `${base}/home/launch_module`
+  form.action = `${backend}/home/launch_module`
   form.style.display = 'none'
   if (openInNewTab) {
     form.target = '_blank'

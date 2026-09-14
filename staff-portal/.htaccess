@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Public app URL is /staff/ (repo root). Bookmarks to /staff/staff-portal/*
+    # must redirect — otherwise Vue (base=/staff/) sees path /staff-portal and
+    # never mounts the CBP modules home route.
+    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal[/?\s] [NC]
+    RewriteRule ^(.*)$ /staff/$1 [R=301,L,QSA]
+
     # Laravel API / auth
     RewriteRule ^backend(?:/|$) - [L]
 
