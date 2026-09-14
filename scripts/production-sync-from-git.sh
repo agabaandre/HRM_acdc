@@ -23,28 +23,28 @@ echo "==> Hard reset tracked files to ${REMOTE}/${BRANCH} (server edits on track
 git reset --hard "${REMOTE}/${BRANCH}"
 
 echo "==> Checking for leftover merge conflict markers"
-if rg -n '<<<<<<<|=======|>>>>>>>' apm staff-portal helpdesk assets 2>/dev/null \
+if rg -n '<<<<<<<|=======|>>>>>>>' modules assets 2>/dev/null \
   --glob '*.php' --glob '*.blade.php' --glob '*.css' --glob '*.js' --glob '*.vue'; then
   echo "error: conflict markers still present after reset — fix manually or re-run fetch." >&2
   exit 1
 fi
 
 echo "==> APM: refresh autoload + clear caches"
-if [[ -f apm/artisan ]]; then
-  (cd apm && composer dump-autoload -o 2>/dev/null || true)
-  (cd apm && php artisan optimize:clear 2>/dev/null || true)
-  (cd apm && php artisan route:clear && php artisan view:clear && php artisan cache:clear && php artisan config:clear)
+if [[ -f modules/apm/artisan ]]; then
+  (cd modules/apm && composer dump-autoload -o 2>/dev/null || true)
+  (cd modules/apm && php artisan optimize:clear 2>/dev/null || true)
+  (cd modules/apm && php artisan route:clear && php artisan view:clear && php artisan cache:clear && php artisan config:clear)
 fi
 
 echo "==> Staff portal: clear caches"
-if [[ -f staff-portal/backend/artisan ]]; then
-  (cd staff-portal/backend && php artisan view:clear && php artisan cache:clear)
-elif [[ -f staff-portal/artisan ]]; then
-  (cd staff-portal && php artisan view:clear && php artisan cache:clear)
+if [[ -f modules/staff-portal/backend/artisan ]]; then
+  (cd modules/staff-portal/backend && php artisan view:clear && php artisan cache:clear)
+elif [[ -f modules/staff-portal/artisan ]]; then
+  (cd modules/staff-portal && php artisan view:clear && php artisan cache:clear)
 fi
 # Prefer full re-deploy when available:
-#   (cd staff-portal && ./setup-production.sh --skip-systemd)
+#   (cd modules/staff-portal && ./setup-production.sh --skip-systemd)
 
 echo "==> Done. Deployed commit: $(git rev-parse --short HEAD)"
 echo "    Verify APM header:"
-echo "    grep -n 'cbp_modules_header_dropdown\\|<<<<<<' apm/resources/views/layouts/partials/header.blade.php"
+echo "    grep -n 'cbp_modules_header_dropdown\\|<<<<<<' modules/apm/resources/views/layouts/partials/header.blade.php"

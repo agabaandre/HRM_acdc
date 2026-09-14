@@ -14,7 +14,7 @@
 set -euo pipefail
 
 STAFF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APM_ROOT="${APM_ROOT:-$STAFF_ROOT/apm}"
+APM_ROOT="${APM_ROOT:-$STAFF_ROOT/modules/apm}"
 CANONICAL="$APM_ROOT/app/Models/Activity.php"
 
 echo "==> APM Activity duplicate class fix"

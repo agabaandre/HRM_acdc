@@ -22,10 +22,10 @@ else
 fi
 
 APPS=(
-  "apm"
-  "finance"
-  "helpdesk/backend"
-  "staff-portal/backend"
+  "modules/apm"
+  "modules/finance"
+  "modules/helpdesk/backend"
+  "modules/staff-portal/backend"
 )
 
 ensure_dirs() {

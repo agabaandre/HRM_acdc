@@ -21,7 +21,7 @@
 set -euo pipefail
 
 STAFF_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HELPDESK_BACKEND="${HELPDESK_BACKEND:-$STAFF_ROOT/helpdesk/backend}"
+HELPDESK_BACKEND="${HELPDESK_BACKEND:-$STAFF_ROOT/modules/helpdesk/backend}"
 PROBE_PHP="$STAFF_ROOT/scripts/lib/helpdesk-redis-probe.php"
 
 WARM=0

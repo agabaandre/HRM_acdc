@@ -8,10 +8,10 @@
 ![Landing Page](./assets/images/landing.png)
 
 [![Documentation](https://img.shields.io/badge/Documentation-Complete-blue)](./documentation/README.md)
-[![Staff Portal](https://img.shields.io/badge/Staff%20Portal-Laravel%2BVue-blue)](./staff-portal/)
-[![APM](https://img.shields.io/badge/APM-Laravel-red)](./apm/)
-[![Finance](https://img.shields.io/badge/Finance-Laravel%2BInertia-green)](./finance/)
-[![Helpdesk](https://img.shields.io/badge/Helpdesk-Laravel%2BVue-teal)](./helpdesk/)
+[![Staff Portal](https://img.shields.io/badge/Staff%20Portal-Laravel%2BVue-blue)](./modules/staff-portal/)
+[![APM](https://img.shields.io/badge/APM-Laravel-red)](./modules/apm/)
+[![Finance](https://img.shields.io/badge/Finance-Laravel%2BInertia-green)](./modules/finance/)
+[![Helpdesk](https://img.shields.io/badge/Helpdesk-Laravel%2BVue-teal)](./modules/helpdesk/)
 
 </div>
 
@@ -24,6 +24,8 @@ The **Africa CDC Central Business Platform (CBP)** is a centralized platform des
 Integrated with the Matrix Approval Management module, the system ensures structured oversight of planned activities and budget allocations. Division focal persons can submit quarterly matrices outlining key deliverables, which then follow a defined multi-level approval workflow involving directors and senior management.
 
 This system enhances **transparency**, **accountability**, and **timely decision-making** across Africa CDC's internal operations.
+
+**Repository layout:** CBP apps live under `modules/{staff-portal,apm,finance,helpdesk}`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, and `/staff/helpdesk` (Apache maps these into `modules/`; there is no root `backend` symlink).
 
 ---
 
@@ -40,7 +42,7 @@ The platform consists of four integrated modules working seamlessly together:
 <td align="center" width="25%">
 
 ### 👥 Staff Portal
-**CodeIgniter-based Core System**
+**Laravel + Vue SPA**
 
 ![Staff Portal](./assets/images/staffportal.png)
 
@@ -50,7 +52,7 @@ The platform consists of four integrated modules working seamlessly together:
 - ✅ Permission management
 - ✅ Base infrastructure for all modules
 
-[📖 Documentation](./application/) | [⚙️ Config](./assets/ENVIRONMENT_VARIABLES.md)
+[📖 Module](./modules/staff-portal/) | [⚙️ Config](./assets/ENVIRONMENT_VARIABLES.md)
 
 </td>
 <td align="center" width="25%">
@@ -67,7 +69,7 @@ The platform consists of four integrated modules working seamlessly together:
 - ✅ Activity tracking
 - ✅ **REST API** (JWT) – pending approvals, documents with approval trails & attachment URLs, actions, memo list
 
-[📖 Documentation](./apm/documentation/) | [📡 API Docs](./apm/documentation/API_DOCUMENTATION.md) | [🚀 Quick Start](./apm/README.md)
+[📖 Documentation](./modules/apm/documentation/) | [📡 API Docs](./modules/apm/documentation/API_DOCUMENTATION.md) | [🚀 Quick Start](./modules/apm/README.md)
 
 </td>
 <td align="center" width="25%">
@@ -83,7 +85,7 @@ The platform consists of four integrated modules working seamlessly together:
 - ✅ Financial tracking
 - ✅ Budget management
 
-[📖 Documentation](./finance/documentation/) | [🚀 Quick Start](./finance/README.md)
+[📖 Documentation](./modules/finance/documentation/) | [🚀 Quick Start](./modules/finance/README.md)
 
 </td>
 <td align="center" width="25%">
@@ -99,7 +101,7 @@ The platform consists of four integrated modules working seamlessly together:
 - ✅ Public TV / lobby dashboard (no auth, no PII)
 - ✅ ISO 27001 / 27014 audit logging
 
-[📖 Documentation](./helpdesk/documentation/README.md) | [👤 User Guide](./helpdesk/documentation/USER_GUIDE.md) | [🧑‍💻 Developer Guide](./helpdesk/documentation/DEVELOPER_GUIDE.md) | [🚀 Quick Start](./helpdesk/README.md)
+[📖 Documentation](./modules/helpdesk/documentation/README.md) | [👤 User Guide](./modules/helpdesk/documentation/USER_GUIDE.md) | [🧑‍💻 Developer Guide](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md) | [🚀 Quick Start](./modules/helpdesk/README.md)
 
 </td>
 </tr>
@@ -118,7 +120,7 @@ The platform consists of four integrated modules working seamlessly together:
 
 - Full guide: [docker/README.md](./docker/README.md)
 - Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
-- By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `apm/.env`.
+- By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `modules/apm/.env`.
 - The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding (scanned PDFs and Word attachments). Rebuild after updates: `docker compose up -d --build`.
 
 ```bash
@@ -151,7 +153,7 @@ php artisan migrate
 php artisan db:seed
 ```
 
-📖 See [APM Documentation](./apm/documentation/README.md) for details.
+📖 See [APM Documentation](./modules/apm/documentation/README.md) for details.
 
 </details>
 
@@ -163,7 +165,7 @@ cd finance
 ./setup.sh
 ```
 
-📖 See [Finance Documentation](./finance/documentation/README.md) for details.
+📖 See [Finance Documentation](./modules/finance/documentation/README.md) for details.
 
 </details>
 
@@ -191,7 +193,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/health           # API
 curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public TV dashboard
 ```
 
-📖 See [Helpdesk Documentation](./helpdesk/documentation/README.md) (start with the [User Guide](./helpdesk/documentation/USER_GUIDE.md) or [Developer Guide](./helpdesk/documentation/DEVELOPER_GUIDE.md)).
+📖 See [Helpdesk Documentation](./modules/helpdesk/documentation/README.md) (start with the [User Guide](./modules/helpdesk/documentation/USER_GUIDE.md) or [Developer Guide](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md)).
 
 </details>
 
@@ -200,11 +202,11 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 <details>
 <summary><b>Production Deployment</b></summary>
 
-1. Review [APM Deployment Guide](./apm/documentation/DEPLOYMENT.md)
+1. Review [APM Deployment Guide](./modules/apm/documentation/DEPLOYMENT.md)
 2. Configure reverse proxy (see Finance docs)
 3. Set up queue workers and cron jobs
-4. Configure [Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md)
-5. Set up [Cron Configuration](./apm/documentation/CRON_SETUP.md)
+4. Configure [Queue Setup](./modules/apm/documentation/QUEUE_SETUP_GUIDE.md)
+5. Set up [Cron Configuration](./modules/apm/documentation/CRON_SETUP.md)
 6. Configure Staff Portal scheduler (single cron entry):
 
 ```bash
@@ -229,13 +231,13 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 |-----------------|----------------|
 | [**📚 Main Documentation Hub**](./documentation/README.md) | Central documentation for the entire platform |
 | [**👥 Staff Portal Docs**](./assets/ENVIRONMENT_VARIABLES.md) | Configuration and setup guides |
-| [**📋 APM Documentation**](./apm/documentation/README.md) | Laravel Approvals Management System |
-| [**📡 APM API Documentation**](./apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
-| [**🌱 APM Environment Guide**](./apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`apm/.env.example`) |
-| [**💰 Finance Documentation**](./finance/documentation/README.md) | Laravel + Inertia Finance Module |
-| [**🛎️ Helpdesk Documentation**](./helpdesk/documentation/README.md) | Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
-| [**👤 Helpdesk User Guide**](./helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
-| [**🧑‍💻 Helpdesk Developer Guide**](./helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
+| [**📋 APM Documentation**](./modules/apm/documentation/README.md) | Laravel Approvals Management System |
+| [**📡 APM API Documentation**](./modules/apm/documentation/API_DOCUMENTATION.md) | REST API (JWT), endpoints, approval trails, attachments, Swagger at `/docs` |
+| [**🌱 APM Environment Guide**](./modules/apm/documentation/ENVIRONMENT.md) | `.env` setup and variable reference (`modules/apm/.env.example`) |
+| [**💰 Finance Documentation**](./modules/finance/documentation/README.md) | Laravel + Inertia Finance Module |
+| [**🛎️ Helpdesk Documentation**](./modules/helpdesk/documentation/README.md) | Service Desk / ITSM module (Laravel + Vue) — index of all helpdesk docs |
+| [**👤 Helpdesk User Guide**](./modules/helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
+| [**🧑‍💻 Helpdesk Developer Guide**](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
 
 </div>
@@ -243,17 +245,17 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 ### 🔑 Key Guides
 
 **APM API (integrations & approver apps):**
-- [APM API Documentation](./apm/documentation/API_DOCUMENTATION.md) - Auth, endpoints, approval trails, attachments, examples
-- [OpenAPI/Swagger spec](./apm/documentation/APM_API_OPENAPI.yaml) - Full request/response schemas; interactive docs at `/docs` when APM is running
+- [APM API Documentation](./modules/apm/documentation/API_DOCUMENTATION.md) - Auth, endpoints, approval trails, attachments, examples
+- [OpenAPI/Swagger spec](./modules/apm/documentation/APM_API_OPENAPI.yaml) - Full request/response schemas; interactive docs at `/docs` when APM is running
 
 **Infrastructure & Setup:**
 - [File storage & uploads](./docs/STORAGE.md) - Host-side storage (`/var/staffdata`), migration scripts, git-safe uploads
 - [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
-- [APM Environment Guide](./apm/documentation/ENVIRONMENT.md) - `.env` setup and examples
-- [APM Queue Setup](./apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
-- [Systemd Queue Guide](./apm/documentation/SYSTEMD_QUEUE_GUIDE.md) - Systemd queue management
-- [Cron Configuration](./apm/documentation/CRON_SETUP.md) - Scheduled tasks
-- [Database Backup System](./apm/README_BACKUP.md) - Automatic database backups and retention policies
+- [APM Environment Guide](./modules/apm/documentation/ENVIRONMENT.md) - `.env` setup and examples
+- [APM Queue Setup](./modules/apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
+- [Systemd Queue Guide](./modules/apm/documentation/SYSTEMD_QUEUE_GUIDE.md) - Systemd queue management
+- [Cron Configuration](./modules/apm/documentation/CRON_SETUP.md) - Scheduled tasks
+- [Database Backup System](./modules/apm/README_BACKUP.md) - Automatic database backups and retention policies
 
 **Operations (Staff Portal jobs):**
 - `php index.php jobs/run/tick` - single entry-point scheduler for recurring jobs
@@ -261,8 +263,8 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 - `php index.php jobs/run/performance_approval_reminder` - queue + send daily performance approval reminder
 
 **Architecture & Development:**
-- [Finance Quick Start](./finance/documentation/QUICKSTART.md) - Install and SSO
-- [Finance Laravel + Inertia](./finance/documentation/LARAVEL_INERTIA.md) - UI and adding pages
+- [Finance Quick Start](./modules/finance/documentation/QUICKSTART.md) - Install and SSO
+- [Finance Laravel + Inertia](./modules/finance/documentation/LARAVEL_INERTIA.md) - UI and adding pages
 - [Auth Module Improvements](./application/modules/auth/README_IMPROVEMENTS.md) - Authentication features
 
 ---
@@ -425,7 +427,7 @@ Ensure `gs`, `pdftoppm`, and `libreoffice` / `soffice` are on the **same `PATH`*
 
 Without Ghostscript/Poppler, vector PDFs may still embed; scanned PDF attachments may show an embed failure message in the annex. Without LibreOffice, Word (`.doc`/`.docx`) attachments are listed in the annex index but not rendered as pages.
 
-See also [APM deployment](./apm/documentation/DEPLOYMENT.md) and [APM README](./apm/README.md#system-requirements).
+See also [APM deployment](./modules/apm/documentation/DEPLOYMENT.md) and [APM README](./modules/apm/README.md#system-requirements).
 
 ---
 

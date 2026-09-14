@@ -2,7 +2,6 @@
 # shellcheck shell=bash
 # Resolve Staff portal and module directories at runtime (any deploy path).
 
-# Staff ecosystem root: modules/staff-portal layout, or legacy CI tree.
 staff_portal_root_from() {
     local dir="${1:?start directory required}"
     dir="$(cd "$dir" && pwd)"
@@ -29,7 +28,6 @@ staff_module_parent_fallback() {
     fi
 }
 
-# Given a module directory (modules/helpdesk, modules/finance, …), set STAFF_ROOT and related paths.
 staff_paths_resolve_from_module() {
     local module_root="${1:?module directory required}"
     local staff_root
@@ -41,7 +39,6 @@ staff_paths_resolve_from_module() {
     export APM_ENV="$STAFF_ROOT/modules/apm/.env"
 }
 
-# Load staff/scripts/lib/*.sh from a file inside a CBP module.
 staff_paths_source_lib() {
     local from_script="${1:?BASH_SOURCE[0]}"
     local start staff_root lib_dir

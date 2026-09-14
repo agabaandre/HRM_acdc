@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link id="app-favicon" rel="icon" type="image/png" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Icon fonts: deferred so they never block first paint / login. -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
+    </noscript>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      media="print"
+      onload="this.media='all'"
+    />
+    <!-- Highcharts + Mermaid are lazy-loaded only on pages that need them. -->
+    <title>Africa CDC · Staff Portal</title>
+    <style>
+      #portal-boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(248, 249, 250, 0.96);
+      }
+      #portal-boot-loader .sp-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      #portal-boot-loader .sp-spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        border: 3px solid rgba(13, 122, 58, 0.14);
+        border-top-color: #0d7a3a;
+        animation: sp-spin 0.75s linear infinite;
+      }
+      @keyframes sp-spin { to { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="/staff/assets/index-fdhX2xHt.js"></script>
+    <link rel="modulepreload" crossorigin href="/staff/assets/rolldown-runtime-QTnfLwEv.js">
+    <link rel="modulepreload" crossorigin href="/staff/assets/editor-DMQoHlUJ.js">
+    <link rel="modulepreload" crossorigin href="/staff/assets/vue-vendor-r17VySQI.js">
+    <link rel="modulepreload" crossorigin href="/staff/assets/vuetify-CZDZfeKX.js">
+    <link rel="modulepreload" crossorigin href="/staff/assets/http-3RSw9791.js">
+    <link rel="stylesheet" crossorigin href="/staff/assets/editor-D3tyvKA_.css">
+    <link rel="stylesheet" crossorigin href="/staff/assets/vuetify-glLQXob9.css">
+    <link rel="stylesheet" crossorigin href="/staff/assets/index-5IwG-80g.css">
+  </head>
+  <body>
+    <div id="portal-boot-loader" aria-live="polite" role="status">
+      <div class="sp-inner">
+        <div class="sp-spinner" aria-hidden="true"></div>
+        <p style="margin:0;font-size:0.72rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#0d7a3a;">Staff Portal</p>
+      </div>
+    </div>
+    <div id="app"></div>
+  </body>
+</html>

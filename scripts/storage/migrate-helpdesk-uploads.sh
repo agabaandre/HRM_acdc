@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/_common.sh"
 
 MODULE="helpdesk"
-SRC="${STAFF_HELPDESK_LEGACY_ROOT:-${REPO_ROOT}/helpdesk/backend/storage/app/public}"
+SRC="${STAFF_HELPDESK_LEGACY_ROOT:-${REPO_ROOT}/modules/helpdesk/backend/storage/app/public}"
 DEST="${STAFF_HELPDESK_FILES_ROOT:-${STAFF_DATA_ROOT}/helpdesk}"
 
 migrate_copy "$MODULE" "$SRC" "$DEST"
@@ -12,8 +12,8 @@ if [[ "${VERIFY:-true}" == "true" && "${DRY_RUN:-false}" != "true" ]]; then
   verify_sizes "$SRC" "$DEST"
 fi
 
-log "Set in helpdesk/backend/.env:"
+log "Set in modules/helpdesk/backend/.env:"
 log "  STAFF_DATA_ROOT=${STAFF_DATA_ROOT}"
 log "  STAFF_HELPDESK_FILES_ROOT=${DEST}"
 log "  STAFF_PORTAL_UPLOADS_ROOT=${STAFF_PORTAL_UPLOADS_ROOT:-${STAFF_DATA_ROOT}/ci}"
-log "Then: cd ${REPO_ROOT}/helpdesk/backend && php artisan storage:link"
+log "Then: cd ${REPO_ROOT}/modules/helpdesk/backend && php artisan storage:link"
