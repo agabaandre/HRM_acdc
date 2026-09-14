@@ -116,19 +116,19 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 <details>
-<summary><b>Docker (Staff + APM)</b></summary>
+<summary><b>Docker (CBP modules)</b></summary>
 
 - Full guide: [docker/README.md](./docker/README.md)
 - Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
-- By default the stack uses **MySQL on the physical host**: set `DB_HOST=host.docker.internal` (and matching DB names/users) in root `.env` and `modules/apm/.env`.
-- The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding (scanned PDFs and Word attachments). Rebuild after updates: `docker compose up -d --build`.
+- Compose vars live in `docker/.env` (do not overwrite the repo-root `.env`). Redis runs in Compose; MySQL defaults to the physical host (`DB_HOST=host.docker.internal` in each module `.env`).
+- The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding. Rebuild after updates: `docker compose --env-file docker/.env up -d --build`.
 
 ```bash
-cp docker/compose.env.example .env
-docker compose up -d --build
+cp docker/compose.env.example docker/.env
+docker compose --env-file docker/.env up -d --build
 ```
 
-- Staff portal: `http://localhost:8080/` · APM: `http://localhost:8080/apm`
+- Staff portal: `http://localhost:8080/staff/` · Backend: `/staff/backend/up` · APM: `/staff/apm/` · Finance: `/staff/finance/` · Helpdesk: `/staff/helpdesk/`
 
 </details>
 
