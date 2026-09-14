@@ -322,6 +322,7 @@ staff/
 │
 ├── scripts/
 │   ├── ci/                              # Shared CI: composer-modules, build-spa, docker-publish
+│   ├── migrate-to-modules-layout.sh     # One-shot: root apps → modules/ (+ optional --clean)
 │   ├── storage/                         # migrate-*.sh, fix-staff-storage-permissions.sh
 │   ├── fix-laravel-storage-permissions.sh
 │   └── production-sync-from-git.sh
