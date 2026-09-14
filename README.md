@@ -52,7 +52,7 @@ The platform consists of four integrated modules working seamlessly together:
 - ✅ Permission management
 - ✅ Base infrastructure for all modules
 
-[📖 Module](./modules/staff-portal/) | [⚙️ Config](./assets/ENVIRONMENT_VARIABLES.md)
+[📖 Module](./modules/staff-portal/README.md) | [⚙️ Config](./assets/ENVIRONMENT_VARIABLES.md) | [📡 Share API](./modules/staff-portal/backend/Modules/Share/README.md)
 
 </td>
 <td align="center" width="25%">
