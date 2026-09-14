@@ -133,11 +133,18 @@ docker compose --env-file docker/.env up -d --build
 </details>
 
 <details>
-<summary><b>1. Set up Staff Portal (CodeIgniter)</b></summary>
+<summary><b>1. Set up Staff Portal (Laravel + Vue)</b></summary>
 
-- Configure database in `application/config/database.php`
-- Review [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md)
-- Set up authentication and permissions
+```bash
+cd modules/staff-portal
+# Backend API
+cd backend && cp .env.example .env && composer install && php artisan key:generate
+# SPA
+cd ../frontend && npm ci --legacy-peer-deps && npm run build
+cd .. && ./scripts/publish-spa.sh
+```
+
+📖 See [modules/staff-portal/README.md](./modules/staff-portal/README.md) for details.
 
 </details>
 
@@ -145,7 +152,7 @@ docker compose --env-file docker/.env up -d --build
 <summary><b>2. Set up APM Module (Laravel)</b></summary>
 
 ```bash
-cd apm
+cd modules/apm
 composer install
 cp .env.example .env
 php artisan key:generate
@@ -161,7 +168,7 @@ php artisan db:seed
 <summary><b>3. Set up Finance Module (Laravel + Inertia)</b></summary>
 
 ```bash
-cd finance
+cd modules/finance
 ./setup.sh
 ```
 
@@ -173,7 +180,7 @@ cd finance
 <summary><b>4. Set up Helpdesk Module (Laravel + Vue)</b></summary>
 
 ```bash
-cd helpdesk
+cd modules/helpdesk
 ./setup.sh
 # Backend
 cd backend && composer install \
@@ -266,7 +273,8 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 **Architecture & Development:**
 - [Finance Quick Start](./modules/finance/documentation/QUICKSTART.md) - Install and SSO
 - [Finance Laravel + Inertia](./modules/finance/documentation/LARAVEL_INERTIA.md) - UI and adding pages
-- [Auth Module Improvements](./application/modules/auth/README_IMPROVEMENTS.md) - Authentication features
+- [CI (GitHub + Azure)](./docs/CI.md) - Build gates and GHCR image publish
+- [Docker](./docker/README.md) - Local Compose stack (web + Redis)
 
 ---
 
@@ -288,64 +296,69 @@ See [documentation/README.md](./documentation/README.md) for detailed integratio
 
 ## 📂 Project Structure
 
+Public URLs (`/staff/…`) are mapped by root `.htaccess` into `modules/…` (no root `backend` symlink).
+
 ```
 staff/
-├── 📄 README.md                         # This file
-├── 📚 documentation/                    # Main documentation hub
-│   └── README.md                        # Central documentation index
-├── 💾 docs/
-│   └── STORAGE.md                       # Host-side uploads, migration, permissions
-├── 📜 scripts/
-│   ├── fix-ci-app-permissions.sh        # CI3 cache/logs writable by web server
-│   └── storage/                         # migrate-*.sh, fix-staff-storage-permissions.sh
-├── 🔗 shared/
-│   └── StaffStorage.php                 # Shared upload path resolver (all modules)
-├── 👥 application/                      # CodeIgniter Staff Portal
-│   ├── modules/                         # Application modules (auth, share, staff, …)
-│   │   └── share/                       # Share API (users, divisions, directorates, get_current_staff)
-│   ├── config/                          # Database, routes, etc.
-│   └── ...
-├── 📋 apm/                              # Laravel APM module
-│   ├── app/
-│   │   ├── Http/Controllers/Api/        # APM API controllers (auth, documents, actions, …)
-│   │   ├── Models/                      # Eloquent models (ApmApiUser, SpecialMemo, …)
-│   │   ├── Services/                    # PendingApprovalsService, ApprovalService, …
-│   │   └── Console/Commands/             # users:sync, divisions:sync, …
-│   ├── routes/
-│   │   ├── api.php                      # APM API routes (/api/apm/v1/…)
-│   │   └── web.php                     # Web routes, /docs (Swagger UI)
-│   ├── documentation/                   # APM documentation
-│   │   ├── README.md                    # APM docs index
-│   │   ├── API_DOCUMENTATION.md         # REST API guide (auth, endpoints, attachments)
-│   │   ├── APM_API_OPENAPI.yaml         # OpenAPI 3.0 spec (Swagger)
-│   │   ├── DEPLOYMENT.md, CRON_SETUP.md # Operations
-│   │   └── ...                          # Approval trails, queues, etc.
-│   ├── public/                          # Web root (storage link for uploads)
-│   └── README.md                        # APM quick start
-├── 💰 finance/                          # Laravel + Inertia Finance (like apm/)
-│   ├── app/, routes/, resources/js/     # Application code
-│   ├── public/, server.php, .htaccess   # Apache entry
-│   ├── documentation/                   # Finance documentation
-│   └── setup.sh                         # Install + build
-├── 🛎️ helpdesk/                          # Laravel + Vue Service Desk / ITSM
-│   ├── backend/                         # Laravel 11 JSON API (/api/v1/*)
-│   │   ├── app/Http/Controllers/Api/V1  # Tickets, KB, reports, public screen, admin
-│   │   ├── app/Models/                  # HelpdeskTicket, HelpdeskCategory, HelpdeskProfile, …
-│   │   └── routes/api.php               # All REST endpoints
-│   ├── frontend/                        # Vue 3.5 + Pinia SPA
-│   │   ├── src/views/                   # Home, Tickets, AgentDashboard, Reports, ScreenDashboard, …
-│   │   └── src/components/              # Layout + settings panels
-│   ├── documentation/                   # Helpdesk documentation
-│   │   ├── README.md                    # Index
-│   │   ├── USER_GUIDE.md                # End-user walkthroughs (incl. ticket creation)
-│   │   ├── DEVELOPER_GUIDE.md           # Architecture, schema, API, extension points
-│   │   ├── ARCHITECTURE.md
-│   │   ├── INTEGRATION.md
-│   │   └── openapi.yaml
-│   └── README.md                        # Helpdesk quick start
-├── 🎨 assets/                            # Shared assets
-│   └── images/                          # Images and graphics
-└── ⚙️ system/                            # CodeIgniter system files
+├── README.md                            # This file
+├── .htaccess                            # Rewrites /staff/{backend,apm,finance,helpdesk} → modules/
+├── index.php                            # Thin front controller for the staff mount
+├── azure-pipelines.yml                  # Azure CI + GHCR publish
+├── docker-compose.yml                   # Local web + Redis (+ optional workers / MySQL)
+├── docker-compose.prod.yml              # Prod-ish overrides (bake image, no bind-mount)
+├── .github/workflows/ci.yml             # GitHub Actions CI + GHCR publish
+│
+├── docker/                              # CBP Docker image & Apache vhost
+│   ├── Dockerfile                       # PHP 8.2 Apache; targets runtime | prod
+│   ├── entrypoint.sh                    # Redis wait; Laravel storage perms
+│   ├── apache/000-staff.conf            # Alias /staff → /var/www/staff
+│   ├── compose.env.example              # → docker/.env (Compose vars only)
+│   ├── mysql/init/                      # Bundled-db schema bootstrap
+│   └── README.md                        # Docker operator guide
+│
+├── docs/
+│   ├── CI.md                            # GHA + Azure + GHCR setup
+│   ├── STORAGE.md                       # Host-side uploads / permissions
+│   └── superpowers/                     # Design specs & implementation plans
+│
+├── documentation/                       # Platform documentation hub
+│   └── README.md
+│
+├── scripts/
+│   ├── ci/                              # Shared CI: composer-modules, build-spa, docker-publish
+│   ├── storage/                         # migrate-*.sh, fix-staff-storage-permissions.sh
+│   ├── fix-laravel-storage-permissions.sh
+│   └── production-sync-from-git.sh
+│
+├── shared/                              # Cross-app PHP helpers
+│   ├── StaffStorage.php                 # Shared upload path resolver
+│   └── fix-public-script-name.php       # SCRIPT_NAME remap after Apache rewrites
+│
+├── modules/                             # CBP applications (canonical app roots)
+│   ├── staff-portal/                    # Staff Portal — Laravel API + Vue SPA
+│   │   ├── backend/                     # Laravel 12 API (/staff/backend)
+│   │   │   └── Modules/                 # nwidart modules (Share, Auth, Staff, Leave, …)
+│   │   ├── frontend/                    # Vue 3 + Vite SPA source
+│   │   ├── public-spa/                  # Published SPA (via scripts/publish-spa.sh)
+│   │   ├── spa-static.php               # Serves hashed SPA assets under /staff/assets/
+│   │   └── scripts/publish-spa.sh
+│   ├── apm/                             # Approvals Management — Laravel
+│   │   ├── app/                         # Controllers, Models, Services, Commands
+│   │   ├── routes/                      # api.php, web.php (/docs Swagger)
+│   │   ├── public/                      # App web root (/staff/apm)
+│   │   └── documentation/               # API, OpenAPI, deploy, queues, cron
+│   ├── finance/                         # Finance — Laravel + Inertia/React
+│   │   ├── app/, routes/, resources/
+│   │   ├── public/                      # /staff/finance
+│   │   └── documentation/
+│   └── helpdesk/                        # Helpdesk / ITSM — Laravel + Vue
+│       ├── backend/                     # Laravel 11 JSON API (/staff/helpdesk/…)
+│       ├── frontend/                    # Vue 3.5 + Pinia SPA
+│       └── documentation/               # User / developer guides, OpenAPI
+│
+├── assets/                              # Legacy / shared static assets
+├── uploads/                             # Local upload tree (git-ignored content)
+└── cache/                               # Shared cache files (not web-served)
 ```
 
 ---
@@ -378,10 +391,10 @@ staff/
 
 | Module | Backend | Frontend | Database |
 |--------|---------|----------|----------|
-| **Staff Portal** | CodeIgniter 3 | Bootstrap 5 | MySQL |
-| **APM** | Laravel 10+ | Blade Templates | MySQL |
-| **Finance** | Laravel 12 | React (Inertia) | MySQL |
-| **Helpdesk** | Laravel 11 | Vue 3.5 + Pinia (Vite) | MySQL + Redis (Predis) |
+| **Staff Portal** | Laravel 12 (`modules/staff-portal/backend`) | Vue 3 + Vite SPA | MySQL |
+| **APM** | Laravel 12 (`modules/apm`) | Blade Templates | MySQL |
+| **Finance** | Laravel 12 (`modules/finance`) | React (Inertia) | MySQL |
+| **Helpdesk** | Laravel 11 (`modules/helpdesk/backend`) | Vue 3.5 + Pinia (Vite) | MySQL + Redis |
 
 </div>
 
