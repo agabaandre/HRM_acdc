@@ -239,6 +239,7 @@ Default scheduler timings are configured in `application/modules/jobs/controller
 | [**👤 Helpdesk User Guide**](./modules/helpdesk/documentation/USER_GUIDE.md) | Requesters, agents & admins; includes step-by-step ticket creation |
 | [**🧑‍💻 Helpdesk Developer Guide**](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
+| [**🔁 CI (GitHub + Azure)**](./docs/CI.md) | Build gates and GHCR image publish |
 
 </div>
 
