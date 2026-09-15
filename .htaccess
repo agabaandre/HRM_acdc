@@ -1,7 +1,7 @@
-# Intentionally no "Options" directives — disallowed AllowOverride Options → HTTP 500.
-# Intentionally no [END] flag — some Apache builds reject unknown rewrite flags → HTTP 500.
-# Set Options -Indexes in the vhost/Alias if directory listing must be disabled.
+# Disable directory browsing
+Options -Indexes
 
+# Enable mod_rewrite
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
@@ -9,19 +9,21 @@
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Forbid *direct* browser hits to /modules/* (internal rewrites set REDIRECT_STATUS)
+    # Forbid direct /staff/modules/* (allow only after an internal rewrite)
     RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteRule ^modules(/.*)?$ - [F,L]
 
     # ------------------------------------------------------------------
     # CBP apps under modules/ — public URLs unchanged
+    # Slash redirect must stay on /staff/{app}/ (never expose modules/)
+    # Do not use [END] — each app’s .htaccess must still run.
     # ------------------------------------------------------------------
     RewriteRule ^(apm|finance|helpdesk)$ /staff/$1/ [R=301,L]
     RewriteRule ^(apm|finance|helpdesk)/(.*)$ modules/$1/$2 [L]
     RewriteRule ^backend/?$ modules/staff-portal/backend/ [L]
     RewriteRule ^backend/(.*)$ modules/staff-portal/backend/$1 [L]
 
-    # Block leftover CI archive path
+    # Block any leftover CI archive path
     RewriteRule ^old-staff-portal(/|$) - [F,L]
     RewriteCond %{REQUEST_URI} /old-staff-portal(/|$) [NC]
     RewriteRule ^.*$ - [F,L]
@@ -30,7 +32,7 @@
     RewriteRule ^cache(/|$) - [F,L]
 
     # ------------------------------------------------------------------
-    # Legacy /{webRoot}/staff-portal/* → new root URLs (301)
+    # Legacy /staff/staff-portal/* → new root URLs (301)
     # ------------------------------------------------------------------
     RewriteCond %{THE_REQUEST} \s/+(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/staff-portal/backend(?:/([^\s?]*))? [NC]
     RewriteRule ^.*$ /staff/backend/%1 [R=301,L,QSA]
@@ -42,18 +44,16 @@
     RewriteRule ^.*$ /staff/%1 [R=301,L,QSA]
 
     # ------------------------------------------------------------------
-    # Staff Portal SPA
+    # Staff Portal SPA (modules/staff-portal)
     # ------------------------------------------------------------------
-    # Skip if we already internally rewrote to spa-static (prevents nested .htaccess loops)
-    RewriteRule ^modules/staff-portal/spa-static\.php$ - [L]
-
     RewriteRule ^assets/([^/]+)$ modules/staff-portal/spa-static.php?f=$1 [L,QSA]
     RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/assets/([^/]+)$ [NC]
     RewriteRule ^.*$ modules/staff-portal/spa-static.php?f=%2 [L,QSA]
 
+    # Africa map from published SPA
     RewriteRule ^maps/([^/]+)$ modules/staff-portal/public-spa/maps/$1 [L]
 
-    # Staff Share reference API → Laravel backend
+    # Staff Share reference API → Laravel backend (CI-compatible paths)
     RewriteRule ^share/(get_current_staff|divisions|directorates|users|cbp_modules|get_signature|get_photo|helpdesk_agents_in_divisions|mark_helpdesk_agents|validate_session|refresh_token|token|docs|openapi\.yaml|openapi)(/.*)?$ /staff/backend/share/$1$2 [R=307,L,QSA]
 
     # CI3-compatible SSO launch / CSRF / session refresh → Laravel
@@ -75,18 +75,20 @@
     RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/home/index/?$ [NC]
     RewriteRule ^.*$ /staff/ [R=301,L,QSA]
 
-    # Real files only (Alias root is a directory — must not short-circuit to directory listing)
-    RewriteCond %{REQUEST_FILENAME} -f
+    # Existing files/dirs (uploads, root assets/, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # SPA catch-all (only on the original request, not after an internal rewrite)
-    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    # SPA catch-all
     RewriteRule ^ modules/staff-portal/spa-static.php [L,QSA]
 
     RewriteRule (^|/)\.env - [F,L]
-    RewriteRule (^|/)\.git - [F,L]
+    RedirectMatch 404 /\.git
 </IfModule>
 
 <IfModule !mod_rewrite.c>
     ErrorDocument 404 modules/staff-portal/spa-static.php
 </IfModule>
+
+ServerSignature Off
