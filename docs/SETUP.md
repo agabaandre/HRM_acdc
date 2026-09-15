@@ -19,10 +19,11 @@ Requires a TTY. Passwords are entered without echo.
 | Install type | New · Existing |
 | Deploy | Host Apache · Docker Compose |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · External · Keep current |
-| Shared | Public base URL (`…/staff`, `…/cbp`, `…/cbpdemo`), `STAFF_SITE_ID`, `JWT_SECRET`, Share API, Redis, DB (unless keep) |
-| Per module | `DB_DATABASE` (+ forced mapped `APP_URL` / Share / Redis / storage on **every** module `.env`) |
+| Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
+| **SPA rebuild** | **Default Yes** — Vite build + publish for `/{WEB_ROOT}/` (fixes folder renames like `cbpdemo` → `demo_staff`) |
+| Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
-| Systemd | **Production only** — optional queue + scheduler for staff-portal, helpdesk, APM |
+| Systemd | **Production only** |
 
 Folder names containing `demo` default the site role to **Demo**.
 

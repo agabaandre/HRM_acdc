@@ -61,6 +61,7 @@ esac
 
 ROOT_ENV="$ROOT/.env"
 env_ensure_file "$ROOT_ENV" "$ROOT/scripts/setup/templates/root.env.example"
+PREV_WEB_ROOT="$(env_get "$ROOT_ENV" WEB_ROOT)"
 
 SETUP_ERRORS=0
 setup_warn() {
@@ -82,6 +83,9 @@ fi
 prompt_value PUBLIC_BASE "Public base URL (…/staff, …/cbp, …/demo_cbp)" "$DEFAULT_BASE"
 setup_map_urls
 echo "    Web folder / Alias: /${WEB_ROOT}"
+if [[ -n "${PREV_WEB_ROOT:-}" && "$PREV_WEB_ROOT" != "$WEB_ROOT" ]]; then
+  echo "    Web root changed: ${PREV_WEB_ROOT} → ${WEB_ROOT} (frontend must be rebuilt)"
+fi
 
 # CI3 / shared uploads site id — must match this deploy (avoid migrating into another site's tree)
 STAFF_SITE_ID_DEFAULT="$(env_get "$ROOT_ENV" STAFF_SITE_ID)"
@@ -392,19 +396,41 @@ fi
 
 INST_PROFILE_DEFAULT=1
 [[ "$SITE_KIND" == "production" ]] && INST_PROFILE_DEFAULT=2
+
+# SPA assets bake WEB_ROOT into index.html — rebuild whenever the folder/URL changes.
+SPA_BUILD_DEFAULT=1
+if [[ -n "${PREV_WEB_ROOT:-}" && "$PREV_WEB_ROOT" != "$WEB_ROOT" ]]; then
+  SPA_BUILD_DEFAULT=1
+fi
+prompt_choice RUN_SPA_BUILD "Rebuild staff-portal frontend for /${WEB_ROOT}/ ?" "1) Yes  2) No" "$SPA_BUILD_DEFAULT"
+if [[ "$RUN_SPA_BUILD" == "1" ]]; then
+  echo "==> Rebuilding SPA (Vite base /${WEB_ROOT}/)"
+  export WEB_ROOT VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
+  if "$ROOT/scripts/setup/rebuild-spa.sh"; then
+    echo "    SPA rebuild OK"
+  else
+    setup_warn "SPA rebuild failed — /${WEB_ROOT}/assets may 404 until fixed"
+  fi
+else
+  echo "==> Skipping SPA rebuild (assets may still point at an old folder name)"
+fi
+
 prompt_choice RUN_INSTALL "Run module installers now?" "1) Yes  2) No" "2"
 prompt_choice INST_PROFILE "Installer profile" "1) development (setup.sh)  2) production (setup-production.sh)" "$INST_PROFILE_DEFAULT"
 
 if [[ "$RUN_INSTALL" == "1" ]]; then
   export STAFF_SITE_ID STAFF_DATA_ROOT STAFF_HOST_DATA_ROOT STAFF_USE_HOST_STORAGE
   export STAFF_PORTAL_UPLOADS_ROOT STAFF_APM_FILES_ROOT STAFF_HELPDESK_FILES_ROOT
-  export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND
+  export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND WEB_ROOT
+  export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
   if [[ "$INST_PROFILE" == "2" ]]; then
-    (cd "$ROOT/modules/staff-portal" && ./setup-production.sh) || echo "warn: staff-portal setup-production failed" >&2
+    (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup-production.sh --skip-build) \
+      || echo "warn: staff-portal setup-production failed" >&2
+    # SPA already built above; production script still runs composer/migrate
     (cd "$ROOT/modules/finance" && ./setup-production.sh) || echo "warn: finance setup-production failed" >&2
     (cd "$ROOT/modules/helpdesk" && ./setup-production.sh) || echo "warn: helpdesk setup-production failed" >&2
   else
-    (cd "$ROOT/modules/staff-portal" && ./setup.sh) || echo "warn: staff-portal setup failed" >&2
+    (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
     (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
     (cd "$ROOT/modules/helpdesk" && ./setup.sh) || echo "warn: helpdesk setup failed" >&2
   fi

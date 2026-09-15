@@ -62,18 +62,25 @@ npm install --cache ./.npm-cache --legacy-peer-deps
 source "$ROOT/scripts/lib/dotenv.sh"
 dotenv_load_file "$SETUP_ENV"
 PROD_ENV="$ROOT/frontend/.env.production.local"
-VITE_ENV_PREEXISTED=0
-[[ -f "$PROD_ENV" ]] && VITE_ENV_PREEXISTED=1
+# Always force Vite public paths (folder renames like cbpdemo → demo_staff).
 if [[ -n "${VITE_STAFF_PORTAL_API_BASE_URL:-}" ]]; then
-  dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_API_BASE_URL \
-    "$VITE_STAFF_PORTAL_API_BASE_URL" "$VITE_ENV_PREEXISTED"
+  dotenv_set "$PROD_ENV" VITE_STAFF_PORTAL_API_BASE_URL "$VITE_STAFF_PORTAL_API_BASE_URL"
 fi
 if [[ -n "${VITE_STAFF_PORTAL_BASE_PATH:-}" ]]; then
-  dotenv_apply_if_missing "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH \
-    "$VITE_STAFF_PORTAL_BASE_PATH" "$VITE_ENV_PREEXISTED"
+  dotenv_set "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH"
 fi
+dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_API_BASE_URL \
+  "${VITE_STAFF_PORTAL_API_BASE_URL:-/staff/backend}"
+dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_BASE_PATH \
+  "${VITE_STAFF_PORTAL_BASE_PATH:-/staff/}"
+export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
 
 npm run build
+
+if [[ -x "$ROOT/scripts/publish-spa.sh" ]]; then
+  "$ROOT/scripts/publish-spa.sh" "$ROOT/frontend/dist-build" \
+    || echo "warning: publish-spa failed" >&2
+fi
 
 echo "==> Shared file storage (CI3 + APM → host path outside git)"
 chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true

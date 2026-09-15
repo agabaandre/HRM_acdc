@@ -85,33 +85,27 @@ STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
 STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-www-data}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
 
-# URL prefix follows the parent folder name for demo deploys:
-#   .../demo_staff/staff-portal → /demo_staff/staff-portal/
-#   .../staff/staff-portal     → /staff/
-staff_portal_web_prefix() {
-    local parent
-    parent="$(basename "$(cd "$ROOT/.." && pwd)")"
-    if [[ "$parent" == "demo_staff" ]]; then
-        printf '/demo_staff'
-    else
-        printf '/staff'
-    fi
-}
-WEB_PREFIX="$(staff_portal_web_prefix)"
-# Always align Vite paths to this deploy (stale .env.production.local was pointing
-# /demo_staff HTML at /staff/assets → 500s on the wrong tree).
-VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/backend}"
-VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-${WEB_PREFIX}/staff-portal/}"
-# If setup.env still has /staff/... but we are under demo_staff, override.
-if [[ "$WEB_PREFIX" == "/demo_staff" ]]; then
-    case "${VITE_STAFF_PORTAL_BASE_PATH}" in
-        /staff/*)
-            VITE_STAFF_PORTAL_BASE_PATH="/demo_staff/staff-portal/"
-            VITE_STAFF_PORTAL_API_BASE_URL="/demo_staff/backend"
-            warn "Deploy path is demo_staff — forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH}"
-            ;;
-    esac
+# Prefer WEB_ROOT from root setup / env; else basename of the staff checkout.
+# Public SPA lives at /{WEB_ROOT}/ (not /{WEB_ROOT}/staff-portal/).
+if [[ -z "${WEB_ROOT:-}" ]]; then
+    WEB_ROOT="$(basename "${STAFF_ROOT:-$(cd "$ROOT/../.." && pwd)}")"
 fi
+WEB_ROOT="$(printf '%s' "$WEB_ROOT" | sed -E 's#^/##; s#/$##')"
+[[ -n "$WEB_ROOT" ]] || WEB_ROOT=staff
+WEB_PREFIX="/${WEB_ROOT}"
+# Always align Vite paths to this deploy (stale .env.production.local must not keep
+# /cbpdemo/ or /staff/ when the folder is now demo_staff).
+VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/backend}"
+VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-${WEB_PREFIX}/}"
+# Force away legacy /…/staff-portal/ bases and any mismatched prefix.
+case "${VITE_STAFF_PORTAL_BASE_PATH}" in
+    "${WEB_PREFIX}/"|"${WEB_PREFIX}") ;;
+    *)
+        VITE_STAFF_PORTAL_BASE_PATH="${WEB_PREFIX}/"
+        VITE_STAFF_PORTAL_API_BASE_URL="${WEB_PREFIX}/backend"
+        warn "Forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH} (WEB_ROOT=${WEB_ROOT})"
+        ;;
+esac
 log "Vite base: ${VITE_STAFF_PORTAL_BASE_PATH}  API: ${VITE_STAFF_PORTAL_API_BASE_URL}"
 
 if [[ ! -x "$PHP_BIN" ]]; then
