@@ -33,10 +33,6 @@ foreach (['/staff/helpdesk/backend', '/helpdesk/backend'] as $mount) {
         break;
     }
 }
-if ($basePath === '' && isset($_SERVER['REQUEST_URI'])
-    && preg_match('#^(/[^/]+/helpdesk/backend)(?:/|$)#', (string) $_SERVER['REQUEST_URI'], $m) === 1) {
-    $basePath = $m[1];
-}
 
 if ($basePath === '' || $basePath === '/') {
     return;

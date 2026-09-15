@@ -12,20 +12,16 @@ fi
 source "$_LIB_DIR/staff-portal-urls.sh"
 
 staff_portal_resolve_production_urls() {
-    local staff_base origin mount web_root
+    local staff_base origin mount
     [[ "${APP_ENV:-}" == "production" ]] || return 0
 
-    # Public mount = checkout folder name (staff, demo_staff, cbpdemo, …).
-    web_root="${WEB_ROOT:-}"
-    if [[ -z "$web_root" && -n "${STAFF_ROOT:-}" ]]; then
-        web_root="$(basename "$STAFF_ROOT")"
+    # Detect /demo_staff vs /staff from filesystem (…/demo_staff/staff-portal).
+    mount="/staff"
+    if [[ -n "${PORTAL_ROOT:-}" && "$(basename "$(cd "$PORTAL_ROOT/.." && pwd)")" == "demo_staff" ]]; then
+        mount="/demo_staff"
+    elif [[ -n "${STAFF_ROOT:-}" && "$(basename "$STAFF_ROOT")" == "demo_staff" ]]; then
+        mount="/demo_staff"
     fi
-    if [[ -z "$web_root" && -n "${PORTAL_ROOT:-}" ]]; then
-        # modules/staff-portal → repo root
-        web_root="$(basename "$(cd "$PORTAL_ROOT/../.." && pwd)")"
-    fi
-    web_root="$(printf '%s' "${web_root:-staff}" | sed -E 's#^/##; s#/$##')"
-    mount="/${web_root}"
 
     if url_needs_resolve "${APP_URL:-}" || url_needs_resolve "${BASE_URL:-}" \
         || url_needs_resolve "${STAFF_PORTAL_SPA_URL:-}" \
@@ -34,31 +30,38 @@ staff_portal_resolve_production_urls() {
         || url_needs_resolve "${APM_BASE_URL:-}"; then
         staff_base="$(resolve_staff_portal_base_url)" || return 0
         staff_base="${staff_base%/}/"
-        origin="$(url_origin_from_base "$staff_base")" || origin="${staff_base%/staff/}"
+        origin="${staff_base%/staff/}"
         origin="${origin%/}"
-        staff_base="${origin}${mount}/"
+        # Prefer filesystem mount for SPA/API paths when under demo_staff
+        if [[ "$mount" == "/demo_staff" ]]; then
+            staff_base="${origin}/demo_staff/"
+        fi
 
         if url_needs_resolve "${BASE_URL:-}"; then
             BASE_URL="$staff_base"
         fi
-        # SPA is served at /{web_root}/ (modules layout — not /{web_root}/staff-portal/).
         if url_needs_resolve "${STAFF_PORTAL_SPA_URL:-}"; then
-            STAFF_PORTAL_SPA_URL="${origin}${mount}/"
+            STAFF_PORTAL_SPA_URL="${origin}${mount}/staff-portal/"
         fi
         if url_needs_resolve "${APP_URL:-}"; then
-            APP_URL="${origin}${mount}/backend"
+            APP_URL="${origin}${mount}/staff-portal/backend"
         fi
         if url_needs_resolve "${STAFF_PORTAL_BASE_URL:-}"; then
-            STAFF_PORTAL_BASE_URL="${origin}${mount}/backend/"
+            STAFF_PORTAL_BASE_URL="${origin}${mount}/staff-portal/backend/"
         fi
+        # systemd / on-box probes stay on loopback; public SPA/API URLs are for browsers.
         if url_needs_resolve "${STAFF_PORTAL_HEALTH_URL:-}"; then
-            STAFF_PORTAL_HEALTH_URL="http://127.0.0.1${mount}/backend/up"
+            STAFF_PORTAL_HEALTH_URL="http://127.0.0.1${mount}/staff-portal/backend/up"
         fi
         if url_needs_resolve "${APM_BASE_URL:-}"; then
-            APM_BASE_URL="${origin}${mount}/apm"
+            APM_BASE_URL="${origin}/staff/apm"
         fi
-        VITE_STAFF_PORTAL_API_BASE_URL="${mount}/backend"
-        VITE_STAFF_PORTAL_BASE_PATH="${mount}/"
+        if [[ -z "${VITE_STAFF_PORTAL_API_BASE_URL:-}" || "$mount" == "/demo_staff" ]]; then
+            VITE_STAFF_PORTAL_API_BASE_URL="${mount}/staff-portal/backend"
+        fi
+        if [[ -z "${VITE_STAFF_PORTAL_BASE_PATH:-}" || "$mount" == "/demo_staff" ]]; then
+            VITE_STAFF_PORTAL_BASE_PATH="${mount}/staff-portal/"
+        fi
     fi
 }
 
