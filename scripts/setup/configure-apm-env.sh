@@ -35,4 +35,22 @@ apply STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}"
 apply STAFF_API_TOKEN "${STAFF_API_TOKEN:-}"
 apply STAFF_API_INTERNAL_BASE_URL "${STAFF_API_INTERNAL_BASE_URL:-}"
 
+# Microsoft SSO (mobile + web oauth) — same Azure app as staff-portal
+apply TENANT_ID "${TENANT_ID:-}"
+apply CLIENT_ID "${CLIENT_ID:-}"
+apply CLIENT_SEC_VALUE "${CLIENT_SEC_VALUE:-}"
+apply CLIENT_SEC_ID "${CLIENT_SEC_ID:-}"
+apply MICROSOFT_TENANT_ID "${TENANT_ID:-}"
+apply MICROSOFT_CLIENT_ID "${CLIENT_ID:-}"
+apply MICROSOFT_CLIENT_SECRET "${CLIENT_SEC_VALUE:-}"
+apply MICROSOFT_REDIRECT_URI "${MICROSOFT_REDIRECT_URI_APM:-}"
+
+# Optional Graph mail from same Azure app
+if [[ "${EXCHANGE_FROM_MS:-0}" == "1" ]]; then
+  apply EXCHANGE_TENANT_ID "${TENANT_ID:-}"
+  apply EXCHANGE_CLIENT_ID "${CLIENT_ID:-}"
+  apply EXCHANGE_CLIENT_SECRET "${CLIENT_SEC_VALUE:-}"
+  apply EXCHANGE_REDIRECT_URI "${EXCHANGE_REDIRECT_URI_APM:-}"
+fi
+
 echo "==> APM .env upserted at $ENV_FILE"

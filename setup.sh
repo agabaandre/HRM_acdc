@@ -108,7 +108,7 @@ prompt_value STAFF_API_USERNAME "STAFF_API_USERNAME" "$(env_get "$ROOT_ENV" STAF
 prompt_secret STAFF_API_PASSWORD "STAFF_API_PASSWORD" "$(env_get "$ROOT_ENV" STAFF_API_PASSWORD)"
 prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN" "$(env_get "$ROOT_ENV" STAFF_API_TOKEN)"
 
-# --- Microsoft Entra + password login (staff-portal SPA) ---
+# --- Microsoft Entra SSO (portal + APM) and SPA password login ---
 echo
 echo "==> Auth (Microsoft SSO + password login)"
 prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) SSO?" "1) Yes  2) Keep existing / skip" "1"
@@ -123,9 +123,12 @@ else
   CLIENT_SEC_VALUE="$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
   CLIENT_SEC_ID="$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
 fi
-# Always align redirect URI to this public base (must match Azure app registration).
-MICROSOFT_REDIRECT_URI="${PUBLIC_BASE}/backend/auth/microsoft/callback"
-echo "    Microsoft redirect (register in Azure): $MICROSOFT_REDIRECT_URI"
+# Per-app Microsoft redirect URIs (must be registered in Azure)
+MICROSOFT_REDIRECT_URI_PORTAL="${PUBLIC_BASE}/backend/auth/microsoft/callback"
+MICROSOFT_REDIRECT_URI_APM="${PUBLIC_BASE}/apm/oauth/callback"
+MICROSOFT_REDIRECT_URI="$MICROSOFT_REDIRECT_URI_PORTAL"
+echo "    Portal MS redirect: $MICROSOFT_REDIRECT_URI_PORTAL"
+echo "    APM MS redirect:    $MICROSOFT_REDIRECT_URI_APM"
 
 PW_LOGIN_DEFAULT=2
 [[ "$SITE_KIND" == "demo" ]] && PW_LOGIN_DEFAULT=1
@@ -141,6 +144,16 @@ else
   ALLOW_ALTERNATIVE_LOGIN=false
 fi
 echo "    ALLOW_ALTERNATIVE_LOGIN=$ALLOW_ALTERNATIVE_LOGIN"
+
+# Same Azure app is often used for Graph mail (Exchange) on portal / helpdesk / APM.
+EXCHANGE_FROM_MS=0
+if [[ -n "${TENANT_ID:-}" && -n "${CLIENT_ID:-}" ]]; then
+  prompt_choice EXCHANGE_MS_CHOICE "Also set EXCHANGE_* mail creds from this Azure app (portal/helpdesk/APM)?" "1) Yes  2) No" "1"
+  [[ "$EXCHANGE_MS_CHOICE" == "1" ]] && EXCHANGE_FROM_MS=1
+fi
+EXCHANGE_REDIRECT_URI_PORTAL="${PUBLIC_BASE}/backend/oauth/callback"
+EXCHANGE_REDIRECT_URI_APM="${PUBLIC_BASE}/apm/callback"
+EXCHANGE_REDIRECT_URI_HELPDESK="${PUBLIC_BASE}/helpdesk/backend/oauth/callback"
 
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
   REDIS_DEF="$REDIS_HOST_DEFAULT"
@@ -198,7 +211,7 @@ env_set "$ROOT_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
 env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
 env_set "$ROOT_ENV" STAFF_API_TOKEN "$STAFF_API_TOKEN"
 env_set "$ROOT_ENV" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN"
-env_set "$ROOT_ENV" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI"
+env_set "$ROOT_ENV" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI_PORTAL"
 # Write Microsoft keys when provided (skip empties so "Keep existing" does not wipe secrets).
 if [[ -n "${TENANT_ID:-}" ]]; then
   env_set "$ROOT_ENV" TENANT_ID "$TENANT_ID"
@@ -214,6 +227,12 @@ if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
 fi
 if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
   env_set "$ROOT_ENV" CLIENT_SEC_ID "$CLIENT_SEC_ID"
+fi
+if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
+  [[ -n "${TENANT_ID:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_TENANT_ID "$TENANT_ID"
+  [[ -n "${CLIENT_ID:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_ID "$CLIENT_ID"
+  [[ -n "${CLIENT_SEC_VALUE:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE"
+  env_set "$ROOT_ENV" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_PORTAL"
 fi
 if [[ "$DB_MODE" != "keep" ]]; then
   env_set "$ROOT_ENV" DB_HOST "$DB_HOST"
@@ -256,6 +275,54 @@ apply_storage_to_file() {
   return 0
 }
 
+# Microsoft Entra SSO keys shared by staff-portal + APM (and optional Exchange mail).
+# Arg2 = MICROSOFT_REDIRECT_URI for that app (empty = leave redirect alone).
+# Arg3 = also set EXCHANGE_* from the same app (1/0).
+# Arg4 = EXCHANGE_REDIRECT_URI when Arg3=1 (empty = leave alone).
+apply_microsoft_sso_to_file() {
+  local file="$1" redirect="${2:-}" with_exchange="${3:-0}" exchange_redirect="${4:-}"
+  if [[ -n "${TENANT_ID:-}" ]]; then
+    env_set "$file" TENANT_ID "$TENANT_ID" || return 1
+    env_set "$file" MICROSOFT_TENANT_ID "$TENANT_ID" || return 1
+  fi
+  if [[ -n "${CLIENT_ID:-}" ]]; then
+    env_set "$file" CLIENT_ID "$CLIENT_ID" || return 1
+    env_set "$file" MICROSOFT_CLIENT_ID "$CLIENT_ID" || return 1
+  fi
+  if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
+    env_set "$file" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE" || return 1
+    env_set "$file" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
+  fi
+  if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
+    env_set "$file" CLIENT_SEC_ID "$CLIENT_SEC_ID" || return 1
+  fi
+  if [[ -n "$redirect" ]]; then
+    env_set "$file" MICROSOFT_REDIRECT_URI "$redirect" || return 1
+  fi
+  if [[ "$with_exchange" == "1" ]]; then
+    if [[ -n "${TENANT_ID:-}" ]]; then
+      env_set "$file" EXCHANGE_TENANT_ID "$TENANT_ID" || return 1
+    fi
+    if [[ -n "${CLIENT_ID:-}" ]]; then
+      env_set "$file" EXCHANGE_CLIENT_ID "$CLIENT_ID" || return 1
+    fi
+    if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
+      env_set "$file" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
+    fi
+    if [[ -n "$exchange_redirect" ]]; then
+      env_set "$file" EXCHANGE_REDIRECT_URI "$exchange_redirect" || return 1
+    fi
+  fi
+  return 0
+}
+
+# Portal SPA password login — staff-portal only
+apply_password_login_to_file() {
+  local file="$1"
+  env_set "$file" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN" || return 1
+  return 0
+}
+
 echo
 echo "==> Updating .htaccess public path → /${WEB_ROOT}/"
 setup_update_htaccess_tree "$ROOT" "$WEB_ROOT"
@@ -281,23 +348,9 @@ write_staff_portal_env() {
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
-    env_set "$f" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN" || return 1
-    env_set "$f" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI" || return 1
-    if [[ -n "${TENANT_ID:-}" ]]; then
-      env_set "$f" TENANT_ID "$TENANT_ID" || return 1
-      env_set "$f" MICROSOFT_TENANT_ID "$TENANT_ID" || return 1
-    fi
-    if [[ -n "${CLIENT_ID:-}" ]]; then
-      env_set "$f" CLIENT_ID "$CLIENT_ID" || return 1
-      env_set "$f" MICROSOFT_CLIENT_ID "$CLIENT_ID" || return 1
-    fi
-    if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
-      env_set "$f" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE" || return 1
-      env_set "$f" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
-    fi
-    if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
-      env_set "$f" CLIENT_SEC_ID "$CLIENT_SEC_ID" || return 1
-    fi
+    apply_password_login_to_file "$f" || return 1
+    apply_microsoft_sso_to_file "$f" "$MICROSOFT_REDIRECT_URI_PORTAL" "$EXCHANGE_FROM_MS" \
+      "$EXCHANGE_REDIRECT_URI_PORTAL" || return 1
     env_set "$f" DB_DATABASE "$SP_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_PORTAL_MODULE_FILES_ROOT "$STAFF_PORTAL_MODULE_FILES_ROOT" || return 1
@@ -330,6 +383,8 @@ export APM_APP_URL BASE_URL CI_BASE_URL JWT_SECRET
 export DB_HOST DB_PORT DB_USER DB_PASS DB_USERNAME DB_PASSWORD APM_DB_DATABASE
 export REDIS_HOST REDIS_PORT REDIS_PASSWORD
 export STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN STAFF_API_INTERNAL_BASE_URL
+export TENANT_ID CLIENT_ID CLIENT_SEC_VALUE CLIENT_SEC_ID
+export MICROSOFT_REDIRECT_URI_APM EXCHANGE_FROM_MS EXCHANGE_REDIRECT_URI_APM
 if "$ROOT/scripts/setup/configure-apm-env.sh"; then
   echo "    configure-apm-env OK"
 else
@@ -349,9 +404,11 @@ if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && apply_storage_to_file "$APM_ENV" \
   && env_set "$APM_ENV" STAFF_APM_FILES_ROOT "$STAFF_APM_FILES_ROOT" \
   && apply_db_to_file "$APM_ENV" DB_USERNAME DB_PASSWORD \
-  && apply_redis_to_file "$APM_ENV"
+  && apply_redis_to_file "$APM_ENV" \
+  && apply_microsoft_sso_to_file "$APM_ENV" "$MICROSOFT_REDIRECT_URI_APM" "$EXCHANGE_FROM_MS" \
+       "$EXCHANGE_REDIRECT_URI_APM"
 then
-  echo "    forced URLs/JWT/Redis/storage on modules/apm/.env"
+  echo "    forced URLs/JWT/Redis/storage/Microsoft on modules/apm/.env"
 else
   setup_warn "APM env write failed — fix ownership and re-run"
 fi
@@ -426,6 +483,19 @@ write_helpdesk_env() {
     env_set "$f" DB_DATABASE "$HD_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_HELPDESK_FILES_ROOT "$STAFF_HELPDESK_FILES_ROOT" || return 1
+    # Helpdesk uses JWT SSO from portal; only needs EXCHANGE_* for Graph mail.
+    if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
+      if [[ -n "${TENANT_ID:-}" ]]; then
+        env_set "$f" EXCHANGE_TENANT_ID "$TENANT_ID" || return 1
+      fi
+      if [[ -n "${CLIENT_ID:-}" ]]; then
+        env_set "$f" EXCHANGE_CLIENT_ID "$CLIENT_ID" || return 1
+      fi
+      if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
+        env_set "$f" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
+      fi
+      env_set "$f" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_HELPDESK" || return 1
+    fi
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -437,7 +507,7 @@ if write_helpdesk_env; then
     setup_warn "helpdesk configure-env failed"
   fi
   write_helpdesk_env || setup_warn "helpdesk force env rewrite failed"
-  echo "    forced URLs/JWT/Redis on setup.env + backend/.env"
+  echo "    forced URLs/JWT/Redis/Exchange on setup.env + backend/.env"
 else
   setup_warn "helpdesk env write failed — fix ownership and re-run"
 fi
@@ -447,7 +517,9 @@ echo "=== Summary ==="
 echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
 echo "STAFF_SITE_ID=$STAFF_SITE_ID"
 echo "CI3 uploads=$STAFF_PORTAL_UPLOADS_ROOT"
-echo "Microsoft redirect=$MICROSOFT_REDIRECT_URI"
+echo "Microsoft portal redirect=$MICROSOFT_REDIRECT_URI_PORTAL"
+echo "Microsoft APM redirect=$MICROSOFT_REDIRECT_URI_APM"
+echo "EXCHANGE from MS=$EXCHANGE_FROM_MS"
 echo "Password login=$ALLOW_ALTERNATIVE_LOGIN"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"

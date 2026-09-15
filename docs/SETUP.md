@@ -20,7 +20,7 @@ Requires a TTY. Passwords are entered without echo.
 | Deploy | Host Apache · Docker Compose |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · External · Keep current |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
-| **Auth** | Microsoft Entra (`TENANT_ID` / `CLIENT_ID` / secret) + redirect URI; **password login** enable/disable (`ALLOW_ALTERNATIVE_LOGIN`) |
+| **Auth** | Microsoft Entra SSO (`TENANT_ID` / `CLIENT_ID` / secret) written to **root**, **staff-portal**, and **APM** (each with its own `MICROSOFT_REDIRECT_URI`); optional **EXCHANGE_*** mail creds for portal / APM / helpdesk; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **SPA rebuild** | **Default Yes** — Vite build + publish for `/{WEB_ROOT}/` (fixes folder renames like `cbpdemo` → `demo_staff`) |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
@@ -39,7 +39,13 @@ Folder names containing `demo` default the site role to **Demo**.
 | `modules/finance/setup.env` + `.env` | Finance |
 | `modules/helpdesk/setup.env` + `backend/.env` | Helpdesk |
 
-Wizard keys (URLs, JWT, Share API, Redis, storage, and DB when not “keep”) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
+Wizard keys (URLs, JWT, Share API, Redis, storage, Microsoft SSO where applicable, and DB when not “keep”) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
+
+| Auth key | Root | staff-portal | APM | helpdesk | finance |
+|----------|------|--------------|-----|----------|---------|
+| `TENANT_ID` / `CLIENT_*` / `MICROSOFT_*` SSO | yes | yes (+ portal redirect) | yes (+ APM redirect) | — | — |
+| `ALLOW_ALTERNATIVE_LOGIN` | yes | yes | — | — | — |
+| `EXCHANGE_*` (optional, same Azure app) | yes | yes | yes | yes | — |
 
 ## Site role, systemd, and CI3 uploads
 
