@@ -1,60 +1,15 @@
 <?php
 
 /**
- * Laravel front controller for Apache / PHP built-in server.
- * Mirrors helpdesk/backend/server.php so /public/ never appears in URLs.
+ * Laravel front controller for Apache (no /public/ in URLs).
+ * Strips /{webRoot}/backend via bootstrap/subdirectory.php, then boots public/index.php.
  */
 
-require_once dirname(__DIR__, 3).'/shared/fix-public-script-name.php';
+require_once __DIR__.'/bootstrap/subdirectory.php';
 
-$uri = urldecode(
-    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
-);
+$uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '');
 
-$appUrl = getenv('APP_URL') ?: ($_ENV['APP_URL'] ?? '');
-if ($appUrl === '' && is_readable(__DIR__.'/.env')) {
-    $lines = file(__DIR__.'/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-    foreach ($lines as $line) {
-        if (str_starts_with(trim($line), 'APP_URL=')) {
-            $appUrl = trim(substr($line, strlen('APP_URL=')), " \t\"'");
-            break;
-        }
-    }
-}
-$basePath = parse_url((string) $appUrl, PHP_URL_PATH);
-if (is_string($basePath) && $basePath !== '' && $basePath !== '/') {
-    $basePath = rtrim($basePath, '/');
-    if (str_starts_with($uri, $basePath)) {
-        $uri = substr($uri, strlen($basePath)) ?: '/';
-    }
-}
-
-// When APP_URL is stale (e.g. still /cbpdemo/backend) but the request is under
-// another Alias, strip any /{webRoot}/backend or legacy staff-portal mount.
-$mounts = [
-    '/staff/staff-portal/backend',
-    '/demo_staff/staff-portal/backend',
-    '/staff-portal/backend',
-];
-if (preg_match('#^/([^/]+)/backend(?:/|$)#', $uri, $m) === 1) {
-    array_unshift($mounts, '/'.$m[1].'/backend');
-}
-foreach ($mounts as $mount) {
-    if (str_starts_with($uri, $mount)) {
-        $uri = substr($uri, strlen($mount)) ?: '/';
-        break;
-    }
-}
-
-// Keep Laravel's Request path in sync (SCRIPT_NAME remap alone is not enough when
-// APP_URL / Alias folder was renamed, e.g. cbpdemo → demo_staff).
-$query = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY);
-$_SERVER['REQUEST_URI'] = $uri.($query !== null && $query !== '' ? '?'.$query : '');
-if (isset($_SERVER['PATH_INFO']) && is_string($_SERVER['PATH_INFO'])) {
-    $_SERVER['PATH_INFO'] = $uri;
-}
-
-if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
+if ($uri !== '/' && $uri !== '' && file_exists(__DIR__.'/public'.$uri)) {
     return false;
 }
 

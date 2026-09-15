@@ -22,7 +22,7 @@ Requires a TTY. Passwords are entered without echo.
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
 | **Auth** | Microsoft Entra SSO (`TENANT_ID` / `CLIENT_ID` / secret) written to **root**, **staff-portal**, and **APM** (each with its own `MICROSOFT_REDIRECT_URI`); SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **Mail** | Shared `MAIL_TRANSPORT` (**exchange** default · **smtp** · **zoho** · **http** [notifications.africacdc.org](https://notifications.africacdc.org/api/documentation)); shared Graph/SMTP/HTTP creds; per app only `MAIL_FROM_NAME` + `MAIL_FROM_ADDRESS` |
-| **SPA rebuild** | **Default Yes** — Vite build + publish for `/{WEB_ROOT}/` (fixes folder renames like `cbpdemo` → `demo_staff`) |
+| **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
 | Systemd | **Production only** |

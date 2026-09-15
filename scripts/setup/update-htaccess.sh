@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Rewrite Apache public path prefixes in .htaccess for the deploy folder name
-# (staff, cbp, demo_cbp, demo_staff, …). Does not touch filesystem paths like
-# modules/staff-portal/.
-#
-# Note: do not put "Options" in these .htaccess files — many hosts omit
-# AllowOverride Options and Apache then returns HTTP 500 for every request.
+# Rewrite absolute public path prefixes in .htaccess to /{web_root}/.
+# Keeps filesystem paths (modules/…) untouched. Prefer a single current web-root
+# in redirects — do not add extra RewriteCond/alias complexity here.
 
 SETUP_HTACCESS_ALIAS_NAMES=(staff demo_staff cbp demo_cbp cbpdemo demo_cbpdemo)
 
@@ -34,12 +31,11 @@ setup_update_htaccess_file() {
     return 0
   fi
 
+  # Only rewrite public URL prefixes and existing alias groups — no new rules.
   WEB_ROOT="$web_root" ALIASES="$aliases" perl -i -pe '
     my $w = $ENV{WEB_ROOT};
     my $a = $ENV{ALIASES};
-    # Absolute URL prefixes only (…/staff/… → …/{web_root}/…)
     s#/(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/#/${w}/#g;
-    # REQUEST_URI / THE_REQUEST alternation groups
     s#\((?:\?:)?(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)(?:\|(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo))*\)#($a)#g;
   ' "$file"
 }

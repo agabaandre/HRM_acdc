@@ -14,13 +14,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo(fn () => route('login'));
+        $middleware->redirectGuestsTo(function () {
+            $base = rtrim((string) config('app.url', ''), '/');
+
+            return $base !== '' ? $base.'/login' : route('login');
+        });
         $middleware->redirectUsersTo(function () {
             if ((bool) config('staff-portal.spa_enabled', false)) {
                 return rtrim((string) config('staff-portal.spa_url', '/'), '/').'/';
             }
 
-            return route('core.home');
+            $base = rtrim((string) config('app.url', ''), '/');
+
+            return $base !== '' ? $base.'/' : route('core.home');
         });
         $middleware->alias([
             'staff.audit' => LogStaffPortalAccess::class,

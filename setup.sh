@@ -80,9 +80,22 @@ if [[ -z "$DEFAULT_BASE" ]]; then
   fi
 fi
 
-prompt_value PUBLIC_BASE "Public base URL (…/staff, …/cbp, …/demo_cbp)" "$DEFAULT_BASE"
+prompt_value PUBLIC_BASE "Public base URL (host; folder name ${DEFAULT_WEB_ROOT} is appended if missing)" "$DEFAULT_BASE"
+# Always adopt the checkout folder name as the public Alias / URL prefix.
+_pb_host="$(printf '%s' "${PUBLIC_BASE}" | sed -E 's#^(https?://[^/]+).*#\1#')"
+if [[ -n "$_pb_host" && "$_pb_host" == http* ]]; then
+  PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
+fi
 setup_map_urls
-echo "    Web folder / Alias: /${WEB_ROOT}"
+# Re-assert folder-derived web root (do not trust a mismatched path segment).
+if [[ "$WEB_ROOT" != "$DEFAULT_WEB_ROOT" ]]; then
+  echo "    Note: URL path /${WEB_ROOT} overridden by folder name /${DEFAULT_WEB_ROOT}"
+  PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
+  setup_map_urls
+fi
+echo "    Web folder / Alias: /${WEB_ROOT} (from $(basename "$ROOT"))"
+echo "    Portal API APP_URL: ${STAFF_PORTAL_APP_URL}"
+echo "    SPA URL:            ${STAFF_PORTAL_SPA_URL}"
 if [[ -n "${PREV_WEB_ROOT:-}" && "$PREV_WEB_ROOT" != "$WEB_ROOT" ]]; then
   echo "    Web root changed: ${PREV_WEB_ROOT} → ${WEB_ROOT} (frontend must be rebuilt)"
 fi
@@ -494,8 +507,9 @@ write_staff_portal_env() {
     env_set "$f" STAFF_PORTAL_SPA_URL "$STAFF_PORTAL_SPA_URL" || return 1
     env_set "$f" STAFF_PORTAL_SPA_ENABLED "true" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
-    env_set "$f" WEB_ROOT "$WEB_ROOT" || return 1
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
+    env_set "$f" SESSION_PATH "${PUBLIC_PATH}/" || return 1
+    env_set "$f" WEB_ROOT "$WEB_ROOT" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
     apply_password_login_to_file "$f" || return 1
     apply_microsoft_sso_to_file "$f" "$MICROSOFT_REDIRECT_URI_PORTAL" "$EXCHANGE_FROM_MS" \
