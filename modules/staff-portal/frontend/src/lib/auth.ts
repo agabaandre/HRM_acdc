@@ -13,8 +13,11 @@ export function apiPublicBaseUrl(): string {
     return base
   }
   if (typeof window !== 'undefined') {
-    const { protocol, host } = window.location
-    return `${protocol}//${host}/staff/backend`
+    const { protocol, host, pathname } = window.location
+    // /demo_staff/login → /demo_staff/backend (never hardcode /staff when Alias differs)
+    const seg = pathname.split('/').filter(Boolean)[0]
+    const root = seg && seg !== 'login' && seg !== 'home' ? `/${seg}` : '/staff'
+    return `${protocol}//${host}${root}/backend`
   }
   return '/staff/backend'
 }

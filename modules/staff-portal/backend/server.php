@@ -29,11 +29,29 @@ if (is_string($basePath) && $basePath !== '' && $basePath !== '/') {
     }
 }
 
-foreach (['/staff/staff-portal/backend', '/staff-portal/backend'] as $mount) {
+// When APP_URL is stale (e.g. still /cbpdemo/backend) but the request is under
+// another Alias, strip any /{webRoot}/backend or legacy staff-portal mount.
+$mounts = [
+    '/staff/staff-portal/backend',
+    '/demo_staff/staff-portal/backend',
+    '/staff-portal/backend',
+];
+if (preg_match('#^/([^/]+)/backend(?:/|$)#', $uri, $m) === 1) {
+    array_unshift($mounts, '/'.$m[1].'/backend');
+}
+foreach ($mounts as $mount) {
     if (str_starts_with($uri, $mount)) {
         $uri = substr($uri, strlen($mount)) ?: '/';
         break;
     }
+}
+
+// Keep Laravel's Request path in sync (SCRIPT_NAME remap alone is not enough when
+// APP_URL / Alias folder was renamed, e.g. cbpdemo → demo_staff).
+$query = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY);
+$_SERVER['REQUEST_URI'] = $uri.($query !== null && $query !== '' ? '?'.$query : '');
+if (isset($_SERVER['PATH_INFO']) && is_string($_SERVER['PATH_INFO'])) {
+    $_SERVER['PATH_INFO'] = $uri;
 }
 
 if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
