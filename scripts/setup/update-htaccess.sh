@@ -3,6 +3,9 @@
 # Rewrite Apache public path prefixes in .htaccess for the deploy folder name
 # (staff, cbp, demo_cbp, demo_staff, …). Does not touch filesystem paths like
 # modules/staff-portal/.
+#
+# Note: do not put "Options" in these .htaccess files — many hosts omit
+# AllowOverride Options and Apache then returns HTTP 500 for every request.
 
 SETUP_HTACCESS_ALIAS_NAMES=(staff demo_staff cbp demo_cbp cbpdemo demo_cbpdemo)
 

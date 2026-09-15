@@ -1,18 +1,18 @@
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+    # Avoid "Options" here — disallowed AllowOverride Options → HTTP 500 for the tree.
 
     RewriteEngine On
 
-    # Public app URL is /staff/ (repo root). Bookmarks to /staff/staff-portal/*
-    # must redirect — otherwise Vue (base=/staff/) sees path /staff-portal and
-    # never mounts the CBP modules home route.
-    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal[/?\s] [NC]
+    # Public app URL is /{webRoot}/ (repo root). Bookmarks to /{webRoot}/staff-portal/*
+    # must redirect — otherwise Vue sees path /staff-portal and never mounts home.
+    RewriteCond %{THE_REQUEST} \s/+(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/staff-portal[/?\s] [NC]
     RewriteRule ^(.*)$ /staff/$1 [R=301,L,QSA]
 
-    # Laravel API / auth
+    # Laravel API / auth (requests already under …/backend/ via root rewrite)
     RewriteRule ^backend(?:/|$) - [L]
+
+    # Already the SPA front controller — never rewrite again (prevents 500 loops)
+    RewriteRule ^spa-static\.php$ - [L]
 
     # Hashed Vite assets → PHP static sender (works even when -f rewrite fails)
     RewriteRule ^assets/([^/]+)$ spa-static.php?f=$1 [L,QSA]
@@ -25,6 +25,7 @@
     RewriteRule ^maps/([^/]+)$ public-spa/maps/$1 [L]
 
     # Vue Router → spa-static.php (serves index.html, no-cache)
+    RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ spa-static.php [L,QSA]
 </IfModule>
 
