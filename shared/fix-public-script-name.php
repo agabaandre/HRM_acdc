@@ -3,17 +3,22 @@
 declare(strict_types=1);
 
 /**
- * After Apache rewrites /staff/{app} → /staff/modules/{app}, SCRIPT_NAME / PHP_SELF
- * still contain /modules/. Laravel uses those to compute the app base path, so routes
- * 404 unless we map back to the public URL prefixes.
+ * After Apache rewrites /{webRoot}/{app} → /{webRoot}/modules/{app}, SCRIPT_NAME /
+ * PHP_SELF still contain /modules/. Laravel uses those to compute the app base
+ * path, so routes 404 unless we map back to the public URL prefixes.
+ *
+ * Supports any Alias folder (staff, demo_staff, cbp, cbpdemo, …).
  */
 (static function (): void {
+    // Capture group 1 = public web-root segment (staff, demo_staff, …).
     $replacements = [
-        '#^/staff/modules/apm(?:/public)?#' => '/staff/apm',
-        '#^/staff/modules/finance(?:/public)?#' => '/staff/finance',
-        // Helpdesk Laravel API is mounted at /staff/helpdesk/backend (not /staff/helpdesk).
-        '#^/staff/modules/helpdesk/backend(?:/public)?#' => '/staff/helpdesk/backend',
-        '#^/staff/modules/staff-portal/backend(?:/public)?#' => '/staff/backend',
+        '#^/([^/]+)/modules/apm(?:/public)?#' => '/$1/apm',
+        '#^/([^/]+)/modules/finance(?:/public)?#' => '/$1/finance',
+        // Helpdesk Laravel API is mounted at /{root}/helpdesk/backend.
+        '#^/([^/]+)/modules/helpdesk/backend(?:/public)?#' => '/$1/helpdesk/backend',
+        '#^/([^/]+)/modules/staff-portal/backend(?:/public)?#' => '/$1/backend',
+        // Legacy physical path …/staff-portal/backend before modules/ layout.
+        '#^/([^/]+)/staff-portal/backend(?:/public)?#' => '/$1/backend',
     ];
 
     foreach (['SCRIPT_NAME', 'PHP_SELF'] as $key) {
