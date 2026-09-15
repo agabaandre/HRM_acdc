@@ -37,7 +37,9 @@ class CbpModulesNavService
             return Cache::remember(
                 'apm_cbp_modules_nav_'.$staffId.'_'.$permKey,
                 300,
-                fn () => $client->fetchCbpModules($staffId, 'approvals_management', 'approvals_management', $perms)
+                fn () => self::sanitizeNavPayload(
+                    $client->fetchCbpModules($staffId, 'approvals_management', 'approvals_management', $perms)
+                )
             );
         } catch (\Throwable $e) {
             Log::warning('CbpModulesNavService: '.$e->getMessage());
@@ -52,16 +54,93 @@ class CbpModulesNavService
     }
 
     /**
+     * Ensure CBP Home / Staff Portal browser links never point at /backend (Share API).
+     *
+     * @param  array{home: array<string, mixed>, modules: list<array<string, mixed>>}  $payload
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+     */
+    public static function sanitizeNavPayload(array $payload): array
+    {
+        $spa = rtrim(self::staffWebBaseUrl(), '/');
+
+        $home = $payload['home'] ?? [];
+        if (! is_array($home)) {
+            $home = [];
+        }
+        $homeHref = self::rewritePublicSpaHref((string) ($home['href'] ?? ''), $spa.'/');
+        $home['href'] = $homeHref !== '' ? $homeHref : $spa.'/';
+        $payload['home'] = $home;
+
+        $modules = $payload['modules'] ?? [];
+        if (! is_array($modules)) {
+            $modules = [];
+        }
+        foreach ($modules as $i => $mod) {
+            if (! is_array($mod)) {
+                continue;
+            }
+            $key = (string) ($mod['module_key'] ?? $mod['id'] ?? '');
+            $href = (string) ($mod['href'] ?? '');
+            if ($key === 'staff_portal' || $key === 'cbp_home' || self::hrefLooksLikeStaffApi($href)) {
+                $mod['href'] = $spa.'/dashboard';
+            } else {
+                $rewritten = self::rewritePublicSpaHref($href, '');
+                if ($rewritten !== '') {
+                    $mod['href'] = $rewritten;
+                }
+            }
+            $modules[$i] = $mod;
+        }
+        $payload['modules'] = array_values($modules);
+
+        return $payload;
+    }
+
+    private static function hrefLooksLikeStaffApi(string $href): bool
+    {
+        $href = strtolower(trim($href));
+        if ($href === '') {
+            return false;
+        }
+
+        return (bool) preg_match('#(^|/)backend(/|$|\?)#', $href)
+            || str_contains($href, '/share/');
+    }
+
+    private static function rewritePublicSpaHref(string $href, string $emptyFallback): string
+    {
+        $href = trim($href);
+        if ($href === '') {
+            return $emptyFallback;
+        }
+        if (self::hrefLooksLikeStaffApi($href)) {
+            return $emptyFallback !== '' ? $emptyFallback : rtrim(self::staffWebBaseUrl(), '/').'/dashboard';
+        }
+        $normalized = RuntimeUrl::normalizeStaffPortalPublicUrl($href);
+        // normalizeStaffPortalPublicUrl strips path after /backend; keep non-API absolute paths as-is.
+        if ($normalized !== '' && ! self::hrefLooksLikeStaffApi($href) && preg_match('#^https?://#i', $href)) {
+            $path = (string) (parse_url($href, PHP_URL_PATH) ?? '');
+            if ($path !== '' && $path !== '/' && ! preg_match('#/(backend)(/|$)#', $path)) {
+                return rtrim($href, '/');
+            }
+        }
+
+        return $normalized !== '' ? $normalized : $href;
+    }
+
+    /**
      * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
      */
     private static function defaultPayload(): array
     {
+        $spa = rtrim(self::staffWebBaseUrl(), '/');
+
         return [
             'home' => [
                 'id' => 'cbp_home',
                 'label' => 'CBP Home',
                 'description' => '',
-                'href' => self::staffWebBaseUrl().'/',
+                'href' => $spa.'/',
                 'is_active' => false,
             ],
             'modules' => [],
@@ -100,7 +179,8 @@ class CbpModulesNavService
                 'id' => 'staff_portal',
                 'label' => 'Staff Portal',
                 'description' => '',
-                'href' => rtrim($staffBase, '/').'/',
+                // SPA home/dashboard — never …/backend (Laravel API)
+                'href' => rtrim($staffBase, '/').'/dashboard',
                 'icon' => 'fa fa-users',
                 'opens_in_new_tab' => false,
                 'is_active' => false,
@@ -117,19 +197,5 @@ class CbpModulesNavService
         ];
 
         return $defaults;
-    }
-
-    private static function isLocalDevUrl(string $url): bool
-    {
-        return str_contains($url, 'localhost')
-            || str_contains($url, '127.0.0.1')
-            || str_contains($url, '.local');
-    }
-
-    private static function isLocalDevHost(string $host): bool
-    {
-        return str_contains($host, 'localhost')
-            || str_contains($host, '127.0.0.1')
-            || str_ends_with(strtolower($host), '.local');
     }
 }

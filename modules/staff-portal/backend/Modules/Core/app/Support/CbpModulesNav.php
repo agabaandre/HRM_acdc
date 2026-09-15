@@ -77,6 +77,13 @@ class CbpModulesNav
                 continue;
             }
 
+            // Staff Portal browser entry must be the SPA, never /backend (Share API).
+            if ($moduleKey === 'staff_portal' || preg_match('#(^|/)backend(/|$)#', $resolved)) {
+                if ($moduleKey === 'staff_portal' || ! preg_match('#/(apm|finance|helpdesk)(/|$)#', $resolved)) {
+                    $resolved = rtrim($spaUrl, '/').'/dashboard';
+                }
+            }
+
             $ssoLaunch = (int) ($row->uses_staff_portal_token ?? 0) === 1;
             $resolver = (string) ($row->target_resolver ?? 'codeigniter');
             $absolute = in_array($resolver, ['staff_app_token', 'finance_host', 'external_microservice'], true)

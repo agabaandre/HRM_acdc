@@ -130,33 +130,23 @@ ensure_storage_link() {
   local public_root="$1"
   local link="$BACKEND/public/storage"
   local php_bin="${PHP_BIN:-php}"
-  local want resolved target need_recreate=0
+  local want resolved need_recreate=1
 
   want="$(canonical_path "$public_root")"
   mkdir -p "$(dirname "$link")"
 
+  echo "Unlinking public/storage (will recreate)"
+  if command -v "$php_bin" >/dev/null 2>&1 && [[ -f "$BACKEND/artisan" ]]; then
+    (cd "$BACKEND" && "$php_bin" artisan storage:unlink --no-interaction) >/dev/null 2>&1 || true
+  fi
   if [[ -L "$link" ]]; then
-    target="$(readlink "$link" || true)"
-    if [[ ! -e "$link" ]]; then
-      echo "Removing broken public/storage → ${target}"
-      need_recreate=1
-    else
-      resolved="$(canonical_path "$target")"
-      if [[ "$resolved" != "$want" ]]; then
-        echo "public/storage points at ${resolved}, expected ${want} — recreating link"
-        need_recreate=1
-      fi
-    fi
+    rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link" || true
   elif [[ -d "$link" && ! -L "$link" ]]; then
     echo "public/storage is a real directory (not a symlink) — moving aside"
     local bak="${link}.bak.$(date +%Y%m%d%H%M%S)"
     mv "$link" "$bak" 2>/dev/null || run_as_priv mv "$link" "$bak"
-    need_recreate=1
   elif [[ -e "$link" && ! -L "$link" ]]; then
     rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link"
-    need_recreate=1
-  elif [[ ! -e "$link" ]]; then
-    need_recreate=1
   fi
 
   if [[ "$need_recreate" -eq 1 ]]; then

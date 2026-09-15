@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\RuntimeUrl;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -95,7 +96,17 @@ class CbpPlatformMenuService
             if ($path === '') {
                 return null;
             }
-            $base = self::staffWebBaseUrl();
+            $base = rtrim(self::staffWebBaseUrl(), '/');
+            // SPA routes (never …/backend)
+            if ($path === 'dashboard' || str_starts_with($path, 'dashboard/')) {
+                return $base.'/dashboard';
+            }
+            if ($path === 'auth/profile' || str_starts_with($path, 'auth/profile')) {
+                return $base.'/profile';
+            }
+            if (($row->module_key ?? '') === 'staff_portal' || $path === 'backend' || str_starts_with($path, 'backend/')) {
+                return $base.'/dashboard';
+            }
 
             return $base.'/'.$path;
         }
@@ -105,6 +116,9 @@ class CbpPlatformMenuService
             $seg = trim((string) ($row->base_url ?? ''), '/');
             if ($seg === '') {
                 return null;
+            }
+            if ($seg === 'backend' || str_starts_with($seg, 'backend/') || ($row->module_key ?? '') === 'staff_portal') {
+                return $base.'/dashboard';
             }
             $url = $base.'/'.$seg;
             if (! empty($row->uses_staff_portal_token)) {
@@ -204,8 +218,8 @@ class CbpPlatformMenuService
 
     private static function staffWebBaseUrl(): string
     {
-        $u = rtrim((string) session('user.base_url', env('BASE_URL', 'http://localhost/staff/')), '/');
+        $u = (string) session('user.base_url', env('BASE_URL', 'http://localhost/staff/'));
 
-        return rtrim(str_replace('/apm', '', $u), '/');
+        return RuntimeUrl::normalizeStaffPortalPublicUrl($u);
     }
 }

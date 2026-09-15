@@ -30,8 +30,8 @@
                                     </a>
                                 </li>
                                 @php
-                                    $staffBaseUrl = $staffWebBaseUrl ?? \App\Services\CbpModulesNavService::staffWebBaseUrl();
-                                    $staffPortalUrl = $staffBaseUrl . '/auth/profile';
+                                    $staffBaseUrl = rtrim($staffWebBaseUrl ?? \App\Services\CbpModulesNavService::staffWebBaseUrl(), '/');
+                                    $staffPortalUrl = $staffBaseUrl.'/profile';
                                 @endphp
 
                                 {{-- CBP Modules dropdown (Staff Share API). Do not restore inline Staff Portal / Finance links here. --}}
@@ -101,7 +101,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ $staffBaseUrl }}/auth/users" rel="noopener noreferrer">
+                                    <a class="dropdown-item" href="{{ $staffBaseUrl }}/profile/password" rel="noopener noreferrer">
                                         <i class="fas fa-key"></i><span>Change Password</span>
                                     </a>
                                 </li>

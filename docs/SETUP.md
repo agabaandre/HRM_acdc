@@ -25,6 +25,7 @@ Requires a TTY. Passwords are entered without echo.
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
+| **Storage** | Always: Laravel `storage/` + `bootstrap/cache` permissions; **unlink + relink** `public/storage` for portal, APM, helpdesk, finance |
 | Systemd | **Production only** |
 
 Folder names containing `demo` default the site role to **Demo**.

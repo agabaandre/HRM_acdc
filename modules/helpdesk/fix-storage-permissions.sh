@@ -135,45 +135,30 @@ ensure_storage_link() {
   local public_root="$1"
   local link="$BACKEND/public/storage"
   local php_bin="${PHP_BIN:-php}"
-  local need_recreate=0
 
+  echo "Unlinking public/storage (will recreate)"
+  if command -v "$php_bin" >/dev/null 2>&1 && [[ -f "$BACKEND/artisan" ]]; then
+    (cd "$BACKEND" && "$php_bin" artisan storage:unlink --no-interaction) >/dev/null 2>&1 || true
+  fi
   if [[ -L "$link" ]]; then
-    local target resolved want
-    target="$(readlink "$link" || true)"
-    if [[ ! -e "$link" ]]; then
-      echo "Removing broken public/storage → ${target}"
-      need_recreate=1
-    else
-      resolved="$(cd "$(dirname "$link")" && cd "$target" 2>/dev/null && pwd -P || true)"
-      want="$(mkdir -p "$public_root" 2>/dev/null; cd "$public_root" 2>/dev/null && pwd -P || printf '%s' "$public_root")"
-      if [[ -n "$resolved" && -n "$want" && "$resolved" != "$want" ]]; then
-        echo "public/storage points at ${resolved}, expected ${want} — recreating link"
-        need_recreate=1
-      fi
-    fi
+    rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link" || true
   elif [[ -d "$link" && ! -L "$link" ]]; then
     echo "public/storage is a real directory (not a symlink) — moving aside"
     local bak="${link}.bak.$(date +%Y%m%d%H%M%S)"
     mv "$link" "$bak" 2>/dev/null || run_as_priv mv "$link" "$bak"
-    need_recreate=1
   elif [[ -e "$link" && ! -L "$link" ]]; then
     rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link"
-    need_recreate=1
-  elif [[ ! -e "$link" ]]; then
-    need_recreate=1
   fi
 
-  if [[ "$need_recreate" -eq 1 ]]; then
-    rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link" || true
-    # Prefer artisan so links[] from filesystems.php is honored.
-    if command -v "$php_bin" >/dev/null 2>&1 && [[ -f "$BACKEND/artisan" ]]; then
-      (cd "$BACKEND" && "$php_bin" artisan storage:link --force --no-interaction) 2>/dev/null \
-        || (cd "$BACKEND" && "$php_bin" artisan storage:link --no-interaction) 2>/dev/null \
-        || true
-    fi
-    if [[ ! -e "$link" ]]; then
-      ln -sfn "$public_root" "$link" 2>/dev/null || run_as_priv ln -sfn "$public_root" "$link"
-    fi
+  rm -f "$link" 2>/dev/null || run_as_priv rm -f "$link" || true
+  # Prefer artisan so links[] from filesystems.php is honored.
+  if command -v "$php_bin" >/dev/null 2>&1 && [[ -f "$BACKEND/artisan" ]]; then
+    (cd "$BACKEND" && "$php_bin" artisan storage:link --force --no-interaction) 2>/dev/null \
+      || (cd "$BACKEND" && "$php_bin" artisan storage:link --no-interaction) 2>/dev/null \
+      || true
+  fi
+  if [[ ! -e "$link" ]]; then
+    ln -sfn "$public_root" "$link" 2>/dev/null || run_as_priv ln -sfn "$public_root" "$link"
   fi
 
   if [[ -L "$link" || -e "$link" ]]; then

@@ -20,6 +20,8 @@ source "$ROOT/scripts/setup/map-urls.sh"
 source "$ROOT/scripts/setup/update-htaccess.sh"
 # shellcheck source=scripts/setup/systemd-cleanup.sh
 source "$ROOT/scripts/setup/systemd-cleanup.sh"
+# shellcheck source=scripts/setup/fix-laravel-storage.sh
+source "$ROOT/scripts/setup/fix-laravel-storage.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
@@ -699,6 +701,9 @@ else
   setup_warn "helpdesk env write failed — fix ownership and re-run"
 fi
 
+# Writable Laravel dirs + public/storage after .env paths are known.
+setup_fix_laravel_storage
+
 echo
 echo "=== Summary ==="
 echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
@@ -773,6 +778,8 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
       php artisan jwt:secret --force 2>/dev/null || true
     ) || echo "warn: APM bootstrap failed" >&2
   fi
+  # Installers may recreate dirs as root — fix perms and relink again.
+  setup_fix_laravel_storage
 fi
 
 # ----- systemd -----

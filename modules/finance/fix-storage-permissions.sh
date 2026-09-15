@@ -103,4 +103,21 @@ ensure_dirs
 scrub_root_owned_views
 run_chown
 run_chmod
+
+# Unlink + relink public/storage (same as other Laravel apps).
+if [[ -f artisan ]] && command -v php >/dev/null 2>&1; then
+  php artisan storage:unlink --no-interaction >/dev/null 2>&1 || true
+  rm -f public/storage 2>/dev/null || true
+  if [[ -d public/storage && ! -L public/storage ]]; then
+    mv public/storage "public/storage.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+  fi
+  php artisan storage:link --force --no-interaction >/dev/null 2>&1 \
+    || php artisan storage:link --no-interaction >/dev/null 2>&1 \
+    || ln -sfn "$ROOT/storage/app/public" public/storage 2>/dev/null \
+    || true
+  if [[ -L public/storage ]]; then
+    echo "public/storage → $(readlink public/storage)"
+  fi
+fi
+
 echo "Permissions OK (${DEPLOY_USER}:${WEB_GROUP}): storage/, bootstrap/cache/, database/ (+ database.sqlite)."

@@ -21,6 +21,8 @@ apply() {
 apply APP_URL "${APM_APP_URL:-}"
 apply BASE_URL "${BASE_URL:-}"
 apply CI_BASE_URL "${CI_BASE_URL:-}"
+apply STAFF_PORTAL_SPA_URL "${STAFF_PORTAL_SPA_URL:-${BASE_URL:-}}"
+apply STAFF_PORTAL_URL "${STAFF_PORTAL_SPA_URL:-${BASE_URL:-}}"
 apply JWT_SECRET "${JWT_SECRET:-}"
 apply DB_HOST "${DB_HOST:-}"
 apply DB_PORT "${DB_PORT:-}"
