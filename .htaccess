@@ -34,20 +34,20 @@ Options -Indexes
     # ------------------------------------------------------------------
     # Legacy /staff/staff-portal/* → new root URLs (301)
     # ------------------------------------------------------------------
-    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal/backend(?:/([^\s?]*))? [NC]
+    RewriteCond %{THE_REQUEST} \s/+(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/staff-portal/backend(?:/([^\s?]*))? [NC]
     RewriteRule ^.*$ /staff/backend/%1 [R=301,L,QSA]
 
-    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal/assets/([^/\s]+) [NC]
+    RewriteCond %{THE_REQUEST} \s/+(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/staff-portal/assets/([^/\s]+) [NC]
     RewriteRule ^.*$ /staff/assets/%1 [R=301,L,QSA]
 
-    RewriteCond %{THE_REQUEST} \s/+(?:demo_staff|staff)/staff-portal(?:/([^\s?]*))? [NC]
+    RewriteCond %{THE_REQUEST} \s/+(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/staff-portal(?:/([^\s?]*))? [NC]
     RewriteRule ^.*$ /staff/%1 [R=301,L,QSA]
 
     # ------------------------------------------------------------------
     # Staff Portal SPA (modules/staff-portal)
     # ------------------------------------------------------------------
     RewriteRule ^assets/([^/]+)$ modules/staff-portal/spa-static.php?f=$1 [L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/assets/([^/]+)$ [NC]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/assets/([^/]+)$ [NC]
     RewriteRule ^.*$ modules/staff-portal/spa-static.php?f=%2 [L,QSA]
 
     # Africa map from published SPA
@@ -60,19 +60,23 @@ Options -Indexes
     RewriteRule ^home/launch_module$ /staff/backend/home/launch_module [R=307,L,QSA]
     RewriteRule ^auth/refreshCSRF$ /staff/backend/auth/refreshCSRF [R=307,L,QSA]
     RewriteRule ^auth/refresh_sso_session$ /staff/backend/auth/refresh_sso_session [R=307,L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/launch_module/?$ [NC]
+    # Post-Microsoft SSO hand-off (never leave this on SPA catch-all / domain root)
+    RewriteRule ^auth/spa-bridge/?$ /staff/backend/auth/spa-bridge [R=302,L,QSA]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/auth/spa-bridge/?$ [NC]
+    RewriteRule ^.*$ /staff/backend/auth/spa-bridge [R=302,L,QSA]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/home/launch_module/?$ [NC]
     RewriteRule ^.*$ /staff/backend/home/launch_module [R=307,L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/auth/refreshCSRF/?$ [NC]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/auth/refreshCSRF/?$ [NC]
     RewriteRule ^.*$ /staff/backend/auth/refreshCSRF [R=307,L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/auth/refresh_sso_session/?$ [NC]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/auth/refresh_sso_session/?$ [NC]
     RewriteRule ^.*$ /staff/backend/auth/refresh_sso_session [R=307,L,QSA]
 
     # CI3 CBP home → Vue SPA home
     RewriteRule ^home/?$ /staff/ [R=301,L,QSA]
     RewriteRule ^home/index/?$ /staff/ [R=301,L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/?$ [NC]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/home/?$ [NC]
     RewriteRule ^.*$ /staff/ [R=301,L,QSA]
-    RewriteCond %{REQUEST_URI} /(demo_staff|staff)/home/index/?$ [NC]
+    RewriteCond %{REQUEST_URI} /(staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/home/index/?$ [NC]
     RewriteRule ^.*$ /staff/ [R=301,L,QSA]
 
     # Existing files/dirs (uploads, root assets/, etc.)

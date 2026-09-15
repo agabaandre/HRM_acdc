@@ -19,6 +19,11 @@ declare(strict_types=1);
         '#^/([^/]+)/modules/staff-portal/backend(?:/public)?#' => '/$1/backend',
         // Legacy physical path …/staff-portal/backend before modules/ layout.
         '#^/([^/]+)/staff-portal/backend(?:/public)?#' => '/$1/backend',
+        // DocumentRoot = deploy folder (no /{webRoot} prefix in SCRIPT_NAME).
+        '#^/modules/staff-portal/backend(?:/public)?#' => '/backend',
+        '#^/modules/helpdesk/backend(?:/public)?#' => '/helpdesk/backend',
+        '#^/modules/apm(?:/public)?#' => '/apm',
+        '#^/modules/finance(?:/public)?#' => '/finance',
     ];
 
     foreach (['SCRIPT_NAME', 'PHP_SELF'] as $key) {
