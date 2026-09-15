@@ -494,6 +494,7 @@ write_staff_portal_env() {
     env_set "$f" STAFF_PORTAL_SPA_URL "$STAFF_PORTAL_SPA_URL" || return 1
     env_set "$f" STAFF_PORTAL_SPA_ENABLED "true" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
+    env_set "$f" WEB_ROOT "$WEB_ROOT" || return 1
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
     apply_password_login_to_file "$f" || return 1

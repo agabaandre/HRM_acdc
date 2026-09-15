@@ -23,8 +23,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // Subdirectory deploys (/staff/backend, /cbp/backend, …): Apache SCRIPT_NAME
         // remaps can leave Request::root() at the host only, so route() redirects
-        // become https://host/auth/spa-bridge (404). Always prefer APP_URL.
+        // become https://host/auth/spa-bridge (404). Always prefer APP_URL / portal base.
         $appUrl = rtrim((string) config('app.url'), '/');
+        $portalBase = rtrim((string) config('staff-portal.base_url'), '/');
+        if ($portalBase !== '' && str_ends_with($portalBase, '/backend')) {
+            $appUrl = $portalBase;
+        }
         if ($appUrl !== '') {
             URL::forceRootUrl($appUrl);
             $scheme = parse_url($appUrl, PHP_URL_SCHEME);

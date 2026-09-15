@@ -21,7 +21,41 @@ class SpaRedirect
      */
     public static function spaBridgeUrl(): string
     {
-        return rtrim((string) config('app.url'), '/').'/auth/spa-bridge';
+        $base = rtrim((string) (config('staff-portal.base_url') ?: config('app.url')), '/');
+
+        // Guard against mis-set APP_URL=https://host (no /{webRoot}/backend) which
+        // produces https://host/auth/spa-bridge and Apache 404.
+        if ($base === '' || ! str_ends_with($base, '/backend')) {
+            $webRoot = trim((string) env('WEB_ROOT', 'staff'), '/');
+            if ($webRoot === '') {
+                $webRoot = 'staff';
+            }
+            $host = '';
+            if (app()->bound('request')) {
+                try {
+                    $host = request()->getSchemeAndHttpHost();
+                } catch (\Throwable) {
+                    $host = '';
+                }
+            }
+            if ($host === '') {
+                $fromApp = (string) config('app.url');
+                $parts = parse_url($fromApp);
+                if (is_array($parts) && ! empty($parts['host'])) {
+                    $scheme = $parts['scheme'] ?? 'https';
+                    $host = $scheme.'://'.$parts['host'];
+                    if (! empty($parts['port'])) {
+                        $host .= ':'.$parts['port'];
+                    }
+                }
+            }
+            if ($host === '') {
+                $host = 'http://localhost';
+            }
+            $base = $host.'/'.$webRoot.'/backend';
+        }
+
+        return $base.'/auth/spa-bridge';
     }
 
     public static function afterLogin(): RedirectResponse
