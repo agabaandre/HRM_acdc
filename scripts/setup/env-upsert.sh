@@ -18,19 +18,52 @@ env_get() {
   printf '%s' "$val"
 }
 
+# Atomic-enough upsert. Draft is built under /tmp so we still work when the
+# target directory is not writable but the .env file itself is (common on
+# shared hosting). Avoids set -e abort from grep -v exit status 1.
 env_set() {
-  local file="$1" key="$2" value="$3"
-  local tmp
-  mkdir -p "$(dirname "$file")"
-  touch "$file"
-  tmp="${file}.tmp.$$"
-  grep -v -E "^[[:space:]]*${key}[[:space:]]*=" "$file" >"$tmp" 2>/dev/null || : >"$tmp"
+  local file="$1" key="$2" value="${3-}"
+  local dir tmp
+  dir="$(dirname "$file")"
+  if [[ ! -d "$dir" ]]; then
+    mkdir -p "$dir" || {
+      echo "error: cannot create directory $dir" >&2
+      return 1
+    }
+  fi
+  if [[ ! -f "$file" ]]; then
+    if ! : >"$file" 2>/dev/null; then
+      echo "error: cannot create $file (check ownership/permissions)" >&2
+      return 1
+    fi
+  elif [[ ! -w "$file" ]]; then
+    echo "error: cannot write $file (check ownership/permissions)" >&2
+    return 1
+  fi
+
+  tmp="$(mktemp "${TMPDIR:-/tmp}/cbp-env.XXXXXX")" || {
+    echo "error: mktemp failed" >&2
+    return 1
+  }
+  # grep -v exits 1 when every line is filtered — ignore that.
+  grep -v -E "^[[:space:]]*${key}[[:space:]]*=" "$file" >"$tmp" 2>/dev/null || true
   if [[ "$value" =~ [[:space:]#\$] || "$value" == *\"* ]]; then
     printf '%s="%s"\n' "$key" "${value//\"/\\\"}" >>"$tmp"
   else
     printf '%s=%s\n' "$key" "$value" >>"$tmp"
   fi
-  mv "$tmp" "$file"
+
+  # Prefer in-place overwrite (needs write on file only). Fall back to mv.
+  if cat "$tmp" >"$file" 2>/dev/null; then
+    rm -f "$tmp"
+    return 0
+  fi
+  if mv "$tmp" "$file" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$tmp"
+  echo "error: failed to update $file" >&2
+  return 1
 }
 
 env_ensure_file() {
@@ -38,10 +71,21 @@ env_ensure_file() {
   if [[ -f "$file" ]]; then
     return 0
   fi
-  mkdir -p "$(dirname "$file")"
+  local dir
+  dir="$(dirname "$file")"
+  mkdir -p "$dir" || {
+    echo "error: cannot create directory $dir" >&2
+    return 1
+  }
   if [[ -n "$template" && -f "$template" ]]; then
-    cp "$template" "$file"
+    cp "$template" "$file" || {
+      echo "error: cannot create $file from template" >&2
+      return 1
+    }
   else
-    : >"$file"
+    : >"$file" || {
+      echo "error: cannot create $file" >&2
+      return 1
+    }
   fi
 }

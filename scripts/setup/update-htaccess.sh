@@ -4,7 +4,7 @@
 # (staff, cbp, demo_cbp, demo_staff, …). Does not touch filesystem paths like
 # modules/staff-portal/.
 
-SETUP_HTACCESS_ALIAS_NAMES=(staff demo_staff cbp demo_cbp)
+SETUP_HTACCESS_ALIAS_NAMES=(staff demo_staff cbp demo_cbp cbpdemo demo_cbpdemo)
 
 setup_htaccess_alias_group() {
   local current="${1:?}" name
@@ -35,9 +35,9 @@ setup_update_htaccess_file() {
     my $w = $ENV{WEB_ROOT};
     my $a = $ENV{ALIASES};
     # Absolute URL prefixes only (…/staff/… → …/{web_root}/…)
-    s#/(?:staff|demo_staff|cbp|demo_cbp)/#/${w}/#g;
+    s#/(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)/#/${w}/#g;
     # REQUEST_URI / THE_REQUEST alternation groups
-    s#\((?:\?:)?(?:staff|demo_staff|cbp|demo_cbp)(?:\|(?:staff|demo_staff|cbp|demo_cbp))*\)#($a)#g;
+    s#\((?:\?:)?(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo)(?:\|(?:staff|demo_staff|cbp|demo_cbp|cbpdemo|demo_cbpdemo))*\)#($a)#g;
   ' "$file"
 }
 
