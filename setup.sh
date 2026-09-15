@@ -18,10 +18,33 @@ source "$ROOT/scripts/setup/prompt.sh"
 source "$ROOT/scripts/setup/map-urls.sh"
 # shellcheck source=scripts/setup/update-htaccess.sh
 source "$ROOT/scripts/setup/update-htaccess.sh"
+# shellcheck source=scripts/setup/systemd-cleanup.sh
+source "$ROOT/scripts/setup/systemd-cleanup.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
 echo
+
+DEFAULT_WEB_ROOT="$(basename "$ROOT")"
+if [[ ! "$DEFAULT_WEB_ROOT" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  DEFAULT_WEB_ROOT=staff
+fi
+export DEFAULT_WEB_ROOT
+
+SITE_KIND_DEFAULT=1
+case "$DEFAULT_WEB_ROOT" in
+  *demo*|demo_*|Demo*) SITE_KIND_DEFAULT=2 ;;
+esac
+prompt_choice SITE_KIND_CHOICE "Site role" "1) Production  2) Demo" "$SITE_KIND_DEFAULT"
+if [[ "$SITE_KIND_CHOICE" == "2" ]]; then
+  SITE_KIND=demo
+else
+  SITE_KIND=production
+fi
+echo "    Site role: $SITE_KIND"
+if [[ "$SITE_KIND" == "demo" ]]; then
+  echo "    Demo: systemd queue/scheduler workers will NOT be enabled."
+fi
 
 prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "1"
 prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "1"
@@ -38,13 +61,6 @@ esac
 
 ROOT_ENV="$ROOT/.env"
 env_ensure_file "$ROOT_ENV" "$ROOT/scripts/setup/templates/root.env.example"
-
-DEFAULT_WEB_ROOT="$(basename "$ROOT")"
-# Use the checkout folder name when it looks like a URL path segment.
-if [[ ! "$DEFAULT_WEB_ROOT" =~ ^[A-Za-z0-9_-]+$ ]]; then
-  DEFAULT_WEB_ROOT=staff
-fi
-export DEFAULT_WEB_ROOT
 
 SETUP_ERRORS=0
 setup_warn() {
@@ -66,6 +82,17 @@ fi
 prompt_value PUBLIC_BASE "Public base URL (…/staff, …/cbp, …/demo_cbp)" "$DEFAULT_BASE"
 setup_map_urls
 echo "    Web folder / Alias: /${WEB_ROOT}"
+
+# CI3 / shared uploads site id — must match this deploy (avoid migrating into another site's tree)
+STAFF_SITE_ID_DEFAULT="$(env_get "$ROOT_ENV" STAFF_SITE_ID)"
+if [[ -z "$STAFF_SITE_ID_DEFAULT" ]]; then
+  STAFF_SITE_ID_DEFAULT="$(setup_derive_site_id "$BASE_URL")"
+fi
+prompt_value STAFF_SITE_ID "STAFF_SITE_ID (CI3 uploads /var/staffdata/{id})" "$STAFF_SITE_ID_DEFAULT"
+STAFF_SITE_ID="${STAFF_SITE_ID:-$STAFF_SITE_ID_DEFAULT}"
+setup_apply_storage_paths
+echo "    Uploads root: ${STAFF_PORTAL_UPLOADS_ROOT}"
+echo "    Data root:    ${STAFF_DATA_ROOT}"
 
 JWT_DEFAULT="$(env_get "$ROOT_ENV" JWT_SECRET)"
 if [[ -z "$JWT_DEFAULT" && "$INSTALL_TYPE" == "1" ]]; then
@@ -118,10 +145,16 @@ DB_PASSWORD="${DB_PASS:-}"
 
 echo
 echo "==> Writing root .env"
+env_set "$ROOT_ENV" SITE_KIND "$SITE_KIND"
 env_set "$ROOT_ENV" BASE_URL "$BASE_URL"
 env_set "$ROOT_ENV" CI_BASE_URL "$CI_BASE_URL"
 env_set "$ROOT_ENV" APM_BASE_URL "$APM_BASE_URL"
 env_set "$ROOT_ENV" WEB_ROOT "$WEB_ROOT"
+env_set "$ROOT_ENV" STAFF_SITE_ID "$STAFF_SITE_ID"
+env_set "$ROOT_ENV" STAFF_HOST_DATA_ROOT "$STAFF_HOST_DATA_ROOT"
+env_set "$ROOT_ENV" STAFF_DATA_ROOT "$STAFF_DATA_ROOT"
+env_set "$ROOT_ENV" STAFF_USE_HOST_STORAGE "true"
+env_set "$ROOT_ENV" STAFF_PORTAL_UPLOADS_ROOT "$STAFF_PORTAL_UPLOADS_ROOT"
 env_set "$ROOT_ENV" JWT_SECRET "$JWT_SECRET"
 env_set "$ROOT_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
 env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
@@ -156,6 +189,17 @@ apply_redis_to_file() {
   return 0
 }
 
+# CI3 / host uploads identity — same site id on every module .env
+apply_storage_to_file() {
+  local file="$1"
+  env_set "$file" STAFF_SITE_ID "$STAFF_SITE_ID" || return 1
+  env_set "$file" STAFF_HOST_DATA_ROOT "$STAFF_HOST_DATA_ROOT" || return 1
+  env_set "$file" STAFF_DATA_ROOT "$STAFF_DATA_ROOT" || return 1
+  env_set "$file" STAFF_USE_HOST_STORAGE "true" || return 1
+  env_set "$file" STAFF_PORTAL_UPLOADS_ROOT "$STAFF_PORTAL_UPLOADS_ROOT" || return 1
+  return 0
+}
+
 echo
 echo "==> Updating .htaccess public path → /${WEB_ROOT}/"
 setup_update_htaccess_tree "$ROOT" "$WEB_ROOT"
@@ -182,11 +226,14 @@ write_staff_portal_env() {
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
     env_set "$f" DB_DATABASE "$SP_DB" || return 1
+    apply_storage_to_file "$f" || return 1
+    env_set "$f" STAFF_PORTAL_MODULE_FILES_ROOT "$STAFF_PORTAL_MODULE_FILES_ROOT" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
   env_set "$SP_SETUP" VITE_STAFF_PORTAL_API_BASE_URL "$VITE_STAFF_PORTAL_API_BASE_URL" || return 1
   env_set "$SP_SETUP" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH" || return 1
+  env_set "$SP_SETUP" SITE_KIND "$SITE_KIND" || return 1
 }
 if write_staff_portal_env; then
   if "$ROOT/modules/staff-portal/scripts/configure-env.sh"; then
@@ -226,10 +273,12 @@ if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && env_set "$APM_ENV" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" \
   && env_set "$APM_ENV" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" \
   && env_set "$APM_ENV" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" \
+  && apply_storage_to_file "$APM_ENV" \
+  && env_set "$APM_ENV" STAFF_APM_FILES_ROOT "$STAFF_APM_FILES_ROOT" \
   && apply_db_to_file "$APM_ENV" DB_USERNAME DB_PASSWORD \
   && apply_redis_to_file "$APM_ENV"
 then
-  echo "    forced URLs/JWT/Redis on modules/apm/.env"
+  echo "    forced URLs/JWT/Redis/storage on modules/apm/.env"
 else
   setup_warn "APM env write failed — fix ownership and re-run"
 fi
@@ -259,6 +308,7 @@ write_finance_env() {
     env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
     env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" || return 1
     env_set "$f" DB_DATABASE "$FN_DB" || return 1
+    apply_storage_to_file "$f" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -301,6 +351,8 @@ write_helpdesk_env() {
     env_set "$f" HELPDESK_STAFF_API_INTERNAL_BASE_URL "$HELPDESK_STAFF_API_INTERNAL_BASE_URL" || return 1
     env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" || return 1
     env_set "$f" DB_DATABASE "$HD_DB" || return 1
+    apply_storage_to_file "$f" || return 1
+    env_set "$f" STAFF_HELPDESK_FILES_ROOT "$STAFF_HELPDESK_FILES_ROOT" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -319,7 +371,9 @@ fi
 
 echo
 echo "=== Summary ==="
-echo "Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
+echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
+echo "STAFF_SITE_ID=$STAFF_SITE_ID"
+echo "CI3 uploads=$STAFF_PORTAL_UPLOADS_ROOT"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
 echo "DB host=${DB_HOST:-keep}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB"
@@ -336,10 +390,15 @@ if [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo "Workers (Compose): docker compose --env-file docker/.env --profile workers up -d"
 fi
 
+INST_PROFILE_DEFAULT=1
+[[ "$SITE_KIND" == "production" ]] && INST_PROFILE_DEFAULT=2
 prompt_choice RUN_INSTALL "Run module installers now?" "1) Yes  2) No" "2"
-prompt_choice INST_PROFILE "Installer profile" "1) development (setup.sh)  2) production (setup-production.sh)" "1"
+prompt_choice INST_PROFILE "Installer profile" "1) development (setup.sh)  2) production (setup-production.sh)" "$INST_PROFILE_DEFAULT"
 
 if [[ "$RUN_INSTALL" == "1" ]]; then
+  export STAFF_SITE_ID STAFF_DATA_ROOT STAFF_HOST_DATA_ROOT STAFF_USE_HOST_STORAGE
+  export STAFF_PORTAL_UPLOADS_ROOT STAFF_APM_FILES_ROOT STAFF_HELPDESK_FILES_ROOT
+  export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND
   if [[ "$INST_PROFILE" == "2" ]]; then
     (cd "$ROOT/modules/staff-portal" && ./setup-production.sh) || echo "warn: staff-portal setup-production failed" >&2
     (cd "$ROOT/modules/finance" && ./setup-production.sh) || echo "warn: finance setup-production failed" >&2
@@ -360,42 +419,76 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
 fi
 
 # ----- systemd -----
-SYS_DEFAULT=2
-if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
-  [[ "$INST_PROFILE" == "2" || "$INSTALL_TYPE" == "2" ]] && SYS_DEFAULT=1
-fi
-if [[ "$DEPLOY_MODE" == "docker" ]]; then
+if [[ "$SITE_KIND" == "demo" ]]; then
+  echo
+  echo "==> Demo site: disabling/skipping systemd workers"
+  env_set "$SP_SETUP" INSTALL_SYSTEMD "false" 2>/dev/null || true
+  env_set "$HD_SETUP" INSTALL_SYSTEMD "false" 2>/dev/null || true
+  if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
+    echo "    Retiring any existing CBP systemd units on this host (demo must not run queues)"
+    systemd_retire_units \
+      staff-portal.target \
+      staff-portal-queue.service \
+      staff-portal-scheduler.service \
+      staff-portal-scheduler.timer \
+      staff-portal-health.service \
+      staff-portal-health.timer \
+      helpdesk.target \
+      helpdesk-queue.service \
+      helpdesk-scheduler.service \
+      helpdesk-scheduler.timer \
+      helpdesk-health.service \
+      helpdesk-health.timer \
+      laravel-queue-apm.service \
+      laravel-scheduler.service \
+      laravel-queue-worker.service \
+      laravel-queue-cleanup.service \
+      laravel12-queue-apm.service \
+      || true
+  fi
+  echo "==> Skipping systemd install (demo)"
+elif [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo
   echo "Note: Docker deploy usually uses Compose --profile workers instead of host systemd."
-fi
-prompt_choice RUN_SYSTEMD "Install systemd background workers (queue/scheduler)?" "1) Yes  2) No" "$SYS_DEFAULT"
-
-if [[ "$RUN_SYSTEMD" == "1" ]]; then
-  env_set "$SP_SETUP" INSTALL_SYSTEMD "true"
-  env_set "$SP_SETUP" STAFF_PORTAL_HEALTH_URL "${PUBLIC_BASE}/backend/up"
-  env_set "$SP_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
-  env_set "$HD_SETUP" INSTALL_SYSTEMD "true"
-  env_set "$HD_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
-
-  echo "==> staff-portal systemd"
-  if [[ -x "$ROOT/modules/staff-portal/scripts/install-systemd.sh" ]]; then
-    STAFF_PORTAL_HEALTH_URL="${PUBLIC_BASE}/backend/up" \
-      "$ROOT/modules/staff-portal/scripts/install-systemd.sh" \
-      || echo "warn: staff-portal systemd install failed" >&2
-  fi
-
-  echo "==> helpdesk systemd"
-  if [[ -x "$ROOT/modules/helpdesk/scripts/install-systemd.sh" ]]; then
-    "$ROOT/modules/helpdesk/scripts/install-systemd.sh" \
-      || echo "warn: helpdesk systemd install failed" >&2
-  fi
-
-  echo "==> APM systemd"
-  PHP_BIN="$(command -v php || echo /usr/bin/php)" \
-    "$ROOT/scripts/setup/install-apm-systemd.sh" \
-    || echo "warn: APM systemd install failed" >&2
+  echo "==> Skipping host systemd (Docker)"
 else
-  echo "==> Skipping systemd"
+  SYS_DEFAULT=2
+  if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
+    if [[ "$SITE_KIND" == "production" ]]; then
+      if [[ "$INST_PROFILE" == "2" || "$INSTALL_TYPE" == "2" ]]; then
+        SYS_DEFAULT=1
+      fi
+    fi
+  fi
+  prompt_choice RUN_SYSTEMD "Install systemd background workers (queue/scheduler)?" "1) Yes  2) No" "$SYS_DEFAULT"
+
+  if [[ "$RUN_SYSTEMD" == "1" ]]; then
+    env_set "$SP_SETUP" INSTALL_SYSTEMD "true"
+    env_set "$SP_SETUP" STAFF_PORTAL_HEALTH_URL "${PUBLIC_BASE}/backend/up"
+    env_set "$SP_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
+    env_set "$HD_SETUP" INSTALL_SYSTEMD "true"
+    env_set "$HD_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
+
+    echo "==> staff-portal systemd"
+    if [[ -x "$ROOT/modules/staff-portal/scripts/install-systemd.sh" ]]; then
+      STAFF_PORTAL_HEALTH_URL="${PUBLIC_BASE}/backend/up" \
+        "$ROOT/modules/staff-portal/scripts/install-systemd.sh" \
+        || echo "warn: staff-portal systemd install failed" >&2
+    fi
+
+    echo "==> helpdesk systemd"
+    if [[ -x "$ROOT/modules/helpdesk/scripts/install-systemd.sh" ]]; then
+      "$ROOT/modules/helpdesk/scripts/install-systemd.sh" \
+        || echo "warn: helpdesk systemd install failed" >&2
+    fi
+
+    echo "==> APM systemd"
+    PHP_BIN="$(command -v php || echo /usr/bin/php)" \
+      "$ROOT/scripts/setup/install-apm-systemd.sh" \
+      || echo "warn: APM systemd install failed" >&2
+  else
+    echo "==> Skipping systemd"
+  fi
 fi
 
 echo
