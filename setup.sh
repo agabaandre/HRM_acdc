@@ -426,25 +426,28 @@ if [[ "$SITE_KIND" == "demo" ]]; then
   env_set "$HD_SETUP" INSTALL_SYSTEMD "false" 2>/dev/null || true
   if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
     echo "    Retiring any existing CBP systemd units on this host (demo must not run queues)"
-    systemd_retire_units \
-      staff-portal.target \
-      staff-portal-queue.service \
-      staff-portal-scheduler.service \
-      staff-portal-scheduler.timer \
-      staff-portal-health.service \
-      staff-portal-health.timer \
-      helpdesk.target \
-      helpdesk-queue.service \
-      helpdesk-scheduler.service \
-      helpdesk-scheduler.timer \
-      helpdesk-health.service \
-      helpdesk-health.timer \
-      laravel-queue-apm.service \
-      laravel-scheduler.service \
-      laravel-queue-worker.service \
-      laravel-queue-cleanup.service \
-      laravel12-queue-apm.service \
-      || true
+    _retire=(
+      staff-portal.target staff-portal-queue.service staff-portal-scheduler.service
+      staff-portal-scheduler.timer staff-portal-health.service staff-portal-health.timer
+      helpdesk.target helpdesk-queue.service helpdesk-scheduler.service
+      helpdesk-scheduler.timer helpdesk-health.service helpdesk-health.timer
+      laravel-queue-apm.service laravel-scheduler.service laravel-queue-worker.service
+      laravel-queue-cleanup.service laravel12-queue-apm.service
+    )
+    local_f=""
+    for local_f in \
+      /etc/systemd/system/staff-portal-*-"${WEB_ROOT}".service \
+      /etc/systemd/system/staff-portal-*-"${WEB_ROOT}".timer \
+      /etc/systemd/system/staff-portal-"${WEB_ROOT}".target \
+      /etc/systemd/system/helpdesk-*-"${WEB_ROOT}".service \
+      /etc/systemd/system/helpdesk-*-"${WEB_ROOT}".timer \
+      /etc/systemd/system/helpdesk-"${WEB_ROOT}".target \
+      /etc/systemd/system/laravel-*-"${WEB_ROOT}".service
+    do
+      [[ -e "$local_f" ]] || continue
+      _retire+=("$(basename "$local_f")")
+    done
+    systemd_retire_units "${_retire[@]}" || true
   fi
   echo "==> Skipping systemd install (demo)"
 elif [[ "$DEPLOY_MODE" == "docker" ]]; then
@@ -463,27 +466,46 @@ else
   prompt_choice RUN_SYSTEMD "Install systemd background workers (queue/scheduler)?" "1) Yes  2) No" "$SYS_DEFAULT"
 
   if [[ "$RUN_SYSTEMD" == "1" ]]; then
-    env_set "$SP_SETUP" INSTALL_SYSTEMD "true"
-    env_set "$SP_SETUP" STAFF_PORTAL_HEALTH_URL "${PUBLIC_BASE}/backend/up"
-    env_set "$SP_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
-    env_set "$HD_SETUP" INSTALL_SYSTEMD "true"
-    env_set "$HD_SETUP" PHP_BIN "$(command -v php || echo /usr/bin/php)"
+    PHP_BIN_RESOLVED="$(command -v php || echo /usr/bin/php)"
+    SP_BACKEND="$(cd "$ROOT/modules/staff-portal/backend" && pwd)"
+    HD_BACKEND="$(cd "$ROOT/modules/helpdesk/backend" && pwd)"
+    APM_ABS="$(cd "$ROOT/modules/apm" && pwd)"
+    SP_HEALTH="${PUBLIC_BASE}/backend/up"
+    HD_HEALTH="${PUBLIC_BASE}/helpdesk/backend/api/v1/health"
 
-    echo "==> staff-portal systemd"
+    env_set "$SP_SETUP" INSTALL_SYSTEMD "true"
+    env_set "$SP_SETUP" STAFF_PORTAL_HEALTH_URL "$SP_HEALTH"
+    env_set "$SP_SETUP" PHP_BIN "$PHP_BIN_RESOLVED"
+    env_set "$SP_SETUP" WEB_ROOT "$WEB_ROOT"
+    env_set "$HD_SETUP" INSTALL_SYSTEMD "true"
+    env_set "$HD_SETUP" PHP_BIN "$PHP_BIN_RESOLVED"
+    env_set "$HD_SETUP" WEB_ROOT "$WEB_ROOT"
+    env_set "$HD_SETUP" HELPDESK_HEALTH_URL "$HD_HEALTH"
+
+    echo "==> staff-portal systemd (ROOT=$SP_BACKEND WEB_ROOT=$WEB_ROOT)"
     if [[ -x "$ROOT/modules/staff-portal/scripts/install-systemd.sh" ]]; then
-      STAFF_PORTAL_HEALTH_URL="${PUBLIC_BASE}/backend/up" \
+      WEB_ROOT="$WEB_ROOT" \
+      STAFF_PORTAL_ROOT="$SP_BACKEND" \
+      STAFF_PORTAL_HEALTH_URL="$SP_HEALTH" \
+      PHP_BIN="$PHP_BIN_RESOLVED" \
         "$ROOT/modules/staff-portal/scripts/install-systemd.sh" \
         || echo "warn: staff-portal systemd install failed" >&2
     fi
 
-    echo "==> helpdesk systemd"
+    echo "==> helpdesk systemd (ROOT=$HD_BACKEND WEB_ROOT=$WEB_ROOT)"
     if [[ -x "$ROOT/modules/helpdesk/scripts/install-systemd.sh" ]]; then
-      "$ROOT/modules/helpdesk/scripts/install-systemd.sh" \
+      WEB_ROOT="$WEB_ROOT" \
+      HELPDESK_ROOT="$HD_BACKEND" \
+      HELPDESK_HEALTH_URL="$HD_HEALTH" \
+      PHP_BIN="$PHP_BIN_RESOLVED" \
+        "$ROOT/modules/helpdesk/scripts/install-systemd.sh" \
         || echo "warn: helpdesk systemd install failed" >&2
     fi
 
-    echo "==> APM systemd"
-    PHP_BIN="$(command -v php || echo /usr/bin/php)" \
+    echo "==> APM systemd (ROOT=$APM_ABS WEB_ROOT=$WEB_ROOT)"
+    WEB_ROOT="$WEB_ROOT" \
+    APM_ROOT="$APM_ABS" \
+    PHP_BIN="$PHP_BIN_RESOLVED" \
       "$ROOT/scripts/setup/install-apm-systemd.sh" \
       || echo "warn: APM systemd install failed" >&2
   else

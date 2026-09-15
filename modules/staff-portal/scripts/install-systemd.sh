@@ -33,13 +33,26 @@ if [[ ! -x "$PHP_BIN" ]]; then
 fi
 [[ -n "$PHP_BIN" ]] || { echo "PHP binary not found." >&2; exit 1; }
 
+STAFF_ROOT="$(cd "$REPO_ROOT/../.." && pwd)"
+# shellcheck source=../../../scripts/setup/systemd-site.sh
+if [[ -f "$STAFF_ROOT/scripts/setup/systemd-site.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$STAFF_ROOT/scripts/setup/systemd-site.sh"
+else
+  setup_systemd_site_slug() { printf '%s' "${1:-staff}"; }
+fi
+
+WEB_ROOT="${WEB_ROOT:-$(basename "$STAFF_ROOT")}"
+SITE_SLUG="$(setup_systemd_site_slug "$WEB_ROOT")"
 STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
 STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-$STAFF_PORTAL_USER}"
-STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-http://127.0.0.1/staff/staff-portal/backend/up}"
+STAFF_PORTAL_ROOT="${STAFF_PORTAL_ROOT:-$REPO_ROOT/backend}"
+STAFF_PORTAL_ROOT="$(cd "$STAFF_PORTAL_ROOT" && pwd)"
+STAFF_PORTAL_HEALTH_URL="${STAFF_PORTAL_HEALTH_URL:-http://127.0.0.1/${SITE_SLUG}/backend/up}"
 
 export STAFF_PORTAL_INSTALL_NONINTERACTIVE=1
-export STAFF_PORTAL_ROOT="$REPO_ROOT/backend"
-export STAFF_PORTAL_USER STAFF_PORTAL_GROUP PHP_BIN STAFF_PORTAL_HEALTH_URL
+export WEB_ROOT="$SITE_SLUG"
+export STAFF_PORTAL_ROOT STAFF_PORTAL_USER STAFF_PORTAL_GROUP PHP_BIN STAFF_PORTAL_HEALTH_URL
 
 INSTALLER="$REPO_ROOT/deploy/systemd/install.sh"
 if [[ ! -f "$INSTALLER" ]]; then
@@ -47,16 +60,15 @@ if [[ ! -f "$INSTALLER" ]]; then
     exit 1
 fi
 
-run_install() {
-    bash "$INSTALLER"
-}
+echo "staff-portal systemd: ROOT=$STAFF_PORTAL_ROOT WEB_ROOT=$SITE_SLUG HEALTH=$STAFF_PORTAL_HEALTH_URL"
 
 if [[ "$(id -u)" -eq 0 ]]; then
-    run_install
+    bash "$INSTALLER"
 elif command -v sudo >/dev/null 2>&1; then
     echo "Installing systemd units (sudo required)…"
     sudo -E STAFF_PORTAL_INSTALL_NONINTERACTIVE=1 \
-        STAFF_PORTAL_ROOT="$REPO_ROOT/backend" \
+        WEB_ROOT="$SITE_SLUG" \
+        STAFF_PORTAL_ROOT="$STAFF_PORTAL_ROOT" \
         STAFF_PORTAL_USER="$STAFF_PORTAL_USER" \
         STAFF_PORTAL_GROUP="$STAFF_PORTAL_GROUP" \
         PHP_BIN="$PHP_BIN" \

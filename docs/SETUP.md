@@ -71,10 +71,18 @@ Share internal base: `http://127.0.0.1/{WEB_ROOT}/backend` (host) or `http://web
 
 ## Systemd (production only)
 
-On Linux with `systemctl`, installers **stop, disable, and remove** prior units for that app before writing new ones (avoids duplicate queue/scheduler workers). APM also retires legacy unit names (`laravel-queue-worker`, `laravel-queue-cleanup`, `laravel12-queue-apm`).
+On Linux with `systemctl`, installers write **site-scoped** units and env files so the WorkingDirectory matches this checkout:
 
-- **staff-portal** / **helpdesk** — existing `scripts/install-systemd.sh` (sets `INSTALL_SYSTEMD=true`)
-- **APM** — `scripts/setup/install-apm-systemd.sh` installs `laravel-queue-apm.service` + `laravel-scheduler.service` with `WorkingDirectory=…/modules/apm`
+| App | Example paths (`WEB_ROOT=cbp`) |
+|-----|--------------------------------|
+| staff-portal | `STAFF_PORTAL_ROOT=…/modules/staff-portal/backend`, `/etc/staff-portal/cbp.env`, units `staff-portal-queue-cbp.service` |
+| helpdesk | `HELPDESK_ROOT=…/modules/helpdesk/backend`, `/etc/helpdesk/cbp.env` |
+| APM | `WorkingDirectory=…/modules/apm`, `laravel-queue-apm-cbp.service` |
+
+Health URLs use `/{WEB_ROOT}/…` (not a hardcoded `/staff/`). Installers **stop, disable, and remove** prior units for that app before writing new ones.
+
+- **staff-portal** / **helpdesk** — `scripts/install-systemd.sh` (sets `INSTALL_SYSTEMD=true`)
+- **APM** — `scripts/setup/install-apm-systemd.sh`
 
 Under **Docker Compose**, prefer:
 

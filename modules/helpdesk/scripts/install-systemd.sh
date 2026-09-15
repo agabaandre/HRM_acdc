@@ -33,13 +33,26 @@ if [[ ! -x "$PHP_BIN" ]]; then
 fi
 [[ -n "$PHP_BIN" ]] || { echo "PHP binary not found." >&2; exit 1; }
 
+STAFF_ROOT="$(cd "$REPO_ROOT/../.." && pwd)"
+# shellcheck source=../../../scripts/setup/systemd-site.sh
+if [[ -f "$STAFF_ROOT/scripts/setup/systemd-site.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$STAFF_ROOT/scripts/setup/systemd-site.sh"
+else
+  setup_systemd_site_slug() { printf '%s' "${1:-staff}"; }
+fi
+
+WEB_ROOT="${WEB_ROOT:-$(basename "$STAFF_ROOT")}"
+SITE_SLUG="$(setup_systemd_site_slug "$WEB_ROOT")"
 HELPDESK_USER="${HELPDESK_USER:-www-data}"
 HELPDESK_GROUP="${HELPDESK_GROUP:-$HELPDESK_USER}"
-HELPDESK_HEALTH_URL="${HELPDESK_HEALTH_URL:-http://127.0.0.1/staff/helpdesk/backend/api/v1/health}"
+HELPDESK_ROOT="${HELPDESK_ROOT:-$REPO_ROOT/backend}"
+HELPDESK_ROOT="$(cd "$HELPDESK_ROOT" && pwd)"
+HELPDESK_HEALTH_URL="${HELPDESK_HEALTH_URL:-http://127.0.0.1/${SITE_SLUG}/helpdesk/backend/api/v1/health}"
 
 export HELPDESK_INSTALL_NONINTERACTIVE=1
-export HELPDESK_ROOT="$REPO_ROOT/backend"
-export HELPDESK_USER HELPDESK_GROUP PHP_BIN HELPDESK_HEALTH_URL
+export WEB_ROOT="$SITE_SLUG"
+export HELPDESK_ROOT HELPDESK_USER HELPDESK_GROUP PHP_BIN HELPDESK_HEALTH_URL
 
 INSTALLER="$REPO_ROOT/deploy/systemd/install.sh"
 if [[ ! -f "$INSTALLER" ]]; then
@@ -47,16 +60,15 @@ if [[ ! -f "$INSTALLER" ]]; then
     exit 1
 fi
 
-run_install() {
-    bash "$INSTALLER"
-}
+echo "helpdesk systemd: ROOT=$HELPDESK_ROOT WEB_ROOT=$SITE_SLUG HEALTH=$HELPDESK_HEALTH_URL"
 
 if [[ "$(id -u)" -eq 0 ]]; then
-    run_install
+    bash "$INSTALLER"
 elif command -v sudo >/dev/null 2>&1; then
     echo "Installing systemd units (sudo required)…"
     sudo -E HELPDESK_INSTALL_NONINTERACTIVE=1 \
-        HELPDESK_ROOT="$REPO_ROOT/backend" \
+        WEB_ROOT="$SITE_SLUG" \
+        HELPDESK_ROOT="$HELPDESK_ROOT" \
         HELPDESK_USER="$HELPDESK_USER" \
         HELPDESK_GROUP="$HELPDESK_GROUP" \
         PHP_BIN="$PHP_BIN" \
