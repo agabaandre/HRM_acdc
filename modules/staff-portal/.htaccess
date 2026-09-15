@@ -1,6 +1,4 @@
 <IfModule mod_rewrite.c>
-    # Avoid "Options" here — disallowed AllowOverride Options → HTTP 500 for the tree.
-
     RewriteEngine On
 
     # Public app URL is /{webRoot}/ (repo root). Bookmarks to /{webRoot}/staff-portal/*
@@ -14,17 +12,17 @@
     # Already the SPA front controller — never rewrite again (prevents 500 loops)
     RewriteRule ^spa-static\.php$ - [L]
 
-    # Hashed Vite assets → PHP static sender (works even when -f rewrite fails)
+    # Hashed Vite assets → PHP static sender
     RewriteRule ^assets/([^/]+)$ spa-static.php?f=$1 [L,QSA]
 
     # Real files (published index.html, public-spa, etc.)
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Africa map from Vite public/ (also published to public-spa/maps/)
+    # Africa map from Vite public/
     RewriteRule ^maps/([^/]+)$ public-spa/maps/$1 [L]
 
-    # Vue Router → spa-static.php (serves index.html, no-cache)
+    # Vue Router → spa-static.php
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ spa-static.php [L,QSA]
 </IfModule>
@@ -37,11 +35,8 @@
     AddType font/woff2 .woff2
 </IfModule>
 
-# Do not cache the HTML shell (forces new hashed asset URLs after deploy)
 <IfModule mod_headers.c>
     <Files "index.html">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
     </Files>
 </IfModule>
-
-ServerSignature Off
