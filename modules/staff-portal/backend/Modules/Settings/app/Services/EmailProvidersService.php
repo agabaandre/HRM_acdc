@@ -100,6 +100,17 @@ class EmailProvidersService
                 ],
             ],
             [
+                'key' => 'http',
+                'label' => 'Africa CDC Email Server (HTTP)',
+                'category' => 'Africa CDC',
+                'description' => 'Central gateway at notifications.africacdc.org. Empty fields fall back to MAIL_HTTP_* env.',
+                'fields' => [
+                    ['key' => 'base_url', 'label' => 'API base URL', 'type' => 'text', 'required' => false, 'default' => 'https://notifications.africacdc.org/api/v1'],
+                    ['key' => 'client_id', 'label' => 'Integration client ID', 'type' => 'text', 'required' => false],
+                    ['key' => 'client_secret', 'label' => 'Integration client secret', 'type' => 'password', 'required' => false, 'secret' => true],
+                ],
+            ],
+            [
                 'key' => 'sendgrid',
                 'label' => 'SendGrid',
                 'category' => 'Transactional',
@@ -289,42 +300,58 @@ class EmailProvidersService
     }
 
     /**
-     * Merge provider config with env fallbacks for Exchange / SMTP.
+     * Merge provider config with env fallbacks for Exchange / SMTP / HTTP.
+     *
+     * When no explicit provider is passed, MAIL_TRANSPORT (from setup.sh) selects the driver
+     * so all apps share the same outbound channel without re-entering Azure/SMTP secrets.
      *
      * @return array{provider: PortalEmailProvider, config: array<string, mixed>, from_address: string, from_name: string}
      */
     public function resolveForSend(?PortalEmailProvider $provider = null): array
     {
-        $provider ??= $this->defaultProvider();
-        if (! $provider) {
-            // Synthetic exchange from env
-            $synthetic = new PortalEmailProvider([
-                'name' => 'Env Exchange',
-                'slug' => 'env-exchange',
-                'driver' => 'exchange',
-                'config' => [],
-                'from_address' => (string) config('mail.from.address'),
-                'from_name' => (string) config('mail.from.name'),
-                'is_default' => true,
-                'is_active' => true,
-            ]);
+        $envTransport = $this->normalizeTransport((string) config('mail.transport', env('MAIL_TRANSPORT', 'exchange')));
 
-            return [
-                'provider' => $synthetic,
-                'config' => $this->withEnvFallbacks('exchange', []),
-                'from_address' => (string) config('mail.from.address'),
-                'from_name' => (string) config('mail.from.name'),
-            ];
+        if ($provider === null) {
+            $db = $this->defaultProvider();
+            if ($db && $this->normalizeTransport($db->driver) === $envTransport) {
+                $provider = $db;
+            } else {
+                $provider = new PortalEmailProvider([
+                    'name' => 'Env '.$envTransport,
+                    'slug' => 'env-'.$envTransport,
+                    'driver' => $envTransport === 'zoho' ? 'zoho' : $envTransport,
+                    'config' => [],
+                    'from_address' => (string) config('mail.from.address'),
+                    'from_name' => (string) config('mail.from.name'),
+                    'is_default' => true,
+                    'is_active' => true,
+                ]);
+            }
         }
 
-        $config = $this->withEnvFallbacks($provider->driver, $provider->config ?? []);
+        $driver = $this->normalizeTransport($provider->driver);
+        $config = $this->withEnvFallbacks($driver, $provider->config ?? []);
 
         return [
             'provider' => $provider,
+            'driver' => $driver,
             'config' => $config,
             'from_address' => $provider->from_address ?: (string) config('mail.from.address'),
             'from_name' => $provider->from_name ?: (string) config('mail.from.name'),
         ];
+    }
+
+    private function normalizeTransport(string $driver): string
+    {
+        $d = strtolower(trim($driver));
+        return match ($d) {
+            'exchange', 'exchange_oauth', 'graph' => 'exchange',
+            'zoho' => 'zoho',
+            'smtp' => 'smtp',
+            'http', 'notifications', 'api_http' => 'http',
+            'log' => 'log',
+            default => $d !== '' ? $d : 'exchange',
+        };
     }
 
     /**
@@ -340,6 +367,8 @@ class EmailProvidersService
             }
         }
 
+        $driver = $this->normalizeTransport($driver);
+
         if ($driver === 'exchange') {
             $filled += array_filter([
                 'tenant_id' => config('exchange-email.tenant_id'),
@@ -351,13 +380,22 @@ class EmailProvidersService
             ], fn ($v) => $v !== null && $v !== '');
         }
 
-        if ($driver === 'smtp') {
+        if ($driver === 'smtp' || $driver === 'zoho') {
             $filled += array_filter([
-                'host' => config('mail.mailers.smtp.host'),
-                'port' => config('mail.mailers.smtp.port'),
+                'host' => $filled['host'] ?? config('mail.mailers.smtp.host') ?? ($driver === 'zoho' ? 'smtp.zoho.com' : null),
+                'port' => $filled['port'] ?? config('mail.mailers.smtp.port') ?? 587,
                 'username' => config('mail.mailers.smtp.username'),
                 'password' => config('mail.mailers.smtp.password'),
-                'encryption' => config('mail.mailers.smtp.scheme') === 'smtps' ? 'ssl' : 'tls',
+                'encryption' => $filled['encryption'] ?? (config('mail.mailers.smtp.scheme') === 'smtps' ? 'ssl' : 'tls'),
+                'mode' => $filled['mode'] ?? 'smtp',
+            ], fn ($v) => $v !== null && $v !== '');
+        }
+
+        if ($driver === 'http') {
+            $filled += array_filter([
+                'base_url' => config('mail.http.base_url'),
+                'client_id' => config('mail.http.client_id'),
+                'client_secret' => config('mail.http.client_secret'),
             ], fn ($v) => $v !== null && $v !== '');
         }
 

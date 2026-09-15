@@ -38,9 +38,83 @@ function sendEmail($to, $subject, $body, $fromEmail = null, $fromName = null, $c
     if (!in_array($systemBcc, $bcc)) {
         $bcc[] = $systemBcc;
     }
-    
-    // Use Exchange exclusively - no fallbacks
-    return sendEmailWithExchange($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
+
+    $transport = strtolower((string) env('MAIL_TRANSPORT', env('MAIL_MAILER', 'exchange')));
+    if (in_array($transport, ['exchange_oauth', 'graph'], true)) {
+        $transport = 'exchange';
+    }
+    if (in_array($transport, ['notifications', 'api_http'], true)) {
+        $transport = 'http';
+    }
+
+    return match ($transport) {
+        'smtp', 'zoho' => sendEmailWithPHPMailer($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments),
+        'http' => sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments),
+        default => sendEmailWithExchange($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments),
+    };
+}
+
+/**
+ * Send via Africa CDC Email Server (https://notifications.africacdc.org/api/documentation).
+ */
+function sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail = null, $fromName = null, $cc = [], $bcc = [], $attachments = [])
+{
+    try {
+        if (!empty($attachments)) {
+            \Log::warning('HTTP notifications API does not accept attachments; sending without them.', [
+                'count' => count($attachments),
+                'subject' => $subject,
+            ]);
+        }
+
+        $base = rtrim((string) env('MAIL_HTTP_BASE_URL', 'https://notifications.africacdc.org/api/v1'), '/');
+        $clientId = (string) env('MAIL_HTTP_CLIENT_ID', '');
+        $clientSecret = (string) env('MAIL_HTTP_CLIENT_SECRET', '');
+        if ($clientId === '' || $clientSecret === '') {
+            throw new \Exception('MAIL_HTTP_CLIENT_ID / MAIL_HTTP_CLIENT_SECRET not configured');
+        }
+
+        $auth = \Illuminate\Support\Facades\Http::acceptJson()
+            ->asJson()
+            ->timeout(30)
+            ->post($base.'/integrations/auth/token', [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+            ]);
+        if (!$auth->successful() || empty($auth->json('token'))) {
+            throw new \Exception('HTTP notifications auth failed: '.$auth->body());
+        }
+        $token = (string) $auth->json('token');
+
+        $recipients = is_array($to) ? $to : [$to];
+        foreach ($recipients as $recipient) {
+            $payload = [
+                'to' => $recipient,
+                'subject' => $subject,
+                'body' => $body,
+                'is_html' => true,
+            ];
+            if (!empty($cc)) {
+                $payload['cc'] = array_values((array) $cc);
+            }
+            if (!empty($bcc)) {
+                $payload['bcc'] = array_values((array) $bcc);
+            }
+            $res = \Illuminate\Support\Facades\Http::withToken($token)
+                ->acceptJson()
+                ->asJson()
+                ->timeout(60)
+                ->post($base.'/integrations/send', $payload);
+            if (!$res->successful()) {
+                throw new \Exception('HTTP notifications send failed: '.$res->body());
+            }
+        }
+
+        return true;
+    } catch (\Throwable $e) {
+        \Log::error('HTTP notifications email failed: '.$e->getMessage());
+        throw new \Exception('HTTP notifications email failed: '.$e->getMessage(), 0, $e);
+    }
 }
 
 /**

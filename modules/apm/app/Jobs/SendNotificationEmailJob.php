@@ -75,43 +75,32 @@ class SendNotificationEmailJob implements ShouldQueue
 
             $attachments = $this->emailViewContext['attachments'] ?? [];
             $attachments = is_array($attachments) ? $attachments : [];
-            $exchangeError = $this->sendWithExchange($htmlContent, $subject, $ccEmails, ['system@africacdc.org'], $attachments, $toEmail);
 
-            if ($exchangeError === null) {
-                Log::info('Notification email sent successfully via Exchange', [
-                    'model_id' => $this->model ? $this->model->id : 'null',
-                    'model_type' => $this->model ? get_class($this->model) : 'null',
-                    'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
-                    'email' => $this->recipient ? $this->recipient->work_email : 'null',
-                    'type' => $this->type,
-                ]);
-
-                return;
-            }
-
-            Log::warning('Notification email Exchange send failed', [
-                'model_id' => $this->model ? $this->model->id : 'null',
-                'model_type' => $this->model ? get_class($this->model) : 'null',
-                'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
-                'email' => $this->recipient ? $this->recipient->work_email : 'null',
-                'exchange_error' => $exchangeError,
-            ]);
-
-            if ($this->sendViaSmtpFallback($htmlContent, $subject, $ccEmails, ['system@africacdc.org'], $toEmail)) {
-                Log::info('Notification email sent via SMTP fallback', [
-                    'model_id' => $this->model ? $this->model->id : 'null',
-                    'model_type' => $this->model ? get_class($this->model) : 'null',
-                    'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
-                    'email' => $this->recipient ? $this->recipient->work_email : 'null',
-                    'type' => $this->type,
-                ]);
-
-                return;
-            }
-
-            throw new \RuntimeException(
-                'Failed to send email notification (Exchange: '.$exchangeError.'). SMTP fallback also failed or is disabled.'
+            $sent = sendEmail(
+                $toEmail,
+                $subject,
+                $htmlContent,
+                env('MAIL_FROM_ADDRESS'),
+                env('MAIL_FROM_NAME', 'Africa CDC APM'),
+                $ccEmails,
+                ['system@africacdc.org'],
+                $attachments
             );
+
+            if ($sent) {
+                Log::info('Notification email sent successfully', [
+                    'model_id' => $this->model ? $this->model->id : 'null',
+                    'model_type' => $this->model ? get_class($this->model) : 'null',
+                    'recipient_id' => $this->recipient ? $this->recipient->staff_id : 'null',
+                    'email' => $this->recipient ? $this->recipient->work_email : 'null',
+                    'type' => $this->type,
+                    'transport' => env('MAIL_TRANSPORT', 'exchange'),
+                ]);
+
+                return;
+            }
+
+            throw new \RuntimeException('Failed to send email notification via '.env('MAIL_TRANSPORT', 'exchange').'.');
 
         } catch (\Exception $e) {
             Log::error('Failed to send notification email', [

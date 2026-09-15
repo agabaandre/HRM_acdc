@@ -20,7 +20,8 @@ Requires a TTY. Passwords are entered without echo.
 | Deploy | Host Apache · Docker Compose |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · External · Keep current |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
-| **Auth** | Microsoft Entra SSO (`TENANT_ID` / `CLIENT_ID` / secret) written to **root**, **staff-portal**, and **APM** (each with its own `MICROSOFT_REDIRECT_URI`); optional **EXCHANGE_*** mail creds for portal / APM / helpdesk; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
+| **Auth** | Microsoft Entra SSO (`TENANT_ID` / `CLIENT_ID` / secret) written to **root**, **staff-portal**, and **APM** (each with its own `MICROSOFT_REDIRECT_URI`); SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
+| **Mail** | Shared `MAIL_TRANSPORT` (**exchange** default · **smtp** · **zoho** · **http** [notifications.africacdc.org](https://notifications.africacdc.org/api/documentation)); shared Graph/SMTP/HTTP creds; per app only `MAIL_FROM_NAME` + `MAIL_FROM_ADDRESS` |
 | **SPA rebuild** | **Default Yes** — Vite build + publish for `/{WEB_ROOT}/` (fixes folder renames like `cbpdemo` → `demo_staff`) |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
@@ -45,7 +46,17 @@ Wizard keys (URLs, JWT, Share API, Redis, storage, Microsoft SSO where applicabl
 |----------|------|--------------|-----|----------|---------|
 | `TENANT_ID` / `CLIENT_*` / `MICROSOFT_*` SSO | yes | yes (+ portal redirect) | yes (+ APM redirect) | — | — |
 | `ALLOW_ALTERNATIVE_LOGIN` | yes | yes | — | — | — |
-| `EXCHANGE_*` (optional, same Azure app) | yes | yes | yes | yes | — |
+| `MAIL_TRANSPORT` / shared SMTP·HTTP·`EXCHANGE_*` | yes | yes | yes | yes | — |
+| `MAIL_FROM_NAME` / `MAIL_FROM_ADDRESS` | shared default | per-app | per-app | per-app | — |
+
+Outbound transports:
+
+| `MAIL_TRANSPORT` | Laravel `MAIL_MAILER` | Notes |
+|------------------|----------------------|--------|
+| `exchange` (default) | `exchange` | Microsoft Graph; needs `EXCHANGE_*` (copied from SSO Azure app) |
+| `smtp` | `smtp` | Shared `MAIL_HOST` / user / password |
+| `zoho` | `smtp` | Defaults `smtp.zoho.com`; same SMTP keys |
+| `http` | `http` | [Africa CDC Email Server](https://notifications.africacdc.org/api/documentation) via `MAIL_HTTP_*` |
 
 ## Site role, systemd, and CI3 uploads
 

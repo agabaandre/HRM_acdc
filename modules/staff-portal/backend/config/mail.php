@@ -14,7 +14,20 @@ return [
     |
     */
 
+    /*
+    | MAIL_TRANSPORT selects the outbound channel written by root setup.sh:
+    | exchange (default) | smtp | zoho | http (Africa CDC Email Server).
+    | MAIL_MAILER remains the Laravel mailer name (exchange|smtp|http|…).
+    */
+    'transport' => env('MAIL_TRANSPORT', env('MAIL_MAILER', env('USE_EXCHANGE_EMAIL', true) ? 'exchange' : 'log')),
+
     'default' => env('MAIL_MAILER', env('USE_EXCHANGE_EMAIL', true) ? 'exchange' : 'log'),
+
+    'http' => [
+        'base_url' => env('MAIL_HTTP_BASE_URL', 'https://notifications.africacdc.org/api/v1'),
+        'client_id' => env('MAIL_HTTP_CLIENT_ID'),
+        'client_secret' => env('MAIL_HTTP_CLIENT_SECRET'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -77,6 +90,10 @@ return [
 
         'exchange' => [
             'transport' => 'exchange',
+        ],
+
+        'http' => [
+            'transport' => 'http',
         ],
 
         'array' => [

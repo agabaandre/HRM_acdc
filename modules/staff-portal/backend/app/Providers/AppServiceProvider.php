@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Mail\Transport\ExchangeGraphTransport;
+use App\Mail\Transport\HttpNotificationsTransport;
 use App\Services\ExchangeGraphMailClient;
+use App\Services\HttpNotificationsMailClient;
 use App\Support\CbpAsset;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Mail;
@@ -13,7 +15,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(HttpNotificationsMailClient::class);
     }
 
     public function boot(): void
@@ -25,6 +27,12 @@ class AppServiceProvider extends ServiceProvider
         Mail::extend('exchange', function () {
             return new ExchangeGraphTransport(
                 $this->app->make(ExchangeGraphMailClient::class)
+            );
+        });
+
+        Mail::extend('http', function () {
+            return new HttpNotificationsTransport(
+                $this->app->make(HttpNotificationsMailClient::class)
             );
         });
     }

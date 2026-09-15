@@ -14,7 +14,15 @@ return [
     |
     */
 
+    'transport' => env('MAIL_TRANSPORT', env('MAIL_MAILER', env('USE_EXCHANGE_EMAIL', false) ? 'exchange' : 'log')),
+
     'default' => env('MAIL_MAILER', env('USE_EXCHANGE_EMAIL', false) ? 'exchange' : 'log'),
+
+    'http' => [
+        'base_url' => env('MAIL_HTTP_BASE_URL', 'https://notifications.africacdc.org/api/v1'),
+        'client_id' => env('MAIL_HTTP_CLIENT_ID'),
+        'client_secret' => env('MAIL_HTTP_CLIENT_SECRET'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -81,6 +89,10 @@ return [
 
         'exchange' => [
             'transport' => 'exchange',
+        ],
+
+        'http' => [
+            'transport' => 'http',
         ],
 
         'failover' => [

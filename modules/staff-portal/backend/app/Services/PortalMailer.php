@@ -28,7 +28,7 @@ class PortalMailer
         array $bcc = [],
     ): void {
         $resolved = $this->providers->resolveForSend($provider);
-        $driver = $resolved['provider']->driver;
+        $driver = $resolved['driver'] ?? $resolved['provider']->driver;
         $config = $resolved['config'];
         $fromAddress = $resolved['from_address'];
         $fromName = $resolved['from_name'];
@@ -38,6 +38,7 @@ class PortalMailer
         match ($driver) {
             'exchange' => $this->sendExchange($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
             'smtp', 'zoho' => $this->sendSmtp($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $driver, $bcc),
+            'http' => $this->sendHttpNotifications($recipients, $subject, $htmlBody, $attachments, $config, $bcc),
             'log' => $this->sendLog($recipients, $subject, $htmlBody, $attachments, $bcc),
             'sendgrid' => $this->sendSendgrid($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
             'mailgun' => $this->sendMailgun($recipients, $subject, $htmlBody, $fromAddress, $fromName, $attachments, $config, $bcc),
@@ -87,10 +88,47 @@ class PortalMailer
     }
 
     /**
+     * Africa CDC Email Server — attachments are not supported by the HTTP API; they are omitted with a log warning.
+     *
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      * @param  array<string, mixed>  $config
+     * @param  list<string>  $bcc
      */
+    private function sendHttpNotifications(
+        array $to,
+        string $subject,
+        string $htmlBody,
+        array $attachments,
+        array $config,
+        array $bcc = [],
+    ): void {
+        if ($attachments !== []) {
+            Log::warning('HTTP notifications API does not accept attachments; sending without them.', [
+                'count' => count($attachments),
+                'subject' => $subject,
+            ]);
+        }
+
+        $client = new HttpNotificationsMailClient;
+        // Temporarily overlay config for this send
+        $prev = [
+            'mail.http.base_url' => config('mail.http.base_url'),
+            'mail.http.client_id' => config('mail.http.client_id'),
+            'mail.http.client_secret' => config('mail.http.client_secret'),
+        ];
+        config([
+            'mail.http.base_url' => $config['base_url'] ?? $prev['mail.http.base_url'],
+            'mail.http.client_id' => $config['client_id'] ?? $prev['mail.http.client_id'],
+            'mail.http.client_secret' => $config['client_secret'] ?? $prev['mail.http.client_secret'],
+        ]);
+        try {
+            $client->send(count($to) === 1 ? $to[0] : $to, $subject, $htmlBody, [], $bcc);
+        } finally {
+            config($prev);
+        }
+    }
+
     /**
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments

@@ -145,15 +145,94 @@ else
 fi
 echo "    ALLOW_ALTERNATIVE_LOGIN=$ALLOW_ALTERNATIVE_LOGIN"
 
-# Same Azure app is often used for Graph mail (Exchange) on portal / helpdesk / APM.
+# --- Outbound mail (shared transport + creds; per-app only FROM name/address) ---
+echo
+echo "==> Outbound mail"
+_existing_transport="$(env_get "$ROOT_ENV" MAIL_TRANSPORT)"
+[[ -z "$_existing_transport" ]] && _existing_transport="$(env_get "$ROOT_ENV" MAIL_MAILER)"
+MAIL_TRANSPORT_DEFAULT=1
+case "$(printf '%s' "$_existing_transport" | tr '[:upper:]' '[:lower:]')" in
+  smtp) MAIL_TRANSPORT_DEFAULT=2 ;;
+  zoho) MAIL_TRANSPORT_DEFAULT=3 ;;
+  http|notifications|api_http) MAIL_TRANSPORT_DEFAULT=4 ;;
+  exchange|exchange_oauth|graph|"") MAIL_TRANSPORT_DEFAULT=1 ;;
+esac
+prompt_choice MAIL_TRANSPORT_CHOICE "Outbound mail transport?" \
+  "1) Exchange / Microsoft Graph (default)  2) SMTP  3) Zoho SMTP  4) HTTP (notifications.africacdc.org)" \
+  "$MAIL_TRANSPORT_DEFAULT"
+case "$MAIL_TRANSPORT_CHOICE" in
+  2) MAIL_TRANSPORT=smtp ;;
+  3) MAIL_TRANSPORT=zoho ;;
+  4) MAIL_TRANSPORT=http ;;
+  *) MAIL_TRANSPORT=exchange ;;
+esac
+echo "    MAIL_TRANSPORT=$MAIL_TRANSPORT"
+
+_mail_from_def="$(env_get "$ROOT_ENV" MAIL_FROM_ADDRESS)"
+prompt_value MAIL_FROM_ADDRESS_SHARED "Shared send-as email (MAIL_FROM_ADDRESS)" \
+  "${_mail_from_def:-notifications@africacdc.org}"
+MAIL_FROM_ADDRESS_SHARED="${MAIL_FROM_ADDRESS_SHARED:-notifications@africacdc.org}"
+
+# Exchange Graph creds — needed for Exchange outbound and helpdesk mailbox intake
 EXCHANGE_FROM_MS=0
-if [[ -n "${TENANT_ID:-}" && -n "${CLIENT_ID:-}" ]]; then
-  prompt_choice EXCHANGE_MS_CHOICE "Also set EXCHANGE_* mail creds from this Azure app (portal/helpdesk/APM)?" "1) Yes  2) No" "1"
+if [[ "$MAIL_TRANSPORT" == "exchange" ]]; then
+  EXCHANGE_FROM_MS=1
+elif [[ -n "${TENANT_ID:-}" && -n "${CLIENT_ID:-}" ]]; then
+  prompt_choice EXCHANGE_MS_CHOICE "Also sync EXCHANGE_* Graph creds (helpdesk intake / fallback)?" "1) Yes  2) No" "1"
   [[ "$EXCHANGE_MS_CHOICE" == "1" ]] && EXCHANGE_FROM_MS=1
 fi
+EXCHANGE_SCOPE="${EXCHANGE_SCOPE:-https://graph.microsoft.com/.default}"
+EXCHANGE_AUTH_METHOD="${EXCHANGE_AUTH_METHOD:-client_credentials}"
+_ex_scope="$(env_get "$ROOT_ENV" EXCHANGE_SCOPE)"
+[[ -n "$_ex_scope" ]] && EXCHANGE_SCOPE="$_ex_scope"
+_ex_auth="$(env_get "$ROOT_ENV" EXCHANGE_AUTH_METHOD)"
+[[ -n "$_ex_auth" ]] && EXCHANGE_AUTH_METHOD="$_ex_auth"
+
 EXCHANGE_REDIRECT_URI_PORTAL="${PUBLIC_BASE}/backend/oauth/callback"
 EXCHANGE_REDIRECT_URI_APM="${PUBLIC_BASE}/apm/callback"
 EXCHANGE_REDIRECT_URI_HELPDESK="${PUBLIC_BASE}/helpdesk/backend/oauth/callback"
+
+# SMTP / Zoho shared credentials
+MAIL_HOST="$(env_get "$ROOT_ENV" MAIL_HOST)"
+MAIL_PORT="$(env_get "$ROOT_ENV" MAIL_PORT)"
+MAIL_USERNAME="$(env_get "$ROOT_ENV" MAIL_USERNAME)"
+MAIL_PASSWORD="$(env_get "$ROOT_ENV" MAIL_PASSWORD)"
+MAIL_ENCRYPTION="$(env_get "$ROOT_ENV" MAIL_ENCRYPTION)"
+MAIL_ENCRYPTION="${MAIL_ENCRYPTION:-tls}"
+if [[ "$MAIL_TRANSPORT" == "smtp" || "$MAIL_TRANSPORT" == "zoho" ]]; then
+  if [[ "$MAIL_TRANSPORT" == "zoho" ]]; then
+    MAIL_HOST="${MAIL_HOST:-smtp.zoho.com}"
+    MAIL_PORT="${MAIL_PORT:-587}"
+  else
+    MAIL_HOST="${MAIL_HOST:-smtp.office365.com}"
+    MAIL_PORT="${MAIL_PORT:-587}"
+  fi
+  prompt_value MAIL_HOST "MAIL_HOST" "$MAIL_HOST"
+  prompt_value MAIL_PORT "MAIL_PORT" "$MAIL_PORT"
+  prompt_value MAIL_USERNAME "MAIL_USERNAME" "${MAIL_USERNAME:-$MAIL_FROM_ADDRESS_SHARED}"
+  prompt_secret MAIL_PASSWORD "MAIL_PASSWORD" "$MAIL_PASSWORD"
+  prompt_value MAIL_ENCRYPTION "MAIL_ENCRYPTION (tls|ssl|none)" "$MAIL_ENCRYPTION"
+fi
+
+# HTTP Africa CDC Email Server
+MAIL_HTTP_BASE_URL="$(env_get "$ROOT_ENV" MAIL_HTTP_BASE_URL)"
+MAIL_HTTP_CLIENT_ID="$(env_get "$ROOT_ENV" MAIL_HTTP_CLIENT_ID)"
+MAIL_HTTP_CLIENT_SECRET="$(env_get "$ROOT_ENV" MAIL_HTTP_CLIENT_SECRET)"
+MAIL_HTTP_BASE_URL="${MAIL_HTTP_BASE_URL:-https://notifications.africacdc.org/api/v1}"
+if [[ "$MAIL_TRANSPORT" == "http" ]]; then
+  prompt_value MAIL_HTTP_BASE_URL "MAIL_HTTP_BASE_URL" "$MAIL_HTTP_BASE_URL"
+  prompt_value MAIL_HTTP_CLIENT_ID "MAIL_HTTP_CLIENT_ID (integration)" "$MAIL_HTTP_CLIENT_ID"
+  prompt_secret MAIL_HTTP_CLIENT_SECRET "MAIL_HTTP_CLIENT_SECRET" "$MAIL_HTTP_CLIENT_SECRET"
+fi
+
+# Map to Laravel MAIL_MAILER name
+case "$MAIL_TRANSPORT" in
+  smtp|zoho) MAIL_MAILER=smtp ;;
+  http) MAIL_MAILER=http ;;
+  *) MAIL_MAILER=exchange ;;
+esac
+USE_EXCHANGE_EMAIL=false
+[[ "$MAIL_TRANSPORT" == "exchange" ]] && USE_EXCHANGE_EMAIL=true
 
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
   REDIS_DEF="$REDIS_HOST_DEFAULT"
@@ -233,6 +312,24 @@ if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
   [[ -n "${CLIENT_ID:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_ID "$CLIENT_ID"
   [[ -n "${CLIENT_SEC_VALUE:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE"
   env_set "$ROOT_ENV" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_PORTAL"
+  env_set "$ROOT_ENV" EXCHANGE_SCOPE "$EXCHANGE_SCOPE"
+  env_set "$ROOT_ENV" EXCHANGE_AUTH_METHOD "$EXCHANGE_AUTH_METHOD"
+fi
+env_set "$ROOT_ENV" MAIL_TRANSPORT "$MAIL_TRANSPORT"
+env_set "$ROOT_ENV" MAIL_MAILER "$MAIL_MAILER"
+env_set "$ROOT_ENV" USE_EXCHANGE_EMAIL "$USE_EXCHANGE_EMAIL"
+env_set "$ROOT_ENV" MAIL_FROM_ADDRESS "$MAIL_FROM_ADDRESS_SHARED"
+if [[ "$MAIL_TRANSPORT" == "smtp" || "$MAIL_TRANSPORT" == "zoho" ]]; then
+  env_set "$ROOT_ENV" MAIL_HOST "$MAIL_HOST"
+  env_set "$ROOT_ENV" MAIL_PORT "$MAIL_PORT"
+  env_set "$ROOT_ENV" MAIL_USERNAME "$MAIL_USERNAME"
+  [[ -n "${MAIL_PASSWORD:-}" ]] && env_set "$ROOT_ENV" MAIL_PASSWORD "$MAIL_PASSWORD"
+  env_set "$ROOT_ENV" MAIL_ENCRYPTION "$MAIL_ENCRYPTION"
+fi
+if [[ "$MAIL_TRANSPORT" == "http" ]]; then
+  env_set "$ROOT_ENV" MAIL_HTTP_BASE_URL "$MAIL_HTTP_BASE_URL"
+  [[ -n "${MAIL_HTTP_CLIENT_ID:-}" ]] && env_set "$ROOT_ENV" MAIL_HTTP_CLIENT_ID "$MAIL_HTTP_CLIENT_ID"
+  [[ -n "${MAIL_HTTP_CLIENT_SECRET:-}" ]] && env_set "$ROOT_ENV" MAIL_HTTP_CLIENT_SECRET "$MAIL_HTTP_CLIENT_SECRET"
 fi
 if [[ "$DB_MODE" != "keep" ]]; then
   env_set "$ROOT_ENV" DB_HOST "$DB_HOST"
@@ -312,7 +409,53 @@ apply_microsoft_sso_to_file() {
     if [[ -n "$exchange_redirect" ]]; then
       env_set "$file" EXCHANGE_REDIRECT_URI "$exchange_redirect" || return 1
     fi
+    env_set "$file" EXCHANGE_SCOPE "${EXCHANGE_SCOPE:-https://graph.microsoft.com/.default}" || return 1
+    env_set "$file" EXCHANGE_AUTH_METHOD "${EXCHANGE_AUTH_METHOD:-client_credentials}" || return 1
   fi
+  return 0
+}
+
+# Shared outbound mail transport + credentials (all mail-sending apps).
+# Per-app FROM is applied separately via apply_mail_from_to_file.
+apply_mail_shared_to_file() {
+  local file="$1"
+  env_set "$file" MAIL_TRANSPORT "$MAIL_TRANSPORT" || return 1
+  env_set "$file" MAIL_MAILER "$MAIL_MAILER" || return 1
+  env_set "$file" USE_EXCHANGE_EMAIL "$USE_EXCHANGE_EMAIL" || return 1
+  if [[ "$MAIL_TRANSPORT" == "smtp" || "$MAIL_TRANSPORT" == "zoho" ]]; then
+    env_set "$file" MAIL_HOST "${MAIL_HOST:-}" || return 1
+    env_set "$file" MAIL_PORT "${MAIL_PORT:-587}" || return 1
+    env_set "$file" MAIL_USERNAME "${MAIL_USERNAME:-}" || return 1
+    if [[ -n "${MAIL_PASSWORD:-}" ]]; then
+      env_set "$file" MAIL_PASSWORD "$MAIL_PASSWORD" || return 1
+    fi
+    env_set "$file" MAIL_ENCRYPTION "${MAIL_ENCRYPTION:-tls}" || return 1
+    # APM PHPMailer aliases
+    env_set "$file" PHPMailer_HOST "${MAIL_HOST:-}" || return 1
+    env_set "$file" PHPMailer_PORT "${MAIL_PORT:-587}" || return 1
+    env_set "$file" PHPMailer_USERNAME "${MAIL_USERNAME:-}" || return 1
+    if [[ -n "${MAIL_PASSWORD:-}" ]]; then
+      env_set "$file" PHPMailer_PASSWORD "$MAIL_PASSWORD" || return 1
+    fi
+  fi
+  if [[ "$MAIL_TRANSPORT" == "http" ]]; then
+    env_set "$file" MAIL_HTTP_BASE_URL "${MAIL_HTTP_BASE_URL:-https://notifications.africacdc.org/api/v1}" || return 1
+    if [[ -n "${MAIL_HTTP_CLIENT_ID:-}" ]]; then
+      env_set "$file" MAIL_HTTP_CLIENT_ID "$MAIL_HTTP_CLIENT_ID" || return 1
+    fi
+    if [[ -n "${MAIL_HTTP_CLIENT_SECRET:-}" ]]; then
+      env_set "$file" MAIL_HTTP_CLIENT_SECRET "$MAIL_HTTP_CLIENT_SECRET" || return 1
+    fi
+  fi
+  return 0
+}
+
+apply_mail_from_to_file() {
+  local file="$1" from_addr="$2" from_name="$3"
+  env_set "$file" MAIL_FROM_ADDRESS "$from_addr" || return 1
+  env_set "$file" MAIL_FROM_NAME "$from_name" || return 1
+  env_set "$file" PHPMailer_FROM_ADDRESS "$from_addr" || return 1
+  env_set "$file" PHPMailer_FROM_NAME "$from_name" || return 1
   return 0
 }
 
@@ -338,6 +481,11 @@ env_ensure_file "$SP_ENV" "$ROOT/modules/staff-portal/backend/.env.example" \
   || setup_warn "staff-portal backend/.env missing/unwritable"
 prompt_value SP_DB "staff-portal DB_DATABASE" "$(env_get "$SP_SETUP" DB_DATABASE)"
 SP_DB="${SP_DB:-staff}"
+_sp_from_name="$(env_get "$SP_ENV" MAIL_FROM_NAME)"
+_sp_from_addr="$(env_get "$SP_ENV" MAIL_FROM_ADDRESS)"
+prompt_value SP_MAIL_FROM_NAME "staff-portal MAIL_FROM_NAME" "${_sp_from_name:-Staff Portal}"
+prompt_value SP_MAIL_FROM_ADDRESS "staff-portal MAIL_FROM_ADDRESS" \
+  "${_sp_from_addr:-$MAIL_FROM_ADDRESS_SHARED}"
 write_staff_portal_env() {
   local f
   for f in "$SP_SETUP" "$SP_ENV"; do
@@ -351,6 +499,8 @@ write_staff_portal_env() {
     apply_password_login_to_file "$f" || return 1
     apply_microsoft_sso_to_file "$f" "$MICROSOFT_REDIRECT_URI_PORTAL" "$EXCHANGE_FROM_MS" \
       "$EXCHANGE_REDIRECT_URI_PORTAL" || return 1
+    apply_mail_shared_to_file "$f" || return 1
+    apply_mail_from_to_file "$f" "$SP_MAIL_FROM_ADDRESS" "$SP_MAIL_FROM_NAME" || return 1
     env_set "$f" DB_DATABASE "$SP_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_PORTAL_MODULE_FILES_ROOT "$STAFF_PORTAL_MODULE_FILES_ROOT" || return 1
@@ -379,12 +529,22 @@ echo "==> APM"
 APM_ENV="$ROOT/modules/apm/.env"
 prompt_value APM_DB_DATABASE "APM DB_DATABASE" "$(env_get "$APM_ENV" DB_DATABASE)"
 APM_DB_DATABASE="${APM_DB_DATABASE:-apm_local}"
+_apm_from_name="$(env_get "$APM_ENV" MAIL_FROM_NAME)"
+_apm_from_addr="$(env_get "$APM_ENV" MAIL_FROM_ADDRESS)"
+prompt_value APM_MAIL_FROM_NAME "APM MAIL_FROM_NAME" "${_apm_from_name:-Africa CDC APM}"
+prompt_value APM_MAIL_FROM_ADDRESS "APM MAIL_FROM_ADDRESS" \
+  "${_apm_from_addr:-$MAIL_FROM_ADDRESS_SHARED}"
 export APM_APP_URL BASE_URL CI_BASE_URL JWT_SECRET
 export DB_HOST DB_PORT DB_USER DB_PASS DB_USERNAME DB_PASSWORD APM_DB_DATABASE
 export REDIS_HOST REDIS_PORT REDIS_PASSWORD
 export STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN STAFF_API_INTERNAL_BASE_URL
 export TENANT_ID CLIENT_ID CLIENT_SEC_VALUE CLIENT_SEC_ID
 export MICROSOFT_REDIRECT_URI_APM EXCHANGE_FROM_MS EXCHANGE_REDIRECT_URI_APM
+export EXCHANGE_SCOPE EXCHANGE_AUTH_METHOD
+export MAIL_TRANSPORT MAIL_MAILER USE_EXCHANGE_EMAIL
+export MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_ENCRYPTION
+export MAIL_HTTP_BASE_URL MAIL_HTTP_CLIENT_ID MAIL_HTTP_CLIENT_SECRET
+export APM_MAIL_FROM_NAME APM_MAIL_FROM_ADDRESS
 if "$ROOT/scripts/setup/configure-apm-env.sh"; then
   echo "    configure-apm-env OK"
 else
@@ -406,9 +566,11 @@ if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && apply_db_to_file "$APM_ENV" DB_USERNAME DB_PASSWORD \
   && apply_redis_to_file "$APM_ENV" \
   && apply_microsoft_sso_to_file "$APM_ENV" "$MICROSOFT_REDIRECT_URI_APM" "$EXCHANGE_FROM_MS" \
-       "$EXCHANGE_REDIRECT_URI_APM"
+       "$EXCHANGE_REDIRECT_URI_APM" \
+  && apply_mail_shared_to_file "$APM_ENV" \
+  && apply_mail_from_to_file "$APM_ENV" "$APM_MAIL_FROM_ADDRESS" "$APM_MAIL_FROM_NAME"
 then
-  echo "    forced URLs/JWT/Redis/storage/Microsoft on modules/apm/.env"
+  echo "    forced URLs/JWT/Redis/storage/Microsoft/mail on modules/apm/.env"
 else
   setup_warn "APM env write failed — fix ownership and re-run"
 fi
@@ -466,6 +628,11 @@ env_ensure_file "$HD_ENV" "$ROOT/modules/helpdesk/backend/.env.example" \
   || setup_warn "helpdesk backend/.env missing/unwritable"
 prompt_value HD_DB "helpdesk DB_DATABASE" "$(env_get "$HD_SETUP" DB_DATABASE)"
 HD_DB="${HD_DB:-helpdesk}"
+_hd_from_name="$(env_get "$HD_ENV" MAIL_FROM_NAME)"
+_hd_from_addr="$(env_get "$HD_ENV" MAIL_FROM_ADDRESS)"
+prompt_value HD_MAIL_FROM_NAME "helpdesk MAIL_FROM_NAME" "${_hd_from_name:-Africa CDC Helpdesk}"
+prompt_value HD_MAIL_FROM_ADDRESS "helpdesk MAIL_FROM_ADDRESS" \
+  "${_hd_from_addr:-$MAIL_FROM_ADDRESS_SHARED}"
 write_helpdesk_env() {
   local f
   for f in "$HD_SETUP" "$HD_ENV"; do
@@ -483,7 +650,7 @@ write_helpdesk_env() {
     env_set "$f" DB_DATABASE "$HD_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_HELPDESK_FILES_ROOT "$STAFF_HELPDESK_FILES_ROOT" || return 1
-    # Helpdesk uses JWT SSO from portal; only needs EXCHANGE_* for Graph mail.
+    # Helpdesk: JWT SSO from portal; EXCHANGE for Graph intake + shared outbound mail.
     if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
       if [[ -n "${TENANT_ID:-}" ]]; then
         env_set "$f" EXCHANGE_TENANT_ID "$TENANT_ID" || return 1
@@ -495,7 +662,12 @@ write_helpdesk_env() {
         env_set "$f" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
       fi
       env_set "$f" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_HELPDESK" || return 1
+      env_set "$f" EXCHANGE_SCOPE "${EXCHANGE_SCOPE:-https://graph.microsoft.com/.default}" || return 1
+      env_set "$f" EXCHANGE_AUTH_METHOD "${EXCHANGE_AUTH_METHOD:-client_credentials}" || return 1
     fi
+    apply_mail_shared_to_file "$f" || return 1
+    apply_mail_from_to_file "$f" "$HD_MAIL_FROM_ADDRESS" "$HD_MAIL_FROM_NAME" || return 1
+    env_set "$f" HELPDESK_MAIL_BRAND_NAME "$HD_MAIL_FROM_NAME" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -507,7 +679,7 @@ if write_helpdesk_env; then
     setup_warn "helpdesk configure-env failed"
   fi
   write_helpdesk_env || setup_warn "helpdesk force env rewrite failed"
-  echo "    forced URLs/JWT/Redis/Exchange on setup.env + backend/.env"
+  echo "    forced URLs/JWT/Redis/mail on setup.env + backend/.env"
 else
   setup_warn "helpdesk env write failed — fix ownership and re-run"
 fi
@@ -519,7 +691,8 @@ echo "STAFF_SITE_ID=$STAFF_SITE_ID"
 echo "CI3 uploads=$STAFF_PORTAL_UPLOADS_ROOT"
 echo "Microsoft portal redirect=$MICROSOFT_REDIRECT_URI_PORTAL"
 echo "Microsoft APM redirect=$MICROSOFT_REDIRECT_URI_APM"
-echo "EXCHANGE from MS=$EXCHANGE_FROM_MS"
+echo "Mail transport=$MAIL_TRANSPORT (MAIL_MAILER=$MAIL_MAILER) from=$MAIL_FROM_ADDRESS_SHARED"
+echo "EXCHANGE sync=$EXCHANGE_FROM_MS"
 echo "Password login=$ALLOW_ALTERNATIVE_LOGIN"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
