@@ -218,8 +218,9 @@ onMounted(async () => {
 }
 
 .cbp-home .settings-card {
-  min-height: 0;
-  height: auto;
+  /* Match tallest card in the row (title + up to 3 description lines) */
+  min-height: 8.75rem;
+  height: 100%;
   padding: 1rem 1.1rem 1.1rem;
   transition: var(--cbp-transition);
   font-size: 0.9rem;
@@ -237,6 +238,7 @@ onMounted(async () => {
   max-width: 100%;
   border-radius: 0.5rem;
   animation: cbpFadeInUp 0.55s ease forwards;
+  box-sizing: border-box;
 }
 
 .cbp-home .settings-card::before {
@@ -276,13 +278,15 @@ onMounted(async () => {
   color: var(--cbp-text-muted);
   margin: 0;
   line-height: 1.4;
-  flex-grow: 0;
+  flex: 1 1 auto;
   position: relative;
   z-index: 2;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* Reserve space for 3 lines so shorter copy still matches taller cards */
+  min-height: calc(1.4em * 3);
 }
 
 .cbp-home .widgets-icons {
@@ -311,10 +315,18 @@ onMounted(async () => {
   transform: scale(1.02);
 }
 
-.cbp-home .setting-card-item a {
+.cbp-home .setting-card-item {
+  display: flex;
+  height: 100%;
+}
+
+.cbp-home .setting-card-item a,
+.cbp-home .setting-card-item .cbp-home-card-link {
   text-decoration: none;
   color: inherit;
-  display: block;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
   height: 100%;
 }
 

@@ -57,7 +57,28 @@ function handleClick(mod: CbpModuleLink, e: Event) {
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 1rem;
   justify-content: center;
-  align-items: start;
+  align-items: stretch;
+}
+
+.setting-card-item {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.setting-card-item :deep(.cbp-home-card-link) {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+.setting-card-item :deep(.settings-card) {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
 }
 
 @media (min-width: 768px) {
