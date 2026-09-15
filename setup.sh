@@ -16,6 +16,8 @@ source "$ROOT/scripts/setup/env-upsert.sh"
 source "$ROOT/scripts/setup/prompt.sh"
 # shellcheck source=scripts/setup/map-urls.sh
 source "$ROOT/scripts/setup/map-urls.sh"
+# shellcheck source=scripts/setup/update-htaccess.sh
+source "$ROOT/scripts/setup/update-htaccess.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
@@ -37,18 +39,26 @@ esac
 ROOT_ENV="$ROOT/.env"
 env_ensure_file "$ROOT_ENV" "$ROOT/scripts/setup/templates/root.env.example"
 
+DEFAULT_WEB_ROOT="$(basename "$ROOT")"
+case "$DEFAULT_WEB_ROOT" in
+  staff|cbp|demo_cbp|demo_staff) ;;
+  *) DEFAULT_WEB_ROOT=staff ;;
+esac
+export DEFAULT_WEB_ROOT
+
 DEFAULT_BASE="$(env_get "$ROOT_ENV" BASE_URL)"
 DEFAULT_BASE="${DEFAULT_BASE%/}"
 if [[ -z "$DEFAULT_BASE" ]]; then
   if [[ "$DEPLOY_MODE" == "docker" ]]; then
-    DEFAULT_BASE="http://localhost:8088/staff"
+    DEFAULT_BASE="http://localhost:8088/${DEFAULT_WEB_ROOT}"
   else
-    DEFAULT_BASE="http://localhost/staff"
+    DEFAULT_BASE="http://localhost/${DEFAULT_WEB_ROOT}"
   fi
 fi
 
-prompt_value PUBLIC_BASE "Public staff base URL (…/staff)" "$DEFAULT_BASE"
+prompt_value PUBLIC_BASE "Public base URL (…/staff, …/cbp, …/demo_cbp)" "$DEFAULT_BASE"
 setup_map_urls
+echo "    Web folder / Alias: /${WEB_ROOT}"
 
 JWT_DEFAULT="$(env_get "$ROOT_ENV" JWT_SECRET)"
 if [[ -z "$JWT_DEFAULT" && "$INSTALL_TYPE" == "1" ]]; then
@@ -104,6 +114,7 @@ echo "==> Writing root .env"
 env_set "$ROOT_ENV" BASE_URL "$BASE_URL"
 env_set "$ROOT_ENV" CI_BASE_URL "$CI_BASE_URL"
 env_set "$ROOT_ENV" APM_BASE_URL "$APM_BASE_URL"
+env_set "$ROOT_ENV" WEB_ROOT "$WEB_ROOT"
 env_set "$ROOT_ENV" JWT_SECRET "$JWT_SECRET"
 env_set "$ROOT_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
 env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
@@ -132,6 +143,10 @@ apply_redis_to_file() {
   [[ -n "${REDIS_PASSWORD:-}" ]] && env_set "$file" REDIS_PASSWORD "$REDIS_PASSWORD"
 }
 
+echo
+echo "==> Updating .htaccess public path → /${WEB_ROOT}/"
+setup_update_htaccess_tree "$ROOT" "$WEB_ROOT"
+
 # ----- staff-portal -----
 echo
 echo "==> staff-portal"
@@ -141,35 +156,57 @@ env_ensure_file "$SP_SETUP" "$ROOT/modules/staff-portal/setup.env.example"
 env_ensure_file "$SP_ENV" "$ROOT/modules/staff-portal/backend/.env.example"
 prompt_value SP_DB "staff-portal DB_DATABASE" "$(env_get "$SP_SETUP" DB_DATABASE)"
 SP_DB="${SP_DB:-staff}"
-for f in "$SP_SETUP" "$SP_ENV"; do
-  env_set "$f" APP_URL "$STAFF_PORTAL_APP_URL"
-  env_set "$f" STAFF_PORTAL_BASE_URL "$STAFF_PORTAL_APP_URL"
-  env_set "$f" STAFF_PORTAL_SPA_URL "$STAFF_PORTAL_SPA_URL"
-  env_set "$f" STAFF_PORTAL_SPA_ENABLED "true"
-  env_set "$f" BASE_URL "$BASE_URL"
-  env_set "$f" JWT_SECRET "$JWT_SECRET"
-  env_set "$f" DB_DATABASE "$SP_DB"
-  apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
-  apply_redis_to_file "$f"
-done
-env_set "$SP_SETUP" VITE_STAFF_PORTAL_API_BASE_URL "/staff/backend"
-env_set "$SP_SETUP" VITE_STAFF_PORTAL_BASE_PATH "/staff/"
+write_staff_portal_env() {
+  local f
+  for f in "$SP_SETUP" "$SP_ENV"; do
+    env_set "$f" APP_URL "$STAFF_PORTAL_APP_URL"
+    env_set "$f" STAFF_PORTAL_BASE_URL "$STAFF_PORTAL_APP_URL"
+    env_set "$f" STAFF_PORTAL_SPA_URL "$STAFF_PORTAL_SPA_URL"
+    env_set "$f" STAFF_PORTAL_SPA_ENABLED "true"
+    env_set "$f" BASE_URL "$BASE_URL"
+    env_set "$f" APM_BASE_URL "$APM_BASE_URL"
+    env_set "$f" JWT_SECRET "$JWT_SECRET"
+    env_set "$f" DB_DATABASE "$SP_DB"
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
+    apply_redis_to_file "$f"
+  done
+  env_set "$SP_SETUP" VITE_STAFF_PORTAL_API_BASE_URL "$VITE_STAFF_PORTAL_API_BASE_URL"
+  env_set "$SP_SETUP" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH"
+}
+write_staff_portal_env
 if "$ROOT/modules/staff-portal/scripts/configure-env.sh"; then
   echo "    configure-env OK"
 else
   echo "warn: staff-portal configure-env failed" >&2
 fi
+write_staff_portal_env
+echo "    forced URLs/JWT/Redis on setup.env + backend/.env"
 
 # ----- APM -----
 echo
 echo "==> APM"
-prompt_value APM_DB_DATABASE "APM DB_DATABASE" "$(env_get "$ROOT/modules/apm/.env" DB_DATABASE)"
+APM_ENV="$ROOT/modules/apm/.env"
+prompt_value APM_DB_DATABASE "APM DB_DATABASE" "$(env_get "$APM_ENV" DB_DATABASE)"
 APM_DB_DATABASE="${APM_DB_DATABASE:-apm_local}"
 export APM_APP_URL BASE_URL CI_BASE_URL JWT_SECRET
 export DB_HOST DB_PORT DB_USER DB_PASS DB_USERNAME DB_PASSWORD APM_DB_DATABASE
 export REDIS_HOST REDIS_PORT REDIS_PASSWORD
 export STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN STAFF_API_INTERNAL_BASE_URL
 "$ROOT/scripts/setup/configure-apm-env.sh"
+# Force again so empty-skip in configure-apm cannot leave stale APP_URL
+env_set "$APM_ENV" APP_URL "$APM_APP_URL"
+env_set "$APM_ENV" BASE_URL "$BASE_URL"
+env_set "$APM_ENV" CI_BASE_URL "$CI_BASE_URL"
+env_set "$APM_ENV" APM_BASE_URL "$APM_BASE_URL"
+env_set "$APM_ENV" JWT_SECRET "$JWT_SECRET"
+env_set "$APM_ENV" DB_DATABASE "$APM_DB_DATABASE"
+env_set "$APM_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
+env_set "$APM_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
+env_set "$APM_ENV" STAFF_API_TOKEN "$STAFF_API_TOKEN"
+env_set "$APM_ENV" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL"
+apply_db_to_file "$APM_ENV" DB_USERNAME DB_PASSWORD
+apply_redis_to_file "$APM_ENV"
+echo "    forced URLs/JWT/Redis on modules/apm/.env"
 
 # ----- finance -----
 echo
@@ -180,25 +217,32 @@ env_ensure_file "$FN_SETUP" "$ROOT/modules/finance/setup.env.example"
 env_ensure_file "$FN_ENV" "$ROOT/modules/finance/.env.example"
 prompt_value FN_DB "finance DB_DATABASE" "$(env_get "$FN_SETUP" DB_DATABASE)"
 FN_DB="${FN_DB:-finance}"
-for f in "$FN_SETUP" "$FN_ENV"; do
-  env_set "$f" APP_URL "$FINANCE_APP_URL"
-  env_set "$f" BASE_URL "$BASE_URL"
-  env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL"
-  env_set "$f" VITE_APP_BASE_PATH "/staff/finance/"
-  env_set "$f" JWT_SECRET "$JWT_SECRET"
-  env_set "$f" STAFF_API_USERNAME "$STAFF_API_USERNAME"
-  env_set "$f" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
-  env_set "$f" STAFF_API_TOKEN "$STAFF_API_TOKEN"
-  env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL"
-  env_set "$f" DB_DATABASE "$FN_DB"
-  apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
-  apply_redis_to_file "$f"
-done
+write_finance_env() {
+  local f
+  for f in "$FN_SETUP" "$FN_ENV"; do
+    env_set "$f" APP_URL "$FINANCE_APP_URL"
+    env_set "$f" BASE_URL "$BASE_URL"
+    env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL"
+    env_set "$f" VITE_APP_BASE_PATH "$VITE_FINANCE_BASE_PATH"
+    env_set "$f" SESSION_PATH "$FINANCE_SESSION_PATH"
+    env_set "$f" JWT_SECRET "$JWT_SECRET"
+    env_set "$f" STAFF_API_USERNAME "$STAFF_API_USERNAME"
+    env_set "$f" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
+    env_set "$f" STAFF_API_TOKEN "$STAFF_API_TOKEN"
+    env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL"
+    env_set "$f" DB_DATABASE "$FN_DB"
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
+    apply_redis_to_file "$f"
+  done
+}
+write_finance_env
 if "$ROOT/modules/finance/scripts/configure-env.sh"; then
   echo "    configure-env OK"
 else
   echo "warn: finance configure-env failed" >&2
 fi
+write_finance_env
+echo "    forced URLs/JWT/Redis on setup.env + .env"
 
 # ----- helpdesk -----
 echo
@@ -209,31 +253,37 @@ env_ensure_file "$HD_SETUP" "$ROOT/modules/helpdesk/setup.env.example"
 env_ensure_file "$HD_ENV" "$ROOT/modules/helpdesk/backend/.env.example"
 prompt_value HD_DB "helpdesk DB_DATABASE" "$(env_get "$HD_SETUP" DB_DATABASE)"
 HD_DB="${HD_DB:-helpdesk}"
-for f in "$HD_SETUP" "$HD_ENV"; do
-  env_set "$f" APP_URL "$HELPDESK_APP_URL"
-  env_set "$f" BASE_URL "$BASE_URL"
-  env_set "$f" HELPDESK_FRONTEND_URL "$HELPDESK_FRONTEND_URL"
-  env_set "$f" HELPDESK_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL"
-  env_set "$f" HELPDESK_APM_BASE_URL "$APM_BASE_URL"
-  env_set "$f" JWT_SECRET "$JWT_SECRET"
-  env_set "$f" STAFF_API_USERNAME "$STAFF_API_USERNAME"
-  env_set "$f" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
-  env_set "$f" STAFF_API_TOKEN "$STAFF_API_TOKEN"
-  env_set "$f" HELPDESK_STAFF_API_INTERNAL_BASE_URL "$HELPDESK_STAFF_API_INTERNAL_BASE_URL"
-  env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL"
-  env_set "$f" DB_DATABASE "$HD_DB"
-  apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
-  apply_redis_to_file "$f"
-done
+write_helpdesk_env() {
+  local f
+  for f in "$HD_SETUP" "$HD_ENV"; do
+    env_set "$f" APP_URL "$HELPDESK_APP_URL"
+    env_set "$f" BASE_URL "$BASE_URL"
+    env_set "$f" HELPDESK_FRONTEND_URL "$HELPDESK_FRONTEND_URL"
+    env_set "$f" HELPDESK_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL"
+    env_set "$f" HELPDESK_APM_BASE_URL "$APM_BASE_URL"
+    env_set "$f" JWT_SECRET "$JWT_SECRET"
+    env_set "$f" STAFF_API_USERNAME "$STAFF_API_USERNAME"
+    env_set "$f" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
+    env_set "$f" STAFF_API_TOKEN "$STAFF_API_TOKEN"
+    env_set "$f" HELPDESK_STAFF_API_INTERNAL_BASE_URL "$HELPDESK_STAFF_API_INTERNAL_BASE_URL"
+    env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL"
+    env_set "$f" DB_DATABASE "$HD_DB"
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD
+    apply_redis_to_file "$f"
+  done
+}
+write_helpdesk_env
 if "$ROOT/modules/helpdesk/scripts/configure-env.sh"; then
   echo "    configure-env OK"
 else
   echo "warn: helpdesk configure-env failed" >&2
 fi
+write_helpdesk_env
+echo "    forced URLs/JWT/Redis on setup.env + backend/.env"
 
 echo
 echo "=== Summary ==="
-echo "Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE"
+echo "Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
 echo "DB host=${DB_HOST:-keep}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB"

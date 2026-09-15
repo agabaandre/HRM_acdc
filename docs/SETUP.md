@@ -1,11 +1,11 @@
 # CBP root setup (`./setup.sh`)
 
-Interactive wizard at the repository root that configures **shared and per-module** environment files, optionally runs each module’s installer, and can install **systemd** queue/scheduler units.
+Interactive wizard at the repository root that configures **shared and per-module** environment files, rewrites **public path prefixes** in `.htaccess` when the deploy folder is not `/staff`, optionally runs each module’s installer, and can install **systemd** queue/scheduler units.
 
 ## Quick start
 
 ```bash
-cd /path/to/staff
+cd /path/to/staff   # or cbp / demo_cbp
 ./setup.sh
 ```
 
@@ -18,8 +18,8 @@ Requires a TTY. Passwords are entered without echo.
 | Install type | New · Existing |
 | Deploy | Host Apache · Docker Compose |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · External · Keep current |
-| Shared | Public `/staff` base URL, `JWT_SECRET`, Share API, Redis, DB (unless keep) |
-| Per module | `DB_DATABASE` (+ forced mapped `APP_URL` / Share / Redis) |
+| Shared | Public base URL (`…/staff`, `…/cbp`, `…/demo_cbp`), `JWT_SECRET`, Share API, Redis, DB (unless keep) |
+| Per module | `DB_DATABASE` (+ forced mapped `APP_URL` / Share / Redis on **every** module `.env`) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
 | Systemd | Optional queue + scheduler for staff-portal, helpdesk, APM |
 
@@ -27,17 +27,23 @@ Requires a TTY. Passwords are entered without echo.
 
 | Path | Role |
 |------|------|
-| `.env` | Root inheritance hub |
+| `.env` | Root inheritance hub (`WEB_ROOT`, `BASE_URL`, secrets, DB) |
+| `.htaccess` (+ staff-portal / APM) | Public redirects use `/{WEB_ROOT}/` |
 | `modules/staff-portal/setup.env` + `backend/.env` | Portal |
 | `modules/apm/.env` | APM |
 | `modules/finance/setup.env` + `.env` | Finance |
 | `modules/helpdesk/setup.env` + `backend/.env` | Helpdesk |
 
-Existing keys the wizard does **not** touch are left alone. Keys you confirm are **force-updated**.
+Wizard keys (URLs, JWT, Share API, Redis, and DB when not “keep”) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
 
-## URL mapping
+## URL mapping / web folder
 
-From public base `https://host/staff` (or `http://localhost:8088/staff` for Docker):
+From public base `https://host/cbp` (or `…/staff`, `…/demo_cbp`):
+
+| Derived | Example |
+|---------|---------|
+| `WEB_ROOT` | `cbp` |
+| Redirects / Vite base | `/cbp/`, `/cbp/backend`, … |
 
 | App | `APP_URL` |
 |-----|-----------|
@@ -47,7 +53,9 @@ From public base `https://host/staff` (or `http://localhost:8088/staff` for Dock
 | Finance | `{base}/finance` |
 | Helpdesk API | `{base}/helpdesk/backend` |
 
-Share internal base: `http://127.0.0.1/staff/backend` (host) or `http://web/staff/backend` (Docker).
+Share internal base: `http://127.0.0.1/{WEB_ROOT}/backend` (host) or `http://web/{WEB_ROOT}/backend` (Docker).
+
+`.htaccess` REQUEST_URI match groups keep common aliases (`staff`, `demo_staff`, `cbp`, `demo_cbp`) so legacy bookmarks still match; absolute redirects use the current `WEB_ROOT`.
 
 ## Systemd
 
