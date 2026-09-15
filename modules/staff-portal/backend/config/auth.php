@@ -126,4 +126,19 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Alternative (email/password) SPA login
+    |--------------------------------------------------------------------------
+    |
+    | When false, the login page shows Microsoft SSO only. Per-user
+    | allow_email_login still required when this is true.
+    |
+    */
+    'allow_alternative_login' => filter_var(
+        env('ALLOW_ALTERNATIVE_LOGIN', false),
+        FILTER_VALIDATE_BOOLEAN,
+        FILTER_NULL_ON_FAILURE
+    ) ?? false,
+
 ];

@@ -108,6 +108,40 @@ prompt_value STAFF_API_USERNAME "STAFF_API_USERNAME" "$(env_get "$ROOT_ENV" STAF
 prompt_secret STAFF_API_PASSWORD "STAFF_API_PASSWORD" "$(env_get "$ROOT_ENV" STAFF_API_PASSWORD)"
 prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN" "$(env_get "$ROOT_ENV" STAFF_API_TOKEN)"
 
+# --- Microsoft Entra + password login (staff-portal SPA) ---
+echo
+echo "==> Auth (Microsoft SSO + password login)"
+prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) SSO?" "1) Yes  2) Keep existing / skip" "1"
+if [[ "$CONFIGURE_MS" == "1" ]]; then
+  prompt_value TENANT_ID "TENANT_ID (Directory ID)" "$(env_get "$ROOT_ENV" TENANT_ID)"
+  prompt_value CLIENT_ID "CLIENT_ID (Application ID)" "$(env_get "$ROOT_ENV" CLIENT_ID)"
+  prompt_secret CLIENT_SEC_VALUE "CLIENT_SEC_VALUE (client secret)" "$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
+  prompt_value CLIENT_SEC_ID "CLIENT_SEC_ID (optional)" "$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
+else
+  TENANT_ID="$(env_get "$ROOT_ENV" TENANT_ID)"
+  CLIENT_ID="$(env_get "$ROOT_ENV" CLIENT_ID)"
+  CLIENT_SEC_VALUE="$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
+  CLIENT_SEC_ID="$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
+fi
+# Always align redirect URI to this public base (must match Azure app registration).
+MICROSOFT_REDIRECT_URI="${PUBLIC_BASE}/backend/auth/microsoft/callback"
+echo "    Microsoft redirect (register in Azure): $MICROSOFT_REDIRECT_URI"
+
+PW_LOGIN_DEFAULT=2
+[[ "$SITE_KIND" == "demo" ]] && PW_LOGIN_DEFAULT=1
+_existing_pw="$(env_get "$ROOT_ENV" ALLOW_ALTERNATIVE_LOGIN)"
+case "$(printf '%s' "$_existing_pw" | tr '[:upper:]' '[:lower:]')" in
+  true|1|yes) PW_LOGIN_DEFAULT=1 ;;
+  false|0|no) PW_LOGIN_DEFAULT=2 ;;
+esac
+prompt_choice ALLOW_PW_CHOICE "Password (email) login on SPA?" "1) Enabled  2) Disabled (Microsoft only)" "$PW_LOGIN_DEFAULT"
+if [[ "$ALLOW_PW_CHOICE" == "1" ]]; then
+  ALLOW_ALTERNATIVE_LOGIN=true
+else
+  ALLOW_ALTERNATIVE_LOGIN=false
+fi
+echo "    ALLOW_ALTERNATIVE_LOGIN=$ALLOW_ALTERNATIVE_LOGIN"
+
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
   REDIS_DEF="$REDIS_HOST_DEFAULT"
 else
@@ -163,6 +197,24 @@ env_set "$ROOT_ENV" JWT_SECRET "$JWT_SECRET"
 env_set "$ROOT_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
 env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
 env_set "$ROOT_ENV" STAFF_API_TOKEN "$STAFF_API_TOKEN"
+env_set "$ROOT_ENV" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN"
+env_set "$ROOT_ENV" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI"
+# Write Microsoft keys when provided (skip empties so "Keep existing" does not wipe secrets).
+if [[ -n "${TENANT_ID:-}" ]]; then
+  env_set "$ROOT_ENV" TENANT_ID "$TENANT_ID"
+  env_set "$ROOT_ENV" MICROSOFT_TENANT_ID "$TENANT_ID"
+fi
+if [[ -n "${CLIENT_ID:-}" ]]; then
+  env_set "$ROOT_ENV" CLIENT_ID "$CLIENT_ID"
+  env_set "$ROOT_ENV" MICROSOFT_CLIENT_ID "$CLIENT_ID"
+fi
+if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
+  env_set "$ROOT_ENV" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE"
+  env_set "$ROOT_ENV" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE"
+fi
+if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
+  env_set "$ROOT_ENV" CLIENT_SEC_ID "$CLIENT_SEC_ID"
+fi
 if [[ "$DB_MODE" != "keep" ]]; then
   env_set "$ROOT_ENV" DB_HOST "$DB_HOST"
   env_set "$ROOT_ENV" DB_PORT "$DB_PORT"
@@ -229,6 +281,23 @@ write_staff_portal_env() {
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
+    env_set "$f" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN" || return 1
+    env_set "$f" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI" || return 1
+    if [[ -n "${TENANT_ID:-}" ]]; then
+      env_set "$f" TENANT_ID "$TENANT_ID" || return 1
+      env_set "$f" MICROSOFT_TENANT_ID "$TENANT_ID" || return 1
+    fi
+    if [[ -n "${CLIENT_ID:-}" ]]; then
+      env_set "$f" CLIENT_ID "$CLIENT_ID" || return 1
+      env_set "$f" MICROSOFT_CLIENT_ID "$CLIENT_ID" || return 1
+    fi
+    if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
+      env_set "$f" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE" || return 1
+      env_set "$f" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
+    fi
+    if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
+      env_set "$f" CLIENT_SEC_ID "$CLIENT_SEC_ID" || return 1
+    fi
     env_set "$f" DB_DATABASE "$SP_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_PORTAL_MODULE_FILES_ROOT "$STAFF_PORTAL_MODULE_FILES_ROOT" || return 1
@@ -246,7 +315,7 @@ if write_staff_portal_env; then
     setup_warn "staff-portal configure-env failed"
   fi
   write_staff_portal_env || setup_warn "staff-portal force env rewrite failed"
-  echo "    forced URLs/JWT/Redis on setup.env + backend/.env"
+  echo "    forced URLs/JWT/Microsoft/password-login on setup.env + backend/.env"
 else
   setup_warn "staff-portal env write failed — fix ownership (e.g. chown) and re-run"
 fi
@@ -378,6 +447,8 @@ echo "=== Summary ==="
 echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
 echo "STAFF_SITE_ID=$STAFF_SITE_ID"
 echo "CI3 uploads=$STAFF_PORTAL_UPLOADS_ROOT"
+echo "Microsoft redirect=$MICROSOFT_REDIRECT_URI"
+echo "Password login=$ALLOW_ALTERNATIVE_LOGIN"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
 echo "DB host=${DB_HOST:-keep}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB"

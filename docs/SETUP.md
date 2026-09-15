@@ -20,6 +20,7 @@ Requires a TTY. Passwords are entered without echo.
 | Deploy | Host Apache · Docker Compose |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · External · Keep current |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
+| **Auth** | Microsoft Entra (`TENANT_ID` / `CLIENT_ID` / secret) + redirect URI; **password login** enable/disable (`ALLOW_ALTERNATIVE_LOGIN`) |
 | **SPA rebuild** | **Default Yes** — Vite build + publish for `/{WEB_ROOT}/` (fixes folder renames like `cbpdemo` → `demo_staff`) |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
