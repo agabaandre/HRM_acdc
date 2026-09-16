@@ -1,7 +1,7 @@
 # Africa CDC Risk Register — Design
 
 **Date:** 2026-09-16  
-**Status:** Approved for planning (pending user review of this file)  
+**Status:** Approved — implementation plan at `docs/superpowers/plans/2026-09-16-risk-register.md`  
 **Source workbook:** `modules/risk-register/Copy of Africa CDC Risk Register Tracker 2026 Categorised.xlsx`  
 **Sheets:** Risk Register · Dashboard · Reference & Methodology  
 
