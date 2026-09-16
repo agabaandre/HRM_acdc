@@ -144,6 +144,8 @@ export interface DivisionRow {
   division_head_name?: string | null
   focal_person?: number | null
   focal_person_name?: string | null
+  risk_focal_person?: number | null
+  risk_focal_person_name?: string | null
   finance_officer?: number | null
   finance_officer_name?: string | null
   admin_assistant?: number | null
@@ -166,6 +168,7 @@ export interface DivisionFormPayload {
   category: string
   division_head: number
   focal_person: number
+  risk_focal_person: number
   finance_officer: number
   admin_assistant: number
   director_id?: number | null

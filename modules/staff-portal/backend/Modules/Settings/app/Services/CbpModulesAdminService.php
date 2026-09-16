@@ -91,6 +91,24 @@ class CbpModulesAdminService
             'target_resolver' => 'staff_app_token',
             'sort_order' => 35,
         ],
+        [
+            'module_key' => 'risk_register',
+            'system_name' => 'Risk Register',
+            'description' => 'Enterprise risk register, quarterly reviews, and OIO oversight.',
+            'base_url' => 'risk-register',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-shield-halved',
+            'permission_code' => '118',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 1,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 40,
+        ],
     ];
 
     /** @var list<string> */

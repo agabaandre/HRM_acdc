@@ -58,7 +58,7 @@
 - Produces: `divisions.risk_focal_person` (int|null); CBP `module_key=risk_register`, `base_url=risk-register`, `permission_code=118`, `uses_staff_portal_token=1`, `target_resolver=staff_app_token`
 - Produces permissions rows 119–121 (or next free) with names `view_division_risks`, `view_all_risks`, `manage_risks`; assign 119 to default staff group pattern; 121 to System Administrator (10) + OIO group if present
 
-- [ ] **Step 1: Write failing test for risk_focal backfill**
+- [x] **Step 1: Write failing test for risk_focal backfill**
 
 ```php
 public function test_risk_focal_defaults_from_focal_person(): void
@@ -75,11 +75,11 @@ public function test_risk_focal_defaults_from_focal_person(): void
 }
 ```
 
-- [ ] **Step 2: Run test — expect FAIL (column missing)**
+- [x] **Step 2: Run test — expect FAIL (column missing)**
 
 Run: `cd modules/staff-portal/backend && php artisan test --filter=RiskFocalPersonMigrationTest`
 
-- [ ] **Step 3: Add migration**
+- [x] **Step 3: Add migration**
 
 ```php
 Schema::table('divisions', function (Blueprint $table) {
@@ -92,7 +92,7 @@ DB::table('divisions')->whereNull('risk_focal_person')->update([
 ]);
 ```
 
-- [ ] **Step 4: Seed CBP module + permissions**
+- [x] **Step 4: Seed CBP module + permissions**
 
 In `CbpModulesAdminService::CORE_MODULES` append:
 
@@ -115,11 +115,11 @@ In `CbpModulesAdminService::CORE_MODULES` append:
 
 Add seeder/artisan one-shot to insert permissions 118–121 and `user_group_permissions` for group 10 on 118+121; default group(s) on 119.
 
-- [ ] **Step 5: Wire Divisions settings API + Vue**
+- [x] **Step 5: Wire Divisions settings API + Vue**
 
 Extend validation/payload with `risk_focal_person` (required integer like `focal_person`). Add staff picker on `DivisionsSettingsPage.vue` labeled “Risk Focal Person”.
 
-- [ ] **Step 6: Re-run tests; commit**
+- [x] **Step 6: Re-run tests; commit**
 
 ```bash
 cd modules/staff-portal/backend && php artisan test --filter=RiskFocalPerson

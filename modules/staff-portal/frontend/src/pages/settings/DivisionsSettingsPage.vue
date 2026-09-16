@@ -25,6 +25,7 @@ type DivForm = {
   is_active: boolean
   division_head: number | null
   focal_person: number | null
+  risk_focal_person: number | null
   finance_officer: number | null
   admin_assistant: number | null
   director_id: number | null
@@ -44,6 +45,7 @@ const emptyForm = (): DivForm => ({
   is_active: true,
   division_head: null,
   focal_person: null,
+  risk_focal_person: null,
   finance_officer: null,
   admin_assistant: null,
   director_id: null,
@@ -133,6 +135,7 @@ function fillForm(row?: DivisionRow | null) {
   form.is_active = !!row.is_active
   form.division_head = row.division_head ?? null
   form.focal_person = row.focal_person ?? null
+  form.risk_focal_person = row.risk_focal_person ?? row.focal_person ?? null
   form.finance_officer = row.finance_officer ?? null
   form.admin_assistant = row.admin_assistant ?? null
   form.director_id = row.director_id ?? null
@@ -144,6 +147,7 @@ function fillForm(row?: DivisionRow | null) {
   form.director_oic_end_date = row.director_oic_end_date ?? ''
   ensureStaffOption(row.division_head, row.division_head_name)
   ensureStaffOption(row.focal_person, row.focal_person_name)
+  ensureStaffOption(row.risk_focal_person ?? row.focal_person, row.risk_focal_person_name ?? row.focal_person_name)
   ensureStaffOption(row.finance_officer, row.finance_officer_name)
   ensureStaffOption(row.admin_assistant, row.admin_assistant_name)
   ensureStaffOption(row.director_id, row.director_name)
@@ -165,6 +169,7 @@ function toPayload(): DivisionFormPayload {
     is_active: form.is_active,
     division_head: form.division_head as number,
     focal_person: form.focal_person as number,
+    risk_focal_person: (form.risk_focal_person ?? form.focal_person) as number,
     finance_officer: form.finance_officer as number,
     admin_assistant: form.admin_assistant as number,
     director_id: form.director_id,
@@ -231,9 +236,9 @@ async function onSave(fromCreatePanel = false) {
     toast.warning('Division name is required.', 'Divisions')
     return
   }
-  if (!form.division_head || !form.focal_person || !form.finance_officer || !form.admin_assistant) {
+  if (!form.division_head || !form.focal_person || !form.risk_focal_person || !form.finance_officer || !form.admin_assistant) {
     toast.warning(
-      'Head, focal person, finance officer and admin assistant are required.',
+      'Head, focal person, risk focal person, finance officer and admin assistant are required.',
       'Divisions',
     )
     return
@@ -503,6 +508,26 @@ onMounted(async () => {
             </v-col>
             <v-col cols="12" md="4">
               <v-autocomplete
+                v-model="form.risk_focal_person"
+                :items="staffOptions"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
+                label="Risk focal person *"
+                placeholder="Search staff…"
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-autocomplete
                 v-model="form.finance_officer"
                 :items="staffOptions"
                 item-title="title"
@@ -745,6 +770,26 @@ onMounted(async () => {
                 item-value="value"
                 :custom-filter="staffFilter"
                 label="Focal person *"
+                placeholder="Search staff…"
+                density="compact"
+                hide-details="auto"
+                clearable
+                auto-select-first
+                class="bg-white"
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :subtitle="item.raw.email || undefined" />
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-autocomplete
+                v-model="form.risk_focal_person"
+                :items="staffOptions"
+                item-title="title"
+                item-value="value"
+                :custom-filter="staffFilter"
+                label="Risk focal person *"
                 placeholder="Search staff…"
                 density="compact"
                 hide-details="auto"

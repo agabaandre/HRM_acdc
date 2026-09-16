@@ -61,6 +61,7 @@ class OrgUnitsSettingsController extends Controller
         $q = DB::table('divisions as d')
             ->leftJoin('staff as head', 'head.staff_id', '=', 'd.division_head')
             ->leftJoin('staff as focal', 'focal.staff_id', '=', 'd.focal_person')
+            ->leftJoin('staff as risk_focal', 'risk_focal.staff_id', '=', 'd.risk_focal_person')
             ->leftJoin('staff as finance', 'finance.staff_id', '=', 'd.finance_officer')
             ->leftJoin('staff as admin', 'admin.staff_id', '=', 'd.admin_assistant')
             ->leftJoin('staff as director', 'director.staff_id', '=', 'd.director_id')
@@ -74,6 +75,8 @@ class OrgUnitsSettingsController extends Controller
                 'head.lname as head_lname',
                 'focal.fname as focal_fname',
                 'focal.lname as focal_lname',
+                'risk_focal.fname as risk_focal_fname',
+                'risk_focal.lname as risk_focal_lname',
                 'finance.fname as finance_fname',
                 'finance.lname as finance_lname',
                 'admin.fname as admin_fname',
@@ -273,6 +276,7 @@ class OrgUnitsSettingsController extends Controller
             'category' => ['required', 'string', Rule::in(['Programs', 'Operations', 'Other'])],
             'division_head' => ['required', 'integer', $staffExists],
             'focal_person' => ['required', 'integer', $staffExists],
+            'risk_focal_person' => ['required', 'integer', $staffExists],
             'finance_officer' => ['required', 'integer', $staffExists],
             'admin_assistant' => ['required', 'integer', $staffExists],
             'director_id' => ['nullable', 'integer', $staffExists],
@@ -299,6 +303,7 @@ class OrgUnitsSettingsController extends Controller
             'category' => $validated['category'],
             'division_head' => (int) $validated['division_head'],
             'focal_person' => (int) $validated['focal_person'],
+            'risk_focal_person' => (int) $validated['risk_focal_person'],
             'finance_officer' => (int) $validated['finance_officer'],
             'admin_assistant' => (int) $validated['admin_assistant'],
             'director_id' => $directorId,
@@ -406,6 +411,10 @@ class OrgUnitsSettingsController extends Controller
             'division_head_name' => $this->staffName($row->head_lname ?? null, $row->head_fname ?? null),
             'focal_person' => $row->focal_person ? (int) $row->focal_person : null,
             'focal_person_name' => $this->staffName($row->focal_lname ?? null, $row->focal_fname ?? null),
+            'risk_focal_person' => isset($row->risk_focal_person) && $row->risk_focal_person
+                ? (int) $row->risk_focal_person
+                : null,
+            'risk_focal_person_name' => $this->staffName($row->risk_focal_lname ?? null, $row->risk_focal_fname ?? null),
             'finance_officer' => $row->finance_officer ? (int) $row->finance_officer : null,
             'finance_officer_name' => $this->staffName($row->finance_lname ?? null, $row->finance_fname ?? null),
             'admin_assistant' => $row->admin_assistant ? (int) $row->admin_assistant : null,
