@@ -77,10 +77,10 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     label: 'Dashboard',
     i18nKey: 'dashboard',
     to: '/dashboard',
-    permission: 76,
-    group: 'more',
+    match: ['/dashboard'],
+    group: 'primary',
     icon: 'fa-solid fa-chart-pie',
-    module: 'dashboard',
+    module: 'risks',
   },
   {
     label: 'Staff',

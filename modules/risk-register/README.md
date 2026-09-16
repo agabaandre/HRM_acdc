@@ -9,11 +9,14 @@ Sibling CBP app at `/staff/risk-register` (Laravel + Vue), SSO-launched from Sta
 | `/staff/risk-register/backend/sso/accept` | CBP SSO accept (staff_sso_jwt) |
 
 See design: `docs/superpowers/specs/2026-09-16-risk-register-design.md`  
-Plan: `docs/superpowers/plans/2026-09-16-risk-register.md`
+Plan: `docs/superpowers/plans/2026-09-16-risk-register.md`  
+Operator setup: `docs/SETUP-risk-register.md`
 
 ## Local
 
 1. Point `backend/.env` `APP_URL` at `http://localhost/staff/risk-register/backend`
 2. Share `JWT_SECRET` with Staff Portal
 3. Ensure root `.htaccess` rewrites `risk-register` like helpdesk
-4. Open from Staff Portal CBP Modules → Risk Register
+4. `php artisan migrate` + `db:seed --class=RiskLookupSeeder` + optional `risk:import-excel`
+5. Build SPA: `cd frontend && npm run build`
+6. Open from Staff Portal CBP Modules → Risk Register

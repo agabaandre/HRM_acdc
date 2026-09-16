@@ -45,6 +45,12 @@ const router = createRouter({
       component: () => import('../pages/risks/WorkflowSettingsPage.vue'),
       meta: { requiresAuth: true, title: 'Approval workflows', module: 'risks' },
     },
+    {
+      path: '/risk-settings',
+      name: 'risk-settings',
+      component: () => import('../pages/risks/RiskSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Risk settings', module: 'risks' },
+    },
     // CI3 CBP home bookmarks (APM / Helpdesk / Finance still link here).
     {
       path: '/home',
@@ -72,8 +78,8 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('../pages/dashboard/DashboardPage.vue'),
-      meta: { requiresAuth: true, permission: 76, title: 'Dashboard', module: 'dashboard' },
+      component: () => import('../pages/risks/RiskDashboardPage.vue'),
+      meta: { requiresAuth: true, title: 'Risk dashboard', module: 'risks' },
     },
     {
       path: '/admin/staff',
