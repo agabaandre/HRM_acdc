@@ -248,7 +248,7 @@ git commit -m "Add risk lookup tables and residual risk calculator."
 - `ExcelRiskImportService::import(string $path): array{imported:int,unmatched:int,owners_defaulted:int}`
 - Import sets `workflow_state=active_imported` (signed-off historical); owners = HOD when division matched
 
-- [ ] **Step 1: Matcher tests**
+- [x] **Step 1: Matcher tests**
 
 ```php
 public function test_parses_phc_chshp(): void
@@ -268,13 +268,13 @@ public function test_parses_phc_chshp(): void
 }
 ```
 
-- [ ] **Step 2: Implement matcher (short_name exact ci → name contains; directorate alias map)**
+- [x] **Step 2: Implement matcher (short_name exact ci → name contains; directorate alias map)**
 
-- [ ] **Step 3: Feature test import inserts ≥1 risk with owner HOD on fixture xlsx subset or full file**
+- [x] **Step 3: Feature test import inserts ≥1 risk with owner HOD on fixture xlsx subset or full file**
 
-- [ ] **Step 4: Implement import using PhpSpreadsheet or XML zip reader (repo may lack PhpSpreadsheet — prefer lightweight sharedStrings parser already used in exploration, or `composer require phpoffice/phpspreadsheet` in risk-register)**
+- [x] **Step 4: Implement import using PhpSpreadsheet or XML zip reader (repo may lack PhpSpreadsheet — prefer lightweight sharedStrings parser already used in exploration, or `composer require phpoffice/phpspreadsheet` in risk-register)**
 
-- [ ] **Step 5: Run `php artisan risk:import-excel` locally; commit**
+- [x] **Step 5: Run `php artisan risk:import-excel` locally; commit**
 
 ```bash
 git commit -m "Import Excel risks with business-unit matching and HOD owners."
