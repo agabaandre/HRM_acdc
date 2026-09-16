@@ -297,15 +297,15 @@ git commit -m "Import Excel risks with business-unit matching and HOD owners."
 - `GET /api/v1/risks/{id}` — full profile + owners + audit
 - `PUT /api/v1/risks/{id}` — manage or focal (pre-signoff) or manage always
 
-- [ ] **Step 1: Feature test create risk writes audit + owners**
+- [x] **Step 1: Feature test create risk writes audit + owners**
 
-- [ ] **Step 2: Implement API + policy**
+- [x] **Step 2: Implement API + policy**
 
-- [ ] **Step 3: Vue list/form with all Sheet 1 fields + multi owner select (staff search via org client)**
+- [x] **Step 3: Vue list/form with all Sheet 1 fields + multi owner select (staff search via org client)**
 
-- [ ] **Step 4: Drill-down shows full info + audit timeline**
+- [x] **Step 4: Drill-down shows full info + audit timeline**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "Add risk CRUD, multi-owners, audit trail, and profile UI."

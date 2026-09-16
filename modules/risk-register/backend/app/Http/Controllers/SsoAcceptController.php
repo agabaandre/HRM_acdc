@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Support\SsoJwt;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -29,7 +30,7 @@ class SsoAcceptController extends Controller
             }
 
             $apiToken = Str::random(64);
-            $request->session()->put('risk_register', [
+            $sessionPayload = [
                 'staff_id' => (int) $payload['staff_id'],
                 'name' => (string) ($payload['name'] ?? ''),
                 'email' => (string) ($payload['email'] ?? $payload['work_email'] ?? ''),
@@ -38,7 +39,10 @@ class SsoAcceptController extends Controller
                 'role_id' => (int) ($payload['role_id'] ?? $payload['role'] ?? 0),
                 'api_token' => $apiToken,
                 'sso_claims' => $payload,
-            ]);
+            ];
+            $request->session()->put('risk_register', $sessionPayload);
+            // SPA sends Bearer token without cookies — resolve auth from cache.
+            Cache::put('risk_api_token:'.$apiToken, $sessionPayload, now()->addHours(12));
 
             $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
             $redirect = '/'.$spaPath.'/';
