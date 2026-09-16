@@ -148,7 +148,7 @@
 
             <!-- Dashboard -->
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle {{ Request::is('approver-dashboard*') || Request::is('budget-execution*') ? 'active' : '' }}"
+                <a class="nav-link dropdown-toggle {{ Request::is('approver-dashboard*') || Request::is('budget-execution*') || Request::is('intramural-sap-budget-execution*') ? 'active' : '' }}"
                     href="#" data-bs-toggle="dropdown" aria-expanded="false">
                     <div class="parent-icon"><i class="fas fa-tachometer-alt"></i></div>
                     <div class="menu-title">Dashboard</div>
@@ -164,6 +164,12 @@
                         <a class="dropdown-item {{ Request::is('budget-execution*') ? 'active' : '' }}"
                             href="{{ route('budget-execution.index') }}" wire:navigate>
                             <i class="fas fa-chart-pie me-1"></i> Budget execution
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('intramural-sap-budget-execution*') ? 'active' : '' }}"
+                            href="{{ route('intramural-sap-budget-execution.index') }}" wire:navigate>
+                            <i class="fas fa-coins me-1"></i> Intramural SAP Budget Execution
                         </a>
                     </li>
                 </ul>

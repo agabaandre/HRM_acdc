@@ -62,6 +62,9 @@ Route::get('/help/approvers-guide', [App\Http\Controllers\HelpController::class,
 Route::get('/documentation', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation');
 Route::get('/documentation/{file}', [App\Http\Controllers\HelpController::class, 'documentation'])->name('help.documentation.file')->where('file', '[a-zA-Z0-9_-]+\.md');
 
+Route::get('/locale/catalog', [App\Http\Controllers\LocaleController::class, 'catalog'])->name('locale.catalog');
+Route::post('/locale', [App\Http\Controllers\LocaleController::class, 'apply'])->name('locale.apply');
+
 // Public document signature verification (QR on printed PDFs — no login required)
 Route::get('/signature-verify/{type}/{id}', [App\Http\Controllers\SignatureVerificationController::class, 'showDocument'])
     ->name('signature-verify.document')
@@ -648,6 +651,10 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('budget-execution/data', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'data'])->name('budget-execution.data');
     Route::get('budget-execution/export/excel', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'exportExcel'])->name('budget-execution.export.excel');
     Route::get('budget-execution/export/pdf', [App\Http\Controllers\BudgetExecutionDashboardController::class, 'exportPdf'])->name('budget-execution.export.pdf');
+
+    Route::get('intramural-sap-budget-execution', [App\Http\Controllers\IntramuralSapBudgetExecutionController::class, 'index'])->name('intramural-sap-budget-execution.index');
+    Route::get('intramural-sap-budget-execution/data', [App\Http\Controllers\IntramuralSapBudgetExecutionController::class, 'data'])->name('intramural-sap-budget-execution.data');
+    Route::get('intramural-sap-budget-execution/{fundCode}/documents', [App\Http\Controllers\IntramuralSapBudgetExecutionController::class, 'documents'])->name('intramural-sap-budget-execution.documents')->whereNumber('fundCode');
 
     // Generic Approval Routes
     Route::post('/approve/{model}/{id}', [GenericApprovalController::class, 'updateStatus'])->name('generic.approve');
