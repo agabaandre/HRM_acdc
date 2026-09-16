@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Services\RiskSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MeController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, RiskSettingsService $settings): JsonResponse
     {
+        $importEnabled = $settings->importEnabled();
+
         return response()->json([
             'data' => [
                 'id' => (int) $request->attributes->get('risk_staff_id'),
@@ -26,6 +29,12 @@ class MeController extends Controller
                 'enabled_modules' => [
                     'risks' => true,
                     'dashboard' => true,
+                    'import' => $importEnabled,
+                    'reference' => true,
+                    'settings' => true,
+                ],
+                'settings' => [
+                    'import_enabled' => $importEnabled,
                 ],
             ],
         ]);
