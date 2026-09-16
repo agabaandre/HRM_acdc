@@ -1,0 +1,27 @@
+.DS_Store
+**/.DS_Store
+/.npm-cache
+/node_modules
+/setup.env
+/backend/.composer-cache
+/backend/vendor
+/backend/.env
+/backend/.env.backup
+/backend/.phpunit.result.cache
+/backend/storage/*.key
+/backend/storage/pail
+/backend/public/storage
+/backend/public/hot
+/backend/public/build
+/frontend/dist
+/frontend/dist-build
+/frontend/node_modules
+/frontend/.npm-cache
+/frontend/.env.production.local
+# Published Vite output at staff-portal root (scripts/publish-spa.sh)
+/assets
+/public-spa
+/index.html
+/maps
+*.log
+Thumbs.db

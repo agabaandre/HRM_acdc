@@ -18,8 +18,8 @@ Options -Indexes
     # Slash redirect must stay on /staff/{app}/ (never expose modules/)
     # Do not use [END] — each app’s .htaccess must still run.
     # ------------------------------------------------------------------
-    RewriteRule ^(apm|finance|helpdesk)$ /staff/$1/ [R=301,L]
-    RewriteRule ^(apm|finance|helpdesk)/(.*)$ modules/$1/$2 [L]
+    RewriteRule ^(apm|finance|helpdesk|risk-register)$ /staff/$1/ [R=301,L]
+    RewriteRule ^(apm|finance|helpdesk|risk-register)/(.*)$ modules/$1/$2 [L]
     RewriteRule ^backend/?$ modules/staff-portal/backend/ [L]
     RewriteRule ^backend/(.*)$ modules/staff-portal/backend/$1 [L]
 
