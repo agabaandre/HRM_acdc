@@ -20,6 +20,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/risks/{id}', [RiskController::class, 'show'])->whereNumber('id');
         Route::put('/risks/{id}', [RiskController::class, 'update'])->whereNumber('id');
         Route::post('/risks/{id}/submit', [RiskWorkflowController::class, 'submit'])->whereNumber('id');
+        Route::post('/risks/{id}/reviews', [\App\Http\Controllers\Api\V1\RiskReviewController::class, 'store'])->whereNumber('id');
+        Route::get('/risks/{id}/trends', [\App\Http\Controllers\Api\V1\RiskReviewController::class, 'trends'])->whereNumber('id');
+        Route::get('/dashboard/summary', [\App\Http\Controllers\Api\V1\RiskDashboardController::class, '__invoke']);
         Route::get('/my-approvals', [RiskWorkflowController::class, 'myApprovals']);
         Route::post('/approvals/{approvalId}/approve', [RiskWorkflowController::class, 'approve'])->whereNumber('approvalId');
         Route::post('/approvals/{approvalId}/request-feedback', [RiskWorkflowController::class, 'requestFeedback'])->whereNumber('approvalId');

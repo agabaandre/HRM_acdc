@@ -352,13 +352,13 @@ git commit -m "Add configurable risk approval workflow and feedback requests."
 - `POST /api/v1/risks/{id}/reviews` body: `{year, quarter, likelihood_id, impact_id, mitigation_strategy, timeline?}`
 - `GET /api/v1/risks/{id}/trends` → `{quarters: [...], annual: [...]}`
 
-- [ ] **Step 1: Test timeline defaults to previous**
+- [x] **Step 1: Test timeline defaults to previous**
 
-- [ ] **Step 2: Implement service + endpoints**
+- [x] **Step 2: Implement service + endpoints**
 
-- [ ] **Step 3: UI quarterly form + Highcharts trends on drill-down**
+- [x] **Step 3: UI quarterly form + Highcharts trends on drill-down**
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Add quarterly risk reviews and trend charts."
@@ -376,15 +376,15 @@ git commit -m "Add quarterly risk reviews and trend charts."
 - Import report page (last import stats from cache/table `rr_import_runs`)
 - Update `docs/SETUP.md`, `modules/risk-register/README.md`, root `setup.sh` optional risk-register env upsert
 
-- [ ] **Step 1: Feature test dashboard KPI totals match seeded risks**
+- [x] **Step 1: Feature test dashboard KPI totals match seeded risks**
 
-- [ ] **Step 2: Implement aggregations (inherent/residual bands, by type, by BU, heat map matrix, top 10 residual, status counts)**
+- [x] **Step 2: Implement aggregations (inherent/residual bands, by type, by BU, heat map matrix, top 10 residual, status counts)**
 
-- [ ] **Step 3: Vue dashboard with Highcharts `credits: { enabled: false }`**
+- [x] **Step 3: Vue dashboard with Highcharts `credits: { enabled: false }`**
 
-- [ ] **Step 4: Settings + org mirror + docs**
+- [x] **Step 4: Settings + org mirror + docs**
 
-- [ ] **Step 5: Commit + push if requested**
+- [x] **Step 5: Commit + push if requested**
 
 ```bash
 git commit -m "Add risk dashboard, settings, org mirror, and setup docs."

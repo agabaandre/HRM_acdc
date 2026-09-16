@@ -16,6 +16,15 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const audit = ref<Array<{ id: number; action: string; actor_staff_id: number | null; created_at: string }>>([])
 const ownersText = ref('')
+const trendLabel = ref('')
+const review = ref({
+  year: new Date().getFullYear(),
+  quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+  likelihood: 3,
+  impact: 3,
+  mitigation_strategy: '',
+  timeline: '',
+})
 
 const form = ref({
   name: '',
@@ -111,6 +120,28 @@ async function submitWorkflow() {
     error.value = apiErrorMessage(e, 'Submit failed')
   }
 }
+
+async function saveReview() {
+  try {
+    const payload: Record<string, unknown> = {
+      year: review.value.year,
+      quarter: review.value.quarter,
+      likelihood: review.value.likelihood,
+      impact: review.value.impact,
+      mitigation_strategy: review.value.mitigation_strategy,
+    }
+    if (review.value.timeline.trim() !== '') {
+      payload.timeline = review.value.timeline
+    }
+    await api.post(`/api/v1/risks/${riskId.value}/reviews`, payload)
+    const { data } = await api.get<{ quarters: Array<{ year: number; quarter: number; inherent_score: number }>; annual: Array<{ year: number; avg_score: number }> }>(
+      `/api/v1/risks/${riskId.value}/trends`
+    )
+    trendLabel.value = `Quarters: ${data.quarters.map((q) => `Q${q.quarter} ${q.year}=${q.inherent_score}`).join(', ')} · Annual: ${data.annual.map((a) => `${a.year}=${a.avg_score}`).join(', ')}`
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Review save failed')
+  }
+}
 </script>
 
 <template>
@@ -185,6 +216,20 @@ async function submitWorkflow() {
       </div>
     </form>
 
+    <section v-if="!isNew" class="rr-review">
+      <h2>Quarterly review</h2>
+      <div class="rr-grid">
+        <label>Year<input v-model.number="review.year" type="number" /></label>
+        <label>Quarter<select v-model.number="review.quarter"><option :value="1">Q1</option><option :value="2">Q2</option><option :value="3">Q3</option><option :value="4">Q4</option></select></label>
+        <label>Likelihood<input v-model.number="review.likelihood" type="number" min="1" max="5" /></label>
+        <label>Impact<input v-model.number="review.impact" type="number" min="1" max="5" /></label>
+      </div>
+      <label>Mitigation strategy<textarea v-model="review.mitigation_strategy" rows="2" /></label>
+      <label>Timeline (defaults to previous)<input v-model="review.timeline" /></label>
+      <button type="button" class="rr-btn rr-btn--primary" @click="saveReview">Save review</button>
+      <p v-if="trendLabel" class="rr-muted">{{ trendLabel }}</p>
+    </section>
+
     <section v-if="!isNew && audit.length" class="rr-audit">
       <h2>Audit trail</h2>
       <ul>
@@ -214,6 +259,9 @@ async function submitWorkflow() {
 .rr-actions { margin-top: 0.5rem; }
 .rr-btn { border: 1px solid #c5ced8; background: #fff; border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer; font-weight: 600; }
 .rr-audit { margin-top: 1.5rem; }
+.rr-review { margin-top: 1.5rem; background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem; display: grid; gap: 0.75rem; }
+.rr-review label { display: grid; gap: 0.3rem; font-weight: 600; font-size: 0.9rem; }
+.rr-review input, .rr-review select, .rr-review textarea { font: inherit; font-weight: 400; padding: 0.4rem 0.5rem; border: 1px solid #c5ced8; border-radius: 6px; }
 .rr-audit ul { list-style: none; padding: 0; }
 .rr-audit li { padding: 0.4rem 0; border-bottom: 1px solid #e8edf2; }
 .rr-muted { color: #6a7a8a; }
