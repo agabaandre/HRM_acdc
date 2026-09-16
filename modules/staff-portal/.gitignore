@@ -15,6 +15,7 @@
 /backend/public/build
 /frontend/dist
 /frontend/dist-build
+/frontend/dist-user
 /frontend/node_modules
 /frontend/.npm-cache
 /frontend/.env.production.local

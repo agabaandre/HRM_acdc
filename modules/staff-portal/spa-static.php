@@ -55,9 +55,11 @@ if ($asset !== '') {
         exit;
     }
     foreach ([
+        // Prefer latest local build when root-owned publish dirs cannot be updated.
+        $dir.'/frontend/dist-user/assets/'.$asset,
+        $dir.'/frontend/dist-build/assets/'.$asset,
         $dir.'/assets/'.$asset,
         $dir.'/public-spa/assets/'.$asset,
-        $dir.'/frontend/dist-build/assets/'.$asset,
     ] as $candidate) {
         if (is_file($candidate)) {
             $send($candidate);
@@ -72,9 +74,10 @@ if ($asset !== '') {
 
 // SPA index for client routes
 foreach ([
+    $dir.'/frontend/dist-user/index.html',
+    $dir.'/frontend/dist-build/index.html',
     $dir.'/index.html',
     $dir.'/public-spa/index.html',
-    $dir.'/frontend/dist-build/index.html',
 ] as $index) {
     if (is_file($index)) {
         $send($index);

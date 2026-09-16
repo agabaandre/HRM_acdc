@@ -4,15 +4,31 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DIST="${1:-$ROOT/frontend/dist-build}"
+DIST="${1:-}"
+
+if [[ -z "$DIST" ]]; then
+  if [[ -f "$ROOT/frontend/dist-build/index.html" ]]; then
+    DIST="$ROOT/frontend/dist-build"
+  elif [[ -f "$ROOT/frontend/dist-user/index.html" ]]; then
+    DIST="$ROOT/frontend/dist-user"
+  else
+    DIST="$ROOT/frontend/dist-build"
+  fi
+fi
 
 if [[ ! -f "$DIST/index.html" || ! -d "$DIST/assets" ]]; then
   echo "error: missing $DIST/index.html or $DIST/assets — run: cd frontend && npm run build" >&2
+  echo "hint: if dist-build is root-owned, use: npx vite build --outDir dist-user && $0 frontend/dist-user" >&2
   exit 1
 fi
 
 echo "==> Removing old published SPA files (including broken symlinks)"
-rm -rf "$ROOT/assets" "$ROOT/public-spa" "$ROOT/maps"
+if ! rm -rf "$ROOT/assets" "$ROOT/public-spa" "$ROOT/maps" 2>/dev/null; then
+  echo "warning: could not clear root-owned publish dirs; spa-static.php will prefer frontend/dist-user" >&2
+  cp -f "$DIST/index.html" "$ROOT/index.html" 2>/dev/null || true
+  echo "==> Partial publish: index.html updated; assets served from $DIST via spa-static.php"
+  exit 0
+fi
 # Old mistaken symlink targets
 [[ -L "$ROOT/index.html" ]] && rm -f "$ROOT/index.html"
 
