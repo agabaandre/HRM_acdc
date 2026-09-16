@@ -135,14 +135,12 @@ class SapExportParserTest extends TestCase
     /** @param list<list<string>> $matrix */
     private function makeSapFixture(array $matrix): string
     {
-        // Minimal OOXML builder (copy pattern from ExcelRiskImportTest::makeFixtureXlsx)
-        // Ensure header row uses exact SAP names.
-        throw new \RuntimeException('copy makeFixtureXlsx from ExcelRiskImportTest');
+        return $this->makeMinimalXlsx($matrix, 'Sheet1');
     }
 }
 ```
 
-Copy `makeFixtureXlsx` from `modules/finance/backend/tests/Feature/ExcelRiskImportTest.php` into this test (or a shared trait) so the test is runnable.
+Extract `makeFixtureXlsx` / `colLetters` from `modules/finance/backend/tests/Feature/ExcelRiskImportTest.php` into `modules/finance/backend/tests/Support/BuildsMinimalXlsx.php` as a trait with signature `makeMinimalXlsx(array $matrix, string $sheetName = 'Sheet1'): string` (workbook sheet name must be `Sheet1` for SAP). Use the trait in both `ExcelRiskImportTest` and `SapExportParserTest`.
 
 - [ ] **Step 3: Run test — expect FAIL**
 
