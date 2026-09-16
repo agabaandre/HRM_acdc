@@ -327,13 +327,13 @@ git commit -m "Add risk CRUD, multi-owners, audit trail, and profile UI."
 - `requestFeedback(int $approvalId, int $actorStaffId, array $recipientStaffIds, string $message): void` — throws if any recipient not strictly below actor step order
 - `eligibleFeedbackRecipients(int $approvalId): list<array{staff_id:int,name:string,level:int}>`
 
-- [ ] **Step 1: Unit/feature tests — director skipped when no director; feedback rejects peer/higher; approve advances; final step sets signed_off**
+- [x] **Step 1: Unit/feature tests — director skipped when no director; feedback rejects peer/higher; approve advances; final step sets signed_off**
 
-- [ ] **Step 2: Implement service + API**
+- [x] **Step 2: Implement service + API**
 
-- [ ] **Step 3: Workflow admin UI per division; My Approvals actions**
+- [x] **Step 3: Workflow admin UI per division; My Approvals actions**
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Add configurable risk approval workflow and feedback requests."

@@ -33,6 +33,18 @@ const router = createRouter({
       component: () => import('../pages/risks/RiskShowPage.vue'),
       meta: { requiresAuth: true, title: 'Risk detail', module: 'risks' },
     },
+    {
+      path: '/approvals',
+      name: 'my-approvals',
+      component: () => import('../pages/risks/MyApprovalsPage.vue'),
+      meta: { requiresAuth: true, title: 'My approvals', module: 'risks' },
+    },
+    {
+      path: '/workflows',
+      name: 'workflows',
+      component: () => import('../pages/risks/WorkflowSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Approval workflows', module: 'risks' },
+    },
     // CI3 CBP home bookmarks (APM / Helpdesk / Finance still link here).
     {
       path: '/home',

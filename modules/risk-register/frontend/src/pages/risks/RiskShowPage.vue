@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { createRisk, fetchLookups, fetchRisk, updateRisk, type RiskLookups, type RiskRow } from '@/lib/riskApi'
+import { api } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,6 +101,16 @@ async function save() {
     saving.value = false
   }
 }
+
+async function submitWorkflow() {
+  try {
+    await api.post(`/api/v1/risks/${riskId.value}/submit`)
+    const detail = await fetchRisk(riskId.value)
+    applyRisk(detail.data)
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Submit failed')
+  }
+}
 </script>
 
 <template>
@@ -169,6 +180,9 @@ async function save() {
       </div>
       <label>Action update<textarea v-model="form.action_update" rows="2" /></label>
       <label>OIO verification notes<textarea v-model="form.oio_verification_notes" rows="2" /></label>
+      <div v-if="!isNew" class="rr-actions">
+        <button type="button" class="rr-btn" @click="submitWorkflow">Submit for approval</button>
+      </div>
     </form>
 
     <section v-if="!isNew && audit.length" class="rr-audit">
@@ -197,6 +211,8 @@ async function save() {
 .rr-form input, .rr-form select, .rr-form textarea { font: inherit; font-weight: 400; padding: 0.45rem 0.55rem; border: 1px solid #c5ced8; border-radius: 6px; }
 .rr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
 .rr-preview { align-self: end; padding-bottom: 0.4rem; color: #445; }
+.rr-actions { margin-top: 0.5rem; }
+.rr-btn { border: 1px solid #c5ced8; background: #fff; border-radius: 6px; padding: 0.45rem 0.85rem; cursor: pointer; font-weight: 600; }
 .rr-audit { margin-top: 1.5rem; }
 .rr-audit ul { list-style: none; padding: 0; }
 .rr-audit li { padding: 0.4rem 0; border-bottom: 1px solid #e8edf2; }

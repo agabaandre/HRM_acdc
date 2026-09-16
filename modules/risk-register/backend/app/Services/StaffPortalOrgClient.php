@@ -113,6 +113,9 @@ class StaffPortalOrgClient
                 'risk_focal_person' => isset($row['risk_focal_person']) && $row['risk_focal_person'] !== '' && $row['risk_focal_person'] !== null
                     ? (int) $row['risk_focal_person']
                     : null,
+                'director_id' => isset($row['director_id']) && $row['director_id'] !== '' && $row['director_id'] !== null
+                    ? (int) $row['director_id']
+                    : null,
             ];
         }
 
