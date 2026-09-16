@@ -20,13 +20,21 @@ class SsoAcceptController extends Controller
     {
         $jwt = trim((string) $request->input('staff_sso_jwt', ''));
         if ($jwt === '') {
-            return response()->json(['message' => 'staff_sso_jwt is required.'], 422);
+            if ($request->expectsJson() || $request->isJson()) {
+                return response()->json(['message' => 'staff_sso_jwt is required.'], 422);
+            }
+
+            return $this->redirectAccessError('missing_token');
         }
 
         try {
             $payload = SsoJwt::decode($jwt);
             if (! is_array($payload) || empty($payload['staff_id'])) {
-                return response()->json(['message' => 'Invalid SSO token.'], 401);
+                if ($request->expectsJson() || $request->isJson()) {
+                    return response()->json(['message' => 'Invalid SSO token.'], 401);
+                }
+
+                return $this->redirectAccessError('invalid_token');
             }
 
             $apiToken = Str::random(64);
@@ -41,7 +49,6 @@ class SsoAcceptController extends Controller
                 'sso_claims' => $payload,
             ];
             $request->session()->put('risk_register', $sessionPayload);
-            // SPA sends Bearer token without cookies — resolve auth from cache.
             Cache::put('risk_api_token:'.$apiToken, $sessionPayload, now()->addHours(12));
 
             $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
@@ -58,19 +65,17 @@ class SsoAcceptController extends Controller
         } catch (Throwable $e) {
             Log::warning('Risk Register SSO accept failed', ['error' => $e->getMessage()]);
 
-            return $this->redirectStaffHome('unauthorized');
+            return $this->redirectAccessError('unauthorized');
         }
     }
 
-    private function redirectStaffHome(string $reason): RedirectResponse
+    private function redirectAccessError(string $reason): RedirectResponse
     {
-        $host = request()->getHost();
-        $scheme = request()->getScheme();
-        if ($host !== '' && (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1'))) {
-            return redirect($scheme.'://'.$host.'/staff/?risk_error=sso&risk_error_reason='.urlencode($reason));
-        }
-        $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
+        $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
+        $host = request()->getHost() ?: 'localhost';
+        $scheme = request()->getScheme() ?: 'http';
+        $url = $scheme.'://'.$host.'/'.$spaPath.'/access-error?reason='.rawurlencode($reason);
 
-        return redirect()->away($base.'/?risk_error=sso&risk_error_reason='.urlencode($reason));
+        return redirect()->away($url);
     }
 }

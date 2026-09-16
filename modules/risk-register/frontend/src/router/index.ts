@@ -11,6 +11,12 @@ const router = createRouter({
       component: () => import('../pages/LoginPage.vue'),
       meta: { guest: true, chrome: false },
     },
+    {
+      path: '/access-error',
+      name: 'access-error',
+      component: () => import('../pages/risks/RiskAccessErrorPage.vue'),
+      meta: { guest: true, chrome: false, title: 'Access error' },
+    },
     { path: '/', name: 'home', redirect: { name: 'risks' } },
     { path: '/home', redirect: { name: 'risks' } },
     { path: '/home/index', redirect: { name: 'risks' } },

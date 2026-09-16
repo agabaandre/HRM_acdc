@@ -13,6 +13,7 @@ const modules = ref<CbpModuleLink[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const query = ref('')
+const launchError = ref<string | null>(null)
 
 const staffBase = computed(() => {
   if (typeof window !== 'undefined') {
@@ -24,6 +25,23 @@ const staffBase = computed(() => {
 const bgUrl = computed(() => `${staffBase.value}/assets/images/bg_login.jpg`)
 const apmBase = computed(() => `${staffBase.value}/apm`)
 
+function describeLaunchError(code: string, reason: string): string {
+  const r = reason || code
+  if (code === 'sso' || code === 'risk_error') {
+    if (r === 'unauthorized') {
+      return 'Risk Register SSO failed: launch token was rejected. Check JWT_SECRET and permission 118, then try CBP Modules → Risk Register again.'
+    }
+    if (r === 'post_required') {
+      return 'Risk Register must be opened from CBP Modules (SSO POST), not by opening the accept URL directly.'
+    }
+    if (r === 'missing_token' || r === 'invalid_token') {
+      return `Risk Register SSO failed (${r}). Launch again from CBP Modules.`
+    }
+    return `Risk Register could not open (${r || 'unknown error'}).`
+  }
+  return `Module launch error: ${r || code}`
+}
+
 function onModuleClick(mod: CbpModuleLink, e: Event) {
   if (!mod.sso_launch) return
   e.preventDefault()
@@ -34,6 +52,19 @@ function onModuleClick(mod: CbpModuleLink, e: Event) {
 }
 
 onMounted(async () => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    const riskErr = params.get('risk_error')
+    const reason = params.get('risk_error_reason') || ''
+    if (riskErr) {
+      launchError.value = describeLaunchError(riskErr, reason)
+      params.delete('risk_error')
+      params.delete('risk_error_reason')
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`
+      window.history.replaceState({}, '', next)
+    }
+  }
+
   loading.value = true
   error.value = null
   try {
@@ -53,6 +84,11 @@ onMounted(async () => {
       <div class="cbp-home-shell-inner">
         <div class="cbp-home">
           <h1 class="cbp-home-title">{{ locale.t('home.welcome', 'Welcome to Africa CDC Central Business Platform') }}</h1>
+
+          <div v-if="launchError" class="cbp-home-alert" role="alert">
+            <strong>Could not open module</strong>
+            <p>{{ launchError }}</p>
+          </div>
 
           <div class="cbp-home-search">
             <label for="cbpHomeModuleSearch" class="visually-hidden">{{ locale.t('home.search_modules', 'Search modules') }}</label>
@@ -148,6 +184,26 @@ onMounted(async () => {
   color: var(--cbp-text-dark);
   margin: 0 0 1.5rem;
   line-height: 1.3;
+}
+
+.cbp-home-alert {
+  max-width: 36rem;
+  margin: 0 auto 1.25rem;
+  padding: 0.85rem 1rem;
+  background: #fff8e6;
+  border: 1px solid #f0d78c;
+  border-radius: 8px;
+  color: #5c4813;
+  text-align: left;
+}
+.cbp-home-alert strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+.cbp-home-alert p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .cbp-home-search {

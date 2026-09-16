@@ -9,9 +9,12 @@ Route::post('/sso/accept', SsoAcceptController::class)
     ->name('sso.accept');
 
 Route::get('/sso/accept', function () {
-    $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
+    $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
+    $host = request()->getHost();
+    $scheme = request()->getScheme() ?: 'http';
+    $url = $scheme.'://'.$host.'/'.$spaPath.'/access-error?reason=post_required';
 
-    return redirect()->away($base.'/?risk_error=sso&risk_error_reason=post_required');
+    return redirect()->away($url);
 })->name('sso.accept.get');
 
 /*

@@ -1,31 +1,24 @@
 <IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
     RewriteEngine On
 
     # Laravel API / SSO under …/risk-register/backend/*
-    RewriteRule ^backend(?:/|$) - [L]
+    RewriteRule ^backend(/|$) - [L]
 
-    # Already the SPA front controller
-    RewriteRule ^spa-static\.php$ - [L]
-
-    # Hashed Vite assets
-    RewriteRule ^assets/([^/]+)$ spa-static.php?f=$1 [L,QSA]
-
+    # Real files at module root (README, etc.) — not directories
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    RewriteRule ^maps/([^/]+)$ public-spa/maps/$1 [L]
+    # Vite hashed assets from dist-build
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
-    # Vue Router → spa-static.php
+    # SPA fallback
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ spa-static.php [L,QSA]
-</IfModule>
-
-<IfModule mod_mime.c>
-    AddType text/css .css
-    AddType application/javascript .js
-    AddType application/javascript .mjs
-    AddType image/svg+xml .svg
-    AddType font/woff2 .woff2
+    RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>
 
 ServerSignature Off
