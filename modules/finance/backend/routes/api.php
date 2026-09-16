@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\RiskLookupsController;
 use App\Http\Controllers\Api\V1\RiskReviewController;
 use App\Http\Controllers\Api\V1\RiskSettingsController;
 use App\Http\Controllers\Api\V1\RiskWorkflowController;
+use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\SapImportController;
 use App\Http\Middleware\AuthenticateRiskSession;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/sap/import', [SapImportController::class, 'store']);
         Route::get('/sap/imports/latest', [SapImportController::class, 'latest']);
         Route::post('/sap/imports/{id}/retry-sync', [SapImportController::class, 'retrySync'])->whereNumber('id');
+
+        Route::get('/portfolio/summary', [PortfolioController::class, 'summary']);
+        Route::get('/portfolio/sections/{section}', [PortfolioController::class, 'section']);
+        Route::put('/portfolio/sections/{section}', [PortfolioController::class, 'replaceSection']);
 
         Route::get('/risks', [RiskController::class, 'index']);
         Route::post('/risks', [RiskController::class, 'store']);
