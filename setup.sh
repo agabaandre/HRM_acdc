@@ -14,6 +14,8 @@ fi
 source "$ROOT/scripts/setup/env-upsert.sh"
 # shellcheck source=scripts/setup/prompt.sh
 source "$ROOT/scripts/setup/prompt.sh"
+# shellcheck source=scripts/setup/secrets.sh
+source "$ROOT/scripts/setup/secrets.sh"
 # shellcheck source=scripts/setup/map-urls.sh
 source "$ROOT/scripts/setup/map-urls.sh"
 # shellcheck source=scripts/setup/update-htaccess.sh
@@ -114,14 +116,45 @@ echo "    Uploads root: ${STAFF_PORTAL_UPLOADS_ROOT}"
 echo "    Data root:    ${STAFF_DATA_ROOT}"
 
 JWT_DEFAULT="$(env_get "$ROOT_ENV" JWT_SECRET)"
-if [[ -z "$JWT_DEFAULT" && "$INSTALL_TYPE" == "1" ]]; then
-  JWT_DEFAULT="$(openssl rand -hex 32 2>/dev/null || true)"
+if setup_secret_is_placeholder "$JWT_DEFAULT"; then
+  JWT_DEFAULT="$(setup_rand_hex 32)"
 fi
 prompt_secret JWT_SECRET "JWT_SECRET (shared SSO)" "$JWT_DEFAULT"
+if setup_secret_is_placeholder "${JWT_SECRET:-}"; then
+  JWT_SECRET="$(setup_rand_hex 32)"
+  echo "    generated JWT_SECRET (was empty)"
+fi
+
+SESSION_SECRET_DEFAULT="$(env_get "$ROOT_ENV" SESSION_SECRET)"
+if setup_secret_is_placeholder "$SESSION_SECRET_DEFAULT"; then
+  SESSION_SECRET_DEFAULT="$(setup_rand_hex 32)"
+fi
+prompt_secret SESSION_SECRET "SESSION_SECRET (shared session signing)" "$SESSION_SECRET_DEFAULT"
+if setup_secret_is_placeholder "${SESSION_SECRET:-}"; then
+  SESSION_SECRET="$(setup_rand_hex 32)"
+  echo "    generated SESSION_SECRET (was empty)"
+fi
 
 prompt_value STAFF_API_USERNAME "STAFF_API_USERNAME" "$(env_get "$ROOT_ENV" STAFF_API_USERNAME)"
-prompt_secret STAFF_API_PASSWORD "STAFF_API_PASSWORD" "$(env_get "$ROOT_ENV" STAFF_API_PASSWORD)"
-prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN" "$(env_get "$ROOT_ENV" STAFF_API_TOKEN)"
+_api_pw_def="$(env_get "$ROOT_ENV" STAFF_API_PASSWORD)"
+if setup_secret_is_placeholder "$_api_pw_def" && [[ "$INSTALL_TYPE" == "1" ]]; then
+  _api_pw_def="$(setup_rand_hex 24)"
+fi
+prompt_secret STAFF_API_PASSWORD "STAFF_API_PASSWORD" "$_api_pw_def"
+if setup_secret_is_placeholder "${STAFF_API_PASSWORD:-}" && [[ "$INSTALL_TYPE" == "1" ]]; then
+  STAFF_API_PASSWORD="$(setup_rand_hex 24)"
+  echo "    generated STAFF_API_PASSWORD (was empty)"
+fi
+
+_api_tok_def="$(env_get "$ROOT_ENV" STAFF_API_TOKEN)"
+if setup_secret_is_placeholder "$_api_tok_def" && [[ "$INSTALL_TYPE" == "1" ]]; then
+  _api_tok_def="$(setup_rand_hex 32)"
+fi
+prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN" "$_api_tok_def"
+if setup_secret_is_placeholder "${STAFF_API_TOKEN:-}" && [[ "$INSTALL_TYPE" == "1" ]]; then
+  STAFF_API_TOKEN="$(setup_rand_hex 32)"
+  echo "    generated STAFF_API_TOKEN (was empty)"
+fi
 
 # --- Microsoft Entra SSO (portal + APM) and SPA password login ---
 echo
@@ -184,9 +217,11 @@ esac
 echo "    MAIL_TRANSPORT=$MAIL_TRANSPORT"
 
 _mail_from_def="$(env_get "$ROOT_ENV" MAIL_FROM_ADDRESS)"
-prompt_value MAIL_FROM_ADDRESS_SHARED "Shared send-as email (MAIL_FROM_ADDRESS)" \
-  "${_mail_from_def:-notifications@africacdc.org}"
-MAIL_FROM_ADDRESS_SHARED="${MAIL_FROM_ADDRESS_SHARED:-notifications@africacdc.org}"
+# Do not ship a public default address — operator must enter notifications email.
+prompt_required_email MAIL_FROM_ADDRESS_SHARED \
+  "Notifications / send-as email (MAIL_FROM_ADDRESS)" \
+  "$_mail_from_def"
+echo "    MAIL_FROM_ADDRESS=$MAIL_FROM_ADDRESS_SHARED"
 
 # Exchange Graph creds — needed for Exchange outbound and helpdesk mailbox intake
 EXCHANGE_FROM_MS=0
@@ -301,6 +336,7 @@ env_set "$ROOT_ENV" STAFF_DATA_ROOT "$STAFF_DATA_ROOT"
 env_set "$ROOT_ENV" STAFF_USE_HOST_STORAGE "true"
 env_set "$ROOT_ENV" STAFF_PORTAL_UPLOADS_ROOT "$STAFF_PORTAL_UPLOADS_ROOT"
 env_set "$ROOT_ENV" JWT_SECRET "$JWT_SECRET"
+env_set "$ROOT_ENV" SESSION_SECRET "${SESSION_SECRET:-}"
 env_set "$ROOT_ENV" STAFF_API_USERNAME "$STAFF_API_USERNAME"
 env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
 env_set "$ROOT_ENV" STAFF_API_TOKEN "$STAFF_API_TOKEN"
@@ -612,6 +648,7 @@ write_finance_env() {
     env_set "$f" VITE_APP_BASE_PATH "$VITE_FINANCE_BASE_PATH" || return 1
     env_set "$f" SESSION_PATH "$FINANCE_SESSION_PATH" || return 1
     env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
+    env_set "$f" SESSION_SECRET "${SESSION_SECRET:-}" || return 1
     env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
     env_set "$f" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" || return 1
     env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1

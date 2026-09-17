@@ -134,7 +134,15 @@ helpdesk_validate_staff_api_env "$BACKEND_ENV" "$STAFF_ROOT" || die "Staff Share
 
 jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
-    die "JWT_SECRET is not set. Add it to setup.env or ensure $STAFF_ROOT/.env has JWT_SECRET (must match Staff portal)."
+    if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$STAFF_ROOT/scripts/setup/secrets.sh"
+        jwt="$(dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$BACKEND_ENV" JWT_SECRET)"
+        dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$BACKEND_ENV" SESSION_SECRET >/dev/null || true
+    fi
+fi
+if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
+    die "JWT_SECRET is not set and could not be generated. Check openssl and write access to $BACKEND_ENV."
 fi
 
 if [[ "${DB_CONNECTION:-mysql}" == "mysql" ]]; then

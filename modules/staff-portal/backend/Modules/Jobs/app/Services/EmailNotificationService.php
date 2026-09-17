@@ -105,15 +105,14 @@ class EmailNotificationService
     }
 
     /**
-     * MAIL_FROM / notifications@ must not be used as the audit BCC.
+     * Configured MAIL_FROM must not be used as the audit BCC.
      */
     public function isFromAddressNotAuditBcc(string $email): bool
     {
         $email = strtolower(trim($email));
         $from = strtolower(trim((string) (config('mail.from.address') ?: env('MAIL_FROM_ADDRESS', ''))));
 
-        return $email === 'notifications@africacdc.org'
-            || ($from !== '' && $email === $from);
+        return $from !== '' && $email === $from;
     }
 
     public function purgeTestRecipients(): void

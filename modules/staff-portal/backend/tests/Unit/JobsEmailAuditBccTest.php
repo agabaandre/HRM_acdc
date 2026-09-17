@@ -13,7 +13,7 @@ class JobsEmailAuditBccTest extends TestCase
     {
         config([
             'jobs.schedule.system_email' => 'registry@africacdc.org',
-            'mail.from.address' => 'notifications@africacdc.org',
+            'mail.from.address' => 'noreply@example.org',
         ]);
 
         $svc = app(EmailNotificationService::class);
@@ -28,8 +28,8 @@ class JobsEmailAuditBccTest extends TestCase
     public function test_system_email_rejects_notifications_as_audit_bcc(): void
     {
         config([
-            'jobs.schedule.system_email' => 'notifications@africacdc.org',
-            'mail.from.address' => 'notifications@africacdc.org',
+            'jobs.schedule.system_email' => 'noreply@example.org',
+            'mail.from.address' => 'noreply@example.org',
         ]);
 
         $this->assertSame('system@africacdc.org', app(EmailNotificationService::class)->systemEmail());
@@ -39,7 +39,7 @@ class JobsEmailAuditBccTest extends TestCase
     {
         config([
             'jobs.schedule.system_email' => 'system@africacdc.org',
-            'mail.from.address' => 'notifications@africacdc.org',
+            'mail.from.address' => 'noreply@example.org',
         ]);
 
         $sender = app(SendQueuedMailService::class);

@@ -4,7 +4,7 @@
 #
 # First time on a server:
 #   cp setup.env.example setup.env
-#   nano setup.env          # production URLs, DB_*, JWT_SECRET (or leave blank to inherit from ../.env)
+#   nano setup.env          # production URLs, DB_* (JWT_SECRET blank → auto-generated / inherited)
 #   ./setup-production.sh
 #
 # Re-deploy after git pull:
@@ -120,7 +120,21 @@ chmod +x "$ROOT/fix-storage-permissions.sh"
 
 jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
-    die "JWT_SECRET is not set. Add it to setup.env or ensure $STAFF_ROOT/.env has JWT_SECRET (must match Staff portal)."
+    if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$STAFF_ROOT/scripts/setup/secrets.sh"
+        jwt="$(dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$ENV_FILE" JWT_SECRET)"
+    fi
+fi
+if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
+    die "JWT_SECRET is not set and could not be generated. Check openssl and write access to $ENV_FILE."
+fi
+
+# Ensure SESSION_SECRET exists for production (generate if blank).
+if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$STAFF_ROOT/scripts/setup/secrets.sh"
+    dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$ENV_FILE" SESSION_SECRET >/dev/null || true
 fi
 
 log "Installing PHP dependencies (production)"

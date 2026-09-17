@@ -70,6 +70,13 @@ inherit_if_empty JWT_SECRET "$STAFF_ENV"
 inherit_if_empty JWT_SECRET "$APM_ENV"
 inherit_if_empty SESSION_SECRET "$STAFF_ENV"
 
+if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$STAFF_ROOT/scripts/setup/secrets.sh"
+  JWT_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$BACKEND_ENV" JWT_SECRET)"
+  SESSION_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$BACKEND_ENV" SESSION_SECRET)"
+fi
+
 inherit_redis_from_staff() {
     local key val
     for key in REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_URL; do

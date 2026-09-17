@@ -48,7 +48,7 @@ return new class extends Migration
             'slug' => 'microsoft-exchange',
             'driver' => 'exchange',
             'config' => json_encode($config),
-            'from_address' => (string) env('MAIL_FROM_ADDRESS', 'notifications@africacdc.org'),
+            'from_address' => (string) env('MAIL_FROM_ADDRESS', ''),
             'from_name' => (string) env('MAIL_FROM_NAME', 'Staff Portal'),
             'description' => 'Default Exchange / Microsoft Graph mailer. Values fall back to EXCHANGE_* and MAIL_* env when empty.',
             'is_default' => true,

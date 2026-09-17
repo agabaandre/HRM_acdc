@@ -107,7 +107,7 @@ final class StaffSsoLaunch
                 return $legacyBase.'/apm/sso/accept';
             }
             if ($seg === 'finance') {
-                return $legacyBase.'/finance/sso/accept';
+                return $legacyBase.'/finance/backend/sso/accept';
             }
             if ($seg === 'helpdesk') {
                 return $legacyBase.'/helpdesk/backend/sso/accept';
@@ -121,16 +121,16 @@ final class StaffSsoLaunch
 
         if ($resolver === 'finance_host') {
             if (self::isLocalHost()) {
-                return $legacyBase.'/finance/sso/accept';
+                return $legacyBase.'/finance/backend/sso/accept';
             }
             $scheme = request()->isSecure() ? 'https' : 'http';
             $host = (string) (request()->getHost() ?: 'localhost');
             $prod = trim((string) ($row->base_url_production ?? ''), '/');
             if ($prod !== '' && preg_match('#^https?://#i', $prod)) {
-                return rtrim($prod, '/').'/sso/accept';
+                return rtrim($prod, '/').'/backend/sso/accept';
             }
 
-            return $scheme.'://'.$host.'/staff/finance/sso/accept';
+            return $scheme.'://'.$host.'/staff/finance/backend/sso/accept';
         }
 
         if ($resolver === 'external_microservice') {

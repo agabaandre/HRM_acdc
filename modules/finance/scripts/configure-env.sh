@@ -82,12 +82,23 @@ inherit_staff_key_as() {
 inherit_if_empty JWT_SECRET "$STAFF_ENV"
 inherit_if_empty JWT_SECRET "$APM_ENV"
 inherit_if_empty SESSION_SECRET "$STAFF_ENV"
+inherit_if_empty STAFF_API_USERNAME "$STAFF_ENV"
 inherit_if_empty STAFF_API_USERNAME "$APM_ENV"
+inherit_if_empty STAFF_API_PASSWORD "$STAFF_ENV"
 inherit_if_empty STAFF_API_PASSWORD "$APM_ENV"
+inherit_if_empty STAFF_API_TOKEN "$STAFF_ENV"
 inherit_if_empty STAFF_API_TOKEN "$APM_ENV"
 inherit_if_empty BASE_URL "$STAFF_ENV"
 inherit_if_empty BASE_URL "$APM_ENV"
 inherit_staff_key_as FINANCE_ASSETS_BASE_URL APM_BASE_URL "$STAFF_ENV"
+
+# Generate shared secrets on production/local setup when still blank (never ship credentials).
+if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$STAFF_ROOT/scripts/setup/secrets.sh"
+  JWT_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$ENV_FILE" JWT_SECRET)"
+  SESSION_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$ENV_FILE" SESSION_SECRET)"
+fi
 
 if [[ ! -w "$ENV_FILE" ]]; then
     echo "error: $ENV_FILE is not writable (often caused by running a previous setup with sudo)." >&2
@@ -132,7 +143,8 @@ fi
 
 jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
 if ! dotenv_value_present "$jwt"; then
-    echo "Warning: JWT_SECRET is not set — copy from $STAFF_ROOT/.env for Staff SSO." >&2
+    echo "error: JWT_SECRET is still empty after inherit/generate — check write access to $ENV_FILE" >&2
+    exit 1
 fi
 
 if [[ "$ENV_PREEXISTED" == "1" ]]; then
