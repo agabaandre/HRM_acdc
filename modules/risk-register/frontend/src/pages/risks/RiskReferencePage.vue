@@ -79,7 +79,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.rr-page { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0; }
 .rr-lead { color: #445; max-width: 40rem; }
 .rr-card { background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem 1.1rem; margin: 1rem 0; }
 .rr-card table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }

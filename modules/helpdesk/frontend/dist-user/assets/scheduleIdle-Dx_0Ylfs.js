@@ -1,0 +1,1 @@
+function e(e,t=1200){if(typeof window.requestIdleCallback==`function`){window.requestIdleCallback(()=>e(),{timeout:t});return}window.setTimeout(e,0)}export{e as t};

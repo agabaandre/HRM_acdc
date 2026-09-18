@@ -10,9 +10,9 @@
 }
 
 .mp-max-width {
-  max-width: var(--cbp-page-max, 1360px);
-  margin: 0 auto;
   width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 /* MaterialPro card polish */

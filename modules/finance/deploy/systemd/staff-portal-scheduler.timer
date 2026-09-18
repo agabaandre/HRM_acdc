@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Africa CDC Staff Portal Laravel scheduler every minute
+Documentation=file:///var/www/staff/staff-portal/docs/SYSTEMD.md
+PartOf=staff-portal.target
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=staff-portal.target timers.target

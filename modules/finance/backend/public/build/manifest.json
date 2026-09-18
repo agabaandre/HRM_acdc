@@ -1,0 +1,57 @@
+{
+  "_AppLayout-CRCqbyA1.js": {
+    "file": "assets/AppLayout-CRCqbyA1.js",
+    "name": "AppLayout",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-THMobcvY.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/js/Pages/Dashboard.jsx": {
+    "file": "assets/Dashboard-C-8C4PEj.js",
+    "name": "Dashboard",
+    "src": "resources/js/Pages/Dashboard.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_AppLayout-CRCqbyA1.js"
+    ],
+    "css": [
+      "assets/app-THMobcvY.css"
+    ]
+  },
+  "resources/js/Pages/Placeholder.jsx": {
+    "file": "assets/Placeholder-BjhUGw7Q.js",
+    "name": "Placeholder",
+    "src": "resources/js/Pages/Placeholder.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_AppLayout-CRCqbyA1.js"
+    ],
+    "css": [
+      "assets/app-THMobcvY.css"
+    ]
+  },
+  "resources/js/app.jsx": {
+    "file": "assets/app-C7HcnWEf.js",
+    "name": "app",
+    "src": "resources/js/app.jsx",
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/Pages/Dashboard.jsx",
+      "resources/js/Pages/Placeholder.jsx"
+    ],
+    "css": [
+      "assets/app-THMobcvY.css"
+    ]
+  }
+}

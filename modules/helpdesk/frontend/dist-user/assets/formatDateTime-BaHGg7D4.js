@@ -1,0 +1,1 @@
+var e={year:`numeric`,month:`short`,day:`numeric`,hour:`numeric`,minute:`2-digit`};function t(t,n=e){if(!t||t.trim()===``)return`—`;let r=new Date(t);return Number.isNaN(r.getTime())?t:new Intl.DateTimeFormat(void 0,n).format(r)}function n(e){return t(e,{weekday:`short`,year:`numeric`,month:`long`,day:`numeric`,hour:`numeric`,minute:`2-digit`,second:`2-digit`})}export{n,t};

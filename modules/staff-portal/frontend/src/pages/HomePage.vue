@@ -148,8 +148,9 @@ onMounted(async () => {
   --cbp-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --cbp-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
   --cbp-transition: all 0.2s ease;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .cbp-home-shell-inner {

@@ -15,15 +15,23 @@
 /auth.json
 /node_modules
 /.npm-cache
+/frontend/node_modules
+/frontend/.npm-cache
 /public/build
 /public/hot
 /public/storage
 /storage/*.key
 /storage/pail
 /vendor
+/backend/vendor
+/backend/.env
+/backend/.env.backup
+/backend/.env.bak
+/backend/storage/*.key
 Homestead.json
 Homestead.yaml
 Thumbs.db
+*.xlsx
 
 # Leftover from laravel/ subfolder move (safe to delete: sudo rm -rf laravel)
 /laravel/

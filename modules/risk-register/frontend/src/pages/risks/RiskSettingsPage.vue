@@ -83,7 +83,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.rr-page { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0; }
 .rr-card { background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 .rr-toggle { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; }
 .rr-muted { color: #6a7a8a; }

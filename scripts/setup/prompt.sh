@@ -41,6 +41,7 @@ prompt_choice() {
 
 # Required value — no silent default. Optional $3 is a keep-existing hint only
 # (Enter keeps it); empty existing forces input until non-empty.
+# Note: do not pass a target name that matches locals below (__in).
 prompt_required() {
   local __var="$1" __label="$2" __existing="${3:-}" __in
   while true; do
@@ -52,6 +53,9 @@ prompt_required() {
     else
       read -r -p "$__label: " __in || true
     fi
+    # Trim surrounding whitespace
+    __in="${__in#"${__in%%[![:space:]]*}"}"
+    __in="${__in%"${__in##*[![:space:]]}"}"
     if [[ -n "$__in" ]]; then
       printf -v "$__var" '%s' "$__in"
       return 0
@@ -62,14 +66,15 @@ prompt_required() {
 
 # Required email with a light format check.
 prompt_required_email() {
-  local __var="$1" __label="$2" __existing="${3:-}" __in
+  local __var="$1" __label="$2" __existing="${3:-}" __val
   while true; do
-    prompt_required __in "$__label" "$__existing"
-    if [[ "$__in" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]]; then
-      printf -v "$__var" '%s' "$__in"
+    # Use __val (not __in) so prompt_required's local __in cannot shadow the result.
+    prompt_required __val "$__label" "$__existing"
+    if [[ "$__val" =~ ^[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}$ ]]; then
+      printf -v "$__var" '%s' "$__val"
       return 0
     fi
     echo "  (invalid email — use name@domain.tld)" >&2
-    __existing=""
+    __existing="$__val"
   done
 }

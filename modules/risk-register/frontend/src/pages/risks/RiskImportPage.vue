@@ -170,7 +170,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.rr-page { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0; }
 .rr-card { background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 .rr-btn { background: #0b6e4f; color: #fff; border: 0; border-radius: 6px; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; margin-top: 0.75rem; }
 .rr-table { width: 100%; border-collapse: collapse; }

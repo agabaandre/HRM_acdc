@@ -1,0 +1,21 @@
+{
+    "name": "nwidart/admanager",
+    "description": "Domain Controller / AD account management",
+    "authors": [],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\AdManager\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\AdManager\\Tests\\": "tests/"
+        }
+    }
+}

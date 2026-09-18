@@ -1,0 +1,9 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/finance/frontend/dist-user/assets/$1 -f
+    RewriteRule ^(.*)$ ../frontend/dist-user/assets/$1 [L]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/finance/frontend/dist-build/assets/$1 -f
+    RewriteRule ^(.*)$ ../frontend/dist-build/assets/$1 [L]
+</IfModule>

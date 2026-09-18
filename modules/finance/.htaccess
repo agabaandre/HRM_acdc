@@ -1,33 +1,28 @@
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
-        Options -MultiViews
+        Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
 
-    # Pass Authorization header to PHP
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    # Laravel API / SSO under …/finance/backend/*
+    RewriteRule ^backend(/|$) - [L]
 
-    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    # Compat: old /finance/sso/* → /finance/backend/sso/* (portal now uses /backend)
+    RewriteRule ^sso/(.*)$ /staff/finance/backend/sso/$1 [R=307,L,QSA]
+    RewriteRule ^api/(.*)$ /staff/finance/backend/api/$1 [R=307,L,QSA]
+
+    # Real files at module root (README, etc.) — not directories
     RewriteCond %{REQUEST_FILENAME} -f
-    RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/(?:\ Ballot169)?
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
-    RewriteRule ^ ^$1 [N]
+    RewriteRule ^ - [L]
 
+    # Vite hashed assets from dist-build
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
-    RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/(?:\ Ballot169)?
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
-    RewriteRule ^(.*)$ public/$1 [L]
+    RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
-    RewriteCond %{REQUEST_FILENAME} !-d
+    # SPA fallback
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/(?:\ Ballot169)?
-    RewriteCond %{REQUEST_URI} !^/\.well-known/pki-validation/[A-F0-9]{32}\.txt(?:\ Comodo\ DCV)?$
-    RewriteRule ^ server.php [L]
+    RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>
 
 ServerSignature Off

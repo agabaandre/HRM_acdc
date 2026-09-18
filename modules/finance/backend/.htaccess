@@ -1,0 +1,31 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Preserve Authorization header so Sanctum Bearer tokens reach PHP.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Bare /backend/ has no DirectoryIndex content except index.php — if Indexes
+    # are off and rewrite skips directories, Apache returns 403. Route the
+    # directory root through Laravel (same outcome as helpdesk's index.php).
+    RewriteRule ^$ index.php [L]
+
+    RewriteCond %{REQUEST_FILENAME} -d [OR]
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Map asset-style requests to Laravel public/ (no /public/ in URLs).
+    # Do NOT rewrite API routes, Share OpenAPI, or staff-media/* — those are Laravel routes whose
+    # paths may end in .pdf/.jpg/.png/.yaml; forcing public/ breaks the route (404).
+    RewriteCond %{REQUEST_URI} !/api/ [NC]
+    RewriteCond %{REQUEST_URI} !/share/ [NC]
+    RewriteCond %{REQUEST_URI} !/staff-media/ [NC]
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ server.php [L]
+</IfModule>
+
+ServerSignature Off

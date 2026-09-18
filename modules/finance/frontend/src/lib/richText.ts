@@ -1,0 +1,136 @@
+export const DEFAULT_RICH_TEXT_MIN_ROWS = 3
+export const RICH_TEXT_ROW_PX = 28
+
+export function editorMinHeightPx(minRows: number = DEFAULT_RICH_TEXT_MIN_ROWS): number {
+  return minRows * RICH_TEXT_ROW_PX + 20
+}
+
+/** True when the string looks like HTML from Quill or another editor. */
+export function isHtmlContent(content: string | null | undefined): boolean {
+  return !!content && /<[a-z][\s\S]*>/i.test(content)
+}
+
+/** Quill empty states and whitespace-only HTML count as blank. */
+export function hasRichTextContent(html: string | null | undefined): boolean {
+  if (!html) {
+    return false
+  }
+  const stripped = html.replace(/\s+/g, '')
+  if (stripped === '' || stripped === '<p><br></p>' || stripped === '<p><br/></p>') {
+    return false
+  }
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  return (tmp.textContent || '').trim() !== ''
+}
+
+export function escapePlainTextAsHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '<br>')
+}
+
+export function richTextToHtml(value: string | null | undefined): string {
+  if (!value) {
+    return ''
+  }
+  return isHtmlContent(value) ? value : escapePlainTextAsHtml(value)
+}
+
+/** Compact PPA toolbar — same as the CI3 performance Quill editors. */
+export function performanceQuillToolbar(): unknown[] {
+  return [
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link'],
+    ['clean'],
+  ]
+}
+
+export function buildPerformanceQuillOptions(params: {
+  placeholder?: string
+  readOnly?: boolean
+  toolbar?: boolean
+} = {}): Record<string, unknown> {
+  const readOnly = Boolean(params.readOnly)
+  const showToolbar = params.toolbar ?? !readOnly
+
+  return {
+    theme: 'snow',
+    readOnly,
+    placeholder: params.placeholder ?? (readOnly ? '' : 'Enter text…'),
+    modules: {
+      toolbar: showToolbar ? performanceQuillToolbar() : false,
+      clipboard: { matchVisual: false },
+    },
+  }
+}
+
+/** Grow the Quill editor height with content (minimum `minPx`). */
+export function setupQuillAutoGrow(
+  quill: { root: HTMLElement; on: (e: string, fn: () => void) => void },
+  minPx: number,
+): void {
+  const editor = quill.root
+  const grow = () => {
+    const isBlank = editor.classList.contains('ql-blank')
+    editor.style.height = 'auto'
+    const next = isBlank ? minPx : Math.max(minPx, editor.scrollHeight + 2)
+    editor.style.height = `${next}px`
+    const container = editor.closest('.ql-container') as HTMLElement | null
+    if (container) {
+      container.style.height = 'auto'
+    }
+  }
+  quill.on('text-change', grow)
+  grow()
+}
+
+let linkBlotPatched = false
+let linkBlotPatchPromise: Promise<void> | null = null
+
+type QuillLike = {
+  import: (path: string) => unknown
+}
+
+/** Open http(s) links from Quill in a new tab. Pass `loadQuill` from `@vueup/vue-quill`. */
+export function patchQuillExternalLinks(loadQuillFn: () => Promise<unknown>): Promise<void> {
+  if (linkBlotPatched) {
+    return Promise.resolve()
+  }
+  if (linkBlotPatchPromise) {
+    return linkBlotPatchPromise
+  }
+
+  linkBlotPatchPromise = (async () => {
+    try {
+      const Quill = (await loadQuillFn()) as QuillLike
+      const LinkBlot = Quill.import('formats/link') as {
+        create?: (value: string) => HTMLAnchorElement
+        __cbpPatched?: boolean
+      }
+      if (!LinkBlot?.create || LinkBlot.__cbpPatched) {
+        return
+      }
+      const origCreate = LinkBlot.create
+      LinkBlot.create = function (value: string) {
+        const node: HTMLAnchorElement = origCreate.call(this, value)
+        if (/^https?:/i.test(value)) {
+          node.setAttribute('target', '_blank')
+          node.setAttribute('rel', 'noopener noreferrer')
+        }
+        return node
+      }
+      LinkBlot.__cbpPatched = true
+    } catch {
+      /* Editor still works without the link-target patch. */
+    } finally {
+      linkBlotPatched = true
+    }
+  })()
+
+  return linkBlotPatchPromise
+}

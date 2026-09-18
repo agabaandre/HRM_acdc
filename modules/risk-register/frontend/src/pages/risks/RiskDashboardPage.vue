@@ -74,7 +74,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.rr-dash { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+.rr-dash { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0; }
 .rr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
 .rr-top { margin-top: 1.5rem; background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem; }
 .rr-muted { color: #6a7a8a; }

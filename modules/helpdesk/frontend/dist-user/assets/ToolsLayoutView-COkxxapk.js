@@ -1,0 +1,1 @@
+import{A as e,Ct as t,E as n,J as r,M as i,n as a}from"./vue-vendor-BY6qDllO.js";import{t as o}from"./_plugin-vue_export-helper-BOai-rQB.js";var s={class:`tools-layout`},c=o(i({__name:`ToolsLayoutView`,setup(i){return(i,o)=>(r(),n(`div`,s,[e(t(a))]))}}),[[`__scopeId`,`data-v-18c0fe3d`]]);export{c as default};

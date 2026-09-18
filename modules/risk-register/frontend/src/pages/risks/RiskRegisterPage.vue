@@ -76,7 +76,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.rr-page { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0 3rem; }
 .rr-page__header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1.25rem; }
 .rr-page__header h1 { margin: 0; font-size: 1.75rem; font-weight: 700; color: #1a2b3c; }
 .rr-page__sub { margin: 0.35rem 0 0; color: #5a6a7a; }

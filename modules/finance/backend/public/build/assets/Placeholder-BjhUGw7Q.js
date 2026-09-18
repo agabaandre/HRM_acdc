@@ -1,0 +1,1 @@
+import{u as a,j as e}from"./app-C7HcnWEf.js";import{A as s}from"./AppLayout-CRCqbyA1.js";/* empty css            */function m({pageTitle:t}){const{auth:r}=a().props;return e.jsx(s,{title:t,user:r?.user,children:e.jsx("p",{className:"text-muted mb-0",children:"This screen is being migrated from the legacy React app to Laravel Inertia."})})}export{m as default};

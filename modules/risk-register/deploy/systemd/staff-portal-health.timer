@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodic Staff Portal API health check
+Documentation=file:///var/www/staff/staff-portal/docs/SYSTEMD.md
+PartOf=staff-portal.target
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=staff-portal.target timers.target

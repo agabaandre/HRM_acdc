@@ -1,0 +1,22 @@
+{
+    "Core": true,
+    "Auth": true,
+    "Audit": true,
+    "Lookup": false,
+    "Staff": false,
+    "Permissions": false,
+    "Share": false,
+    "Dashboard": false,
+    "Contracts": false,
+    "Leave": false,
+    "Payroll": false,
+    "Performance": false,
+    "Attendance": false,
+    "Tasks": false,
+    "Workplan": false,
+    "Workflows": false,
+    "Reports": false,
+    "Settings": false,
+    "Jobs": false,
+    "AdManager": false
+}

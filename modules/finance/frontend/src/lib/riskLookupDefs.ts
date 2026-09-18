@@ -1,0 +1,92 @@
+export type LookupColumn = {
+  field: string
+  label: string
+  type?: 'text' | 'number' | 'checkbox'
+}
+
+export type LookupDef = {
+  key: string
+  table: string
+  title: string
+  description: string
+  columns: LookupColumn[]
+  blank: () => Record<string, unknown>
+}
+
+export const RISK_LOOKUP_DEFS: LookupDef[] = [
+  {
+    key: 'likelihoods',
+    table: 'rr_likelihoods',
+    title: 'Likelihoods',
+    description: 'Likelihood scale used for inherent and residual scoring.',
+    columns: [
+      { field: 'label', label: 'Label' },
+      { field: 'score', label: 'Score', type: 'number' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ label: '', score: 1, sort_order: 0 }),
+  },
+  {
+    key: 'impacts',
+    table: 'rr_impacts',
+    title: 'Impacts',
+    description: 'Impact scale used for inherent and residual scoring.',
+    columns: [
+      { field: 'label', label: 'Label' },
+      { field: 'score', label: 'Score', type: 'number' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ label: '', score: 1, sort_order: 0 }),
+  },
+  {
+    key: 'risk-types',
+    table: 'rr_risk_types',
+    title: 'Risk types',
+    description: 'Categories used when classifying each risk.',
+    columns: [
+      { field: 'name', label: 'Name' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ name: '', sort_order: 0 }),
+  },
+  {
+    key: 'enterprise-themes',
+    table: 'rr_enterprise_themes',
+    title: 'Enterprise themes',
+    description: 'Enterprise risk themes aligned to organisational priorities.',
+    columns: [
+      { field: 'code', label: 'Code' },
+      { field: 'name', label: 'Name' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ code: '', name: '', sort_order: 0 }),
+  },
+  {
+    key: 'statuses',
+    table: 'rr_statuses',
+    title: 'Statuses',
+    description: 'Workflow statuses for risk action tracking.',
+    columns: [
+      { field: 'name', label: 'Name' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ name: '', sort_order: 0 }),
+  },
+  {
+    key: 'mitigation-effectiveness',
+    table: 'rr_mitigation_effectiveness',
+    title: 'Mitigation effectiveness',
+    description: 'How strongly mitigation reduces residual likelihood.',
+    columns: [
+      { field: 'name', label: 'Name' },
+      { field: 'likelihood_reduction', label: 'L reduction', type: 'number' },
+      { field: 'is_assessed', label: 'Assessed', type: 'checkbox' },
+      { field: 'sort_order', label: 'Order', type: 'number' },
+    ],
+    blank: () => ({ name: '', likelihood_reduction: 0, is_assessed: true, sort_order: 0 }),
+  },
+]
+
+export function lookupDefByKey(key: string): LookupDef | undefined {
+  return RISK_LOOKUP_DEFS.find((d) => d.key === key)
+}

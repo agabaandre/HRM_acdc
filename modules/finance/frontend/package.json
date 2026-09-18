@@ -1,45 +1,29 @@
 {
   "name": "finance-frontend",
-  "version": "0.1.0",
   "private": true,
-  "homepage": "/finance",
-  "dependencies": {
-    "@fortawesome/fontawesome-free": "^6.5.1",
-    "ajv": "^8.17.1",
-    "axios": "^1.6.2",
-    "bootstrap": "^5.3.2",
-    "boxicons": "^2.1.4",
-    "http-proxy-middleware": "^2.0.6",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.20.0",
-    "react-scripts": "5.0.1"
-  },
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "start": "PORT=3002 DANGEROUSLY_DISABLE_HOST_CHECK=true HOST=0.0.0.0 react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "dev": "PORT=3002 DANGEROUSLY_DISABLE_HOST_CHECK=true HOST=0.0.0.0 react-scripts start",
-    "dev:all": "cd .. && npm run dev:all",
-    "server": "cd .. && npm run dev",
-    "server:start": "cd .. && npm start"
+    "dev": "vite",
+    "build": "rm -rf dist-build && vite build",
+    "typecheck": "vue-tsc -b",
+    "preview": "vite preview"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app"
-    ]
+  "dependencies": {
+    "@vueup/vue-quill": "1.5.3",
+    "axios": "^1.16.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.34",
+    "vue-router": "^5.0.7",
+    "vuetify": "^3.9.5"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "devDependencies": {
+    "@types/node": "^24.12.3",
+    "@vitejs/plugin-vue": "^6.0.6",
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vue-tsc": "^3.2.8"
   }
 }

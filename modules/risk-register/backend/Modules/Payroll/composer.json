@@ -1,0 +1,28 @@
+{
+    "name": "nwidart/payroll",
+    "description": "Staff portal payroll module",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Payroll\\": "app/",
+            "Modules\\Payroll\\Database\\Factories\\": "database/factories/",
+            "Modules\\Payroll\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Payroll\\Tests\\": "tests/"
+        }
+    }
+}

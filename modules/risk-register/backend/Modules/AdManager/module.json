@@ -1,0 +1,11 @@
+{
+    "name": "AdManager",
+    "alias": "admanager",
+    "description": "Domain Controller / AD account management",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\AdManager\\Providers\\AdManagerServiceProvider"
+    ],
+    "files": []
+}

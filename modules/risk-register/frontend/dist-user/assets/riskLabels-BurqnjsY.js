@@ -1,0 +1,1 @@
+function e(e){return e?e.replace(/^\s*\d+\.\s*/,``).trim()||e:`—`}export{e as t};

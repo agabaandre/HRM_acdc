@@ -244,7 +244,7 @@ async function saveReview() {
 </template>
 
 <style scoped>
-.rr-page { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0 3rem; }
 .rr-page__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
 .rr-page__header h1 { margin: 0.25rem 0 0; font-size: 1.6rem; }
 .rr-link { background: none; border: 0; color: #0b6e4f; cursor: pointer; padding: 0; font-weight: 600; }

@@ -1,0 +1,1 @@
+function e(e){return e?[`agent`,`supervisor`,`admin`,`auditor`].includes(e.role):!1}export{e as t};

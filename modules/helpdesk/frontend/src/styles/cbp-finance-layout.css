@@ -24,7 +24,8 @@ html.helpdesk-theme-light {
   --cbp-dd-text: #2c3e50;
   --cbp-dd-hover-bg: #e8f5ee;
   --cbp-dd-hover-text: #0d7a3a;
-  --cbp-page-max: 1360px;
+  /* Full-bleed content on wide screens (was 1360px boxed layout) */
+  --cbp-page-max: none;
   /* Nav / topbar typography — match APM .nav-container.primary-menu */
   --hd-nav-font-size: 12px;
   --hd-nav-font-weight: 500;
@@ -683,20 +684,25 @@ html.helpdesk-theme-dark .cbp-theme-btn.active {
 
 .cbp-page-wrapper {
   flex: 1;
+  width: 100%;
+  max-width: none;
   margin-top: 120px;
   margin-bottom: 24px;
-  padding: 0 4px 24px;
+  padding: 0 clamp(0.75rem, 2vw, 2rem) 24px;
+  box-sizing: border-box;
 }
 
 .cbp-page-content {
-  max-width: var(--cbp-page-max);
-  margin: 0 auto;
-  padding: 1.25rem 0.25rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 1.25rem 0;
+  box-sizing: border-box;
 }
 
 @media (min-width: 900px) {
   .cbp-page-content {
-    padding: 1.5rem 0.35rem;
+    padding: 1.5rem 0;
   }
 }
 
