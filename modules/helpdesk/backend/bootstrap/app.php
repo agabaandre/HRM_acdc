@@ -1,5 +1,10 @@
 <?php
 
+$__staffRootEnv = dirname(__DIR__, 4) . '/shared/load-staff-root-env.php';
+if (is_file($__staffRootEnv)) {
+    require_once $__staffRootEnv;
+}
+
 use App\Jobs\AgentOpenTicketReminderJob;
 use App\Jobs\AutoCloseResolvedTicketsJob;
 use App\Jobs\EmailMonthlyAgentReportsJob;

@@ -68,14 +68,11 @@ inherit_if_empty JWT_SECRET "$APM_ENV"
 if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
   # shellcheck source=/dev/null
   source "$STAFF_ROOT/scripts/setup/secrets.sh"
+  # Ensure root .env has JWT_SECRET (modules inherit via shared/load-staff-root-env.php).
   JWT_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$BACKEND_ENV" JWT_SECRET)"
 fi
 
-# Microsoft SSO — same Azure app as CI3 staff portal
-for key in TENANT_ID CLIENT_ID CLIENT_SEC_VALUE CLIENT_SEC_ID \
-    MICROSOFT_TENANT_ID MICROSOFT_CLIENT_ID MICROSOFT_CLIENT_SECRET; do
-    inherit_if_empty "$key" "$STAFF_ENV"
-done
+# Microsoft Graph credentials live in /staff/.env (EXCHANGE_*). Only per-app redirects here.
 
 for key in REDIS_CLIENT REDIS_HOST REDIS_PASSWORD REDIS_PORT REDIS_URL; do
     inherit_if_empty "$key" "$STAFF_ENV"
@@ -93,9 +90,8 @@ for key in \
     STAFF_PORTAL_BASE_URL STAFF_PORTAL_SPA_URL STAFF_PORTAL_SPA_ENABLED \
     BASE_URL APM_BASE_URL \
     DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
-    JWT_SECRET STAFF_SSO_TOKEN_TTL \
-    TENANT_ID CLIENT_ID CLIENT_SEC_VALUE CLIENT_SEC_ID \
-    MICROSOFT_TENANT_ID MICROSOFT_CLIENT_ID MICROSOFT_CLIENT_SECRET MICROSOFT_REDIRECT_URI \
+    STAFF_SSO_TOKEN_TTL \
+    MICROSOFT_REDIRECT_URI EXCHANGE_REDIRECT_URI \
     ALLOW_ALTERNATIVE_LOGIN \
     QUEUE_CONNECTION DB_QUEUE_TABLE DB_QUEUE_BATCHES_TABLE DB_QUEUE_FAILED_TABLE \
     CACHE_STORE SESSION_DRIVER \
@@ -193,9 +189,9 @@ if [[ "$(dotenv_get "$BACKEND_ENV" DB_CONNECTION 2>/dev/null || true)" == "mysql
     fi
 fi
 
-jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
+jwt="$(dotenv_get "$STAFF_ENV" JWT_SECRET 2>/dev/null || true)"
 if ! dotenv_value_present "$jwt"; then
-    echo "Warning: JWT_SECRET is not set — copy from $STAFF_ROOT/.env for CBP SSO." >&2
+    echo "Warning: JWT_SECRET is not set in staff root .env — modules inherit it via shared/load-staff-root-env.php." >&2
 fi
 
 # Ensure assets symlink

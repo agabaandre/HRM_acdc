@@ -109,7 +109,7 @@ fi
 for key in \
     APP_URL BASE_URL FINANCE_ASSETS_BASE_URL FINANCE_STAFF_PORTAL_URL VITE_APP_BASE_PATH \
     APP_ENV APP_DEBUG DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
-    JWT_SECRET SESSION_SECRET STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
+    STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
     SESSION_PATH FINANCE_SSO_PERMISSION_ID; do
     apply_from_setup "$key"
 done
@@ -141,10 +141,9 @@ if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "mysql" ]
     done
 fi
 
-jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
+jwt="$(dotenv_get "$STAFF_ENV" JWT_SECRET 2>/dev/null || true)"
 if ! dotenv_value_present "$jwt"; then
-    echo "error: JWT_SECRET is still empty after inherit/generate — check write access to $ENV_FILE" >&2
-    exit 1
+    echo "Warning: JWT_SECRET is not set in staff root .env — inherited at runtime via shared/load-staff-root-env.php." >&2
 fi
 
 if [[ "$ENV_PREEXISTED" == "1" ]]; then

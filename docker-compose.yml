@@ -29,6 +29,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: runtime
+      args:
+        # 0 = fast (default). Set INSTALL_PDF_TOOLS=1 in docker/.env for LibreOffice/GS.
+        INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
     ports:
       - "${APP_PORT:-8088}:80"
     volumes:
@@ -36,8 +39,16 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      # Compose overrides so repo .env stays host-native (127.0.0.1) for Apache :80.
+      DB_HOST: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      APP_URL: ${STAFF_PORTAL_APP_URL:-http://localhost:8088/staff/backend}
+      STAFF_PORTAL_BASE_URL: ${STAFF_PORTAL_BASE_URL:-http://localhost:8088/staff/backend/}
+      STAFF_PORTAL_SPA_URL: ${STAFF_PORTAL_SPA_URL:-http://localhost:8088/staff/}
+      BASE_URL: ${STAFF_BASE_URL:-http://localhost:8088/staff/}
+      APM_BASE_URL: ${APM_BASE_URL:-http://localhost:8088/staff/apm}
+      STAFF_API_INTERNAL_BASE_URL: http://web/staff/backend
     depends_on:
       redis:
         condition: service_healthy
@@ -48,11 +59,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: runtime
+      args:
+        INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
     volumes:
       - .:/var/www/staff
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      DB_HOST: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: "6379"
     depends_on:
@@ -76,11 +90,14 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: runtime
+      args:
+        INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
     volumes:
       - .:/var/www/staff
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      DB_HOST: host.docker.internal
       REDIS_HOST: redis
       REDIS_PORT: "6379"
     depends_on:

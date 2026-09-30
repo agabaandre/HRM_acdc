@@ -27,7 +27,7 @@ class ExchangeGraphMailClient
 
         if (! $oauth->isConfigured()) {
             throw new RuntimeException(
-                'Exchange OAuth is not configured. Set EXCHANGE_TENANT_ID, EXCHANGE_CLIENT_ID, and EXCHANGE_CLIENT_SECRET (copy from apm/.env).'
+                'Exchange OAuth is not configured. Set EXCHANGE_TENANT_ID, EXCHANGE_CLIENT_ID, and EXCHANGE_CLIENT_SECRET in the staff root .env.'
             );
         }
 

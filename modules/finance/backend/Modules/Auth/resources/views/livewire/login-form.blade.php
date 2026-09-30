@@ -30,7 +30,7 @@
         </a>
     @else
         <div class="alert alert-warning small py-2 mb-3">
-            Microsoft sign-in is not configured. Set <code>TENANT_ID</code>, <code>CLIENT_ID</code>, and <code>CLIENT_SEC_VALUE</code> in <code>.env</code>.
+            Microsoft sign-in is not configured. Set <code>EXCHANGE_TENANT_ID</code>, <code>EXCHANGE_CLIENT_ID</code>, and <code>EXCHANGE_CLIENT_SECRET</code> in the staff root <code>.env</code>.
         </div>
     @endif
 

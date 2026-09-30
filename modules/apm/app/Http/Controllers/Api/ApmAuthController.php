@@ -107,7 +107,7 @@ class ApmAuthController extends Controller
      *   - access_token: Microsoft Graph access token (mobile gets from MSAL); we call Graph /me to get email and find APM user.
      *   - code + redirect_uri: Authorization code from Microsoft redirect; we exchange for token then same as above.
      * Returns same payload as email/password login (JWT + user + divisions).
-     * Uses same Azure app as CodeIgniter auth (CLIENT_ID, TENANT_ID, etc.).
+     * Uses the shared Azure app from staff root .env (EXCHANGE_CLIENT_ID / EXCHANGE_TENANT_ID).
      */
     public function microsoftLogin(Request $request): JsonResponse
     {
@@ -167,7 +167,7 @@ class ApmAuthController extends Controller
     /**
      * Web OAuth callback: Microsoft redirects the browser here with ?code=... (and optionally ?state=...).
      * Exchanges the code for a token using the configured redirect_uri, finds the APM user, sets web session, redirects to /home.
-     * Configure MICROSOFT_REDIRECT_URI to the exact callback URL (e.g. https://cbp.africacdc.org/demo_staff/apm/oauth/callback).
+     * Configure MICROSOFT_REDIRECT_URI (per-app) to the exact callback URL (e.g. https://cbp.africacdc.org/demo_staff/apm/oauth/callback).
      */
     public function microsoftCallback(Request $request): RedirectResponse
     {

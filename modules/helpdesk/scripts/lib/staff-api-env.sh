@@ -54,18 +54,18 @@ helpdesk_inherit_sensitive_from_portal_env() {
     local staff_env="$staff_root/.env"
     local key from
 
+    # Graph/JWT/mail secrets: staff root .env via shared/load-staff-root-env.php.
+    # Only copy non-secret operational keys (+ per-app redirect / display name).
     for key in STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN BASE_URL \
         APP_LOGO_URL STAFF_MAIL_LOGO_URL \
         HELPDESK_BRIDGE_SECRET \
-        MAIL_MAILER USE_EXCHANGE_EMAIL MAIL_FROM_ADDRESS MAIL_FROM_NAME \
-        EXCHANGE_TENANT_ID EXCHANGE_CLIENT_ID EXCHANGE_CLIENT_SECRET \
-        EXCHANGE_REDIRECT_URI EXCHANGE_SCOPE EXCHANGE_AUTH_METHOD; do
-        for from in "$apm_env" "$staff_env"; do
+        MAIL_FROM_NAME EXCHANGE_REDIRECT_URI; do
+        for from in "$staff_env" "$apm_env"; do
             helpdesk_inherit_env_key "$backend_env" "$key" "$from"
         done
     done
 
-    for key in JWT_SECRET SESSION_SECRET REDIS_PASSWORD; do
+    for key in REDIS_PASSWORD; do
         for from in "$staff_env" "$apm_env"; do
             helpdesk_inherit_env_key "$backend_env" "$key" "$from"
         done

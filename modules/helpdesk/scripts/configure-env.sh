@@ -107,7 +107,7 @@ fi
 for key in \
     APP_NAME APP_ENV APP_DEBUG APP_URL APP_TIMEZONE \
     DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
-    JWT_SECRET SESSION_SECRET JWT_TTL \
+    JWT_TTL \
     BASE_URL STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
     HELPDESK_STAFF_PORTAL_URL HELPDESK_APM_BASE_URL HELPDESK_FRONTEND_URL HELPDESK_HEALTH_URL \
     HELPDESK_API_PUBLIC_URL HELPDESK_STAFF_UPLOADS_ROOT \
@@ -155,9 +155,9 @@ if [[ "$(dotenv_get "$BACKEND_ENV" DB_CONNECTION 2>/dev/null || true)" == "mysql
     done
 fi
 
-jwt="$(dotenv_get "$BACKEND_ENV" JWT_SECRET 2>/dev/null || true)"
+jwt="$(dotenv_get "$STAFF_ENV" JWT_SECRET 2>/dev/null || true)"
 if ! dotenv_value_present "$jwt"; then
-    echo "Warning: JWT_SECRET is not set — copy from $STAFF_ROOT/.env for Staff SSO." >&2
+    echo "Warning: JWT_SECRET is not set in staff root .env — inherited at runtime via shared/load-staff-root-env.php." >&2
 fi
 
 if [[ "$ENV_PREEXISTED" == "1" ]]; then

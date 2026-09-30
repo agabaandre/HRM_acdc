@@ -51,10 +51,12 @@ if [[ "$SITE_KIND" == "demo" ]]; then
 fi
 
 prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "1"
-prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "1"
+# Default: Docker Compose (Host Apache remains available as choice 1).
+prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host
 
-DB_DEFAULT=1
+# Default: External MySQL (bundled Compose MySQL is opt-in). Existing installs keep current.
+DB_DEFAULT=2
 [[ "$INSTALL_TYPE" == "2" ]] && DB_DEFAULT=3
 prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL  3) Keep current" "$DB_DEFAULT"
 case "$DB_CHOICE" in
@@ -156,21 +158,35 @@ if setup_secret_is_placeholder "${STAFF_API_TOKEN:-}" && [[ "$INSTALL_TYPE" == "
   echo "    generated STAFF_API_TOKEN (was empty)"
 fi
 
-# --- Microsoft Entra SSO (portal + APM) and SPA password login ---
+# --- Microsoft Entra SSO + Graph mail (single Azure app → EXCHANGE_* in root .env) ---
 echo
 echo "==> Auth (Microsoft SSO + password login)"
-prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) SSO?" "1) Yes  2) Keep existing / skip" "1"
+prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) for login + Graph mail?" "1) Yes  2) Keep existing / skip" "1"
+# Prefer EXCHANGE_*; fall back to legacy TENANT_ID / CLIENT_* / MICROSOFT_* in root .env.
+_ex_tenant="$(env_get "$ROOT_ENV" EXCHANGE_TENANT_ID)"
+[[ -z "$_ex_tenant" ]] && _ex_tenant="$(env_get "$ROOT_ENV" MICROSOFT_TENANT_ID)"
+[[ -z "$_ex_tenant" ]] && _ex_tenant="$(env_get "$ROOT_ENV" TENANT_ID)"
+_ex_client="$(env_get "$ROOT_ENV" EXCHANGE_CLIENT_ID)"
+[[ -z "$_ex_client" ]] && _ex_client="$(env_get "$ROOT_ENV" MICROSOFT_CLIENT_ID)"
+[[ -z "$_ex_client" ]] && _ex_client="$(env_get "$ROOT_ENV" CLIENT_ID)"
+_ex_secret="$(env_get "$ROOT_ENV" EXCHANGE_CLIENT_SECRET)"
+[[ -z "$_ex_secret" ]] && _ex_secret="$(env_get "$ROOT_ENV" MICROSOFT_CLIENT_SECRET)"
+[[ -z "$_ex_secret" ]] && _ex_secret="$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
 if [[ "$CONFIGURE_MS" == "1" ]]; then
-  prompt_value TENANT_ID "TENANT_ID (Directory ID)" "$(env_get "$ROOT_ENV" TENANT_ID)"
-  prompt_value CLIENT_ID "CLIENT_ID (Application ID)" "$(env_get "$ROOT_ENV" CLIENT_ID)"
-  prompt_secret CLIENT_SEC_VALUE "CLIENT_SEC_VALUE (client secret)" "$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
-  prompt_value CLIENT_SEC_ID "CLIENT_SEC_ID (optional)" "$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
+  prompt_value EXCHANGE_TENANT_ID "EXCHANGE_TENANT_ID (Directory ID)" "$_ex_tenant"
+  prompt_value EXCHANGE_CLIENT_ID "EXCHANGE_CLIENT_ID (Application ID)" "$_ex_client"
+  prompt_secret EXCHANGE_CLIENT_SECRET "EXCHANGE_CLIENT_SECRET" "$_ex_secret"
+  prompt_value CLIENT_SEC_ID "CLIENT_SEC_ID (optional secret id)" "$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
 else
-  TENANT_ID="$(env_get "$ROOT_ENV" TENANT_ID)"
-  CLIENT_ID="$(env_get "$ROOT_ENV" CLIENT_ID)"
-  CLIENT_SEC_VALUE="$(env_get "$ROOT_ENV" CLIENT_SEC_VALUE)"
+  EXCHANGE_TENANT_ID="$_ex_tenant"
+  EXCHANGE_CLIENT_ID="$_ex_client"
+  EXCHANGE_CLIENT_SECRET="$_ex_secret"
   CLIENT_SEC_ID="$(env_get "$ROOT_ENV" CLIENT_SEC_ID)"
 fi
+# Legacy aliases for older readers / load-staff-root-env.php mirroring
+TENANT_ID="${EXCHANGE_TENANT_ID:-}"
+CLIENT_ID="${EXCHANGE_CLIENT_ID:-}"
+CLIENT_SEC_VALUE="${EXCHANGE_CLIENT_SECRET:-}"
 # Per-app Microsoft redirect URIs (must be registered in Azure)
 MICROSOFT_REDIRECT_URI_PORTAL="${PUBLIC_BASE}/backend/auth/microsoft/callback"
 MICROSOFT_REDIRECT_URI_APM="${PUBLIC_BASE}/apm/oauth/callback"
@@ -342,26 +358,26 @@ env_set "$ROOT_ENV" STAFF_API_PASSWORD "$STAFF_API_PASSWORD"
 env_set "$ROOT_ENV" STAFF_API_TOKEN "$STAFF_API_TOKEN"
 env_set "$ROOT_ENV" ALLOW_ALTERNATIVE_LOGIN "$ALLOW_ALTERNATIVE_LOGIN"
 env_set "$ROOT_ENV" MICROSOFT_REDIRECT_URI "$MICROSOFT_REDIRECT_URI_PORTAL"
-# Write Microsoft keys when provided (skip empties so "Keep existing" does not wipe secrets).
-if [[ -n "${TENANT_ID:-}" ]]; then
-  env_set "$ROOT_ENV" TENANT_ID "$TENANT_ID"
-  env_set "$ROOT_ENV" MICROSOFT_TENANT_ID "$TENANT_ID"
+# Canonical EXCHANGE_* in root .env (+ legacy aliases mirrored for older code).
+if [[ -n "${EXCHANGE_TENANT_ID:-}" ]]; then
+  env_set "$ROOT_ENV" EXCHANGE_TENANT_ID "$EXCHANGE_TENANT_ID"
+  env_set "$ROOT_ENV" MICROSOFT_TENANT_ID "$EXCHANGE_TENANT_ID"
+  env_set "$ROOT_ENV" TENANT_ID "$EXCHANGE_TENANT_ID"
 fi
-if [[ -n "${CLIENT_ID:-}" ]]; then
-  env_set "$ROOT_ENV" CLIENT_ID "$CLIENT_ID"
-  env_set "$ROOT_ENV" MICROSOFT_CLIENT_ID "$CLIENT_ID"
+if [[ -n "${EXCHANGE_CLIENT_ID:-}" ]]; then
+  env_set "$ROOT_ENV" EXCHANGE_CLIENT_ID "$EXCHANGE_CLIENT_ID"
+  env_set "$ROOT_ENV" MICROSOFT_CLIENT_ID "$EXCHANGE_CLIENT_ID"
+  env_set "$ROOT_ENV" CLIENT_ID "$EXCHANGE_CLIENT_ID"
 fi
-if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
-  env_set "$ROOT_ENV" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE"
-  env_set "$ROOT_ENV" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE"
+if [[ -n "${EXCHANGE_CLIENT_SECRET:-}" ]]; then
+  env_set "$ROOT_ENV" EXCHANGE_CLIENT_SECRET "$EXCHANGE_CLIENT_SECRET"
+  env_set "$ROOT_ENV" MICROSOFT_CLIENT_SECRET "$EXCHANGE_CLIENT_SECRET"
+  env_set "$ROOT_ENV" CLIENT_SEC_VALUE "$EXCHANGE_CLIENT_SECRET"
 fi
 if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
   env_set "$ROOT_ENV" CLIENT_SEC_ID "$CLIENT_SEC_ID"
 fi
 if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
-  [[ -n "${TENANT_ID:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_TENANT_ID "$TENANT_ID"
-  [[ -n "${CLIENT_ID:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_ID "$CLIENT_ID"
-  [[ -n "${CLIENT_SEC_VALUE:-}" ]] && env_set "$ROOT_ENV" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE"
   env_set "$ROOT_ENV" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_PORTAL"
   env_set "$ROOT_ENV" EXCHANGE_SCOPE "$EXCHANGE_SCOPE"
   env_set "$ROOT_ENV" EXCHANGE_AUTH_METHOD "$EXCHANGE_AUTH_METHOD"
@@ -423,45 +439,16 @@ apply_storage_to_file() {
   return 0
 }
 
-# Microsoft Entra SSO keys shared by staff-portal + APM (and optional Exchange mail).
-# Arg2 = MICROSOFT_REDIRECT_URI for that app (empty = leave redirect alone).
-# Arg3 = also set EXCHANGE_* from the same app (1/0).
-# Arg4 = EXCHANGE_REDIRECT_URI when Arg3=1 (empty = leave alone).
+# Per-app OAuth redirects only. Graph/JWT secrets stay in /staff/.env
+# (shared/load-staff-root-env.php). Arg2 = MICROSOFT_REDIRECT_URI.
+# Arg3 unused (kept for call-site compat). Arg4 = EXCHANGE_REDIRECT_URI.
 apply_microsoft_sso_to_file() {
-  local file="$1" redirect="${2:-}" with_exchange="${3:-0}" exchange_redirect="${4:-}"
-  if [[ -n "${TENANT_ID:-}" ]]; then
-    env_set "$file" TENANT_ID "$TENANT_ID" || return 1
-    env_set "$file" MICROSOFT_TENANT_ID "$TENANT_ID" || return 1
-  fi
-  if [[ -n "${CLIENT_ID:-}" ]]; then
-    env_set "$file" CLIENT_ID "$CLIENT_ID" || return 1
-    env_set "$file" MICROSOFT_CLIENT_ID "$CLIENT_ID" || return 1
-  fi
-  if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
-    env_set "$file" CLIENT_SEC_VALUE "$CLIENT_SEC_VALUE" || return 1
-    env_set "$file" MICROSOFT_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
-  fi
-  if [[ -n "${CLIENT_SEC_ID:-}" ]]; then
-    env_set "$file" CLIENT_SEC_ID "$CLIENT_SEC_ID" || return 1
-  fi
+  local file="$1" redirect="${2:-}" _with_exchange="${3:-0}" exchange_redirect="${4:-}"
   if [[ -n "$redirect" ]]; then
     env_set "$file" MICROSOFT_REDIRECT_URI "$redirect" || return 1
   fi
-  if [[ "$with_exchange" == "1" ]]; then
-    if [[ -n "${TENANT_ID:-}" ]]; then
-      env_set "$file" EXCHANGE_TENANT_ID "$TENANT_ID" || return 1
-    fi
-    if [[ -n "${CLIENT_ID:-}" ]]; then
-      env_set "$file" EXCHANGE_CLIENT_ID "$CLIENT_ID" || return 1
-    fi
-    if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
-      env_set "$file" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
-    fi
-    if [[ -n "$exchange_redirect" ]]; then
-      env_set "$file" EXCHANGE_REDIRECT_URI "$exchange_redirect" || return 1
-    fi
-    env_set "$file" EXCHANGE_SCOPE "${EXCHANGE_SCOPE:-https://graph.microsoft.com/.default}" || return 1
-    env_set "$file" EXCHANGE_AUTH_METHOD "${EXCHANGE_AUTH_METHOD:-client_credentials}" || return 1
+  if [[ -n "$exchange_redirect" ]]; then
+    env_set "$file" EXCHANGE_REDIRECT_URI "$exchange_redirect" || return 1
   fi
   return 0
 }
@@ -548,7 +535,7 @@ write_staff_portal_env() {
     env_set "$f" APM_BASE_URL "$APM_BASE_URL" || return 1
     env_set "$f" SESSION_PATH "${PUBLIC_PATH}/" || return 1
     env_set "$f" WEB_ROOT "$WEB_ROOT" || return 1
-    env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
+    # JWT_SECRET / EXCHANGE_* secrets: staff root .env only (load-staff-root-env.php)
     apply_password_login_to_file "$f" || return 1
     apply_microsoft_sso_to_file "$f" "$MICROSOFT_REDIRECT_URI_PORTAL" "$EXCHANGE_FROM_MS" \
       "$EXCHANGE_REDIRECT_URI_PORTAL" || return 1
@@ -608,7 +595,6 @@ if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && env_set "$APM_ENV" BASE_URL "$BASE_URL" \
   && env_set "$APM_ENV" CI_BASE_URL "$CI_BASE_URL" \
   && env_set "$APM_ENV" APM_BASE_URL "$APM_BASE_URL" \
-  && env_set "$APM_ENV" JWT_SECRET "${JWT_SECRET:-}" \
   && env_set "$APM_ENV" DB_DATABASE "$APM_DB_DATABASE" \
   && env_set "$APM_ENV" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" \
   && env_set "$APM_ENV" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" \
@@ -647,8 +633,7 @@ write_finance_env() {
     env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
     env_set "$f" VITE_APP_BASE_PATH "$VITE_FINANCE_BASE_PATH" || return 1
     env_set "$f" SESSION_PATH "$FINANCE_SESSION_PATH" || return 1
-    env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
-    env_set "$f" SESSION_SECRET "${SESSION_SECRET:-}" || return 1
+    # JWT_SECRET / SESSION_SECRET: staff root .env only
     env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
     env_set "$f" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" || return 1
     env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
@@ -695,7 +680,7 @@ write_helpdesk_env() {
     env_set "$f" HELPDESK_FRONTEND_URL "$HELPDESK_FRONTEND_URL" || return 1
     env_set "$f" HELPDESK_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
     env_set "$f" HELPDESK_APM_BASE_URL "$APM_BASE_URL" || return 1
-    env_set "$f" JWT_SECRET "${JWT_SECRET:-}" || return 1
+    # JWT_SECRET / EXCHANGE_* secrets: staff root .env only
     env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
     env_set "$f" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" || return 1
     env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
@@ -704,20 +689,9 @@ write_helpdesk_env() {
     env_set "$f" DB_DATABASE "$HD_DB" || return 1
     apply_storage_to_file "$f" || return 1
     env_set "$f" STAFF_HELPDESK_FILES_ROOT "$STAFF_HELPDESK_FILES_ROOT" || return 1
-    # Helpdesk: JWT SSO from portal; EXCHANGE for Graph intake + shared outbound mail.
+    # Per-app Graph OAuth redirect only (credentials in staff root .env).
     if [[ "$EXCHANGE_FROM_MS" == "1" ]]; then
-      if [[ -n "${TENANT_ID:-}" ]]; then
-        env_set "$f" EXCHANGE_TENANT_ID "$TENANT_ID" || return 1
-      fi
-      if [[ -n "${CLIENT_ID:-}" ]]; then
-        env_set "$f" EXCHANGE_CLIENT_ID "$CLIENT_ID" || return 1
-      fi
-      if [[ -n "${CLIENT_SEC_VALUE:-}" ]]; then
-        env_set "$f" EXCHANGE_CLIENT_SECRET "$CLIENT_SEC_VALUE" || return 1
-      fi
       env_set "$f" EXCHANGE_REDIRECT_URI "$EXCHANGE_REDIRECT_URI_HELPDESK" || return 1
-      env_set "$f" EXCHANGE_SCOPE "${EXCHANGE_SCOPE:-https://graph.microsoft.com/.default}" || return 1
-      env_set "$f" EXCHANGE_AUTH_METHOD "${EXCHANGE_AUTH_METHOD:-client_credentials}" || return 1
     fi
     apply_mail_shared_to_file "$f" || return 1
     apply_mail_from_to_file "$f" "$HD_MAIL_FROM_ADDRESS" "$HD_MAIL_FROM_NAME" || return 1

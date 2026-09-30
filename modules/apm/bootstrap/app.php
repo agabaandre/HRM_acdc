@@ -1,5 +1,10 @@
 <?php
 
+$__staffRootEnv = dirname(__DIR__, 3) . '/shared/load-staff-root-env.php';
+if (is_file($__staffRootEnv)) {
+    require_once $__staffRootEnv;
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,12 +18,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Shared across CBP modules (different APP_KEYs) — must stay unencrypted.
+        $middleware->encryptCookies(except: [
+            'staff_portal_locale',
+        ]);
         $middleware->validateCsrfTokens(except: [
             'sso/accept',
             'sso/refresh',
         ]);
         // Add session expiry check to web middleware group
         $middleware->web(append: [
+            \App\Http\Middleware\SetPortalLocale::class,
             \App\Http\Middleware\CheckSessionExpiry::class,
             \App\Http\Middleware\DisableSearchEngineIndexing::class,
         ]);

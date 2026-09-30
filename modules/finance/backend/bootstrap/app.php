@@ -1,5 +1,10 @@
 <?php
 
+$__staffRootEnv = dirname(__DIR__, 4) . '/shared/load-staff-root-env.php';
+if (is_file($__staffRootEnv)) {
+    require_once $__staffRootEnv;
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

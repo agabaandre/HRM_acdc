@@ -50,9 +50,17 @@ async function bootstrap() {
   }
 
   app.use(router)
-  await router.isReady()
+
+  // Cap initial navigation so a hung /me never leaves the splash forever.
+  await Promise.race([
+    router.isReady(),
+    new Promise<void>((resolve) => window.setTimeout(resolve, 8000)),
+  ])
   app.mount('#app')
   dismissBootLoader()
 }
 
-void bootstrap()
+void bootstrap().catch((err) => {
+  console.error('Staff Portal bootstrap failed', err)
+  dismissBootLoader()
+})

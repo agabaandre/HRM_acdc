@@ -186,7 +186,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PortalPageChrome title="Dashboard" lede="Staff analytics.">
+    <PortalPageChrome title="Dashboard" lede="Workforce overview — headcount, contracts, and distribution.">
       <template #actions>
         <v-btn size="small" variant="tonal" prepend-icon="mdi-printer" :loading="exporting" @click="onPrintPdf">
           Print PDF
@@ -260,23 +260,25 @@ onMounted(() => {
       <v-row dense class="mb-4">
         <v-col
           v-for="card in [
-            { label: 'Main staff', value: data.staff, icon: 'fa-solid fa-users', color: '#119a48', to: '/staff' },
-            { label: 'Contracts due', value: data.two_months, icon: 'fa-solid fa-clock', color: '#f0ad4e', to: '/staff' },
-            { label: 'Under renewal', value: data.staff_renewal, icon: 'fa-solid fa-rotate', color: '#5bc0de', to: '/staff' },
-            { label: 'Expired contracts', value: data.expired, icon: 'fa-solid fa-triangle-exclamation', color: '#d9534f', to: '/staff' },
+            { label: 'Main staff', value: data.staff, icon: 'fa-solid fa-users', color: '#0d7a3a', tint: 'rgba(13, 122, 58, 0.12)', to: '/staff' },
+            { label: 'Contracts due', value: data.two_months, icon: 'fa-solid fa-calendar-day', color: '#c47a0a', tint: 'rgba(196, 122, 10, 0.12)', to: '/staff' },
+            { label: 'Under renewal', value: data.staff_renewal, icon: 'fa-solid fa-arrows-rotate', color: '#1a7a9c', tint: 'rgba(26, 122, 156, 0.12)', to: '/staff' },
+            { label: 'Expired contracts', value: data.expired, icon: 'fa-solid fa-circle-exclamation', color: '#b42318', tint: 'rgba(180, 35, 24, 0.12)', to: '/staff' },
           ]"
           :key="card.label"
           cols="6"
           md="3"
         >
-          <RouterLink :to="card.to" style="text-decoration:none;color:inherit">
-            <v-sheet border rounded class="pa-3 dash-kpi" :style="{ borderTop: `3px solid ${card.color}` }">
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <div class="text-caption text-medium-emphasis">{{ card.label }}</div>
-                  <div class="text-h5" :style="{ color: card.color }">{{ card.value }}</div>
+          <RouterLink :to="card.to" class="dash-kpi-link">
+            <v-sheet border rounded class="pa-4 dash-kpi" :style="{ borderTop: `3px solid ${card.color}` }">
+              <div class="d-flex align-center ga-3">
+                <span class="dash-kpi__icon" :style="{ background: card.tint, color: card.color }" aria-hidden="true">
+                  <i :class="card.icon" />
+                </span>
+                <div class="dash-kpi__body min-w-0">
+                  <div class="dash-kpi__label">{{ card.label }}</div>
+                  <div class="dash-kpi__value" :style="{ color: card.color }">{{ card.value }}</div>
                 </div>
-                <i :class="card.icon" :style="{ fontSize: '1.75rem', color: card.color, opacity: 0.85 }" aria-hidden="true" />
               </div>
             </v-sheet>
           </RouterLink>
@@ -410,7 +412,42 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.dash-kpi-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.dash-kpi {
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  height: 100%;
+}
 .dash-kpi:hover {
-  box-shadow: 0 4px 14px rgba(17, 154, 72, 0.12);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.dash-kpi__icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+.dash-kpi__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  line-height: 1.2;
+}
+.dash-kpi__value {
+  margin-top: 0.15rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 </style>

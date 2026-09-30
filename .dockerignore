@@ -10,7 +10,12 @@
 **/node_modules
 modules/**/frontend/node_modules
 modules/**/frontend/dist
+modules/**/frontend/dist-*
 modules/apm/node_modules
+modules/apm/whatsapp-service/node_modules
+
+# Composer / vendor (bind-mounted at runtime; prod bake can still use --no-cache if needed)
+**/vendor
 
 # Runtime noise
 **/storage/logs/*
@@ -20,7 +25,26 @@ modules/apm/node_modules
 **/storage/debugbar
 !**/.gitkeep
 
-# Tests / docs not needed in prod image bake
+# Local env / secrets / backups (never bake)
+**/.env
+**/.env.*
+!**/.env.example
+**/.env.bak
+**/.env.backup
+**/setup.env
+
+# Tests / docs / agent noise not needed in image
 **/tests
 **/phpunit.xml
 docs/superpowers
+**/.phpunit.cache
+**/coverage
+**/*.md
+!docker/README.md
+
+# Heavy assets not required to build the PHP image
+**/public-spa
+**/assets
+**/*.map
+**/.vite
+**/dist-build

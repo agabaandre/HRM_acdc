@@ -1,33 +1,41 @@
 # syntax=docker/dockerfile:1
+#
+# Fast default runtime: PHP 8.2 + Apache + extensions via prebuilt
+# install-php-extensions (avoids compiling from source).
+# Heavy APM PDF/Office tools are OFF by default (INSTALL_PDF_TOOLS=1).
+#
+#   docker compose --env-file docker/.env up -d --build
 
 FROM php:8.2-apache-bookworm AS runtime
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
 
 LABEL org.opencontainers.image.description="Africa CDC CBP (staff-portal, APM, finance, helpdesk)"
 
-# PDF annex (APM): Ghostscript + Poppler; LibreOffice for Word attachments.
-# redis-tools: entrypoint health wait via redis-cli.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
-    libzip-dev \
-    libicu-dev \
-    libonig-dev \
-    $PHPIZE_DEPS \
-    unzip \
-    git \
-    curl \
-    mariadb-client \
-    redis-tools \
-    ghostscript \
-    poppler-utils \
-    libreoffice-writer \
-    fonts-liberation \
-    fonts-dejavu-core \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" \
+# 0 = fast local/dev image (default). 1 = Ghostscript + Poppler + LibreOffice Writer.
+ARG INSTALL_PDF_TOOLS=0
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
+    rm -f /etc/apt/apt.conf.d/docker-clean; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        unzip \
+        git \
+        curl \
+        mariadb-client \
+        redis-tools; \
+    if [ "$INSTALL_PDF_TOOLS" = "1" ]; then \
+        apt-get install -y --no-install-recommends \
+            ghostscript \
+            poppler-utils \
+            libreoffice-writer \
+            fonts-liberation \
+            fonts-dejavu-core; \
+    fi; \
+    install-php-extensions \
         gd \
         intl \
         mysqli \
@@ -37,11 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         bcmath \
         exif \
         zip \
-    && pecl install redis \
-    && docker-php-ext-enable redis opcache \
-    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/pear
+        redis
 
 RUN { \
     echo 'opcache.memory_consumption=128'; \

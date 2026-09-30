@@ -64,7 +64,8 @@ dotenv_ensure_secret() {
 }
 
 # Propagate shared secret using dotenv_get/dotenv_set (module configure scripts).
-# Writes to staff root .env + setup.env + app .env so SSO stays aligned.
+# Writes to staff root .env (+ setup.env). Module app .env files do NOT store
+# JWT_SECRET / SESSION_SECRET — they inherit at runtime via shared/load-staff-root-env.php.
 dotenv_ensure_shared_secret() {
   local staff_env="$1" setup_env="$2" app_env="$3" key="${4:-JWT_SECRET}"
   local val=""
@@ -75,6 +76,7 @@ dotenv_ensure_shared_secret() {
   if setup_secret_is_placeholder "$val" && [[ -f "$setup_env" ]]; then
     val="$(dotenv_get "$setup_env" "$key" 2>/dev/null || true)"
   fi
+  # Read-only fallback from a leftover module copy (do not write back there).
   if setup_secret_is_placeholder "$val" && [[ -f "$app_env" ]]; then
     val="$(dotenv_get "$app_env" "$key" 2>/dev/null || true)"
   fi
@@ -90,6 +92,6 @@ dotenv_ensure_shared_secret() {
     [[ -w "$staff_env" ]] && dotenv_set "$staff_env" "$key" "$val"
   fi
   [[ -n "$setup_env" && -f "$setup_env" && -w "$setup_env" ]] && dotenv_set "$setup_env" "$key" "$val"
-  [[ -n "$app_env" && -f "$app_env" && -w "$app_env" ]] && dotenv_set "$app_env" "$key" "$val"
+  # Intentionally not writing $key into $app_env (centralized in staff root .env).
   printf '%s' "$val"
 }

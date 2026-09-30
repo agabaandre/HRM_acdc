@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ \App\Support\PortalLocale::isRtl() ? 'rtl' : 'ltr' }}">
 
 <head>
     <meta charset="utf-8">

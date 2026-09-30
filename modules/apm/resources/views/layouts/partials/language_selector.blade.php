@@ -69,9 +69,78 @@
             + ';path=/;max-age=' + maxAge + ';SameSite=Lax';
     }
 
+    function readSharedLocale() {
+        try {
+            var fromStorage = (localStorage.getItem(STORAGE_KEY) || '').toLowerCase().trim();
+            if (fromStorage) return fromStorage;
+        } catch (e) {}
+        try {
+            var match = document.cookie.match(new RegExp('(?:^|; )' + COOKIE_NAME + '=([^;]*)'));
+            if (match && match[1]) return decodeURIComponent(match[1]).toLowerCase().trim();
+        } catch (e) {}
+        return '';
+    }
+
     function hardReload() {
         var url = window.location.pathname + window.location.search;
         window.location.replace(url);
+    }
+
+    function applyLocale(locale, opts) {
+        opts = opts || {};
+        if (applying) return;
+        var current = root.getAttribute('data-current-locale') || '';
+        if (!locale || locale === current) {
+            if (!opts.silent) close();
+            return;
+        }
+        applying = true;
+        btn.disabled = true;
+        writeSharedLocale(locale);
+        if (typeof window.doGTranslate === 'function' && locale !== 'en') {
+            try { window.doGTranslate(locale); } catch (err) {}
+        }
+        var url = root.getAttribute('data-locale-url');
+        var token = document.querySelector('meta[name="csrf-token"]');
+        var csrf = token ? (token.getAttribute('content') || '') : '';
+        var body = new FormData();
+        body.append('locale', locale);
+        if (csrf) body.append('_token', csrf);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrf
+            },
+            body: body,
+            credentials: 'same-origin',
+            cache: 'no-store'
+        }).then(function (res) {
+            if (!res.ok) throw new Error('locale failed');
+            return res.json().catch(function () { return {}; });
+        }).then(function () {
+            hardReload();
+        }).catch(function () {
+            if (opts.silent) {
+                applying = false;
+                btn.disabled = false;
+                return;
+            }
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            form.style.display = 'none';
+            [['locale', locale], ['_token', csrf]].forEach(function (pair) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = pair[0];
+                input.value = pair[1] || '';
+                form.appendChild(input);
+            });
+            document.body.appendChild(form);
+            form.submit();
+        });
     }
 
     btn.addEventListener('click', function (e) {
@@ -90,57 +159,16 @@
         item.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            if (applying) return;
-            var locale = item.getAttribute('data-locale');
-            var current = root.getAttribute('data-current-locale') || '';
-            if (!locale || locale === current) {
-                close();
-                return;
-            }
-            applying = true;
-            btn.disabled = true;
-            writeSharedLocale(locale);
-            if (typeof window.doGTranslate === 'function' && locale !== 'en') {
-                try { window.doGTranslate(locale); } catch (err) {}
-            }
-            var url = root.getAttribute('data-locale-url');
-            var token = document.querySelector('meta[name="csrf-token"]');
-            var csrf = token ? (token.getAttribute('content') || '') : '';
-            var body = new FormData();
-            body.append('locale', locale);
-            if (csrf) body.append('_token', csrf);
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrf
-                },
-                body: body,
-                credentials: 'same-origin',
-                cache: 'no-store'
-            }).then(function (res) {
-                if (!res.ok) throw new Error('locale failed');
-                return res.json().catch(function () { return {}; });
-            }).then(function () {
-                hardReload();
-            }).catch(function () {
-                var form = document.createElement('form');
-                form.method = 'POST';
-                form.action = url;
-                form.style.display = 'none';
-                [['locale', locale], ['_token', csrf]].forEach(function (pair) {
-                    var input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = pair[0];
-                    input.value = pair[1] || '';
-                    form.appendChild(input);
-                });
-                document.body.appendChild(form);
-                form.submit();
-            });
+            applyLocale(item.getAttribute('data-locale'));
         });
     });
+
+    // Adopt Staff Portal selection (localStorage/cookie) when APM session is stale.
+    var shared = readSharedLocale();
+    var server = (root.getAttribute('data-current-locale') || '').toLowerCase();
+    if (shared && shared !== server) {
+        applyLocale(shared, { silent: true });
+    }
 })();
 </script>
 @endif

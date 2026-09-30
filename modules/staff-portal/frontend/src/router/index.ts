@@ -379,7 +379,12 @@ router.beforeEach(async (to) => {
     }
     if (!auth.me) {
       try {
-        await auth.fetchMe()
+        await Promise.race([
+          auth.fetchMe(),
+          new Promise((_, reject) =>
+            window.setTimeout(() => reject(new Error('auth me timeout')), 8000),
+          ),
+        ])
       } catch {
         auth.invalidateSession()
         return { name: 'login' }

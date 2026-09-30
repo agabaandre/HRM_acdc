@@ -72,9 +72,24 @@
       <div class="sp-inner">
         <div class="sp-spinner" aria-hidden="true"></div>
         <p style="margin:0;font-size:0.72rem;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#0d7a3a;">Staff Portal</p>
+        <p id="portal-boot-hint" style="display:none;margin:0;max-width:18rem;text-align:center;font-size:0.8rem;line-height:1.4;color:#64748b;"></p>
       </div>
     </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Failsafe: never leave the splash spinning if the SPA bundle fails to load.
+      window.setTimeout(function () {
+        var el = document.getElementById('portal-boot-loader');
+        if (!el || !el.isConnected) return;
+        var hint = document.getElementById('portal-boot-hint');
+        if (hint) {
+          hint.style.display = 'block';
+          hint.textContent = 'Taking too long. Hard-refresh (Cmd+Shift+R), or open /staff/login. If using Docker, rebuild SPA assets.';
+        }
+        var spin = el.querySelector('.sp-spinner');
+        if (spin) spin.style.animation = 'none';
+      }, 12000);
+    </script>
   </body>
 </html>

@@ -347,21 +347,37 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             @php
-                $user = session('user', []);
-                $defaultLangCode = $user['langauge'] ?? 'en';
-                $langMap = [
-                    'en' => 'en',
-                    'fr' => 'fr',
-                    'sw' => 'sw',
-                    'ar' => 'ar',
-                    'pt' => 'pt',
-                    'es' => 'es'
-                ];
-                $preferredLang = $langMap[$defaultLangCode] ?? 'en';
+                // Prefer shared Staff Portal locale (cookie → profile → default).
+                $preferredLang = \App\Support\PortalLocale::normalize(app()->getLocale());
             @endphp
-            var preferredLang = "{{ $preferredLang }}";
+            function readSharedPortalLocale() {
+                try {
+                    var fromStorage = (localStorage.getItem('staff_portal_locale') || '').toLowerCase().trim();
+                    if (fromStorage) return fromStorage;
+                } catch (e) {}
+                try {
+                    var match = document.cookie.match(/(?:^|; )staff_portal_locale=([^;]*)/);
+                    if (match && match[1]) return decodeURIComponent(match[1]).toLowerCase().trim();
+                } catch (e) {}
+                return '';
+            }
+            var preferredLang = readSharedPortalLocale() || "{{ $preferredLang }}";
+            var allowed = { en: 1, fr: 1, sw: 1, ar: 1, pt: 1, es: 1 };
+            if (!allowed[preferredLang]) preferredLang = 'en';
+            // Keep Google Translate / UI in sync with Staff Portal selection.
+            try {
+                localStorage.setItem('staff_portal_locale', preferredLang);
+                document.cookie = 'staff_portal_locale=' + encodeURIComponent(preferredLang)
+                    + ';path=/;max-age=' + (60 * 60 * 24 * 365) + ';SameSite=Lax';
+            } catch (e) {}
             if (preferredLang && preferredLang !== 'en') {
                 setTimeout(function() { doGTranslate(preferredLang); }, 1500);
+            } else {
+                // Clear stale Google Translate cookie so English source UI stays English.
+                try {
+                    document.cookie = 'googtrans=;path=/;max-age=0;SameSite=Lax';
+                    document.cookie = 'googtrans=/en/en;path=/;max-age=0;SameSite=Lax';
+                } catch (e) {}
             }
         });
     })();

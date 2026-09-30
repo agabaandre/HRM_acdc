@@ -1,5 +1,10 @@
 <?php
 
+$__staffRootEnv = dirname(__DIR__, 3) . '/shared/load-staff-root-env.php';
+if (is_file($__staffRootEnv)) {
+    require_once $__staffRootEnv;
+}
+
 use App\Http\Middleware\EnsureFinanceSession;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;

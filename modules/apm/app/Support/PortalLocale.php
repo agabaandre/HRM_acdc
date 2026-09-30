@@ -126,13 +126,19 @@ final class PortalLocale
     }
 
     /**
-     * Resolve from cookie → session/profile langauge → Staff DB profile → default.
+     * Resolve from shared cookie → Staff Portal session langauge → Staff DB profile → default.
+     * Cookie/localStorage from Staff Portal win so APM matches the portal language switcher.
      */
     public static function resolveFromRequest(): string
     {
         $cookie = self::readRawCookie(self::cookieName());
         if ($cookie !== '' && self::isSupported($cookie)) {
             return self::normalize($cookie);
+        }
+
+        $fromSessionLocale = (string) session('portal_locale', '');
+        if ($fromSessionLocale !== '' && self::isSupported($fromSessionLocale)) {
+            return self::normalize($fromSessionLocale);
         }
 
         $fromUser = (string) data_get(session('user'), 'langauge', data_get(session('user'), 'language', ''));

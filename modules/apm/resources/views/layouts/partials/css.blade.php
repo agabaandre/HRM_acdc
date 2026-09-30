@@ -33,6 +33,7 @@
 <link href="{{ asset('assets/plugins/select2/css/select2-bootstrap4.css') }}" rel="stylesheet" />
 <link href="{{ asset('assets/css/app.css') }}" rel="stylesheet">
 <link href="{{ asset('assets/css/pace.min.css') }}" rel="stylesheet" />
+<link href="{{ asset('assets/css/cbp-lang-select.css') }}" rel="stylesheet" />
 <!-- Flatpickr CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <!-- jQuery UI CSS -->

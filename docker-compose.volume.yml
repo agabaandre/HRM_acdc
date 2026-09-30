@@ -1,0 +1,23 @@
+# Override when the project lives outside Docker Desktop file sharing
+# (e.g. /opt/homebrew/...). Uses a named volume filled by docker/sync-code.sh.
+#
+#   ./docker/sync-code.sh
+#   docker compose --env-file docker/.env -f docker-compose.yml -f docker-compose.volume.yml up -d --no-build
+
+services:
+  web:
+    volumes:
+      - staff_code:/var/www/staff
+
+  queue-apm:
+    volumes:
+      - staff_code:/var/www/staff
+
+  queue-helpdesk:
+    volumes:
+      - staff_code:/var/www/staff
+
+volumes:
+  staff_code:
+    name: cbp-staff-code
+    external: true

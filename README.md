@@ -134,7 +134,8 @@ cp docker/compose.env.example docker/.env
 docker compose --env-file docker/.env up -d --build
 ```
 
-- Staff portal: `http://localhost:8080/staff/` · Backend: `/staff/backend/up` · APM: `/staff/apm/` · Finance: `/staff/finance/` · Helpdesk: `/staff/helpdesk/`
+- Staff portal: `http://localhost:8088/staff/` · Backend: `/staff/backend/up` · APM: `/staff/apm/` · Finance: `/staff/finance/` · Helpdesk: `/staff/helpdesk/`
+- Fast builds: `INSTALL_PDF_TOOLS=0` (default). Set `INSTALL_PDF_TOOLS=1` only when you need LibreOffice/Ghostscript for APM PDF annex.
 
 </details>
 

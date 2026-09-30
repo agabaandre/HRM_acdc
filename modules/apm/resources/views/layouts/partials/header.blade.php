@@ -34,6 +34,9 @@
                                     $staffPortalUrl = $staffBaseUrl.'/profile';
                                 @endphp
 
+                                {{-- AU language selector (shared cookie/localStorage with Staff Portal) --}}
+                                @include('layouts.partials.language_selector')
+
                                 {{-- CBP Modules dropdown (Staff Share API). Do not restore inline Staff Portal / Finance links here. --}}
                                 @include('layouts.partials.cbp_modules_header_dropdown')
 

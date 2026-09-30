@@ -27,6 +27,12 @@ function writeStoredLocale(locale: string) {
   } catch {
     /* ignore */
   }
+  try {
+    // Shared with APM / Helpdesk / Risk Register (unencrypted, path=/).
+    document.cookie = `${STORAGE_KEY}=${encodeURIComponent(locale)};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
+  } catch {
+    /* ignore */
+  }
 }
 
 function applyDocumentDirection(locale: string, isRtl: boolean) {

@@ -70,10 +70,12 @@ return [
     | Used by mobile app: validate access_token or exchange code for token, then issue APM JWT.
     */
     'microsoft' => [
-        'tenant_id' => env('MICROSOFT_TENANT_ID', env('TENANT_ID')),
-        'client_id' => env('MICROSOFT_CLIENT_ID', env('CLIENT_ID')),
-        'client_secret' => env('MICROSOFT_CLIENT_SECRET', env('CLIENT_SEC_VALUE')),
-        'redirect_uri' => env('MICROSOFT_REDIRECT_URI'), // Optional; mobile may send in request for code exchange
+        // Canonical credentials: EXCHANGE_* from /staff/.env (shared/load-staff-root-env.php).
+        'tenant_id' => env('EXCHANGE_TENANT_ID'),
+        'client_id' => env('EXCHANGE_CLIENT_ID'),
+        'client_secret' => env('EXCHANGE_CLIENT_SECRET'),
+        'redirect_uri' => env('MICROSOFT_REDIRECT_URI', env('EXCHANGE_REDIRECT_URI')),
     ],
+
 
 ];

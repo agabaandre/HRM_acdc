@@ -5,12 +5,7 @@ STAFF_ROOT="${STAFF_ROOT:-/var/www/staff}"
 REDIS_HOST="${REDIS_HOST:-redis}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
-# Bind mounts from macOS often use restrictive modes; Apache runs as www-data.
-if [[ -d "${STAFF_ROOT}" ]]; then
-    echo "staff-entrypoint: chmod -R a+rX on ${STAFF_ROOT} (bind mount; first run may take ~30s)..."
-    chmod -R a+rX "${STAFF_ROOT}" 2>/dev/null || true
-fi
-
+# Only fix Laravel writable dirs — never chmod the whole bind-mount tree (slow on macOS).
 fix_laravel_writable() {
     local app_root="$1"
     if [[ -d "${app_root}/storage" ]]; then
@@ -24,6 +19,13 @@ fix_laravel_writable "${STAFF_ROOT}/modules/apm"
 fix_laravel_writable "${STAFF_ROOT}/modules/finance"
 fix_laravel_writable "${STAFF_ROOT}/modules/helpdesk/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/staff-portal/backend"
+fix_laravel_writable "${STAFF_ROOT}/modules/risk-register/backend"
+
+# Optional one-shot: STAFF_CHMOD_TREE=1 chmod -R a+rX (avoid unless you hit 403s).
+if [[ "${STAFF_CHMOD_TREE:-0}" == "1" && -d "${STAFF_ROOT}" ]]; then
+    echo "staff-entrypoint: STAFF_CHMOD_TREE=1 — chmod -R a+rX on ${STAFF_ROOT}..."
+    chmod -R a+rX "${STAFF_ROOT}" 2>/dev/null || true
+fi
 
 if [[ "${SKIP_REDIS_WAIT:-0}" != "1" ]]; then
     echo "staff-entrypoint: waiting for Redis at ${REDIS_HOST}:${REDIS_PORT}..."
