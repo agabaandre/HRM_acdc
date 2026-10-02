@@ -51,8 +51,37 @@ if [[ "${SKIP_REDIS_WAIT:-0}" != "1" ]]; then
     done
 fi
 
+# Start php-fpm only when serving HTTP via Apache (not for supervisord workers).
+start_php_fpm_if_needed() {
+    case "${1:-}" in
+        apache2-foreground|apachectl|apache2)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+    mkdir -p /var/run/php
+    chown www-data:www-data /var/run/php 2>/dev/null || true
+    if ! pgrep -x php-fpm >/dev/null 2>&1; then
+        echo "staff-entrypoint: starting php-fpm..."
+        php-fpm --daemonize
+    fi
+    local i
+    for i in $(seq 1 50); do
+        if [[ -S /var/run/php/php-fpm.sock ]]; then
+            echo "staff-entrypoint: php-fpm socket ready"
+            return 0
+        fi
+        sleep 0.2
+    done
+    echo "staff-entrypoint: error — php-fpm socket missing" >&2
+    return 1
+}
+
+start_php_fpm_if_needed "${1:-}"
+
 # Workers / one-shots skip Apache configtest when CMD is not apache.
-if [[ "${1:-}" == "apache2-foreground" ]] || [[ "${1:-}" == "apache2ctl" ]]; then
+if [[ "${1:-}" == "apache2-foreground" ]] || [[ "${1:-}" == "apachectl" ]] || [[ "${1:-}" == "apache2" ]]; then
     apache2ctl configtest
 fi
 
