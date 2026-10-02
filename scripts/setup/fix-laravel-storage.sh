@@ -21,7 +21,9 @@ setup_fix_laravel_storage() {
   for app_script in \
     "$ROOT/modules/staff-portal/fix-storage-permissions.sh" \
     "$ROOT/modules/helpdesk/fix-storage-permissions.sh" \
-    "$ROOT/modules/finance/fix-storage-permissions.sh"
+    "$ROOT/modules/finance/fix-storage-permissions.sh" \
+    "$ROOT/modules/risk-register/fix-storage-permissions.sh" \
+    "$ROOT/modules/apm/fix-storage-permissions.sh"
   do
     [[ -f "$app_script" ]] || continue
     chmod +x "$app_script" 2>/dev/null || true
