@@ -47,7 +47,7 @@ else
 fi
 echo "    Site role: $SITE_KIND"
 if [[ "$SITE_KIND" == "demo" ]]; then
-  echo "    Demo: systemd queue/scheduler workers will NOT be enabled."
+  echo "    Demo: Supervisor queue/scheduler workers will NOT be enabled."
 fi
 
 prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "1"
