@@ -138,6 +138,23 @@ run_svc() {
   fi
 }
 
+run_as_supervisor_user() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    if command -v runuser >/dev/null 2>&1; then
+      runuser -u "$SUPERVISOR_USER" -- "$@"
+      return $?
+    fi
+    if command -v su >/dev/null 2>&1; then
+      su -s /bin/bash "$SUPERVISOR_USER" -c "$(printf '%q ' "$@")"
+      return $?
+    fi
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -u "$SUPERVISOR_USER" "$@"
+    return $?
+  fi
+  "$@"
+}
+
 supervisor_sock_path() {
   local s
   for s in \
@@ -258,7 +275,12 @@ write_app_programs() {
     return 0
   fi
   app_abs="$(cd "$app_abs" && pwd)"
-  mkdir -p "$app_abs/storage/logs" 2>/dev/null || true
+  ensure_app_log_writable "$app_abs"
+
+  # Fail fast with a clear message if artisan cannot boot as the worker user.
+  if ! preflight_artisan "$app" "$app_abs"; then
+    echo "    warn: $app artisan preflight failed — Supervisor may mark this app FATAL" >&2
+  fi
 
   local qname="cbp-${SLUG}-${app}-queue"
   local sname="cbp-${SLUG}-${app}-scheduler"
@@ -267,6 +289,97 @@ write_app_programs() {
 
   render_program "$qname" "$qcmd" "$app_abs" "$app_abs/storage/logs/supervisor-queue.log" "$numprocs" "3600"
   render_program "$sname" "$scmd" "$app_abs" "$app_abs/storage/logs/supervisor-scheduler.log" "1" "60"
+}
+
+# Ensure storage/logs exists and is writable by SUPERVISOR_USER (FATAL often = cannot open logfile).
+ensure_app_log_writable() {
+  local app_abs="$1"
+  local log_dir="$app_abs/storage/logs"
+  mkdir -p "$log_dir" 2>/dev/null || true
+  touch "$log_dir/supervisor-queue.log" "$log_dir/supervisor-scheduler.log" 2>/dev/null || true
+  # Non-interactive only — never block setup on a sudo password prompt.
+  if [[ "$(id -u)" -eq 0 ]]; then
+    chown -R "${SUPERVISOR_USER}:${SUPERVISOR_USER}" "$app_abs/storage" "$app_abs/bootstrap/cache" 2>/dev/null || true
+    chmod -R ug+rwX "$app_abs/storage" "$app_abs/bootstrap/cache" 2>/dev/null || true
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo -n chown -R "${SUPERVISOR_USER}:${SUPERVISOR_USER}" "$app_abs/storage" "$app_abs/bootstrap/cache" 2>/dev/null || true
+    sudo -n chmod -R ug+rwX "$app_abs/storage" "$app_abs/bootstrap/cache" 2>/dev/null || true
+  fi
+  chmod -R a+rwX "$log_dir" 2>/dev/null || true
+}
+
+preflight_artisan() {
+  local app="$1" app_abs="$2"
+  local out
+  if out="$(cd "$app_abs" && run_as_supervisor_user "$PHP_BIN" artisan about --only=environment 2>&1)"; then
+    echo "    preflight $app OK"
+    return 0
+  fi
+  # Fallback as current user (still useful for diagnostics).
+  if out="$(cd "$app_abs" && "$PHP_BIN" artisan about --only=environment 2>&1)"; then
+    echo "    preflight $app OK as current user (ensure $SUPERVISOR_USER can write storage/)"
+    return 0
+  fi
+  echo "    preflight $app FAILED:" >&2
+  echo "$out" | head -20 >&2
+  return 1
+}
+
+# Remove obsolete APM/legacy program confs that fight the cbp-{slug}-* names.
+retire_legacy_supervisor_programs() {
+  local f base
+  local -a legacy_globs=(
+    "$CONF_DIR"/staff-apm-*.conf
+    "$CONF_DIR"/staff-portal-*.conf
+    "$CONF_DIR"/laravel-*-apm*.conf
+    "$CONF_DIR"/supervisor-laravel-*.conf
+  )
+  for f in "${legacy_globs[@]}"; do
+    [[ -e "$f" ]] || continue
+    base="$(basename "$f")"
+    # Keep current cbp-* programs
+    [[ "$base" == cbp-* ]] && continue
+    echo "    removing legacy Supervisor conf: $f"
+    run_svc rm -f "$f" 2>/dev/null || rm -f "$f" 2>/dev/null || true
+  done
+}
+
+print_cbp_status() {
+  echo "==> supervisorctl status (cbp-${SLUG}-*):"
+  # supervisorctl does not expand shell globs; filter the full status list.
+  if supervisorctl_safe status 2>/dev/null | grep -E "^cbp-${SLUG}-" || true; then
+    :
+  fi
+  local fatal
+  fatal="$(supervisorctl_safe status 2>/dev/null | grep -E "^cbp-${SLUG}-" | grep -E 'FATAL|BACKOFF|EXITED' || true)"
+  if [[ -n "$fatal" ]]; then
+    echo "==> FATAL/BACKOFF programs — last log lines:" >&2
+    echo "$fatal" >&2
+    local line prog app_rel log
+    while IFS= read -r line; do
+      prog="$(printf '%s' "$line" | awk '{print $1}' | cut -d: -f1)"
+      case "$prog" in
+        *-helpdesk-*) app_rel="modules/helpdesk/backend" ;;
+        *-finance-*) app_rel="modules/finance/backend" ;;
+        *-staff-portal-*) app_rel="modules/staff-portal/backend" ;;
+        *-risk-register-*) app_rel="modules/risk-register/backend" ;;
+        *-apm-*) app_rel="modules/apm" ;;
+        *) continue ;;
+      esac
+      if [[ "$prog" == *-queue ]]; then
+        log="$STAFF_ROOT/$app_rel/storage/logs/supervisor-queue.log"
+      else
+        log="$STAFF_ROOT/$app_rel/storage/logs/supervisor-scheduler.log"
+      fi
+      echo "---- $prog ($log) ----" >&2
+      if [[ -f "$log" ]]; then
+        tail -n 40 "$log" >&2 || true
+      else
+        echo "(log missing — check directory ownership for $SUPERVISOR_USER)" >&2
+        supervisorctl_safe tail -100 "$prog" 2>/dev/null >&2 || true
+      fi
+    done <<< "$fatal"
+  fi
 }
 
 if [[ "$DRY_RUN" != "1" ]]; then
@@ -288,6 +401,7 @@ fi
 
 echo "==> Supervisor programs (slug=$SLUG php=$PHP_BIN user=$SUPERVISOR_USER)"
 mkdir -p "$CONF_DIR"
+retire_legacy_supervisor_programs
 
 # app|relative_dir|queue_numprocs
 write_app_programs "staff-portal" "modules/staff-portal/backend" "1"
@@ -309,10 +423,15 @@ if command -v supervisorctl >/dev/null 2>&1; then
   fi
   supervisorctl_safe reread
   supervisorctl_safe update
-  echo "==> supervisorctl status (cbp-${SLUG}-*):"
-  supervisorctl_safe status "cbp-${SLUG}-*" 2>/dev/null || supervisorctl_safe status || true
+  # Clear FATAL state and try a clean start after ownership fixes.
+  supervisorctl_safe start "cbp-${SLUG}-:" 2>/dev/null || true
+  sleep 2
+  print_cbp_status
 else
   echo "warn: supervisorctl missing; confs written to $CONF_DIR" >&2
 fi
 
 echo "Done. Manage with: sudo supervisorctl status"
+echo "If helpdesk/finance stay FATAL, inspect:"
+echo "  sudo tail -n 80 modules/helpdesk/backend/storage/logs/supervisor-queue.log"
+echo "  sudo tail -n 80 modules/finance/backend/storage/logs/supervisor-queue.log"

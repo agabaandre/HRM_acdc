@@ -33,6 +33,16 @@ sudo supervisorctl restart cbp-staff-:
 sudo supervisorctl tail -f cbp-staff-apm-queue
 ```
 
+If a program is **FATAL** (“Exited too quickly”), check the app log (not only `supervisorctl`):
+
+```bash
+sudo tail -n 80 /path/to/staff/modules/helpdesk/backend/storage/logs/supervisor-queue.log
+sudo tail -n 80 /path/to/staff/modules/finance/backend/storage/logs/supervisor-queue.log
+# Typical causes: storage/logs not writable by www-data, bad .env DB, missing vendor/
+sudo chown -R www-data:www-data modules/helpdesk/backend/storage modules/finance/backend/storage
+sudo chmod -R ug+rwX modules/helpdesk/backend/storage modules/finance/backend/storage
+```
+
 Reinstall / refresh after path or PHP changes:
 
 ```bash
