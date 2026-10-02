@@ -14,6 +14,14 @@
 services:
   redis:
     image: redis:7-alpine
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "${REDIS_MAXMEMORY:-2gb}",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
     ports:
       - "${REDIS_PUBLISH_PORT:-16379}:6379"
     volumes:
@@ -71,6 +79,8 @@ services:
       REDIS_PORT: "6379"
       STAFF_API_INTERNAL_BASE_URL: http://web/staff/backend
       SKIP_REDIS_WAIT: "0"
+    mem_limit: ${WORKERS_MEM_LIMIT:-6g}
+    cpus: ${WORKERS_CPUS:-4.0}
     depends_on:
       redis:
         condition: service_healthy
