@@ -82,12 +82,17 @@ retire_cbp_systemd() {
 }
 
 ensure_supervisor_pkg() {
-  if command -v supervisorctl >/dev/null 2>&1; then
+  local need_install=0
+  if ! command -v supervisorctl >/dev/null 2>&1 || ! command -v supervisord >/dev/null 2>&1; then
+    need_install=1
+  fi
+  if [[ "$need_install" -eq 0 ]]; then
     return 0
   fi
-  echo "supervisorctl not found — attempting to install supervisor…"
+  echo "supervisor package incomplete — attempting to install…"
   if [[ "$(id -u)" -eq 0 ]]; then
     if command -v apt-get >/dev/null 2>&1; then
+      apt-get update -qq || true
       apt-get install -y supervisor
     elif command -v dnf >/dev/null 2>&1; then
       dnf install -y supervisor
@@ -99,6 +104,7 @@ ensure_supervisor_pkg() {
     fi
   elif command -v sudo >/dev/null 2>&1; then
     if command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get update -qq || true
       sudo apt-get install -y supervisor
     elif command -v dnf >/dev/null 2>&1; then
       sudo dnf install -y supervisor
@@ -116,42 +122,62 @@ ensure_supervisor_pkg() {
     echo "error: supervisorctl still missing after install." >&2
     exit 1
   }
+  command -v supervisord >/dev/null 2>&1 || {
+    echo "error: supervisord still missing after install." >&2
+    exit 1
+  }
 }
 
-# Start supervisord so /var/run/supervisor.sock exists before supervisorctl.
-ensure_supervisord_running() {
-  local sock sock_candidates=(
-    /var/run/supervisor.sock
-    /var/run/supervisord.sock
-    /run/supervisor.sock
+run_svc() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
+supervisor_sock_path() {
+  local s
+  for s in \
+    /var/run/supervisor.sock \
+    /run/supervisor.sock \
+    /var/run/supervisord.sock \
     /run/supervisord.sock
-  )
-  local s found=0
-  for s in "${sock_candidates[@]}"; do
+  do
     if [[ -S "$s" ]]; then
-      found=1
-      break
+      printf '%s\n' "$s"
+      return 0
     fi
   done
-  if [[ "$found" -eq 1 ]]; then
+  return 1
+}
+
+# Start supervisord so the unix socket exists before supervisorctl.
+ensure_supervisord_running() {
+  local sock
+  if sock="$(supervisor_sock_path)"; then
+    echo "    supervisord already running ($sock)"
     return 0
   fi
 
-  echo "==> Starting supervisord (socket missing)"
-  run_svc() {
-    if [[ "$(id -u)" -eq 0 ]]; then
-      "$@"
-    elif command -v sudo >/dev/null 2>&1; then
-      sudo "$@"
-    else
-      "$@"
-    fi
-  }
+  echo "==> Enabling and starting supervisord (socket missing)"
 
+  # Debian/Ubuntu unit is usually "supervisor"; RHEL often "supervisord".
   if command -v systemctl >/dev/null 2>&1; then
-    run_svc systemctl enable supervisor 2>/dev/null || run_svc systemctl enable supervisord 2>/dev/null || true
+    run_svc systemctl unmask supervisor 2>/dev/null || true
+    run_svc systemctl unmask supervisord 2>/dev/null || true
+    run_svc systemctl daemon-reload 2>/dev/null || true
+    run_svc systemctl enable --now supervisor 2>/dev/null \
+      || run_svc systemctl enable --now supervisord 2>/dev/null \
+      || true
+    # Some hosts have the unit installed but inactive
     run_svc systemctl start supervisor 2>/dev/null \
       || run_svc systemctl start supervisord 2>/dev/null \
+      || true
+    run_svc systemctl restart supervisor 2>/dev/null \
+      || run_svc systemctl restart supervisord 2>/dev/null \
       || true
   fi
   if command -v service >/dev/null 2>&1; then
@@ -159,8 +185,9 @@ ensure_supervisord_running() {
       || run_svc service supervisord start 2>/dev/null \
       || true
   fi
-  # Last resort: start daemon directly (Debian package layout).
-  if ! [[ -S /var/run/supervisor.sock || -S /var/run/supervisord.sock || -S /run/supervisor.sock ]]; then
+
+  # Direct start if systemd did not create the socket (conf present, daemon down).
+  if ! supervisor_sock_path >/dev/null; then
     if [[ -f /etc/supervisor/supervisord.conf ]]; then
       run_svc supervisord -c /etc/supervisor/supervisord.conf 2>/dev/null || true
     elif [[ -f /etc/supervisord.conf ]]; then
@@ -171,16 +198,25 @@ ensure_supervisord_running() {
   fi
 
   local i
-  for i in 1 2 3 4 5 6 7 8 9 10; do
-    for s in "${sock_candidates[@]}"; do
-      if [[ -S "$s" ]]; then
-        echo "    supervisord ready ($s)"
-        return 0
-      fi
-    done
-    sleep 0.5
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    if sock="$(supervisor_sock_path)"; then
+      echo "    supervisord ready ($sock)"
+      return 0
+    fi
+    sleep 0.4
   done
-  echo "warn: supervisord socket still missing — confs written; start with: sudo systemctl start supervisor" >&2
+
+  echo "error: supervisord is not running (no unix socket)." >&2
+  echo "    Fix on this host:" >&2
+  echo "      sudo apt-get install -y supervisor" >&2
+  echo "      sudo systemctl enable --now supervisor" >&2
+  echo "      sudo systemctl status supervisor --no-pager" >&2
+  echo "      ls -l /var/run/supervisor.sock /run/supervisor.sock 2>/dev/null" >&2
+  if command -v systemctl >/dev/null 2>&1; then
+    run_svc systemctl status supervisor --no-pager -l 2>/dev/null \
+      || run_svc systemctl status supervisord --no-pager -l 2>/dev/null \
+      || true
+  fi
   return 1
 }
 
@@ -247,7 +283,7 @@ if [[ "$DRY_RUN" != "1" ]]; then
   fi
   retire_cbp_systemd
   ensure_supervisor_pkg
-  ensure_supervisord_running || true
+  ensure_supervisord_running
 fi
 
 echo "==> Supervisor programs (slug=$SLUG php=$PHP_BIN user=$SUPERVISOR_USER)"
@@ -267,14 +303,14 @@ if [[ "$DRY_RUN" == "1" ]]; then
 fi
 
 if command -v supervisorctl >/dev/null 2>&1; then
-  ensure_supervisord_running || true
-  if supervisorctl_safe reread && supervisorctl_safe update; then
-    echo "==> supervisorctl status (cbp-${SLUG}-*):"
-    supervisorctl_safe status "cbp-${SLUG}-*" 2>/dev/null || supervisorctl_safe status || true
-  else
-    echo "warn: supervisorctl could not talk to supervisord — confs are in $CONF_DIR" >&2
-    echo "    start daemon: sudo systemctl start supervisor && sudo supervisorctl update" >&2
+  if ! ensure_supervisord_running; then
+    echo "error: enable Supervisor before reread/update. Confs are in $CONF_DIR" >&2
+    exit 1
   fi
+  supervisorctl_safe reread
+  supervisorctl_safe update
+  echo "==> supervisorctl status (cbp-${SLUG}-*):"
+  supervisorctl_safe status "cbp-${SLUG}-*" 2>/dev/null || supervisorctl_safe status || true
 else
   echo "warn: supervisorctl missing; confs written to $CONF_DIR" >&2
 fi

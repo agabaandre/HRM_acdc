@@ -17,6 +17,16 @@ Confs live in `/etc/supervisor/conf.d/`. Logs: `{app}/storage/logs/supervisor-qu
 
 ## Operator commands
 
+Enable the daemon first (required once per host — without it `supervisorctl` fails with `supervisor.sock` missing):
+
+```bash
+sudo apt-get install -y supervisor
+sudo systemctl enable --now supervisor
+sudo systemctl status supervisor --no-pager
+```
+
+Then:
+
 ```bash
 sudo supervisorctl status
 sudo supervisorctl restart cbp-staff-:
