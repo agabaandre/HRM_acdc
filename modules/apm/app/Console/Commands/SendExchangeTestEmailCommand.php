@@ -20,7 +20,7 @@ class SendExchangeTestEmailCommand extends Command
 
         $config = config('exchange-email');
 
-        require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+        require_once base_path('lib/ExchangeEmailService/ExchangeOAuth.php');
 
         $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
             $config['tenant_id'],

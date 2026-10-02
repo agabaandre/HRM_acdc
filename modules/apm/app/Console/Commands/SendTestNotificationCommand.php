@@ -97,7 +97,7 @@ class SendTestNotificationCommand extends Command
             $config = config('exchange-email');
             
             // Use the working implementation from local ExchangeEmailService
-            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            require_once base_path('lib/ExchangeEmailService/ExchangeOAuth.php');
             
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
                 $config['tenant_id'],

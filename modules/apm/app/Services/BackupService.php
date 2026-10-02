@@ -376,7 +376,7 @@ class BackupService
     protected function sendEmailToRecipients(array $recipients, string $subject, string $body, array $attachments = []): bool
     {
         try {
-            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            require_once base_path('lib/ExchangeEmailService/ExchangeOAuth.php');
             $config = config('exchange-email');
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
                 $config['tenant_id'],
@@ -698,7 +698,7 @@ class BackupService
             }
             
             // Use existing email service
-            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            require_once base_path('lib/ExchangeEmailService/ExchangeOAuth.php');
             $config = config('exchange-email');
             
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(

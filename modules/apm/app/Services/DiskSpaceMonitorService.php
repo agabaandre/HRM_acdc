@@ -132,7 +132,7 @@ class DiskSpaceMonitorService
             $message = $this->buildNotificationMessage($diskSpace, $level);
             
             // Use existing email service
-            require_once app_path('ExchangeEmailService/ExchangeOAuth.php');
+            require_once base_path('lib/ExchangeEmailService/ExchangeOAuth.php');
             $exchangeConfig = config('exchange-email');
             
             $oauth = new \AgabaandreOffice365\ExchangeEmailService\ExchangeOAuth(
