@@ -3,6 +3,8 @@
 One Compose project at the **repository root** runs **Apache + PHP** and **Redis**.
 **MySQL defaults to the host** (or any reachable server). Bundled MySQL and queue workers are optional profiles.
 
+Root `./setup.sh` (Docker deploy): Redis defaults to Compose service `redis` (external optional); MySQL defaults to **external** with username/password prompts; module installers default to production, always migrate, and seed only when the target database has no tables.
+
 ## Quick start
 
 ```bash

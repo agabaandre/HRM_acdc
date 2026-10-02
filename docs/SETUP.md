@@ -18,13 +18,15 @@ Requires a TTY. Passwords are entered without echo.
 | **Site role** | **Production · Demo** (demo never enables Supervisor workers) |
 | Install type | New · Existing |
 | Deploy | Host Apache · **Docker Compose (default)** |
-| Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** · Keep current — under Docker, external host defaults to `host.docker.internal` |
+| **Redis** (Docker) | **Docker Redis (default)** · External Redis |
+| **Redis** (Host) | Host/port/password (default `127.0.0.1`) |
+| Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** — always prompts user/password; under Docker, external host defaults to `host.docker.internal` |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
 | **Auth** | Microsoft Entra (`EXCHANGE_TENANT_ID` / `EXCHANGE_CLIENT_ID` / `EXCHANGE_CLIENT_SECRET`) written to **root `.env` only**; modules inherit via `shared/load-staff-root-env.php` and keep per-app `MICROSOFT_REDIRECT_URI` / `EXCHANGE_REDIRECT_URI`; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
-| Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
-| Installers | Optional `setup.sh` or `setup-production.sh` |
+| Per module | `DB_DATABASE` (+ forced `DB_CONNECTION=mysql`, mapped URLs / storage) for staff-portal, APM, finance, helpdesk, risk-register |
+| Installers | Default **Yes** · profile default **production** — always migrate; seed only when the target schema has **no tables** |
 | **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for **all five** modules (staff-portal, helpdesk, finance, risk-register, APM); host `STAFF_DATA_ROOT` when set |
 | **Supervisor** | **Production host only** (optional; default Yes on Linux) — queue + scheduler for all five apps |
 
@@ -38,10 +40,11 @@ Folder names containing `demo` default the site role to **Demo**.
 | `.htaccess` (+ staff-portal / APM) | Public redirects use `/{WEB_ROOT}/` |
 | `modules/staff-portal/setup.env` + `backend/.env` | Portal |
 | `modules/apm/.env` | APM |
-| `modules/finance/setup.env` + `.env` | Finance |
+| `modules/finance/setup.env` + `.env` (+ `backend/.env` when present) | Finance |
 | `modules/helpdesk/setup.env` + `backend/.env` | Helpdesk |
+| `modules/risk-register/setup.env` + `backend/.env` | Risk Register |
 
-Wizard keys (URLs, JWT, Share API, Redis, storage, Microsoft SSO where applicable, and DB when not “keep”) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
+Wizard keys (URLs, JWT, Share API, Redis, storage, Microsoft SSO where applicable, and MySQL including `DB_CONNECTION=mysql`) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
 
 | Auth key | Root | staff-portal | APM | helpdesk | finance |
 |----------|------|--------------|-----|----------|---------|

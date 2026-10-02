@@ -116,10 +116,10 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 ```bash
-./setup.sh   # interactive env for all modules (+ optional installers / Supervisor)
+./setup.sh   # interactive env for all modules (+ installers default Yes / production)
 ```
 
-Full guide: [docs/SETUP.md](./docs/SETUP.md)
+Full guide: [docs/SETUP.md](./docs/SETUP.md). Wizard notes: Docker deploy defaults Redis to Compose `redis`; MySQL defaults to **external** and always prompts username/password; installers always migrate and seed only empty schemas.
 
 <details>
 <summary><b>Docker (CBP modules)</b></summary>

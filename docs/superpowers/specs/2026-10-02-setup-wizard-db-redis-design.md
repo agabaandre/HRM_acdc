@@ -1,7 +1,7 @@
 # Setup wizard: MySQL, Redis, migrations, and production defaults
 
 **Date:** 2026-10-02  
-**Status:** Approved (pending implementation)  
+**Status:** Implemented  
 **Approach:** Global MySQL + Docker Redis defaults; always migrate; seed only new DBs (Approach A helpers in `setup.sh`)
 
 ## Goals
