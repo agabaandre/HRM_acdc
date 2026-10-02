@@ -46,6 +46,7 @@ return [
         'token' => env('STAFF_API_TOKEN') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
         'username' => env('STAFF_API_USERNAME'),
         'password' => env('STAFF_API_PASSWORD'),
+        // Laravel Share at {base}/share/* — see https://cbp.africacdc.org/staff/backend/share/docs
         'endpoints' => [
             'staff' => '/share/get_current_staff',
             'divisions' => '/share/divisions',

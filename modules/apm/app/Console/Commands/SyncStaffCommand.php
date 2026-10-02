@@ -3,10 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\Staff;
+use App\Support\StaffApiBaseUrl;
 use Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Staff\Shared\StaffShareHttp;
 
 class SyncStaffCommand extends Command
 {
@@ -32,35 +33,20 @@ class SyncStaffCommand extends Command
         $this->info('Starting staff sync from Africa CDC API...');
 
         try {
-            // Get API credentials from config
-            $username = config('services.staff_api.username');
-            $password = config('services.staff_api.password');
-
-            // Validate credentials
-            if (empty($username) || empty($password)) {
-                throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
+            $client = StaffShareHttp::fromConfig([
+                'base_url' => StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url')),
+                'username' => config('services.staff_api.username'),
+                'password' => config('services.staff_api.password'),
+                'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
+            ], 120);
+            if (! $client->isConfigured()) {
+                throw new Exception('Set STAFF_API_USERNAME + STAFF_API_PASSWORD and/or STAFF_API_TOKEN for Share API (see /staff/backend/share/docs).');
             }
 
-            // Get dynamic API URL (Laravel Share at /staff/backend)
-            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
-            $apiToken = config('services.staff_api.token');
             $apiEndpoint = config('services.staff_api.endpoints.staff', '/share/get_current_staff');
-            $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint . '/' . $apiToken;
-            
-            $this->info('Making API request to: ' . $apiUrl);
-            
-            $response = Http::withBasicAuth($username, $password)
-                ->timeout(60)
-                ->retry(2, 1000)
-                ->get($apiUrl);
-
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch data from API: ' . $response->status());
-            }
-
-            $staffData = $response->json();
-
-            if (!is_array($staffData)) {
+            $this->info('Fetching staff from Share API: '.$client->baseUrl().$apiEndpoint);
+            $staffData = $client->getJson($apiEndpoint);
+            if (! is_array($staffData)) {
                 throw new Exception('Invalid response format from API');
             }
 

@@ -3,25 +3,21 @@
 namespace App\Services;
 
 use App\Support\StaffApiBaseUrl;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Staff\Shared\StaffShareHttp;
 
 /**
- * Calls Laravel Staff Share API (staff-portal Modules/Share) using the same URL + auth
- * pattern as APM (`staff:sync`, `divisions:sync` — `{base}/share/...[/{token}]` with
- * `STAFF_API_*` credentials). Path token is optional when HTTP Basic succeeds; the
- * shared static Share token is preferred for CI3 parity.
+ * Calls Laravel Staff Share API (staff-portal Modules/Share) — same contract as APM
+ * staff:sync / divisions:sync. Auth: STAFF_API_USERNAME/PASSWORD → POST /share/token
+ * (Bearer JWT), else STAFF_API_TOKEN path/Bearer. Docs: /staff/backend/share/docs
  */
 class StaffPortalReferenceClient
 {
+    private ?StaffShareHttp $http = null;
+
     public function isConfigured(): bool
     {
-        $u = $this->username();
-
-        $p = $this->password();
-
-        return $u !== '' && $p !== '';
+        return $this->client()->isConfigured();
     }
 
     /**
@@ -29,7 +25,7 @@ class StaffPortalReferenceClient
      */
     public function fetchDivisions(): array
     {
-        return $this->getJson($this->buildUrl('divisions'));
+        return $this->asList($this->client()->getJson($this->endpoint('divisions')));
     }
 
     /**
@@ -37,7 +33,7 @@ class StaffPortalReferenceClient
      */
     public function fetchDirectorates(): array
     {
-        return $this->getJson($this->buildUrl('directorates'));
+        return $this->asList($this->client()->getJson($this->endpoint('directorates')));
     }
 
     /**
@@ -45,73 +41,48 @@ class StaffPortalReferenceClient
      */
     public function fetchStaff(int $limit, int $start = 0): array
     {
-        $url = $this->buildUrl('staff');
-        $url .= '?limit='.max(1, min($limit, 20000)).'&start='.max(0, $start);
-
-        return $this->getJson($url);
+        return $this->asList($this->client()->getJson($this->endpoint('staff'), [
+            'limit' => max(1, min($limit, 20000)),
+            'start' => max(0, $start),
+        ]));
     }
 
     /**
-     * Fetch staff currently sitting in any of the given division IDs, alongside
-     * their existing `staff.helpdesk_agent_at` value so the helpdesk SPA can
-     * render a preview before promoting them to agents.
-     *
      * @param  array<int, int>  $divisionIds
      * @return array<int, array<string, mixed>>
      */
     public function fetchAgentsInDivisions(array $divisionIds): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $divisionIds), fn (int $n) => $n > 0)));
-        $url = $this->buildUrl('agents_in_divisions');
-        if (! empty($ids)) {
-            $url .= '?division_ids='.implode(',', $ids);
+        $query = [];
+        if ($ids !== []) {
+            $query['division_ids'] = implode(',', $ids);
         }
-
-        $payload = $this->getJsonAssoc($url);
+        $payload = $this->client()->getJson($this->endpoint('agents_in_divisions'), $query);
 
         return is_array($payload['data'] ?? null) ? $payload['data'] : [];
     }
 
     /**
-     * Toggle the `staff.helpdesk_agent_at` column for the given staff_ids on the
-     * CodeIgniter side (Settings → General → Mark / unmark agents).
-     *
      * @param  array<int, int>  $staffIds
      * @return array<string, mixed>
      */
     public function markHelpdeskAgents(array $staffIds, bool $mark): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $staffIds), fn (int $n) => $n > 0)));
-        if (empty($ids)) {
+        if ($ids === []) {
             throw new RuntimeException('No staff_ids supplied to markHelpdeskAgents.');
         }
-        $url = $this->buildUrl('mark_agents');
 
-        $response = Http::withBasicAuth($this->username(), $this->password())
-            ->timeout(60)
-            ->acceptJson()
-            ->asJson()
-            ->post($url, ['staff_ids' => $ids, 'mark' => $mark]);
-
-        if (! $response->successful()) {
-            throw new RuntimeException($this->formatHttpError($response));
-        }
-
-        $payload = $response->json();
-        if (! is_array($payload)) {
-            throw new RuntimeException('Staff API returned non-array JSON when marking agents.');
-        }
-
-        return $payload;
+        return $this->client()->postJson($this->endpoint('mark_agents'), [
+            'staff_ids' => $ids,
+            'mark' => $mark,
+        ]);
     }
 
     /**
-     * CBP module links for top nav (same data as Staff portal cbp_modules table).
-     *
+     * @param  list<string>  $permissionIds
      * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
-     */
-    /**
-     * @param  list<string>  $permissionIds  Staff portal permission codes from SSO session (optional)
      */
     public function fetchCbpModules(
         int $staffId,
@@ -122,22 +93,22 @@ class StaffPortalReferenceClient
         if ($staffId < 1) {
             throw new RuntimeException('staff_id is required for CBP modules.');
         }
-        $url = $this->buildUrl('cbp_modules').'?staff_id='.$staffId;
+        $query = ['staff_id' => $staffId];
         if ($excludeModuleKey !== '') {
-            $url .= '&exclude_module_key='.rawurlencode($excludeModuleKey);
+            $query['exclude_module_key'] = $excludeModuleKey;
         }
         if ($activeModuleKey !== '') {
-            $url .= '&active_module_key='.rawurlencode($activeModuleKey);
+            $query['active_module_key'] = $activeModuleKey;
         }
         $permissionIds = array_values(array_unique(array_filter(array_map(
             static fn ($id) => trim((string) $id),
             $permissionIds
         ), static fn (string $id) => $id !== '')));
         if ($permissionIds !== []) {
-            $url .= '&permission_ids='.rawurlencode(implode(',', $permissionIds));
+            $query['permission_ids'] = implode(',', $permissionIds);
         }
 
-        $payload = $this->getJsonAssoc($url);
+        $payload = $this->client()->getJson($this->endpoint('cbp_modules'), $query);
         if (empty($payload['success'])) {
             $err = is_string($payload['error'] ?? null) ? $payload['error'] : 'Staff API returned success=false for cbp_modules.';
             throw new RuntimeException($err);
@@ -151,111 +122,44 @@ class StaffPortalReferenceClient
         return $data;
     }
 
-    private function buildUrl(string $endpointKey): string
+    private function client(): StaffShareHttp
     {
+        if ($this->http instanceof StaffShareHttp) {
+            return $this->http;
+        }
+
         $base = StaffApiBaseUrl::resolve((string) config('helpdesk.staff_api.base_url'));
-        $base = rtrim($base, '/');
-        $path = trim((string) config('helpdesk.staff_api.endpoints.'.$endpointKey));
+        $this->http = StaffShareHttp::fromConfig([
+            'base_url' => $base,
+            'username' => config('helpdesk.staff_api.username'),
+            'password' => config('helpdesk.staff_api.password'),
+            'token' => config('helpdesk.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
+        ], 120);
+
+        return $this->http;
+    }
+
+    private function endpoint(string $key): string
+    {
+        $path = trim((string) config('helpdesk.staff_api.endpoints.'.$key));
         if ($path === '') {
-            throw new RuntimeException('Missing staff_api endpoint: '.$endpointKey);
-        }
-        if ($path[0] !== '/') {
-            $path = '/'.$path;
-        }
-        $token = trim((string) config('helpdesk.staff_api.token', ''));
-        // Laravel Share accepts optional `{token?}`; Basic Auth alone works when credentials match.
-        // Prefer appending the static Share token (config default) for CI3 / APM parity.
-        if ($token !== '') {
-            return $base.$path.'/'.$token;
+            throw new RuntimeException('Missing staff_api endpoint: '.$key);
         }
 
-        return $base.$path;
-    }
-
-    private function username(): string
-    {
-        return trim((string) config('helpdesk.staff_api.username', ''));
-    }
-
-    private function password(): string
-    {
-        return trim((string) config('helpdesk.staff_api.password', ''));
+        return $path[0] === '/' ? $path : '/'.$path;
     }
 
     /**
+     * @param  array<int|string, mixed>  $data
      * @return array<int, array<string, mixed>>
      */
-    private function getJson(string $url): array
+    private function asList(array $data): array
     {
-        $username = $this->username();
-        $password = $this->password();
-
-        $response = Http::withBasicAuth($username, $password)
-            ->timeout(120)
-            ->retry(2, 1000, null, false)
-            ->acceptJson()
-            ->get($url);
-
-        if (! $response->successful()) {
-            throw new RuntimeException($this->formatHttpError($response));
-        }
-
-        $data = $response->json();
-        if (! is_array($data)) {
-            throw new RuntimeException('Staff API returned non-array JSON.');
-        }
-
         /** @var array<int, array<string, mixed>> $out */
         $out = array_values(array_map(function ($row) {
             return is_array($row) ? $row : (array) $row;
         }, $data));
 
         return $out;
-    }
-
-    /**
-     * Same as getJson() but returns the full JSON envelope (associative array)
-     * — used by endpoints that wrap rows in { success, data, total } instead of
-     * returning a bare list.
-     *
-     * @return array<string, mixed>
-     */
-    private function getJsonAssoc(string $url): array
-    {
-        $response = Http::withBasicAuth($this->username(), $this->password())
-            ->timeout(120)
-            ->retry(2, 1000, null, false)
-            ->acceptJson()
-            ->get($url);
-
-        if (! $response->successful()) {
-            throw new RuntimeException($this->formatHttpError($response));
-        }
-
-        $data = $response->json();
-        if (! is_array($data)) {
-            throw new RuntimeException('Staff API returned non-array JSON.');
-        }
-
-        return $data;
-    }
-
-    private function formatHttpError(Response $response): string
-    {
-        $status = $response->status();
-        $body = $response->json();
-        $remote = '';
-        if (is_array($body)) {
-            $remote = (string) ($body['message'] ?? $body['error'] ?? '');
-        }
-        $msg = 'Staff Share API HTTP '.$status;
-        if ($remote !== '') {
-            $msg .= ': '.$remote;
-        }
-        if ($status === 401) {
-            $msg .= ' — Basic Auth failed. `STAFF_API_USERNAME` must be the **login email** of a Staff portal user authorised for the Share API, and `STAFF_API_PASSWORD` must be that user’s current password (same values as in `apm/.env` where `php artisan staff:sync` works). Placeholder values from `.env.example` will not work. Trim any accidental spaces in `.env`; run `php artisan config:clear` after edits.';
-        }
-
-        return $msg;
     }
 }

@@ -6,7 +6,8 @@ use App\Models\Staff;
 use App\Models\Division;
 use Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
+use App\Support\StaffApiBaseUrl;
+use Staff\Shared\StaffShareHttp;
 use Illuminate\Support\Facades\Log;
 
 class SyncDivisionsCommand extends Command
@@ -33,39 +34,20 @@ class SyncDivisionsCommand extends Command
         $this->info('Starting divisions sync from Africa CDC API...');
 
         try {
-            // Get API credentials from config
-            $username = config('services.staff_api.username');
-            $password = config('services.staff_api.password');
-
-            //dd($username, $password);
-
-            // Validate credentials
-            if (empty($username) || empty($password)) {
-                throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env file');
+            $client = StaffShareHttp::fromConfig([
+                'base_url' => StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url')),
+                'username' => config('services.staff_api.username'),
+                'password' => config('services.staff_api.password'),
+                'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
+            ], 120);
+            if (! $client->isConfigured()) {
+                throw new Exception('Set STAFF_API_USERNAME + STAFF_API_PASSWORD and/or STAFF_API_TOKEN for Share API.');
             }
 
-            // Get dynamic API URL (Laravel Share at /staff/backend)
-            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
-            $apiToken = config('services.staff_api.token', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI');
             $apiEndpoint = config('services.staff_api.endpoints.divisions', '/share/divisions');
-            $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint . '/' . $apiToken;
-            
-            $this->info('Making API request to: ' . $apiUrl);
-            
-            $response = Http::withBasicAuth($username, $password)
-                ->timeout(60)
-                ->retry(2, 1000)
-                ->get($apiUrl);
-            //dd($response);
-
-            if (!$response->successful()) {
-                throw new Exception('Failed to fetch data from API: ' . $response->status());
-            }
-
-            $divisionsData = $response->json();
-            // dd($divisionsData);
-
-            if (!is_array($divisionsData)) {
+            $this->info('Fetching divisions from Share API: '.$client->baseUrl().$apiEndpoint);
+            $divisionsData = $client->getJson($apiEndpoint);
+            if (! is_array($divisionsData)) {
                 throw new Exception('Invalid response format from API');
             }
 

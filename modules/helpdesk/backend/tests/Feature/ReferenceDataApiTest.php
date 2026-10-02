@@ -24,6 +24,8 @@ class ReferenceDataApiTest extends TestCase
         ]);
 
         Http::fake([
+            // Credentials present → client tries POST /share/token first; reject so path token is used.
+            'http://staff.test/share/token' => Http::response(['success' => false, 'error' => 'Invalid credentials'], 401),
             'http://staff.test/share/divisions/testtoken' => Http::response([
                 ['division_id' => 21, 'division_name' => 'IT Division', 'directorate_id' => 4],
             ]),
@@ -85,6 +87,7 @@ class ReferenceDataApiTest extends TestCase
         ]);
 
         Http::fake([
+            'http://staff.test/share/token' => Http::response(['success' => false, 'error' => 'Invalid credentials'], 401),
             'http://staff.test/share/divisions/testtoken' => Http::response([
                 ['division_id' => 21, 'division_name' => 'IT Division', 'directorate_id' => 4],
             ]),

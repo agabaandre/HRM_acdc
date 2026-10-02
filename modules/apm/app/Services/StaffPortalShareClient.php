@@ -3,28 +3,26 @@
 namespace App\Services;
 
 use App\Support\StaffApiBaseUrl;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Staff\Shared\StaffShareHttp;
 
 /**
  * Staff portal Laravel Share API (same contract as Helpdesk reference sync).
+ * Auth: STAFF_API_USERNAME/PASSWORD → POST /share/token, else STAFF_API_TOKEN.
+ * Docs: /staff/backend/share/docs
  */
 class StaffPortalShareClient
 {
+    private ?StaffShareHttp $http = null;
+
     public function isConfigured(): bool
     {
-        $u = (string) config('services.staff_api.username', '');
-        $p = (string) config('services.staff_api.password', '');
-
-        return $u !== '' && $p !== '';
+        return $this->client()->isConfigured();
     }
 
     /**
-     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
-     */
-    /**
      * @param  list<string|int>  $permissionIds  Staff portal permission codes from session (optional)
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
      */
     public function fetchCbpModules(
         int $staffId,
@@ -36,12 +34,12 @@ class StaffPortalShareClient
             throw new RuntimeException('staff_id is required for CBP modules.');
         }
 
-        $url = $this->buildUrl('cbp_modules').'?staff_id='.$staffId;
+        $query = ['staff_id' => $staffId];
         if ($excludeModuleKey !== '') {
-            $url .= '&exclude_module_key='.rawurlencode($excludeModuleKey);
+            $query['exclude_module_key'] = $excludeModuleKey;
         }
         if ($activeModuleKey !== '') {
-            $url .= '&active_module_key='.rawurlencode($activeModuleKey);
+            $query['active_module_key'] = $activeModuleKey;
         }
         $permissionIds = array_values(array_unique(array_filter(array_map(
             static fn ($id) => trim((string) $id),
@@ -51,10 +49,10 @@ class StaffPortalShareClient
             $permissionIds = array_map('strval', (array) session('permissions', []));
         }
         if ($permissionIds !== []) {
-            $url .= '&permission_ids='.rawurlencode(implode(',', $permissionIds));
+            $query['permission_ids'] = implode(',', $permissionIds);
         }
 
-        $payload = $this->getJsonAssoc($url);
+        $payload = $this->client()->getJson($this->endpoint('cbp_modules'), $query);
         if (empty($payload['success'])) {
             $err = is_string($payload['error'] ?? null) ? $payload['error'] : 'Staff API returned success=false for cbp_modules.';
             throw new RuntimeException($err);
@@ -69,8 +67,6 @@ class StaffPortalShareClient
     }
 
     /**
-     * Fetch staff signature image from CI Share API (reads from staff portal uploads on that server).
-     *
      * @return non-empty-string|null Base64-encoded image bytes (not a data URI)
      */
     public function fetchStaffSignatureBase64(int $staffId): ?string
@@ -79,16 +75,10 @@ class StaffPortalShareClient
             return null;
         }
 
-        $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
-        $path = trim((string) config('services.staff_api.endpoints.signature', '/share/get_signature'));
-        if ($path === '') {
-            return null;
-        }
-
-        $url = rtrim($base, '/').$path.'?staff_id='.$staffId;
-
         try {
-            $payload = $this->getJsonAssoc($url);
+            $payload = $this->client()->getJson($this->endpoint('signature'), [
+                'staff_id' => $staffId,
+            ]);
         } catch (\Throwable) {
             return null;
         }
@@ -105,61 +95,30 @@ class StaffPortalShareClient
         return trim($data);
     }
 
-    private function buildUrl(string $endpointKey): string
+    private function client(): StaffShareHttp
     {
+        if ($this->http instanceof StaffShareHttp) {
+            return $this->http;
+        }
+
         $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
-        $base = rtrim($base, '/');
-        $path = trim((string) config('services.staff_api.endpoints.'.$endpointKey));
+        $this->http = StaffShareHttp::fromConfig([
+            'base_url' => $base,
+            'username' => config('services.staff_api.username'),
+            'password' => config('services.staff_api.password'),
+            'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
+        ], 60);
+
+        return $this->http;
+    }
+
+    private function endpoint(string $key): string
+    {
+        $path = trim((string) config('services.staff_api.endpoints.'.$key));
         if ($path === '') {
-            throw new RuntimeException('Missing staff_api endpoint: '.$endpointKey);
-        }
-        $token = trim((string) config('services.staff_api.token'));
-        if ($token === '') {
-            throw new RuntimeException('Missing STAFF_API_TOKEN.');
+            throw new RuntimeException('Missing staff_api endpoint: '.$key);
         }
 
-        return $base.$path.'/'.$token;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function getJsonAssoc(string $url): array
-    {
-        $response = Http::withBasicAuth(
-            (string) config('services.staff_api.username'),
-            (string) config('services.staff_api.password')
-        )
-            ->timeout(60)
-            ->retry(2, 1000, null, false)
-            ->acceptJson()
-            ->get($url);
-
-        if (! $response->successful()) {
-            throw new RuntimeException($this->formatHttpError($response));
-        }
-
-        $data = $response->json();
-        if (! is_array($data)) {
-            throw new RuntimeException('Staff API returned non-array JSON.');
-        }
-
-        return $data;
-    }
-
-    private function formatHttpError(Response $response): string
-    {
-        $status = $response->status();
-        $body = $response->json();
-        $remote = '';
-        if (is_array($body)) {
-            $remote = (string) ($body['message'] ?? $body['error'] ?? '');
-        }
-        $msg = 'Staff Share API HTTP '.$status;
-        if ($remote !== '') {
-            $msg .= ': '.$remote;
-        }
-
-        return $msg;
+        return $path[0] === '/' ? $path : '/'.$path;
     }
 }

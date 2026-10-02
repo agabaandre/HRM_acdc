@@ -3,11 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Models\ApmApiUser;
+use App\Support\StaffApiBaseUrl;
 use Exception;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Staff\Shared\StaffShareHttp;
 
 class SyncUsersCommand extends Command
 {
@@ -24,34 +25,25 @@ class SyncUsersCommand extends Command
                 throw new Exception('Table apm_api_users does not exist. Run migrations first.');
             }
 
-            $username = config('services.staff_api.username');
-            $password = config('services.staff_api.password');
-            if (empty($username) || empty($password)) {
-                throw new Exception('STAFF_API_USERNAME and STAFF_API_PASSWORD must be set in .env to call the staff API.');
+            $client = StaffShareHttp::fromConfig([
+                'base_url' => StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url')),
+                'username' => config('services.staff_api.username'),
+                'password' => config('services.staff_api.password'),
+                'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
+            ], 120);
+            if (! $client->isConfigured()) {
+                throw new Exception('Set STAFF_API_USERNAME + STAFF_API_PASSWORD and/or STAFF_API_TOKEN for Share API.');
             }
 
-            $apiBaseUrl = \App\Support\StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
             $apiEndpoint = config('services.staff_api.endpoints.users', '/share/users');
-            $apiUrl = rtrim($apiBaseUrl, '/') . $apiEndpoint;
-
-            $this->info('Fetching users from: ' . $apiUrl);
+            $this->info('Fetching users from Share API: '.$client->baseUrl().$apiEndpoint);
 
             $allUsers = [];
             $start = 0;
             $limit = 500;
             do {
-                $url = $apiUrl . '?' . http_build_query(['limit' => $limit, 'start' => $start]);
-                $response = Http::withBasicAuth($username, $password)
-                    ->timeout(60)
-                    ->retry(2, 1000)
-                    ->get($url);
-
-                if (!$response->successful()) {
-                    throw new Exception('Staff API returned ' . $response->status() . ': ' . ($response->body() ?: 'no body'));
-                }
-
-                $chunk = $response->json();
-                if (!is_array($chunk)) {
+                $chunk = $client->getJson($apiEndpoint, ['limit' => $limit, 'start' => $start]);
+                if (! is_array($chunk)) {
                     throw new Exception('Invalid response format from staff API (expected JSON array).');
                 }
                 $allUsers = array_merge($allUsers, $chunk);
