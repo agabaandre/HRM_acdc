@@ -50,6 +50,7 @@ setup_map_urls() {
   STAFF_PORTAL_SPA_URL="${base}/"
   APM_APP_URL="${base}/apm"
   FINANCE_APP_URL="${base}/finance"
+  RISK_REGISTER_APP_URL="${base}/risk-register"
   HELPDESK_APP_URL="${base}/helpdesk/backend"
   HELPDESK_FRONTEND_URL="${base}/helpdesk"
   VITE_STAFF_PORTAL_API_BASE_URL="${PUBLIC_PATH}/backend"

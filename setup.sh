@@ -635,7 +635,13 @@ prompt_value FN_DB "finance DB_DATABASE" "$(env_get "$FN_SETUP" DB_DATABASE)"
 FN_DB="${FN_DB:-finance}"
 write_finance_env() {
   local f
-  for f in "$FN_SETUP" "$FN_ENV"; do
+  for f in "$FN_SETUP" "$FN_ENV" "$ROOT/modules/finance/backend/.env"; do
+    if [[ "$f" == "$ROOT/modules/finance/backend/.env" ]]; then
+      [[ -d "$ROOT/modules/finance/backend" ]] || continue
+      if [[ ! -f "$f" ]]; then
+        env_ensure_file "$f" "$ROOT/modules/finance/backend/.env.example" || continue
+      fi
+    fi
     env_set "$f" APP_URL "$FINANCE_APP_URL" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
@@ -720,6 +726,42 @@ else
   setup_warn "helpdesk env write failed — fix ownership and re-run"
 fi
 
+# ----- risk-register -----
+echo
+echo "==> risk-register"
+RR_SETUP="$ROOT/modules/risk-register/setup.env"
+RR_ENV="$ROOT/modules/risk-register/backend/.env"
+env_ensure_file "$RR_SETUP" "$ROOT/modules/risk-register/setup.env.example" \
+  || setup_warn "risk-register setup.env missing/unwritable"
+env_ensure_file "$RR_ENV" "$ROOT/modules/risk-register/backend/.env.example" \
+  || setup_warn "risk-register backend/.env missing/unwritable"
+prompt_value RR_DB "risk-register DB_DATABASE" "$(env_get "$RR_SETUP" DB_DATABASE)"
+RR_DB="${RR_DB:-risk_register}"
+write_risk_register_env() {
+  local f
+  for f in "$RR_SETUP" "$RR_ENV"; do
+    env_set "$f" APP_URL "${RISK_REGISTER_APP_URL}/backend" || return 1
+    env_set "$f" BASE_URL "$BASE_URL" || return 1
+    env_set "$f" DB_DATABASE "$RR_DB" || return 1
+    apply_storage_to_file "$f" || return 1
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
+    apply_redis_to_file "$f" || return 1
+  done
+}
+if write_risk_register_env; then
+  if [[ -x "$ROOT/modules/risk-register/scripts/configure-env.sh" ]]; then
+    if "$ROOT/modules/risk-register/scripts/configure-env.sh"; then
+      echo "    configure-env OK"
+    else
+      setup_warn "risk-register configure-env failed"
+    fi
+  fi
+  write_risk_register_env || setup_warn "risk-register force env rewrite failed"
+  echo "    forced URLs/DB/Redis on setup.env + backend/.env"
+else
+  setup_warn "risk-register env write failed — fix ownership and re-run"
+fi
+
 # Writable Laravel dirs + public/storage after .env paths are known.
 setup_fix_laravel_storage
 
@@ -735,7 +777,7 @@ echo "EXCHANGE sync=$EXCHANGE_FROM_MS"
 echo "Password login=$ALLOW_ALTERNATIVE_LOGIN"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
-echo "DB host=${DB_HOST:-keep}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB"
+echo "DB host=${DB_HOST:-unset}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB risk=$RR_DB"
 if [[ "$SETUP_ERRORS" -gt 0 ]]; then
   echo
   echo "Completed with $SETUP_ERRORS warning(s). Fix reported env permissions and re-run ./setup.sh if needed."
@@ -749,8 +791,7 @@ if [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo "Workers (Compose): docker compose --env-file docker/.env --profile workers up -d"
 fi
 
-INST_PROFILE_DEFAULT=1
-[[ "$SITE_KIND" == "production" ]] && INST_PROFILE_DEFAULT=2
+INST_PROFILE_DEFAULT=2
 
 # SPA assets bake WEB_ROOT into index.html — rebuild whenever the folder/URL changes.
 SPA_BUILD_DEFAULT=1
@@ -770,8 +811,42 @@ else
   echo "==> Skipping SPA rebuild (assets may still point at an old folder name)"
 fi
 
-prompt_choice RUN_INSTALL "Run module installers now?" "1) Yes  2) No" "2"
+prompt_choice RUN_INSTALL "Run module installers now?" "1) Yes  2) No" "1"
 prompt_choice INST_PROFILE "Installer profile" "1) development (setup.sh)  2) production (setup-production.sh)" "$INST_PROFILE_DEFAULT"
+
+setup_run_module_production() {
+  local name="$1" dir="$2" database="$3"
+  shift 3
+  local is_new=0
+  local probe_host="$DB_HOST"
+  local extra=()
+  # Host-side probe: Compose service name mysql is not resolvable on the host.
+  if [[ "$probe_host" == "mysql" ]]; then
+    probe_host="127.0.0.1"
+  fi
+  if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$database"; then
+    is_new=1
+    echo "==> $name: new DB — migrate + seed"
+  else
+    echo "==> $name: existing DB — migrate only (skip seed)"
+  fi
+  # Module scripts differ: helpdesk has --skip-seed; portal/RR use --with-demo-seed for DatabaseSeeder.
+  case "$name" in
+    helpdesk)
+      [[ "$is_new" -eq 0 ]] && extra=(--skip-seed)
+      ;;
+    staff-portal|risk-register)
+      [[ "$is_new" -eq 1 ]] && extra=(--with-demo-seed)
+      ;;
+  esac
+  (cd "$dir" && ./setup-production.sh "$@" "${extra[@]}") \
+    || echo "warn: $name setup-production failed" >&2
+  # Finance has no seed flag — seed new schemas via artisan when present.
+  if [[ "$name" == "finance" && "$is_new" -eq 1 && -f "$dir/artisan" ]]; then
+    (cd "$dir" && php artisan db:seed --force --no-interaction) \
+      || echo "warn: finance db:seed failed" >&2
+  fi
+}
 
 if [[ "$RUN_INSTALL" == "1" ]]; then
   export STAFF_SITE_ID STAFF_DATA_ROOT STAFF_HOST_DATA_ROOT STAFF_USE_HOST_STORAGE
@@ -779,15 +854,15 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
   export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND WEB_ROOT
   export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
   if [[ "$INST_PROFILE" == "2" ]]; then
-    (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup-production.sh --skip-build) \
-      || echo "warn: staff-portal setup-production failed" >&2
-    # SPA already built above; production script still runs composer/migrate
-    (cd "$ROOT/modules/finance" && ./setup-production.sh) || echo "warn: finance setup-production failed" >&2
-    (cd "$ROOT/modules/helpdesk" && ./setup-production.sh) || echo "warn: helpdesk setup-production failed" >&2
+    setup_run_module_production staff-portal "$ROOT/modules/staff-portal" "$SP_DB" --skip-build
+    setup_run_module_production finance "$ROOT/modules/finance" "$FN_DB"
+    setup_run_module_production helpdesk "$ROOT/modules/helpdesk" "$HD_DB"
+    setup_run_module_production risk-register "$ROOT/modules/risk-register" "${RR_DB:-risk_register}"
   else
     (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
     (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
     (cd "$ROOT/modules/helpdesk" && ./setup.sh) || echo "warn: helpdesk setup failed" >&2
+    (cd "$ROOT/modules/risk-register" && ./setup.sh) || echo "warn: risk-register setup failed" >&2
   fi
   if [[ -f "$ROOT/modules/apm/artisan" ]]; then
     (
@@ -795,6 +870,12 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
       composer install --no-interaction --prefer-dist || true
       php artisan key:generate --force 2>/dev/null || true
       php artisan jwt:secret --force 2>/dev/null || true
+      php artisan migrate --force --no-interaction || true
+      probe_host="$DB_HOST"
+      [[ "$probe_host" == "mysql" ]] && probe_host="127.0.0.1"
+      if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
+        php artisan db:seed --force --no-interaction 2>/dev/null || true
+      fi
     ) || echo "warn: APM bootstrap failed" >&2
   fi
   # Installers may recreate dirs as root — fix perms and relink again.
