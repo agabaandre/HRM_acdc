@@ -43,6 +43,15 @@ sudo chown -R www-data:www-data modules/helpdesk/backend/storage modules/finance
 sudo chmod -R ug+rwX modules/helpdesk/backend/storage modules/finance/backend/storage
 ```
 
+Missing `vendor/autoload.php` (finance API workers):
+
+```bash
+cd /path/to/staff/modules/finance/backend
+composer install --no-dev --optimize-autoloader --no-interaction
+# or re-run module setup: cd ../ && ./setup-production.sh --skip-build
+sudo supervisorctl restart cbp-staff-finance-queue cbp-staff-finance-scheduler
+```
+
 Reinstall / refresh after path or PHP changes:
 
 ```bash
