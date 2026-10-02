@@ -1,0 +1,13 @@
+[program:__NAME__]
+process_name=%(program_name)s_%(process_num)02d
+command=__COMMAND__
+directory=__DIRECTORY__
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=__USER__
+numprocs=__NUMPROCS__
+redirect_stderr=true
+stdout_logfile=__LOGFILE__
+stopwaitsecs=__STOPWAIT__
