@@ -443,7 +443,7 @@ Production administrators should verify:
 
 - [ ] `APP_DEBUG=false`
 - [ ] Strong `APP_KEY`, `JWT_SECRET`, `HELPDESK_BRIDGE_SECRET`
-- [ ] `STAFF_API_TOKEN` set (no default token)
+- [ ] `STAFF_API_TOKEN` set (defaults to Staff Share static token if blank)
 - [ ] WhatsApp **app secret** saved (enables webhook signature verification)
 - [ ] Rate limits active on auth endpoints (30/min)
 - [ ] Attachment downloads use **signed URLs** only (not public `/storage/helpdesk/`)

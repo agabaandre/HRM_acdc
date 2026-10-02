@@ -201,14 +201,16 @@ if setup_secret_is_placeholder "${STAFF_API_PASSWORD:-}" && [[ "$INSTALL_TYPE" =
   echo "    generated STAFF_API_PASSWORD (was empty)"
 fi
 
+# Must match staff-portal Share `config('share.api_token')` (not a random secret).
+SHARE_API_TOKEN_DEFAULT='YWZyY2FjZGNzdGFmZnRyYWNrZXI'
 _api_tok_def="$(env_get "$ROOT_ENV" STAFF_API_TOKEN)"
-if setup_secret_is_placeholder "$_api_tok_def" && [[ "$INSTALL_TYPE" == "1" ]]; then
-  _api_tok_def="$(setup_rand_hex 32)"
+if setup_secret_is_placeholder "$_api_tok_def"; then
+  _api_tok_def="$SHARE_API_TOKEN_DEFAULT"
 fi
-prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN" "$_api_tok_def"
-if setup_secret_is_placeholder "${STAFF_API_TOKEN:-}" && [[ "$INSTALL_TYPE" == "1" ]]; then
-  STAFF_API_TOKEN="$(setup_rand_hex 32)"
-  echo "    generated STAFF_API_TOKEN (was empty)"
+prompt_value STAFF_API_TOKEN "STAFF_API_TOKEN (Staff Share path token)" "$_api_tok_def"
+if setup_secret_is_placeholder "${STAFF_API_TOKEN:-}"; then
+  STAFF_API_TOKEN="$SHARE_API_TOKEN_DEFAULT"
+  echo "    using default STAFF_API_TOKEN (Staff Share API)"
 fi
 
 # --- Microsoft Entra SSO + Graph mail (single Azure app → EXCHANGE_* in root .env) ---

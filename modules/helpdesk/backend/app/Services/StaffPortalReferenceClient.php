@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * Calls Laravel Staff Share API using the same URL + Basic Auth pattern as APM
- * (`staff:sync`, `divisions:sync` — `{base}/share/.../{token}` with `STAFF_API_*` credentials).
+ * Calls Laravel Staff Share API (staff-portal Modules/Share) using the same URL + auth
+ * pattern as APM (`staff:sync`, `divisions:sync` — `{base}/share/...[/{token}]` with
+ * `STAFF_API_*` credentials). Path token is optional when HTTP Basic succeeds; the
+ * shared static Share token is preferred for CI3 parity.
  */
 class StaffPortalReferenceClient
 {
@@ -157,12 +159,17 @@ class StaffPortalReferenceClient
         if ($path === '') {
             throw new RuntimeException('Missing staff_api endpoint: '.$endpointKey);
         }
-        $token = trim((string) config('helpdesk.staff_api.token'));
-        if ($token === '') {
-            throw new RuntimeException('Missing HELPDESK_STAFF_API_TOKEN / STAFF_API_TOKEN.');
+        if ($path[0] !== '/') {
+            $path = '/'.$path;
+        }
+        $token = trim((string) config('helpdesk.staff_api.token', ''));
+        // Laravel Share accepts optional `{token?}`; Basic Auth alone works when credentials match.
+        // Prefer appending the static Share token (config default) for CI3 / APM parity.
+        if ($token !== '') {
+            return $base.$path.'/'.$token;
         }
 
-        return $base.$path.'/'.$token;
+        return $base.$path;
     }
 
     private function username(): string

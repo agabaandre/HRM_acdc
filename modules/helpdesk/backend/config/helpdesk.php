@@ -114,8 +114,9 @@ return [
     | URL pattern matches APM sync commands: {base_url}{endpoint}/{token} with HTTP Basic Auth.
     |
     | Env resolution mirrors APM `config('services.staff_api')`: copy `BASE_URL`, `STAFF_API_USERNAME`,
-    | `STAFF_API_PASSWORD`, and optional `STAFF_API_TOKEN` from `apm/.env` into Helpdesk `.env`.
+    | `STAFF_API_PASSWORD`, and `STAFF_API_TOKEN` from `apm/.env` into Helpdesk `.env`.
     | `HELPDESK_STAFF_API_*` overrides take precedence when set.
+    | Empty `STAFF_API_TOKEN=` falls through to the Staff Share default (same as staff-portal / APM).
     */
     'staff_api' => [
         'base_url' => env(
@@ -125,7 +126,8 @@ return [
                 env('STAFF_API_BASE_URL', env('BASE_URL', env('HELPDESK_STAFF_PORTAL_URL', 'http://127.0.0.1/staff/backend')))
             )
         ),
-        'token' => env('HELPDESK_STAFF_API_TOKEN', env('STAFF_API_TOKEN')),
+        // Prefer ?: so blank env values still resolve to the Share API static token.
+        'token' => env('HELPDESK_STAFF_API_TOKEN') ?: env('STAFF_API_TOKEN') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
         'username' => env('HELPDESK_STAFF_API_USERNAME', env('STAFF_API_USERNAME')),
         'password' => env('HELPDESK_STAFF_API_PASSWORD', env('STAFF_API_PASSWORD')),
         'endpoints' => [

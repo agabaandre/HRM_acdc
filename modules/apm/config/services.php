@@ -42,7 +42,8 @@ return [
             env('STAFF_API_BASE_URL', env('BASE_URL', 'http://127.0.0.1/staff/backend'))
         ),
         'uploads_path' => env('STAFF_UPLOADS_PATH'), // optional; e.g. /var/www/staff/uploads for staff photo resolution
-        'token' => env('STAFF_API_TOKEN', 'YWZyY2FjZGNzdGFmZnRyYWNrZXI'),
+        // Prefer ?: so blank STAFF_API_TOKEN= still uses the Staff Share static token.
+        'token' => env('STAFF_API_TOKEN') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
         'username' => env('STAFF_API_USERNAME'),
         'password' => env('STAFF_API_PASSWORD'),
         'endpoints' => [

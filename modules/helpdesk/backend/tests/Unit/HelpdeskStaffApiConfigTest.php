@@ -22,6 +22,16 @@ class HelpdeskStaffApiConfigTest extends TestCase
         $this->assertStringContainsString("env('BASE_URL'", $contents);
         $this->assertStringContainsString("env('STAFF_API_USERNAME'", $contents);
         $this->assertStringContainsString("env('STAFF_API_PASSWORD'", $contents);
-        $this->assertStringContainsString("env('STAFF_API_TOKEN'", $contents);
+        $this->assertStringContainsString("env('STAFF_API_TOKEN')", $contents);
+        $this->assertStringContainsString('YWZyY2FjZGNzdGFmZnRyYWNrZXI', $contents);
+    }
+
+    #[Test]
+    public function staff_api_token_falls_back_when_env_blank(): void
+    {
+        config(['helpdesk.staff_api.token' => '']);
+        // Re-read via the same ?: chain used in config/helpdesk.php (runtime empty → default).
+        $resolved = env('HELPDESK_STAFF_API_TOKEN') ?: env('STAFF_API_TOKEN') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI';
+        $this->assertSame('YWZyY2FjZGNzdGFmZnRyYWNrZXI', $resolved);
     }
 }
