@@ -102,20 +102,18 @@ STAFF_FILES_BACKUP_RETENTION_DAYS=30
 
 Scripts live in **`scripts/storage/`**. They **copy** files (legacy originals are kept until you verify the host copy).
 
-### One-time setup (staff-portal installer)
+### Optional host migrate (manual)
+
+CodeIgniter upload migration was removed from installers (portal no longer uses CI3). Root `./setup.sh` already sets `STAFF_DATA_ROOT` / `STAFF_USE_HOST_STORAGE` on module envs.
+
+To copy existing Laravel module files onto the host tree once:
 
 ```bash
-cd staff-portal
-cp setup.env.example setup.env
-# Edit:
-#   MIGRATE_SHARED_STORAGE=ask   # or true / false
-#   PURGE_CI_UPLOADS_AFTER_MIGRATE=ask
-./setup.sh
+cd modules/staff-portal
+MIGRATE_SHARED_STORAGE=true ./scripts/migrate-shared-storage.sh
 ```
 
-Production (`./setup-production.sh`) defaults `MIGRATE_SHARED_STORAGE=true` and migrates CI3 + APM (plus helpdesk/staff-portal when enabled).
-
-Admin UI: **Settings → Shared storage** (`/settings/shared-storage`) — migrate modules, enable host `.env`, and archive legacy `uploads/` after verify.
+Admin UI: **Settings → Shared storage** (`/settings/shared-storage`) — migrate modules and enable host `.env` paths.
 
 ### Manual scripts
 

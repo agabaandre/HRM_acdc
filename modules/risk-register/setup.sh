@@ -82,10 +82,6 @@ if [[ -x "$ROOT/scripts/publish-spa.sh" ]]; then
     || echo "warning: publish-spa failed" >&2
 fi
 
-echo "==> Shared file storage (CI3 + APM → host path outside git)"
-chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
-"$ROOT/scripts/migrate-shared-storage.sh" || true
-
 chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
 "$ROOT/fix-storage-permissions.sh" || echo "warning: run ./fix-storage-permissions.sh with sudo if the dashboard returns 500" >&2
 

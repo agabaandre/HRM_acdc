@@ -376,11 +376,6 @@ else
     log "Skipping Supervisor (--skip-supervisor)"
 fi
 
-log "Shared file storage (CI3 + APM → host path outside git)"
-chmod +x "$ROOT/scripts/migrate-shared-storage.sh" 2>/dev/null || true
-# Production defaults to migrate when unset; set MIGRATE_SHARED_STORAGE=false to skip.
-export MIGRATE_SHARED_STORAGE="${MIGRATE_SHARED_STORAGE:-true}"
-"$ROOT/scripts/migrate-shared-storage.sh" || warn "Shared storage migration skipped or failed — see docs/STORAGE.md"
 "$ROOT/fix-storage-permissions.sh" || warn "Host staffdata permissions failed — run ./fix-storage-permissions.sh"
 
 # shellcheck source=scripts/lib/urls.sh

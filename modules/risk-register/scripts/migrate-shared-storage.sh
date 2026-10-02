@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Apply STAFF_DATA_ROOT / module roots to staff ecosystem .env files and optionally migrate.
-# Called from staff-portal ./setup.sh when MIGRATE_SHARED_STORAGE=true|ask.
+# Apply STAFF_DATA_ROOT / module roots to staff ecosystem .env files and optionally migrate
+# Laravel module uploads (APM, helpdesk, staff-portal) to host storage.
+# CodeIgniter upload migration was removed — the portal no longer uses CI3.
+# Opt-in: MIGRATE_SHARED_STORAGE=true ./scripts/migrate-shared-storage.sh
 set -euo pipefail
 
 PORTAL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,21 +18,8 @@ SETUP_ENV="${STAFF_PORTAL_SETUP_ENV:-$PORTAL_ROOT/setup.env}"
 MODE="${MIGRATE_SHARED_STORAGE:-false}"
 case "$MODE" in
   true|1|yes|YES) MODE=true ;;
-  ask|ASK) MODE=ask ;;
   *) MODE=false ;;
 esac
-
-if [[ "$MODE" == "ask" ]]; then
-  if [[ ! -t 0 ]]; then
-    echo "[shared-storage] Non-interactive shell — skip migrate (set MIGRATE_SHARED_STORAGE=true to force)."
-    exit 0
-  fi
-  read -r -p "Migrate CI3 + APM uploads to host storage outside the repo? [y/N] " ans
-  case "$ans" in
-    y|Y|yes|YES) MODE=true ;;
-    *) echo "[shared-storage] Skipped."; exit 0 ;;
-  esac
-fi
 
 if [[ "$MODE" != "true" ]]; then
   exit 0
@@ -83,11 +72,8 @@ chmod +x "$STORAGE_SCRIPTS"/*.sh 2>/dev/null || true
 
 bash "$STORAGE_SCRIPTS/fix-staff-storage-permissions.sh"
 
-# CI3 staff photos/contracts + APM memo attachments (core request)
-bash "$STORAGE_SCRIPTS/migrate-ci-uploads.sh"
 bash "$STORAGE_SCRIPTS/migrate-apm-uploads.sh"
 
-# Optional extras
 if [[ "${MIGRATE_HELPDESK_STORAGE:-true}" == "true" ]]; then
   bash "$STORAGE_SCRIPTS/migrate-helpdesk-uploads.sh" || true
 fi
@@ -102,22 +88,11 @@ if [[ -f "$STAFF_ROOT/modules/helpdesk/backend/.env" ]]; then
   apply_storage_keys "$STAFF_ROOT/modules/helpdesk/backend/.env" STAFF_HELPDESK_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
 fi
 
-# Relink Laravel public disks
 if [[ -f "$STAFF_ROOT/modules/apm/artisan" ]]; then
   (cd "$STAFF_ROOT/modules/apm" && php artisan storage:link --no-interaction 2>/dev/null) || true
 fi
 if [[ -f "$PORTAL_ROOT/backend/artisan" ]]; then
   (cd "$PORTAL_ROOT/backend" && php artisan storage:link --no-interaction 2>/dev/null) || true
-fi
-
-PURGE="${PURGE_CI_UPLOADS_AFTER_MIGRATE:-false}"
-if [[ "$PURGE" == "ask" && -t 0 ]]; then
-  read -r -p "Migration OK. Archive legacy CI uploads/ and symlink to host storage? [y/N] " pans
-  case "$pans" in y|Y|yes|YES) PURGE=true ;; *) PURGE=false ;; esac
-fi
-
-if [[ "$PURGE" == "true" || "$PURGE" == "1" ]]; then
-  CONFIRM=DELETE_CI_UPLOADS bash "$STORAGE_SCRIPTS/purge-ci-uploads.sh"
 fi
 
 echo "[shared-storage] Done. Files are managed under ${STAFF_DATA_ROOT} (outside the git tree)."
