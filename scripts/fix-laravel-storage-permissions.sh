@@ -27,6 +27,7 @@ APPS=(
   "modules/finance"
   "modules/helpdesk/backend"
   "modules/staff-portal/backend"
+  "modules/risk-register/backend"
 )
 
 run_priv() {

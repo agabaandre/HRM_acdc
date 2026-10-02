@@ -52,8 +52,6 @@ CACHE_STORE=array QUEUE_CONNECTION=sync SESSION_DRIVER=array REDIS_PASSWORD= \
 chmod +x "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
 "$ROOT/fix-storage-permissions.sh" || echo "warning: run ./fix-storage-permissions.sh with sudo if the dashboard returns 500" >&2
 
-php artisan storage:link --no-interaction 2>/dev/null || true
-
 echo "==> Frontend (npm install + production build)"
 cd "$ROOT/frontend"
 npm install --cache ./.npm-cache --legacy-peer-deps

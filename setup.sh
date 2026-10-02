@@ -826,17 +826,14 @@ setup_run_module_production() {
   fi
   if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$database"; then
     is_new=1
-    echo "==> $name: new DB — migrate + seed"
+    echo "==> $name: new DB — migrate (+ seed when supported)"
   else
     echo "==> $name: existing DB — migrate only (skip seed)"
   fi
-  # Module scripts differ: helpdesk has --skip-seed; portal/RR use --with-demo-seed for DatabaseSeeder.
+  # Helpdesk category seeder on new DBs; portal/RR skip demo DatabaseSeeder (needs faker, not for prod).
   case "$name" in
     helpdesk)
       [[ "$is_new" -eq 0 ]] && extra=(--skip-seed)
-      ;;
-    staff-portal|risk-register)
-      [[ "$is_new" -eq 1 ]] && extra=(--with-demo-seed)
       ;;
   esac
   (cd "$dir" && ./setup-production.sh "$@" "${extra[@]}") \

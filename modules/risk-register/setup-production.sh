@@ -280,8 +280,7 @@ else
     log "Skipping migrations (--skip-migrate)"
 fi
 
-log "Storage link"
-artisan_safe storage:link --no-interaction 2>/dev/null || true
+log "Storage link (unlink + recreate)"
 "$ROOT/fix-storage-permissions.sh" || warn "Storage link fix failed — run ./fix-storage-permissions.sh"
 
 if [[ "$WITH_DEMO_SEED" -eq 1 ]]; then

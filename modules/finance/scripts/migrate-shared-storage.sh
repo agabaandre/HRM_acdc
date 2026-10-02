@@ -89,10 +89,14 @@ if [[ -f "$STAFF_ROOT/modules/helpdesk/backend/.env" ]]; then
 fi
 
 if [[ -f "$STAFF_ROOT/modules/apm/artisan" ]]; then
-  (cd "$STAFF_ROOT/modules/apm" && php artisan storage:link --no-interaction 2>/dev/null) || true
+  (cd "$STAFF_ROOT/modules/apm" && php artisan storage:unlink --no-interaction 2>/dev/null) || true
+  rm -f "$STAFF_ROOT/modules/apm/public/storage" 2>/dev/null || true
+  (cd "$STAFF_ROOT/modules/apm" && php artisan storage:link --force --no-interaction 2>/dev/null) || true
 fi
 if [[ -f "$PORTAL_ROOT/backend/artisan" ]]; then
-  (cd "$PORTAL_ROOT/backend" && php artisan storage:link --no-interaction 2>/dev/null) || true
+  (cd "$PORTAL_ROOT/backend" && php artisan storage:unlink --no-interaction 2>/dev/null) || true
+  rm -f "$PORTAL_ROOT/backend/public/storage" 2>/dev/null || true
+  (cd "$PORTAL_ROOT/backend" && php artisan storage:link --force --no-interaction 2>/dev/null) || true
 fi
 
 echo "[shared-storage] Done. Files are managed under ${STAFF_DATA_ROOT} (outside the git tree)."
