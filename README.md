@@ -116,8 +116,9 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 ```bash
-./setup.sh              # first prompt: defaults (no more asks) or step-by-step wizard
+./setup.sh              # stash+pull, then first prompt: defaults or step-by-step
 ./setup.sh --defaults   # skip first prompt; same defaults (-y / --yes / --non-interactive)
+./setup.sh --skip-git   # do not stash/pull at start
 # Docker deploy: Composer + Supervisor workers run via docker compose (not host)
 ```
 

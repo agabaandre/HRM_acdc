@@ -11,6 +11,8 @@ cd /path/to/staff   # or cbp / demo_cbp / cbpdemo
 
 Requires a TTY for the interactive wizard. Passwords are entered without echo.
 
+**Git sync (always first):** `git stash` (tracked changes only) → `git pull` → `stash pop`. Untracked files such as `.env` / `vendor/` are left alone. Skip with `./setup.sh --skip-git`. If `setup.sh` itself updates, the new script is re-executed automatically.
+
 The **first prompt** is:
 
 1. **Run with current defaults** — no further questions (same as pressing Enter on every later step; keeps existing `.env` secrets)

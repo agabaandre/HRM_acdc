@@ -7,6 +7,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 SETUP_ASSUME_DEFAULTS=0
+SETUP_SKIP_GIT=0
+# Preserve argv so we can re-exec after git pull updates this script.
+SETUP_ARGV=("$@")
+
 setup_print_usage() {
   cat <<'EOF'
 Usage: ./setup.sh [options]
@@ -14,11 +18,12 @@ Usage: ./setup.sh [options]
   (no flags)              Interactive wizard (requires a TTY)
   --defaults, --yes, -y   Accept wizard defaults and continue (no prompts)
   --non-interactive       Same as --defaults
+  --skip-git              Do not stash/pull at start
   -h, --help              Show this help
 
-Defaults mode uses the same default answers as pressing Enter in the wizard
-(Docker Compose, external MySQL, run production installers, rebuild SPA, etc.)
-and keeps existing .env values for secrets when present.
+Starts with git stash + git pull (unless --skip-git) so the tree matches the
+remote before the wizard runs. Defaults mode uses the same answers as pressing
+Enter in the wizard and keeps existing .env values for secrets when present.
 EOF
 }
 
@@ -26,6 +31,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --defaults|--yes|--non-interactive|-y)
       SETUP_ASSUME_DEFAULTS=1
+      shift
+      ;;
+    --skip-git)
+      SETUP_SKIP_GIT=1
       shift
       ;;
     -h|--help)
@@ -45,6 +54,87 @@ if [[ "$SETUP_ASSUME_DEFAULTS" != "1" && ! -t 0 ]]; then
   echo "error: ./setup.sh requires an interactive TTY (or pass --defaults). See docs/SETUP.md" >&2
   exit 1
 fi
+
+# ----- Sync from git (stash local tracked edits, pull, restore stash) -----
+setup_git_sync() {
+  if [[ "$SETUP_SKIP_GIT" == "1" ]]; then
+    echo "==> Skipping git stash/pull (--skip-git)"
+    return 0
+  fi
+  if [[ "${SETUP_SKIP_GIT_SYNC:-0}" == "1" ]]; then
+    # Inner re-exec after pull already synced.
+    return 0
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    echo "==> git not found — skipping stash/pull"
+    return 0
+  fi
+  if ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "==> Not a git checkout — skipping stash/pull"
+    return 0
+  fi
+
+  echo "==> Git: stash local changes (if any), then pull"
+  local before after stashed=0
+  before="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  local setup_before
+  setup_before="$(git -C "$ROOT" hash-object "$ROOT/setup.sh" 2>/dev/null || echo none)"
+
+  # Stash tracked modifications only — leave untracked .env / vendor alone.
+  if ! git -C "$ROOT" diff --quiet 2>/dev/null \
+    || ! git -C "$ROOT" diff --cached --quiet 2>/dev/null; then
+    if git -C "$ROOT" stash push -m "setup.sh auto-stash $(date -u +%Y%m%dT%H%M%SZ)" --quiet; then
+      stashed=1
+      echo "    stashed local tracked changes"
+    fi
+  else
+    echo "    working tree clean (nothing to stash)"
+  fi
+
+  local branch remote
+  branch="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+  remote="$(git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+  if [[ -n "$remote" ]]; then
+    echo "    pulling $remote …"
+    if ! git -C "$ROOT" pull --ff-only; then
+      echo "    warn: git pull --ff-only failed — trying plain git pull" >&2
+      git -C "$ROOT" pull || echo "    warn: git pull failed — continuing with current tree" >&2
+    fi
+  else
+    echo "    no upstream for $branch — fetching origin/$branch if present"
+    git -C "$ROOT" fetch origin "$branch" 2>/dev/null || true
+    if git -C "$ROOT" rev-parse "origin/$branch" >/dev/null 2>&1; then
+      git -C "$ROOT" merge --ff-only "origin/$branch" \
+        || echo "    warn: could not ff-merge origin/$branch — continuing" >&2
+    else
+      echo "    warn: no origin/$branch — skipping pull" >&2
+    fi
+  fi
+
+  after="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  if [[ "$before" != "$after" ]]; then
+    echo "    updated: ${before:0:9} → ${after:0:9}"
+  else
+    echo "    already up to date ($after)"
+  fi
+
+  if [[ "$stashed" -eq 1 ]]; then
+    echo "    restoring stash"
+    if ! git -C "$ROOT" stash pop --quiet; then
+      echo "    warn: stash pop had conflicts — resolve with: git status && git stash list" >&2
+    fi
+  fi
+
+  local setup_after
+  setup_after="$(git -C "$ROOT" hash-object "$ROOT/setup.sh" 2>/dev/null || echo none)"
+  if [[ "$setup_before" != "$setup_after" && "$setup_after" != "none" ]]; then
+    echo "==> setup.sh was updated by git pull — re-running with the new script"
+    export SETUP_SKIP_GIT_SYNC=1
+    exec bash "$ROOT/setup.sh" "${SETUP_ARGV[@]}"
+  fi
+}
+
+setup_git_sync
 
 # shellcheck source=scripts/setup/env-upsert.sh
 source "$ROOT/scripts/setup/env-upsert.sh"
