@@ -29,6 +29,16 @@ if rg -n '<<<<<<<|=======|>>>>>>>' modules assets 2>/dev/null \
   exit 1
 fi
 
+echo "==> Ensure Composer vendor/ for all Laravel apps (gitignored — pull alone is not enough)"
+# Missing finance/backend/vendor causes Supervisor FATAL:
+#   Failed opening required …/modules/finance/backend/vendor/autoload.php
+if [[ -x "$STAFF_ROOT/scripts/setup/ensure-composer-vendors.sh" ]]; then
+  "$STAFF_ROOT/scripts/setup/ensure-composer-vendors.sh" \
+    || echo "warn: ensure-composer-vendors.sh failed — run it manually" >&2
+else
+  echo "warn: scripts/setup/ensure-composer-vendors.sh missing" >&2
+fi
+
 echo "==> APM: refresh autoload + clear caches"
 if [[ -f modules/apm/artisan ]]; then
   (cd modules/apm && composer dump-autoload -o 2>/dev/null || true)
@@ -44,7 +54,10 @@ elif [[ -f modules/staff-portal/artisan ]]; then
 fi
 # Prefer full re-deploy when available:
 #   (cd modules/staff-portal && ./setup-production.sh --skip-systemd)
+# Finance API workers (Supervisor):
+#   (cd modules/finance && ./setup-production.sh --skip-build)
 
 echo "==> Done. Deployed commit: $(git rev-parse --short HEAD)"
 echo "    Verify APM header:"
 echo "    grep -n 'cbp_modules_header_dropdown\\|<<<<<<' modules/apm/resources/views/layouts/partials/header.blade.php"
+echo "    If finance Supervisor was FATAL: sudo supervisorctl restart 'cbp-*-finance-*'"

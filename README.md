@@ -118,6 +118,7 @@ The platform consists of four integrated modules working seamlessly together:
 ```bash
 ./setup.sh              # first prompt: defaults (no more asks) or step-by-step wizard
 ./setup.sh --defaults   # skip first prompt; same defaults (-y / --yes / --non-interactive)
+# Docker deploy: Composer + Supervisor workers run via docker compose (not host)
 ```
 
 Full guide: [docs/SETUP.md](./docs/SETUP.md). Wizard notes: Docker deploy defaults Redis to Compose `redis`; MySQL defaults to **external** and always prompts username/password; installers always migrate and seed only empty schemas.

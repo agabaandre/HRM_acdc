@@ -6,6 +6,9 @@ cd "$ROOT"
 # shellcheck source=scripts/lib/paths.sh
 source "$ROOT/scripts/lib/paths.sh"
 staff_paths_resolve_from_module "$ROOT"
+# Docker deploy: use Compose `web` Composer via PATH wrapper when selected.
+# shellcheck source=/dev/null
+source "${STAFF_ROOT}/scripts/setup/enable-docker-composer-path.sh" "$ROOT"
 
 for f in composer.json artisan package.json public/index.php; do
   if [[ ! -f "$ROOT/$f" ]]; then

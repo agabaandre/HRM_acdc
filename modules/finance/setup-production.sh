@@ -111,7 +111,10 @@ if [[ ! -x "$PHP_BIN" ]]; then
 fi
 [[ -n "$PHP_BIN" ]] || die "PHP not found — set PHP_BIN in setup.env"
 
-command -v composer >/dev/null 2>&1 || die "composer not found on PATH"
+# Host composer, or Compose wrapper when DEPLOY_MODE=docker / STAFF_COMPOSER_VIA_DOCKER=1.
+# shellcheck source=/dev/null
+source "$(cd "$ROOT/../.." && pwd)/scripts/setup/enable-docker-composer-path.sh" "$ROOT"
+command -v composer >/dev/null 2>&1 || die "composer not found on PATH (or set DEPLOY_MODE=docker)"
 command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
 
 log "Preparing storage permissions (fix root-owned files from prior sudo runs)"

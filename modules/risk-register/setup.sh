@@ -15,6 +15,8 @@ fi
 export STAFF_PORTAL_SETUP_ENV="$SETUP_ENV"
 chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/dev/null || true
 chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
+# shellcheck source=/dev/null
+source "$(cd "$ROOT/../.." && pwd)/scripts/setup/enable-docker-composer-path.sh" "$ROOT"
 
 # Composer disables plugins when run as root unless this is set — that breaks
 # wikimedia/composer-merge-plugin (Modules\* autoload) and causes:

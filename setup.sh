@@ -62,6 +62,8 @@ source "$ROOT/scripts/setup/systemd-cleanup.sh"
 source "$ROOT/scripts/setup/fix-laravel-storage.sh"
 # shellcheck source=scripts/setup/db-probe.sh
 source "$ROOT/scripts/setup/db-probe.sh"
+# shellcheck source=scripts/setup/docker-compose.sh
+source "$ROOT/scripts/setup/docker-compose.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
@@ -109,6 +111,8 @@ prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing inst
 # Default: Docker Compose (Host Apache remains available as choice 1).
 prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host
+export DEPLOY_MODE
+export STAFF_ROOT="$ROOT"
 
 # Default: External MySQL (bundled Compose MySQL is opt-in). Always collect credentials.
 DB_DEFAULT=2
@@ -408,6 +412,7 @@ DB_PASSWORD="${DB_PASS:-}"
 echo
 echo "==> Writing root .env"
 env_set "$ROOT_ENV" SITE_KIND "$SITE_KIND"
+env_set "$ROOT_ENV" DEPLOY_MODE "$DEPLOY_MODE"
 env_set "$ROOT_ENV" BASE_URL "$BASE_URL"
 env_set "$ROOT_ENV" CI_BASE_URL "$CI_BASE_URL"
 env_set "$ROOT_ENV" APM_BASE_URL "$APM_BASE_URL"
@@ -851,6 +856,7 @@ fi
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo "Stack: docker compose --env-file docker/.env up -d --build"
   echo "Workers (Compose): docker compose --env-file docker/.env --profile workers up -d"
+  echo "Composer: via Compose web service (STAFF_COMPOSER_VIA_DOCKER=1)"
 fi
 
 INST_PROFILE_DEFAULT=2
@@ -912,6 +918,14 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
   export STAFF_PORTAL_UPLOADS_ROOT STAFF_APM_FILES_ROOT STAFF_HELPDESK_FILES_ROOT
   export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND WEB_ROOT
   export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
+  if [[ "$DEPLOY_MODE" == "docker" ]]; then
+    export STAFF_COMPOSER_VIA_DOCKER=1
+    export PATH="$ROOT/scripts/setup/bin:$PATH"
+    staff_ensure_docker_env || setup_warn "docker/.env missing"
+    echo "==> Docker deploy: Composer runs inside Compose web (not host composer)"
+    # One-off `compose run web composer` builds the image; also start redis+web for later workers.
+    staff_docker_up_web || setup_warn "docker compose up web failed — Composer may still work via compose run"
+  fi
   if [[ "$INST_PROFILE" == "2" ]]; then
     setup_run_module_production staff-portal "$ROOT/modules/staff-portal" "$SP_DB" --skip-build
     setup_run_module_production finance "$ROOT/modules/finance" "$FN_DB"
@@ -980,8 +994,34 @@ if [[ "$SITE_KIND" == "demo" ]]; then
   echo "==> Skipping Supervisor install (demo)"
 elif [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo
-  echo "Note: Docker deploy uses Compose --profile workers (Supervisor in-container)."
-  echo "==> Skipping host Supervisor (Docker)"
+  echo "==> Docker deploy: PHP ${PHP_VERSION:-8.2} + extensions live in the Compose image; Composer packages (vendor/) install via Compose web"
+  echo "    Host Supervisor must not run the same queues — retiring host CBP programs first"
+  for setupf in "$SP_SETUP" "$HD_SETUP" \
+    "$ROOT/modules/finance/setup.env" \
+    "$ROOT/modules/risk-register/setup.env"
+  do
+    [[ -f "$setupf" ]] || continue
+    env_set "$setupf" INSTALL_SUPERVISOR "false" 2>/dev/null || true
+  done
+  # Always stop/remove host supervisor confs when Docker owns workers (even if workers start is skipped).
+  WEB_ROOT="$WEB_ROOT" staff_retire_host_supervisor || setup_warn "could not fully retire host Supervisor"
+  prompt_choice RUN_DOCKER_WORKERS \
+    "Start Compose workers now (queue + scheduler via in-container Supervisor)?" \
+    "1) Yes  2) No" \
+    "1"
+  if [[ "$RUN_DOCKER_WORKERS" == "1" ]]; then
+    export STAFF_COMPOSER_VIA_DOCKER=1
+    export PATH="$ROOT/scripts/setup/bin:$PATH"
+    # Workers need vendor/; install any missing trees via Compose Composer first.
+    "$ROOT/scripts/setup/ensure-composer-vendors.sh" \
+      || setup_warn "ensure-composer-vendors failed — workers may FATAL until fixed"
+    staff_docker_up_workers || setup_warn "docker compose workers failed"
+    echo "==> Compose worker status:"
+    staff_docker_workers_status || true
+  else
+    echo "==> Skipping Compose workers (later: docker compose --env-file docker/.env --profile workers up -d)"
+    echo "    Host CBP Supervisor programs were still stopped/removed above."
+  fi
 else
   SUP_DEFAULT=2
   if [[ "$(uname -s)" == "Linux" ]] && [[ "$SITE_KIND" == "production" ]]; then

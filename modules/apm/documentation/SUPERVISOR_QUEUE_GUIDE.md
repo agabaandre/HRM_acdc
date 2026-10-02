@@ -43,14 +43,19 @@ sudo chown -R www-data:www-data modules/helpdesk/backend/storage modules/finance
 sudo chmod -R ug+rwX modules/helpdesk/backend/storage modules/finance/backend/storage
 ```
 
-Missing `vendor/autoload.php` (finance API workers):
+Missing `vendor/autoload.php` (finance API workers) — **not permissions**.
+`vendor/` is gitignored; a `git pull` alone will not create it:
 
 ```bash
-cd /path/to/staff/modules/finance/backend
-composer install --no-dev --optimize-autoloader --no-interaction
-# or re-run module setup: cd ../ && ./setup-production.sh --skip-build
+cd /path/to/staff
+./scripts/setup/ensure-composer-vendors.sh
+# or only finance API:
+cd modules/finance/backend && composer install --no-dev --optimize-autoloader --no-interaction
+# or re-run module setup: cd modules/finance && ./setup-production.sh --skip-build
 sudo supervisorctl restart cbp-staff-finance-queue cbp-staff-finance-scheduler
 ```
+
+`install-supervisor.sh` now runs `composer install` automatically when `vendor/` is missing.
 
 Reinstall / refresh after path or PHP changes:
 
@@ -61,7 +66,7 @@ sudo WEB_ROOT=staff PHP_BIN="$(command -v php)" INSTALL_SUPERVISOR=true \
 
 ## Docker
 
-Use Compose workers instead of host Supervisor:
+When `./setup.sh` chooses **Docker Compose**, Composer and workers are container-native (`DEPLOY_MODE=docker`). Use Compose workers instead of host Supervisor:
 
 ```bash
 docker compose --env-file docker/.env --profile workers up -d

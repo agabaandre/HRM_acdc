@@ -6,8 +6,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAFF_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+export STAFF_ROOT
 # shellcheck source=systemd-cleanup.sh
 source "$SCRIPT_DIR/systemd-cleanup.sh"
+# shellcheck source=docker-compose.sh
+source "$SCRIPT_DIR/docker-compose.sh"
 
 TMPL="$SCRIPT_DIR/supervisor/program.conf.tmpl"
 [[ -f "$TMPL" ]] || { echo "error: missing template $TMPL" >&2; exit 1; }
@@ -308,12 +311,46 @@ ensure_app_log_writable() {
   chmod -R a+rwX "$log_dir" 2>/dev/null || true
 }
 
+# vendor/ is gitignored — git pull alone leaves workers FATAL with
+# "Failed opening required …/vendor/autoload.php" (not a permissions issue).
+ensure_composer_vendor() {
+  local app="$1" app_abs="$2"
+  if [[ -f "$app_abs/vendor/autoload.php" ]]; then
+    return 0
+  fi
+  if [[ ! -f "$app_abs/composer.json" ]]; then
+    echo "    preflight $app FAILED: missing composer.json at $app_abs" >&2
+    return 1
+  fi
+  if staff_use_docker_composer; then
+    export STAFF_COMPOSER_VIA_DOCKER=1
+    export PATH="$STAFF_ROOT/scripts/setup/bin:$PATH"
+  elif ! command -v composer >/dev/null 2>&1; then
+    echo "    preflight $app FAILED: missing vendor/autoload.php and composer is not installed" >&2
+    echo "    Fix: cd $app_abs && composer install --no-dev --optimize-autoloader --no-interaction" >&2
+    echo "    Or: DEPLOY_MODE=docker $STAFF_ROOT/scripts/setup/ensure-composer-vendors.sh" >&2
+    return 1
+  fi
+  echo "    preflight $app: vendor/ missing — running composer install (not a permissions issue)"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    export COMPOSER_ALLOW_SUPERUSER=1
+  fi
+  if ! (cd "$app_abs" && staff_composer install --no-dev --optimize-autoloader --no-interaction); then
+    echo "    preflight $app FAILED: composer install did not create vendor/autoload.php" >&2
+    return 1
+  fi
+  if [[ ! -f "$app_abs/vendor/autoload.php" ]]; then
+    echo "    preflight $app FAILED: vendor/autoload.php still missing after composer install" >&2
+    return 1
+  fi
+  echo "    preflight $app: vendor/ installed"
+  return 0
+}
+
 preflight_artisan() {
   local app="$1" app_abs="$2"
   local out
-  if [[ ! -f "$app_abs/vendor/autoload.php" ]]; then
-    echo "    preflight $app FAILED: missing vendor/autoload.php" >&2
-    echo "    Fix: cd $app_abs && composer install --no-dev --optimize-autoloader --no-interaction" >&2
+  if ! ensure_composer_vendor "$app" "$app_abs"; then
     return 1
   fi
   if out="$(cd "$app_abs" && run_as_supervisor_user "$PHP_BIN" artisan about --only=environment 2>&1)"; then

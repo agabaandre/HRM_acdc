@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Drop-in composer wrapper: when Docker deploy is selected, run Composer inside
+# the Compose `web` service so host PHP/Composer are not required.
+# shellcheck shell=bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../docker-compose.sh
+source "$SCRIPT_DIR/../docker-compose.sh"
+
+# Prefer STAFF_ROOT from caller; else resolve from this repo.
+if [[ -z "${STAFF_ROOT:-}" ]]; then
+  STAFF_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+  export STAFF_ROOT
+fi
+
+if staff_use_docker_composer; then
+  staff_docker_composer "$@"
+  exit $?
+fi
+
+# Host composer — skip this wrapper if it appears first on PATH.
+REAL=""
+while IFS= read -r cand; do
+  [[ -z "$cand" ]] && continue
+  # Resolve and skip our own path
+  if [[ "$(cd "$(dirname "$cand")" && pwd)/$(basename "$cand")" == "$SCRIPT_DIR/composer" ]]; then
+    continue
+  fi
+  REAL="$cand"
+  break
+done < <(type -aP composer 2>/dev/null || true)
+
+if [[ -z "$REAL" ]]; then
+  echo "error: host composer not found on PATH (and Docker composer not enabled)" >&2
+  echo "    Set DEPLOY_MODE=docker or STAFF_COMPOSER_VIA_DOCKER=1, or install Composer." >&2
+  exit 1
+fi
+
+exec "$REAL" "$@"

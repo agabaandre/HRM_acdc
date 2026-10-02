@@ -15,6 +15,8 @@ fi
 export HELPDESK_SETUP_ENV="$SETUP_ENV"
 chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/dev/null || true
 chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
+# shellcheck source=/dev/null
+source "$(cd "$ROOT/../.." && pwd)/scripts/setup/enable-docker-composer-path.sh" "$ROOT"
 
 echo "==> Configuring backend .env from setup.env"
 "$ROOT/scripts/configure-env.sh"

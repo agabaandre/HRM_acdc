@@ -23,7 +23,7 @@ The **first prompt** is:
 # aliases: ./setup.sh -y   ./setup.sh --yes   ./setup.sh --non-interactive
 ```
 
-Defaults mode uses Docker Compose, external MySQL, production installers, SPA rebuild, Supervisor on Linux production when available, and keeps existing Microsoft Entra values. Set `MAIL_FROM_ADDRESS` (or `MAIL_USERNAME`) in root `.env` first if it is empty.
+Defaults mode uses Docker Compose, external MySQL, production installers, SPA rebuild, and keeps existing Microsoft Entra values. On **Docker** deploy, Composer runs inside the Compose `web` service and Supervisor workers use Compose `--profile workers` (not host Supervisor). On **host** deploy, Supervisor defaults to Yes on Linux production. Set `MAIL_FROM_ADDRESS` (or `MAIL_USERNAME`) in root `.env` first if it is empty.
 
 ## What it asks
 
@@ -41,9 +41,9 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced `DB_CONNECTION=mysql`, mapped URLs / storage) for staff-portal, APM, finance, helpdesk, risk-register |
-| Installers | Default **Yes** · profile default **production** — always migrate; seed only when the target schema has **no tables** |
+| Installers | Default **Yes** · profile default **production** — always migrate; seed only when the target schema has **no tables**. **Docker:** `composer` runs via Compose `web` |
 | **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for **all five** modules (staff-portal, helpdesk, finance, risk-register, APM); host `STAFF_DATA_ROOT` when set |
-| **Supervisor** | **Production host only** (optional; default Yes on Linux) — queue + scheduler for all five apps |
+| **Workers** | **Host:** optional Supervisor (default Yes on Linux production). **Docker:** retires host `cbp-*` Supervisor programs, then Compose `--profile workers` (in-container Supervisor; prompted Yes by default). PHP 8.2 + extensions + Composer binary are in the image; `vendor/` is installed via Compose Composer onto the bind mount. |
 
 Folder names containing `demo` default the site role to **Demo**.
 
@@ -141,13 +141,19 @@ CBP_SUPERVISOR_DRY_RUN=1 INSTALL_SUPERVISOR=true WEB_ROOT=staff \
   ./scripts/setup/install-supervisor.sh
 ```
 
-Under **Docker Compose**, prefer:
+Under **Docker Compose** (when `./setup.sh` deploy target is Docker), setup:
+
+1. Runs **Composer inside** `docker compose run --rm web composer …` (host Composer not required)
+2. Optionally starts **Compose workers** (`--profile workers`) — in-container Supervisor
 
 ```bash
 docker compose --env-file docker/.env --profile workers up -d
+docker compose --env-file docker/.env --profile workers exec workers supervisorctl status
+# Re-install missing vendor/ via Compose Composer:
+DEPLOY_MODE=docker ./scripts/setup/ensure-composer-vendors.sh
 ```
 
-That starts one `workers` container running **Supervisor** (`docker/supervisord-workers.conf`) with queue + scheduler for all five Laravel apps — same process set as the host installer. Do not also run host Supervisor against the same queues.
+Do not also run host Supervisor against the same queues.
 
 ## Related
 
