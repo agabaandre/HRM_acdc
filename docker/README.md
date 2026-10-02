@@ -5,9 +5,11 @@ One Compose project at the **repository root** runs **Apache (event MPM) + PHP-F
 
 Root `./setup.sh` (Docker deploy): Redis defaults to Compose service `redis` (external optional); MySQL defaults to **external** with username/password prompts; module installers default to production, always migrate, and seed only when the target database has no tables.
 
-**PHP in Docker:** the `web` / `workers` image is **PHP 8.2-FPM** with Composer and extensions (`gd`, `intl`, `mysqli`, `opcache`, `pdo_mysql`, `pcntl`, `bcmath`, `exif`, `zip`, `redis`). App `vendor/` packages are **not** baked into the runtime image by default — they are installed with Compose Composer onto the bind-mounted tree. Host PHP is unused for request/queue handling when traffic goes to Compose.
+**PHP in Docker:** `web` and `workers` share one image (`cbp-staff-runtime:latest`) — **PHP 8.2-FPM** with Composer and extensions (`gd`, `intl`, `mysqli`, `opcache`, `pdo_mysql`, `pcntl`, `bcmath`, `exif`, `zip`, `redis`). App `vendor/` packages are **not** baked into the runtime image by default — they are installed onto the bind-mounted tree. Host PHP is unused for request/queue handling when traffic goes to Compose.
 
-**Workers:** setup **stops and removes host** `cbp-*` Supervisor confs, then starts Compose `--profile workers` (in-container Supervisor). Do not keep host Supervisor on the same queues.
+**Setup build:** `./setup.sh` (Docker deploy) builds that image **once at the end**, then starts redis + web + workers together (no second build for workers).
+
+**Workers:** setup **stops and removes host** `cbp-*` Supervisor confs, then starts Compose `--profile workers`. Do not keep host Supervisor on the same queues.
 
 ## Performance (8 CPU / ~32 GB)
 

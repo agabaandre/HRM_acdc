@@ -165,8 +165,10 @@ staff_docker_composer() {
     esac
   done
 
+  # Prefer --no-build so setup's single build at the end is the only image build.
+  # If the runtime image is missing, compose run will still fail clearly.
   echo "    composer (docker): -w $container_cwd composer ${args[*]}"
-  staff_docker_compose run --rm --no-deps \
+  staff_docker_compose run --rm --no-deps --no-build \
     -w "$container_cwd" \
     -e COMPOSER_ALLOW_SUPERUSER=1 \
     web \
@@ -186,21 +188,46 @@ staff_composer() {
   fi
 }
 
-# Bring up Redis + web (build if needed).
-staff_docker_up_web() {
-  echo "==> Docker Compose: starting redis + web"
-  staff_docker_compose up -d --build redis web
+# Build the shared runtime image once (web + workers use image: cbp-staff-runtime).
+staff_docker_build_once() {
+  if [[ "${STAFF_DOCKER_BUILT:-0}" == "1" ]]; then
+    return 0
+  fi
+  staff_docker_resolve_access || return 1
+  echo "==> Docker Compose: building runtime image once (cbp-staff-runtime)"
+  staff_docker_compose build web || return 1
+  STAFF_DOCKER_BUILT=1
+  export STAFF_DOCKER_BUILT
 }
 
-# Bring up workers profile (in-container Supervisor).
+# Start Redis + web without rebuilding (call staff_docker_build_once first if needed).
+staff_docker_up_web() {
+  echo "==> Docker Compose: starting redis + web (no rebuild)"
+  staff_docker_compose up -d --no-build redis web
+}
+
+# Start workers without rebuilding.
 staff_docker_up_workers() {
-  echo "==> Docker Compose: starting workers (Supervisor in container)"
-  staff_docker_compose --profile workers up -d --build
+  echo "==> Docker Compose: starting workers (no rebuild)"
+  staff_docker_compose --profile workers up -d --no-build
+}
+
+# Final stack: one build, then bring up redis + web + workers together.
+staff_docker_up_stack() {
+  local with_workers="${1:-1}"
+  staff_docker_build_once || return 1
+  if [[ "$with_workers" == "1" ]]; then
+    echo "==> Docker Compose: starting redis + web + workers"
+    staff_docker_compose --profile workers up -d --no-build
+  else
+    staff_docker_up_web
+  fi
 }
 
 staff_docker_workers_status() {
-  staff_docker_compose --profile workers exec -T workers supervisorctl status 2>/dev/null \
-    || staff_docker_compose --profile workers ps
+  # supervisorctl status exits non-zero while programs are still STARTING — do not treat as failure.
+  staff_docker_compose --profile workers exec -T workers supervisorctl status 2>/dev/null || true
+  return 0
 }
 
 # Stop + remove host Supervisor CBP programs so they do not fight Compose workers.

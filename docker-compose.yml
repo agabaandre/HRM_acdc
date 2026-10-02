@@ -9,7 +9,17 @@
 # Optional bundled MySQL (set DB_HOST=mysql in each module .env):
 #   docker compose --env-file docker/.env --profile bundled-db up -d --build
 #
-# Open: http://localhost:8080/staff/
+# web + workers share one image (cbp-staff-runtime) so Compose builds once.
+
+x-cbp-runtime: &cbp-runtime
+  image: cbp-staff-runtime:latest
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: runtime
+    args:
+      # 0 = fast (default). Set INSTALL_PDF_TOOLS=1 in docker/.env for LibreOffice/GS.
+      INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
 
 services:
   redis:
@@ -33,13 +43,7 @@ services:
       retries: 10
 
   web:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: runtime
-      args:
-        # 0 = fast (default). Set INSTALL_PDF_TOOLS=1 in docker/.env for LibreOffice/GS.
-        INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
+    <<: *cbp-runtime
     ports:
       - "${APP_PORT:-8088}:80"
     volumes:
@@ -62,13 +66,8 @@ services:
         condition: service_healthy
 
   workers:
+    <<: *cbp-runtime
     profiles: ["workers"]
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: runtime
-      args:
-        INSTALL_PDF_TOOLS: ${INSTALL_PDF_TOOLS:-0}
     volumes:
       - .:/var/www/staff
     extra_hosts:

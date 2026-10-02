@@ -6,11 +6,16 @@
 #
 # Requires module .env files present in the build context (or inject secrets
 # via your orchestrator). Do not use profile bundled-db in production.
+# web + workers share cbp-staff-runtime:prod (one build).
+
+x-cbp-runtime-prod: &cbp-runtime-prod
+  image: cbp-staff-runtime:prod
+  build:
+    target: prod
 
 services:
   web:
-    build:
-      target: prod
+    <<: *cbp-runtime-prod
     volumes: []
     restart: unless-stopped
 
@@ -18,8 +23,7 @@ services:
     restart: unless-stopped
 
   workers:
-    build:
-      target: prod
+    <<: *cbp-runtime-prod
     volumes: []
     restart: unless-stopped
     # Bake still ships docker/supervisord-workers.conf under /var/www/staff
