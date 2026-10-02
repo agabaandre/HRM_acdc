@@ -15,6 +15,11 @@ rm -rf "$ROOT/public-spa"
 mkdir -p "$ROOT/public-spa"
 cp -a "$DIST/." "$ROOT/public-spa/"
 
+# Apache .htaccess prefers frontend/dist-user when present — keep it in sync.
+rm -rf "$ROOT/frontend/dist-user"
+mkdir -p "$ROOT/frontend/dist-user"
+cp -a "$DIST/." "$ROOT/frontend/dist-user/"
+
 # Keep root index.html in sync for spa-static.php fallbacks (prefer dist-build via .htaccess).
 cp -f "$DIST/index.html" "$ROOT/index.html"
 
@@ -26,7 +31,14 @@ fi
 cp -a "$DIST/assets" "$ROOT/assets"
 cat > "$ROOT/assets/.htaccess" <<'EOF'
 <IfModule mod_rewrite.c>
-    RewriteEngine Off
+    RewriteEngine On
+    # Serve files that exist here; otherwise fall through to latest dist-user build.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/risk-register/frontend/dist-user/assets/$1 -f
+    RewriteRule ^(.*)$ ../frontend/dist-user/assets/$1 [L]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/risk-register/frontend/dist-build/assets/$1 -f
+    RewriteRule ^(.*)$ ../frontend/dist-build/assets/$1 [L]
 </IfModule>
 EOF
 

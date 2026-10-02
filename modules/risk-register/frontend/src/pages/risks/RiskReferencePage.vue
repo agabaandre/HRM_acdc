@@ -1,88 +1,108 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { fetchLookups, type RiskLookups } from '@/lib/riskApi'
+import { useRiskLookups } from '@/composables/useRiskLookups'
+import type { RiskLookups } from '@/lib/riskApi'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
+import { useLocaleStore } from '@/stores/locale'
+import RrSkeleton from '@/components/risks/RrSkeleton.vue'
 
+const locale = useLocaleStore()
+const { loadLookups } = useRiskLookups()
 const lookups = ref<RiskLookups | null>(null)
 const error = ref<string | null>(null)
+const loading = ref(true)
 
 onMounted(async () => {
   try {
-    lookups.value = await fetchLookups()
+    lookups.value = await loadLookups()
   } catch (e) {
-    error.value = apiErrorMessage(e, 'Could not load reference data')
+    error.value = apiErrorMessage(e, locale.t('rr.load_reference_error', 'Could not load reference data'))
+  } finally {
+    loading.value = false
   }
 })
 </script>
 
 <template>
   <div class="rr-page">
-    <h1>Reference &amp; methodology</h1>
-    <p class="rr-lead">
-      How Africa CDC scores inherent and residual risk. Use these scales when capturing or reviewing register entries.
-    </p>
+    <header class="rr-page__header">
+      <div>
+        <h1>{{ locale.t('rr.reference_title', 'Reference & methodology') }}</h1>
+        <p class="rr-page__sub">
+          {{ locale.t('rr.reference_sub', 'How Africa CDC scores inherent and residual risk. Use these scales when capturing or reviewing register entries.') }}
+        </p>
+      </div>
+    </header>
 
     <section class="rr-card">
-      <h2>Residual risk formula</h2>
+      <h2>{{ locale.t('rr.residual_formula', 'Residual risk formula') }}</h2>
       <ul>
-        <li>Inherent score = Likelihood × Impact (1–25)</li>
-        <li>When mitigation effectiveness is assessed: Residual L = max(1, L − reduction); Residual I = max(1, I − ⌊reduction / 2⌋)</li>
-        <li>Until effectiveness is assessed (Not Assessed), residual equals inherent</li>
-        <li>Bands: Low 1–4 · Medium 5–9 · High 10–15 · Critical 16–25</li>
+        <li>{{ locale.t('rr.formula_1', 'Inherent score = Likelihood × Impact (1–25)') }}</li>
+        <li>{{ locale.t('rr.formula_2', 'When mitigation effectiveness is assessed: Residual L = max(1, L − reduction); Residual I = max(1, I − ⌊reduction / 2⌋)') }}</li>
+        <li>{{ locale.t('rr.formula_3', 'Until effectiveness is assessed (Not Assessed), residual equals inherent') }}</li>
+        <li>{{ locale.t('rr.formula_4', 'Bands follow the published rating-key version (see Settings). Defaults: Low 1–4 · Medium 5–9 · High 10–15 · Critical 16–25') }}</li>
       </ul>
     </section>
 
     <p v-if="error" class="rr-error">{{ error }}</p>
-    <template v-if="lookups">
+    <RrSkeleton v-if="loading" variant="cards" :rows="4" />
+    <template v-else-if="lookups">
+      <div class="rr-card-grid rr-card-grid--2">
+        <section class="rr-card">
+          <h2>{{ locale.t('rr.likelihood_heading', 'Likelihood') }}</h2>
+          <table class="rr-table"><thead><tr><th>{{ locale.t('rr.label', 'Label') }}</th><th>{{ locale.t('rr.col_score', 'Score') }}</th></tr></thead>
+            <tbody><tr v-for="r in lookups.likelihoods" :key="r.id"><td>{{ r.label }}</td><td>{{ r.score }}</td></tr></tbody>
+          </table>
+        </section>
+        <section class="rr-card">
+          <h2>{{ locale.t('rr.impact_heading', 'Impact') }}</h2>
+          <table class="rr-table"><thead><tr><th>{{ locale.t('rr.label', 'Label') }}</th><th>{{ locale.t('rr.col_score', 'Score') }}</th></tr></thead>
+            <tbody><tr v-for="r in lookups.impacts" :key="r.id"><td>{{ r.label }}</td><td>{{ r.score }}</td></tr></tbody>
+          </table>
+        </section>
+      </div>
       <section class="rr-card">
-        <h2>Likelihood</h2>
-        <table><thead><tr><th>Label</th><th>Score</th></tr></thead>
-          <tbody><tr v-for="r in lookups.likelihoods" :key="r.id"><td>{{ r.label }}</td><td>{{ r.score }}</td></tr></tbody>
-        </table>
-      </section>
-      <section class="rr-card">
-        <h2>Impact</h2>
-        <table><thead><tr><th>Label</th><th>Score</th></tr></thead>
-          <tbody><tr v-for="r in lookups.impacts" :key="r.id"><td>{{ r.label }}</td><td>{{ r.score }}</td></tr></tbody>
-        </table>
-      </section>
-      <section class="rr-card">
-        <h2>Mitigation effectiveness</h2>
-        <table><thead><tr><th>Name</th><th>L reduction</th><th>Assessed</th></tr></thead>
+        <h2>{{ locale.t('rr.mitigation_eff_heading', 'Mitigation effectiveness') }}</h2>
+        <table class="rr-table"><thead><tr><th>{{ locale.t('rr.col_name', 'Name') }}</th><th>{{ locale.t('rr.col_l_reduction', 'L reduction') }}</th><th>{{ locale.t('rr.col_assessed', 'Assessed') }}</th></tr></thead>
           <tbody>
             <tr v-for="r in lookups.mitigation_effectiveness" :key="r.id">
-              <td>{{ r.name }}</td><td>{{ r.likelihood_reduction }}</td><td>{{ r.is_assessed ? 'Yes' : 'No' }}</td>
+              <td>{{ r.name }}</td>
+              <td>{{ r.likelihood_reduction }}</td>
+              <td>{{ r.is_assessed ? locale.t('rr.yes', 'Yes') : locale.t('rr.no', 'No') }}</td>
             </tr>
           </tbody>
         </table>
       </section>
       <section class="rr-card">
-        <h2>Rating bands</h2>
-        <table><thead><tr><th>Rating</th><th>Min</th><th>Max</th></tr></thead>
-          <tbody><tr v-for="r in lookups.rating_bands" :key="r.id"><td>{{ r.rating }}</td><td>{{ r.min_score }}</td><td>{{ r.max_score }}</td></tr></tbody>
+        <h2>{{ locale.t('rr.rating_bands_heading', 'Rating bands') }}</h2>
+        <p class="rr-muted">{{ locale.t('rr.rating_bands_note', 'Manage themes, risk types, and statuses under Risk settings. Band colours follow the active rating-key version.') }}</p>
+        <table class="rr-table">
+          <thead><tr><th>{{ locale.t('rr.key', 'Key') }}</th><th>{{ locale.t('rr.label', 'Label') }}</th><th>{{ locale.t('rr.min', 'Min') }}</th><th>{{ locale.t('rr.max', 'Max') }}</th><th>{{ locale.t('rr.col_colour', 'Colour') }}</th></tr></thead>
+          <tbody>
+            <tr v-for="(r, idx) in lookups.rating_bands" :key="r.band_key || idx">
+              <td>{{ r.band_key }}</td>
+              <td>{{ r.rating }}</td>
+              <td>{{ r.min_score }}</td>
+              <td>{{ r.max_score }}</td>
+              <td>
+                <span
+                  class="rr-band-swatch"
+                  :style="{ background: r.fill_color || '#94A3B8', color: r.text_color || '#0F172A' }"
+                >{{ r.rating }}</span>
+              </td>
+            </tr>
+          </tbody>
         </table>
-      </section>
-      <section class="rr-card">
-        <h2>Enterprise themes</h2>
-        <ol><li v-for="r in lookups.enterprise_themes" :key="r.id">{{ r.name }}</li></ol>
-      </section>
-      <section class="rr-card">
-        <h2>Risk types</h2>
-        <ul><li v-for="r in lookups.risk_types" :key="r.id">{{ r.name }}</li></ul>
-      </section>
-      <section class="rr-card">
-        <h2>Statuses</h2>
-        <ul><li v-for="r in lookups.statuses" :key="r.id">{{ r.name }}</li></ul>
       </section>
     </template>
   </div>
 </template>
 
 <style scoped>
-.rr-page { width: 100%; max-width: none; margin: 0; padding: 1.5rem 0; }
-.rr-lead { color: #445; max-width: 40rem; }
-.rr-card { background: #fff; border: 1px solid #d8dee6; border-radius: 8px; padding: 1rem 1.1rem; margin: 1rem 0; }
-.rr-card table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.rr-card th, .rr-card td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid #eef2f6; }
-.rr-error { color: #b42318; }
+.rr-band-swatch {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
 </style>

@@ -15,6 +15,9 @@ final class RiskPermissions
 
     public const MANAGE = '121';
 
+    /** Delete lookup list values — Staff Portal admin only by default. */
+    public const DELETE_LOOKUPS = '122';
+
     /**
      * @param  list<int|string>  $permissions
      */
@@ -29,6 +32,14 @@ final class RiskPermissions
     public static function canManage(array $permissions): bool
     {
         return self::hasAny($permissions, [self::MANAGE]);
+    }
+
+    /**
+     * @param  list<int|string>  $permissions
+     */
+    public static function canDeleteLookups(array $permissions): bool
+    {
+        return self::hasAny($permissions, [self::DELETE_LOOKUPS]);
     }
 
     /**

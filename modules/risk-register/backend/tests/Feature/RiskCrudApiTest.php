@@ -111,9 +111,25 @@ class RiskCrudApiTest extends TestCase
             'rr_rating_bands' => function (Blueprint $table) {
                 $table->id();
                 $table->string('rating', 32);
+                $table->string('band_key', 32)->nullable();
                 $table->unsignedTinyInteger('min_score');
                 $table->unsignedTinyInteger('max_score');
+                $table->string('fill_color', 7)->nullable();
+                $table->string('text_color', 7)->nullable();
                 $table->unsignedSmallInteger('sort_order')->default(0);
+                $table->timestamps();
+            },
+            'rr_rating_key_versions' => function (Blueprint $table) {
+                $table->id();
+                $table->unsignedInteger('version')->unique();
+                $table->string('label', 128)->nullable();
+                $table->json('bands_json');
+                $table->timestamps();
+            },
+            'rr_settings' => function (Blueprint $table) {
+                $table->id();
+                $table->string('key', 64)->unique();
+                $table->text('value')->nullable();
                 $table->timestamps();
             },
             'rr_risks' => function (Blueprint $table) {
@@ -132,6 +148,7 @@ class RiskCrudApiTest extends TestCase
                 $table->unsignedTinyInteger('inherent_impact')->nullable();
                 $table->unsignedTinyInteger('inherent_score')->nullable();
                 $table->string('inherent_rating', 32)->nullable();
+                $table->string('inherent_rating_key', 32)->nullable();
                 $table->text('mitigation')->nullable();
                 $table->text('management_response')->nullable();
                 $table->string('timeline', 255)->nullable();
@@ -144,6 +161,8 @@ class RiskCrudApiTest extends TestCase
                 $table->unsignedTinyInteger('residual_impact')->nullable();
                 $table->unsignedTinyInteger('residual_score')->nullable();
                 $table->string('residual_rating', 32)->nullable();
+                $table->string('residual_rating_key', 32)->nullable();
+                $table->unsignedInteger('rating_key_version')->nullable();
                 $table->string('risk_movement', 64)->nullable();
                 $table->string('workflow_state', 64)->default('draft');
                 $table->boolean('imported')->default(false);

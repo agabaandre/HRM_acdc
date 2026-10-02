@@ -12,11 +12,19 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Vite hashed assets from dist-build
+    # Prefer latest local build when dist-build is root-owned / stale
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/risk-register/frontend/dist-user/index.html -f
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ frontend/dist-user/$1 [L]
+
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/risk-register/frontend/dist-user/index.html -f
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ frontend/dist-user/index.html [L]
+
+    # Fallback: published / older dist-build
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
     RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
-    # SPA fallback
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>

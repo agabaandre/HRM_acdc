@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CbpAssetController;
 use App\Http\Controllers\SsoAcceptController;
+use App\Http\Controllers\StaffMediaController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/sso/accept', SsoAcceptController::class)
@@ -16,6 +17,15 @@ Route::get('/sso/accept', function () {
 
     return redirect()->away($url);
 })->name('sso.accept.get');
+
+/*
+|--------------------------------------------------------------------------
+| Staff photos from shared CI uploads (img tags cannot send Bearer tokens).
+|--------------------------------------------------------------------------
+*/
+Route::get('/staff-media/photo/{filename}', [StaffMediaController::class, 'photo'])
+    ->where('filename', '[^/]+')
+    ->name('risk.staff.media.photo');
 
 /*
 |--------------------------------------------------------------------------

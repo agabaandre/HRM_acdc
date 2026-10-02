@@ -107,6 +107,58 @@ class RiskWorkflowServiceTest extends TestCase
         $this->assertSame('signed_off', $risk->workflow_state);
     }
 
+    public function test_ensure_division_workflows_creates_once(): void
+    {
+        $svc = $this->makeService(['divisions' => [], 'directorates' => []]);
+        $created = $svc->ensureDivisionWorkflows([
+            [
+                'division_id' => 35,
+                'division_short_name' => 'OIO',
+                'division_name' => 'Internal Oversight',
+            ],
+            [
+                'division_id' => 40,
+                'division_short_name' => 'PHC',
+                'division_name' => 'Public Health',
+            ],
+        ]);
+
+        $this->assertCount(2, $created);
+        $this->assertTrue($created[0]['created']);
+        $this->assertTrue($created[1]['created']);
+
+        $again = $svc->ensureDivisionWorkflows([
+            ['division_id' => 35, 'division_short_name' => 'OIO', 'division_name' => 'Internal Oversight'],
+        ]);
+        $this->assertFalse($again[0]['created']);
+        $this->assertSame($created[0]['workflow_id'], $again[0]['workflow_id']);
+        $this->assertSame(1, DB::table('rr_approval_workflows')->where('division_id', 35)->count());
+    }
+
+    public function test_update_workflow_sets_sm_and_extra(): void
+    {
+        $svc = $this->makeService(['divisions' => [], 'directorates' => []]);
+        $svc->ensureDivisionWorkflows([
+            ['division_id' => 35, 'division_short_name' => 'OIO', 'division_name' => 'OIO'],
+        ]);
+        $wid = $svc->divisionWorkflowId(35);
+        $this->assertNotNull($wid);
+
+        $row = $svc->updateWorkflow((int) $wid, 'OIO custom', [
+            ['step_order' => 1, 'role' => 'risk_focal', 'staff_id' => null, 'skippable_if_empty' => false],
+            ['step_order' => 2, 'role' => 'hod', 'staff_id' => null, 'skippable_if_empty' => false],
+            ['step_order' => 3, 'role' => 'director', 'staff_id' => null, 'skippable_if_empty' => true],
+            ['step_order' => 4, 'role' => 'sm_focal', 'staff_id' => 501, 'skippable_if_empty' => false],
+            ['step_order' => 5, 'role' => 'extra', 'staff_id' => 502, 'skippable_if_empty' => false],
+        ]);
+
+        $this->assertSame('OIO custom', $row['name']);
+        $sm = collect($row['steps'])->firstWhere('role', 'sm_focal');
+        $extra = collect($row['steps'])->firstWhere('role', 'extra');
+        $this->assertSame(501, (int) $sm['staff_id']);
+        $this->assertSame(502, (int) $extra['staff_id']);
+    }
+
     /**
      * @param  array{divisions: list<array<string,mixed>>, directorates: list<array<string,mixed>>}  $org
      */

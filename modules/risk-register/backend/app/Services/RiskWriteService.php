@@ -14,9 +14,7 @@ final class RiskWriteService
         private readonly RiskAuditLogger $audit,
         ?ResidualRiskCalculator $calculator = null,
     ) {
-        $this->calculator = $calculator ?? new ResidualRiskCalculator(
-            ResidualRiskCalculator::defaultRatingForScore(...)
-        );
+        $this->calculator = $calculator ?? ResidualRiskCalculator::withResolver();
     }
 
     /**
@@ -190,6 +188,11 @@ final class RiskWriteService
         $row['residual_score'] = $scores['residual_score'];
         $row['residual_rating'] = $scores['residual_rating'];
         $row['risk_movement'] = $scores['movement'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('rr_risks', 'inherent_rating_key')) {
+            $row['inherent_rating_key'] = $scores['inherent_rating_key'];
+            $row['residual_rating_key'] = $scores['residual_rating_key'];
+            $row['rating_key_version'] = $scores['rating_key_version'];
+        }
 
         return $row;
     }

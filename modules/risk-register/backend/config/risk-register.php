@@ -9,6 +9,9 @@ return [
         'endpoints' => [
             'divisions' => env('STAFF_API_ENDPOINT_DIVISIONS', '/share/divisions'),
             'directorates' => env('STAFF_API_ENDPOINT_DIRECTORATES', '/share/directorates'),
+            'staff' => env('STAFF_API_ENDPOINT_STAFF', '/share/get_current_staff'),
+            'cbp_modules' => env('STAFF_API_ENDPOINT_CBP_MODULES', '/share/cbp_modules'),
+            'branding' => env('STAFF_API_ENDPOINT_BRANDING', '/share/branding'),
         ],
     ],
     'excel_default_path' => env(

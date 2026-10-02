@@ -38,6 +38,7 @@ class RiskReviewServiceTest extends TestCase
             $table->string('timeline', 255)->nullable();
             $table->unsignedInteger('author_staff_id')->nullable();
             $table->timestamps();
+            $table->unique(['risk_id', 'year', 'quarter']);
         });
     }
 
@@ -68,5 +69,38 @@ class RiskReviewServiceTest extends TestCase
         ], 1);
 
         $this->assertSame('Q1 plan', $second['timeline']);
+    }
+
+    public function test_same_quarter_updates_instead_of_duplicate(): void
+    {
+        $riskId = DB::table('rr_risks')->insertGetId([
+            'name' => 'R',
+            'timeline' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $svc = new RiskReviewService;
+        $first = $svc->create($riskId, [
+            'year' => 2026,
+            'quarter' => 3,
+            'likelihood' => 2,
+            'impact' => 2,
+            'mitigation_strategy' => 'A',
+            'timeline' => 'Plan A',
+        ], 1);
+
+        $second = $svc->create($riskId, [
+            'year' => 2026,
+            'quarter' => 3,
+            'likelihood' => 4,
+            'impact' => 4,
+            'mitigation_strategy' => 'B',
+            'timeline' => 'Plan B',
+        ], 2);
+
+        $this->assertSame((int) $first['id'], (int) $second['id']);
+        $this->assertSame(16, (int) $second['inherent_score']);
+        $this->assertSame('B', $second['mitigation_strategy']);
+        $this->assertSame(1, DB::table('rr_risk_reviews')->where('risk_id', $riskId)->count());
     }
 }

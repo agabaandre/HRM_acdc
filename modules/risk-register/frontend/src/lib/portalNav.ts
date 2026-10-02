@@ -14,11 +14,13 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/': 'fa-solid fa-shield-halved',
   '/risks': 'fa-solid fa-shield-halved',
   '/dashboard': 'fa-solid fa-chart-pie',
+  '/reports': 'fa-solid fa-file-lines',
   '/approvals': 'fa-solid fa-check-double',
   '/workflows': 'fa-solid fa-diagram-project',
   '/import': 'fa-solid fa-file-import',
   '/reference': 'fa-solid fa-book',
   '/risk-settings': 'fa-solid fa-gear',
+  '/risk-settings/lookups': 'fa-solid fa-list',
 }
 
 export function pageIconForPath(path: string): string {
@@ -33,6 +35,15 @@ export function pageIconForPath(path: string): string {
 /** Risk Register only — Staff Portal clone modules removed from nav. */
 export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   {
+    label: 'Dashboard',
+    i18nKey: 'dashboard',
+    to: '/dashboard',
+    match: ['/dashboard'],
+    group: 'primary',
+    icon: 'fa-solid fa-chart-pie',
+    module: 'dashboard',
+  },
+  {
     label: 'Risks',
     i18nKey: 'risks',
     to: '/risks',
@@ -42,13 +53,13 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     module: 'risks',
   },
   {
-    label: 'Dashboard',
-    i18nKey: 'dashboard',
-    to: '/dashboard',
-    match: ['/dashboard'],
+    label: 'Reports',
+    i18nKey: 'reports',
+    to: '/reports',
+    match: ['/reports'],
     group: 'primary',
-    icon: 'fa-solid fa-chart-pie',
-    module: 'dashboard',
+    icon: 'fa-solid fa-file-lines',
+    module: 'reports',
   },
   {
     label: 'Approvals',

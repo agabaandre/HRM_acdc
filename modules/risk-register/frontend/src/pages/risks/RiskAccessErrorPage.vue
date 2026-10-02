@@ -1,33 +1,44 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
+const locale = useLocaleStore()
 
 const reason = computed(() => String(route.query.reason || route.query.risk_error_reason || ''))
 
 const title = computed(() => {
-  if (reason.value === 'post_required') return 'SSO launch required'
-  if (reason.value === 'unauthorized') return 'Could not open Risk Register'
-  if (reason.value === 'missing_token') return 'Missing SSO token'
-  if (reason.value === 'invalid_token') return 'Invalid or expired SSO token'
-  return 'Risk Register access error'
+  if (reason.value === 'post_required') return locale.t('rr.access_sso_required', 'SSO launch required')
+  if (reason.value === 'unauthorized') return locale.t('rr.access_unauthorized', 'Could not open Risk Register')
+  if (reason.value === 'missing_token') return locale.t('rr.access_missing_token', 'Missing SSO token')
+  if (reason.value === 'invalid_token') return locale.t('rr.access_invalid_token', 'Invalid or expired SSO token')
+  return locale.t('rr.access_title', 'Risk Register access error')
 })
 
 const detail = computed(() => {
   switch (reason.value) {
     case 'post_required':
-      return 'Open Risk Register from Staff Portal → CBP Modules (POST SSO). Opening /sso/accept in the browser directly will not work.'
+      return locale.t(
+        'rr.access_detail_post',
+        'Open Risk Register from Staff Portal → CBP Modules (POST SSO). Opening /sso/accept in the browser directly will not work.',
+      )
     case 'unauthorized':
-      return 'The Staff Portal launch token was rejected. Confirm JWT_SECRET matches Staff Portal, your account has permission 118, and try launching again.'
+      return locale.t(
+        'rr.access_detail_unauthorized',
+        'The Staff Portal launch token was rejected. Confirm JWT_SECRET matches Staff Portal, your account has permission 118, and try launching again.',
+      )
     case 'missing_token':
-      return 'No staff_sso_jwt was posted to the accept endpoint.'
+      return locale.t('rr.access_detail_missing', 'No staff_sso_jwt was posted to the accept endpoint.')
     case 'invalid_token':
-      return 'The SSO token could not be decoded or has expired. Launch again from CBP Modules.'
+      return locale.t(
+        'rr.access_detail_invalid',
+        'The SSO token could not be decoded or has expired. Launch again from CBP Modules.',
+      )
     default:
       return reason.value
-        ? `Error code: ${reason.value}`
-        : 'Sign in via Staff Portal CBP Modules → Risk Register.'
+        ? locale.t('rr.access_detail_code', 'Error code: {code}', { code: reason.value })
+        : locale.t('rr.signin_required', 'Sign in via Staff Portal CBP Modules → Risk Register.')
   }
 })
 
@@ -43,8 +54,10 @@ const staffHome = computed(() => {
   <div class="rr-error-page">
     <h1>{{ title }}</h1>
     <p>{{ detail }}</p>
-    <p class="rr-muted">If this keeps happening, ask an administrator to check Risk Register Apache rewrite, SPA build base path (<code>/staff/risk-register/</code>), and SSO secrets.</p>
-    <a class="rr-btn" :href="staffHome">Back to Staff Portal</a>
+    <p class="rr-muted">
+      {{ locale.t('rr.access_help', 'If this keeps happening, ask an administrator to check Risk Register Apache rewrite, SPA build base path (/staff/risk-register/), and SSO secrets.') }}
+    </p>
+    <a class="rr-btn" :href="staffHome">{{ locale.t('rr.back_staff_portal', 'Back to Staff Portal') }}</a>
   </div>
 </template>
 

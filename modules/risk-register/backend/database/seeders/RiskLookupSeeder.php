@@ -99,18 +99,43 @@ class RiskLookupSeeder extends Seeder
         }
 
         $bands = [
-            ['rating' => 'Low', 'min_score' => 1, 'max_score' => 4, 'sort_order' => 1],
-            ['rating' => 'Medium', 'min_score' => 5, 'max_score' => 9, 'sort_order' => 2],
-            ['rating' => 'High', 'min_score' => 10, 'max_score' => 15, 'sort_order' => 3],
-            ['rating' => 'Critical', 'min_score' => 16, 'max_score' => 25, 'sort_order' => 4],
+            ['rating' => 'Low', 'band_key' => 'low', 'min_score' => 1, 'max_score' => 4, 'fill_color' => '#00B050', 'text_color' => '#FFFFFF', 'sort_order' => 1],
+            ['rating' => 'Medium', 'band_key' => 'medium', 'min_score' => 5, 'max_score' => 9, 'fill_color' => '#FFFF00', 'text_color' => '#1A1A1A', 'sort_order' => 2],
+            ['rating' => 'High', 'band_key' => 'high', 'min_score' => 10, 'max_score' => 15, 'fill_color' => '#FFC000', 'text_color' => '#1A1A1A', 'sort_order' => 3],
+            ['rating' => 'Critical', 'band_key' => 'critical', 'min_score' => 16, 'max_score' => 25, 'fill_color' => '#C00000', 'text_color' => '#FFFFFF', 'sort_order' => 4],
         ];
+        $hasBandKey = Schema::hasColumn('rr_rating_bands', 'band_key');
         foreach ($bands as $row) {
+            $base = [
+                'rating' => $row['rating'],
+                'min_score' => $row['min_score'],
+                'max_score' => $row['max_score'],
+                'sort_order' => $row['sort_order'],
+            ];
+            if ($hasBandKey) {
+                $base += [
+                    'band_key' => $row['band_key'],
+                    'fill_color' => $row['fill_color'],
+                    'text_color' => $row['text_color'],
+                ];
+            }
             if (! DB::table('rr_rating_bands')->where('rating', $row['rating'])->exists()) {
-                DB::table('rr_rating_bands')->insert($row + [
+                DB::table('rr_rating_bands')->insert($base + [
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+            } elseif ($hasBandKey) {
+                DB::table('rr_rating_bands')->where('rating', $row['rating'])->update([
+                    'band_key' => $row['band_key'],
+                    'fill_color' => $row['fill_color'],
+                    'text_color' => $row['text_color'],
+                    'updated_at' => now(),
+                ]);
             }
+        }
+
+        if ($hasBandKey && Schema::hasTable('rr_rating_key_versions') && ! DB::table('rr_rating_key_versions')->exists()) {
+            app(\App\Services\RatingBandResolver::class)->publish('Initial (Excel)');
         }
     }
 

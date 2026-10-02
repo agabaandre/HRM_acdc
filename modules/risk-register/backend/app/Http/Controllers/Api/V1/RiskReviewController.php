@@ -15,10 +15,12 @@ class RiskReviewController extends Controller
         $data = $request->validate([
             'year' => 'required|integer|min:2000|max:2100',
             'quarter' => 'required|integer|min:1|max:4',
-            'likelihood' => 'required|integer|min:1|max:5',
-            'impact' => 'required|integer|min:1|max:5',
+            'likelihood' => 'nullable|integer|min:1|max:5',
+            'impact' => 'nullable|integer|min:1|max:5',
             'mitigation_strategy' => 'nullable|string',
             'timeline' => 'nullable|string|max:255',
+            'action_update' => 'nullable|string',
+            'oio_verification_notes' => 'nullable|string',
         ]);
 
         try {

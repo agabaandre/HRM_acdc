@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Shared across CBP modules (different APP_KEYs) — must stay unencrypted.
+        $middleware->encryptCookies(except: [
+            'staff_portal_locale',
+        ]);
         $middleware->redirectGuestsTo(function () {
             $base = rtrim((string) config('app.url', ''), '/');
 

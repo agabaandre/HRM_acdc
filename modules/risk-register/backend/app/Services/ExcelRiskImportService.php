@@ -179,15 +179,18 @@ final class ExcelRiskImportService
      */
     public function applyMappings(int $batchId, array $mappings, ?array $orgOverride = null): array
     {
-        $batch = DB::table('rr_import_batches')->where('id', $batchId)->first();
-        if (! $batch || $batch->status !== 'matched_committed') {
-            throw new RuntimeException('Import batch is not ready for mapping.');
-        }
-
         $org = $orgOverride ?? $this->orgClient->fetchOrg();
         $heads = [];
+        $directorates = [];
         foreach ($org['divisions'] ?? [] as $div) {
-            $heads[(int) $div['division_id']] = isset($div['division_head']) ? (int) $div['division_head'] : null;
+            $id = (int) ($div['division_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $heads[$id] = isset($div['division_head']) ? (int) $div['division_head'] : null;
+            $directorates[$id] = isset($div['directorate_id']) && $div['directorate_id'] !== null && $div['directorate_id'] !== ''
+                ? (int) $div['directorate_id']
+                : null;
         }
 
         $mapByBu = [];
@@ -196,70 +199,169 @@ final class ExcelRiskImportService
             if ($bu === '' || empty($m['division_id'])) {
                 continue;
             }
+            $divisionId = (int) $m['division_id'];
             $mapByBu[$bu] = [
-                'division_id' => (int) $m['division_id'],
+                'division_id' => $divisionId,
                 'directorate_id' => isset($m['directorate_id']) && $m['directorate_id'] !== '' && $m['directorate_id'] !== null
                     ? (int) $m['directorate_id']
-                    : null,
+                    : ($directorates[$divisionId] ?? null),
             ];
+        }
+        if ($mapByBu === []) {
+            throw new RuntimeException('No valid division mappings provided.');
+        }
+
+        // Prefer the requested batch, but also apply the same BU mappings to any other pending staged rows.
+        $batchIds = DB::table('rr_import_staged_rows')
+            ->where('status', 'pending')
+            ->whereIn('business_unit', array_keys($mapByBu))
+            ->distinct()
+            ->pluck('batch_id')
+            ->map(static fn ($id) => (int) $id)
+            ->all();
+        if ($batchIds === []) {
+            // Fall back to requested batch even if empty (clear error below).
+            $batchIds = [$batchId];
+        } elseif (! in_array($batchId, $batchIds, true)) {
+            array_unshift($batchIds, $batchId);
         }
 
         $imported = 0;
-        DB::transaction(function () use ($batchId, $mapByBu, $heads, &$imported) {
-            $pending = DB::table('rr_import_staged_rows')
-                ->where('batch_id', $batchId)
-                ->where('status', 'pending')
-                ->get();
+        DB::transaction(function () use ($batchIds, $mapByBu, $heads, &$imported) {
+            foreach ($batchIds as $id) {
+                $batchImported = 0;
+                $pending = DB::table('rr_import_staged_rows')
+                    ->where('batch_id', $id)
+                    ->where('status', 'pending')
+                    ->get();
 
-            foreach ($pending as $staged) {
-                $bu = (string) $staged->business_unit;
-                if (! isset($mapByBu[$bu])) {
-                    continue;
+                foreach ($pending as $staged) {
+                    $bu = (string) $staged->business_unit;
+                    if (! isset($mapByBu[$bu])) {
+                        continue;
+                    }
+                    $payload = json_decode((string) $staged->payload, true);
+                    if (! is_array($payload)) {
+                        continue;
+                    }
+                    $divisionId = $mapByBu[$bu]['division_id'];
+                    $match = [
+                        'division_id' => $divisionId,
+                        'directorate_id' => $mapByBu[$bu]['directorate_id'],
+                        'unmapped' => null,
+                        'division_head' => $heads[$divisionId] ?? null,
+                    ];
+                    $payload['source_business_unit'] = $bu;
+                    $riskId = $this->insertRiskRow($payload, $match);
+                    if ($match['division_head'] !== null) {
+                        $this->attachHodOwner($riskId, (int) $match['division_head']);
+                    }
+                    DB::table('rr_import_staged_rows')->where('id', $staged->id)->update([
+                        'status' => 'imported',
+                        'mapped_division_id' => $divisionId,
+                        'mapped_directorate_id' => $match['directorate_id'],
+                        'imported_risk_id' => $riskId,
+                        'updated_at' => now(),
+                    ]);
+                    $batchImported++;
+                    $imported++;
                 }
-                $payload = json_decode((string) $staged->payload, true);
-                if (! is_array($payload)) {
-                    continue;
-                }
-                $divisionId = $mapByBu[$bu]['division_id'];
-                $match = [
-                    'division_id' => $divisionId,
-                    'directorate_id' => $mapByBu[$bu]['directorate_id'],
-                    'unmapped' => null,
-                    'division_head' => $heads[$divisionId] ?? null,
-                ];
-                $payload['source_business_unit'] = $bu;
-                $riskId = $this->insertRiskRow($payload, $match);
-                if ($match['division_head'] !== null) {
-                    $this->attachHodOwner($riskId, (int) $match['division_head']);
-                }
-                DB::table('rr_import_staged_rows')->where('id', $staged->id)->update([
-                    'status' => 'imported',
-                    'mapped_division_id' => $divisionId,
-                    'mapped_directorate_id' => $match['directorate_id'],
-                    'imported_risk_id' => $riskId,
+
+                $remainingForBatch = DB::table('rr_import_staged_rows')
+                    ->where('batch_id', $id)
+                    ->where('status', 'pending')
+                    ->count();
+
+                DB::table('rr_import_batches')->where('id', $id)->update([
+                    'mapped_imported_count' => DB::raw('mapped_imported_count + '.$batchImported),
+                    'status' => $remainingForBatch === 0 ? 'completed' : 'matched_committed',
                     'updated_at' => now(),
                 ]);
-                $imported++;
             }
-
-            $remaining = DB::table('rr_import_staged_rows')
-                ->where('batch_id', $batchId)
-                ->where('status', 'pending')
-                ->count();
-
-            DB::table('rr_import_batches')->where('id', $batchId)->update([
-                'mapped_imported_count' => DB::raw('mapped_imported_count + '.$imported),
-                'status' => $remaining === 0 ? 'completed' : 'matched_committed',
-                'updated_at' => now(),
-            ]);
         });
 
+        if ($imported < 1) {
+            throw new RuntimeException('No pending unmatched rows matched the selected business units.');
+        }
+
         $remaining = (int) DB::table('rr_import_staged_rows')
-            ->where('batch_id', $batchId)
             ->where('status', 'pending')
             ->count();
 
         return ['imported' => $imported, 'remaining' => $remaining];
+    }
+
+    /**
+     * Assign division to risks that already exist with unmapped_business_unit.
+     *
+     * @param  list<array{business_unit:string,division_id:int,directorate_id?:?int}>  $mappings
+     * @return array{updated:int,remaining:int}
+     */
+    public function remapUnmappedRisks(array $mappings, ?array $orgOverride = null): array
+    {
+        $org = $orgOverride ?? $this->orgClient->fetchOrg();
+        $heads = [];
+        $directorates = [];
+        foreach ($org['divisions'] ?? [] as $div) {
+            $id = (int) ($div['division_id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+            $heads[$id] = isset($div['division_head']) ? (int) $div['division_head'] : null;
+            $directorates[$id] = isset($div['directorate_id']) && $div['directorate_id'] !== null && $div['directorate_id'] !== ''
+                ? (int) $div['directorate_id']
+                : null;
+        }
+
+        $mapByBu = [];
+        foreach ($mappings as $m) {
+            $bu = trim((string) ($m['business_unit'] ?? ''));
+            if ($bu === '' || empty($m['division_id'])) {
+                continue;
+            }
+            $divisionId = (int) $m['division_id'];
+            $mapByBu[mb_strtolower($bu)] = [
+                'business_unit' => $bu,
+                'division_id' => $divisionId,
+                'directorate_id' => isset($m['directorate_id']) && $m['directorate_id'] !== '' && $m['directorate_id'] !== null
+                    ? (int) $m['directorate_id']
+                    : ($directorates[$divisionId] ?? null),
+            ];
+        }
+
+        if ($mapByBu === []) {
+            throw new RuntimeException('No valid division mappings provided.');
+        }
+
+        $updated = 0;
+        DB::transaction(function () use ($mapByBu, $heads, &$updated) {
+            foreach ($mapByBu as $map) {
+                $risks = DB::table('rr_risks')
+                    ->where('unmapped_business_unit', $map['business_unit'])
+                    ->get(['id']);
+                foreach ($risks as $risk) {
+                    DB::table('rr_risks')->where('id', $risk->id)->update([
+                        'division_id' => $map['division_id'],
+                        'directorate_id' => $map['directorate_id'],
+                        'unmapped_business_unit' => null,
+                        'source_business_unit' => $map['business_unit'],
+                        'updated_at' => now(),
+                    ]);
+                    $head = $heads[$map['division_id']] ?? null;
+                    if ($head !== null && $head > 0) {
+                        $this->attachHodOwner((int) $risk->id, (int) $head);
+                    }
+                    $updated++;
+                }
+            }
+        });
+
+        $remaining = (int) DB::table('rr_risks')
+            ->whereNotNull('unmapped_business_unit')
+            ->where('unmapped_business_unit', '!=', '')
+            ->count();
+
+        return ['updated' => $updated, 'remaining' => $remaining];
     }
 
     /**
@@ -273,9 +375,7 @@ final class ExcelRiskImportService
 
         $org = $orgOverride ?? $this->orgClient->fetchOrg();
         $matcher = new BusinessUnitMatcher($org);
-        $calculator = $this->calculator ?? new ResidualRiskCalculator(
-            ResidualRiskCalculator::defaultRatingForScore(...)
-        );
+        $calculator = $this->calculator ?? ResidualRiskCalculator::withResolver();
         $reader = $this->reader ?? new XlsxSheetReader;
         $lookups = $this->loadLookups();
         $rows = $reader->readSheetRows($path, 'Risk Register');
@@ -359,6 +459,11 @@ final class ExcelRiskImportService
                 'residual_rating' => $scores['residual_rating'],
                 'risk_movement' => $scores['movement'],
             ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('rr_risks', 'inherent_rating_key')) {
+                $payload['inherent_rating_key'] = $scores['inherent_rating_key'];
+                $payload['residual_rating_key'] = $scores['residual_rating_key'];
+                $payload['rating_key_version'] = $scores['rating_key_version'];
+            }
 
             $out[] = ['match' => $match, 'payload' => $payload];
         }
@@ -372,7 +477,7 @@ final class ExcelRiskImportService
      */
     private function insertRiskRow(array $payload, array $match): int
     {
-        return (int) DB::table('rr_risks')->insertGetId([
+        $row = [
             'import_row_number' => $payload['import_row_number'] ?? null,
             'source_business_unit' => $payload['source_business_unit'] ?? null,
             'division_id' => $match['division_id'],
@@ -404,7 +509,14 @@ final class ExcelRiskImportService
             'imported' => true,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('rr_risks', 'inherent_rating_key')) {
+            $row['inherent_rating_key'] = $payload['inherent_rating_key'] ?? null;
+            $row['residual_rating_key'] = $payload['residual_rating_key'] ?? null;
+            $row['rating_key_version'] = $payload['rating_key_version'] ?? null;
+        }
+
+        return (int) DB::table('rr_risks')->insertGetId($row);
     }
 
     private function attachHodOwner(int $riskId, int $staffId): void

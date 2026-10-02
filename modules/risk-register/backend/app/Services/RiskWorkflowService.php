@@ -163,11 +163,15 @@ final class RiskWorkflowService
             ->orderBy('step_order')
             ->get();
 
+        $ids = $lower->pluck('assignee_staff_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $names = $this->orgClient->staffNamesForIds($ids);
+
         $out = [];
         foreach ($lower as $row) {
+            $sid = (int) $row->assignee_staff_id;
             $out[] = [
-                'staff_id' => (int) $row->assignee_staff_id,
-                'name' => 'Staff #'.$row->assignee_staff_id,
+                'staff_id' => $sid,
+                'name' => $names[$sid] ?? ('Staff #'.$sid),
                 'level' => (int) $row->step_order,
                 'role' => (string) $row->role,
             ];
@@ -216,6 +220,15 @@ final class RiskWorkflowService
             $w = DB::table('rr_approval_workflows')
                 ->where('division_id', $divisionId)
                 ->whereNull('directorate_id')
+                ->orderBy('id')
+                ->first();
+            if ($w) {
+                return $w;
+            }
+            // Any division-scoped workflow as fallback
+            $w = DB::table('rr_approval_workflows')
+                ->where('division_id', $divisionId)
+                ->orderBy('id')
                 ->first();
             if ($w) {
                 return $w;
@@ -293,11 +306,146 @@ final class RiskWorkflowService
             return (int) $existing;
         }
 
+        return self::insertWorkflowWithDefaultSteps(
+            null,
+            null,
+            'Global default',
+            true,
+            $smFocalStaffId,
+            $extraStaffId
+        );
+    }
+
+    /**
+     * Ensure each division has a division-scoped default workflow (directorate null).
+     *
+     * @param  list<array<string, mixed>>  $divisions
+     * @return list<array{division_id:int,workflow_id:int,created:bool}>
+     */
+    public function ensureDivisionWorkflows(array $divisions): array
+    {
+        self::ensureDefaultWorkflow();
+        $out = [];
+        foreach ($divisions as $div) {
+            $divisionId = (int) ($div['division_id'] ?? 0);
+            if ($divisionId < 1) {
+                continue;
+            }
+            $label = trim((string) ($div['division_short_name'] ?? ''));
+            if ($label === '') {
+                $label = trim((string) ($div['division_name'] ?? ''));
+            }
+            if ($label === '') {
+                $label = 'Division '.$divisionId;
+            }
+
+            $existingId = DB::table('rr_approval_workflows')
+                ->where('division_id', $divisionId)
+                ->whereNull('directorate_id')
+                ->orderBy('id')
+                ->value('id');
+
+            if ($existingId) {
+                $out[] = ['division_id' => $divisionId, 'workflow_id' => (int) $existingId, 'created' => false];
+                continue;
+            }
+
+            $wid = self::insertWorkflowWithDefaultSteps(
+                $divisionId,
+                null,
+                $label.' default',
+                false,
+                null,
+                null
+            );
+            $out[] = ['division_id' => $divisionId, 'workflow_id' => $wid, 'created' => true];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array{step_order:int,role:string,staff_id?:?int,skippable_if_empty?:bool}>  $steps
+     * @return array<string, mixed>
+     */
+    public function updateWorkflow(int $workflowId, string $name, array $steps): array
+    {
+        $wf = DB::table('rr_approval_workflows')->where('id', $workflowId)->first();
+        if (! $wf) {
+            throw new RuntimeException('Workflow not found');
+        }
+
+        DB::transaction(function () use ($workflowId, $name, $steps) {
+            DB::table('rr_approval_workflows')->where('id', $workflowId)->update([
+                'name' => $name,
+                'updated_at' => now(),
+            ]);
+            DB::table('rr_approval_workflow_steps')->where('workflow_id', $workflowId)->delete();
+            foreach ($steps as $step) {
+                DB::table('rr_approval_workflow_steps')->insert([
+                    'workflow_id' => $workflowId,
+                    'step_order' => (int) $step['step_order'],
+                    'role' => (string) $step['role'],
+                    'staff_id' => isset($step['staff_id']) && $step['staff_id'] !== null && $step['staff_id'] !== ''
+                        ? (int) $step['staff_id']
+                        : null,
+                    'skippable_if_empty' => (bool) ($step['skippable_if_empty'] ?? false),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        return $this->workflowPayload($workflowId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function workflowPayload(int $workflowId): array
+    {
+        $wf = DB::table('rr_approval_workflows')->where('id', $workflowId)->first();
+        if (! $wf) {
+            throw new RuntimeException('Workflow not found');
+        }
+        $row = (array) $wf;
+        $row['steps'] = DB::table('rr_approval_workflow_steps')
+            ->where('workflow_id', $workflowId)
+            ->orderBy('step_order')
+            ->get()
+            ->map(fn ($s) => (array) $s)
+            ->all();
+
+        return $row;
+    }
+
+    /**
+     * Division-scoped workflow used for approvals (null directorate preferred).
+     */
+    public function divisionWorkflowId(int $divisionId): ?int
+    {
+        $id = DB::table('rr_approval_workflows')
+            ->where('division_id', $divisionId)
+            ->whereNull('directorate_id')
+            ->orderBy('id')
+            ->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    private static function insertWorkflowWithDefaultSteps(
+        ?int $divisionId,
+        ?int $directorateId,
+        string $name,
+        bool $isDefault,
+        ?int $smFocalStaffId,
+        ?int $extraStaffId
+    ): int {
         $wid = (int) DB::table('rr_approval_workflows')->insertGetId([
-            'division_id' => null,
-            'directorate_id' => null,
-            'name' => 'Global default',
-            'is_default' => true,
+            'division_id' => $divisionId,
+            'directorate_id' => $directorateId,
+            'name' => $name,
+            'is_default' => $isDefault,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
