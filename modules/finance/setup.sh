@@ -36,6 +36,28 @@ fi
 php artisan migrate --no-interaction --force
 ./fix-storage-permissions.sh || echo "Warning: run ./fix-storage-permissions.sh with sudo if Apache cannot write sessions/logs."
 
+# Vue/API app used by /staff/finance/backend (SSO + Supervisor workers).
+if [[ -f "$ROOT/backend/composer.json" ]]; then
+  echo "==> Finance API backend (modules/finance/backend)"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    export COMPOSER_ALLOW_SUPERUSER=1
+  fi
+  composer install --no-interaction --working-dir="$ROOT/backend"
+  if [[ ! -f "$ROOT/backend/vendor/autoload.php" ]]; then
+    echo "error: backend/vendor/autoload.php missing after composer install" >&2
+    exit 1
+  fi
+  if [[ -f "$ROOT/backend/.env" ]]; then
+    if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
+      (cd "$ROOT/backend" && php artisan key:generate --no-interaction)
+    fi
+    (cd "$ROOT/backend" && php artisan migrate --no-interaction --force) \
+      || echo "Warning: finance/backend migrate failed — continuing" >&2
+  else
+    echo "Warning: missing backend/.env — copy from backend/.env.example before Supervisor workers will start" >&2
+  fi
+fi
+
 echo "==> Frontend (npm install + production build)"
 npm install --legacy-peer-deps --cache ./.npm-cache
 npm run build
@@ -43,4 +65,5 @@ npm run build
 echo ""
 echo "Finance (Laravel + Inertia) ready."
 echo "Open: http://localhost/staff/finance/?token=… (from Staff home)"
+echo "API/SSO: /staff/finance/backend (requires backend/vendor — installed above)"
 echo "Production: ./setup-production.sh"

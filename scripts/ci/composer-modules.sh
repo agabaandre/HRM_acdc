@@ -9,7 +9,9 @@ MODULES=(
   modules/staff-portal/backend
   modules/apm
   modules/finance
+  modules/finance/backend
   modules/helpdesk/backend
+  modules/risk-register/backend
 )
 
 for dir in "${MODULES[@]}"; do

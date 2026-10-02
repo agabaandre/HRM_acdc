@@ -311,6 +311,11 @@ ensure_app_log_writable() {
 preflight_artisan() {
   local app="$1" app_abs="$2"
   local out
+  if [[ ! -f "$app_abs/vendor/autoload.php" ]]; then
+    echo "    preflight $app FAILED: missing vendor/autoload.php" >&2
+    echo "    Fix: cd $app_abs && composer install --no-dev --optimize-autoloader --no-interaction" >&2
+    return 1
+  fi
   if out="$(cd "$app_abs" && run_as_supervisor_user "$PHP_BIN" artisan about --only=environment 2>&1)"; then
     echo "    preflight $app OK"
     return 0

@@ -141,6 +141,33 @@ log "Installing PHP dependencies (production)"
 [[ -f "$ROOT/composer.json" ]] || die "composer.json missing in $ROOT — deploy full finance/ from git before running setup."
 composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT"
 
+# Supervisor + SSO use modules/finance/backend (separate Laravel app).
+if [[ -f "$ROOT/backend/composer.json" ]]; then
+    log "Installing finance API backend PHP dependencies (backend/)"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        export COMPOSER_ALLOW_SUPERUSER=1
+    fi
+    composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT/backend"
+    if [[ ! -f "$ROOT/backend/vendor/autoload.php" ]]; then
+        die "backend/vendor/autoload.php missing after composer install — fix Composer, then re-run."
+    fi
+    if [[ ! -f "$ROOT/backend/.env" && -f "$ROOT/backend/.env.example" ]]; then
+        cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"
+        warn "Created backend/.env from example — set DB_* to match production"
+    fi
+    if [[ -f "$ROOT/backend/.env" ]]; then
+        if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
+            log "Generating finance API APP_KEY"
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction)
+        fi
+        if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
+            log "Running finance API database migrations"
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan migrate --force --no-interaction) \
+                || warn "finance/backend migrate failed — check backend/.env DB_*"
+        fi
+    fi
+fi
+
 if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
     log "Generating Laravel APP_KEY"
     "$PHP_BIN" artisan key:generate --no-interaction
