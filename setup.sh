@@ -216,19 +216,19 @@ _existing_transport="$(env_get "$ROOT_ENV" MAIL_TRANSPORT)"
 [[ -z "$_existing_transport" ]] && _existing_transport="$(env_get "$ROOT_ENV" MAIL_MAILER)"
 MAIL_TRANSPORT_DEFAULT=1
 case "$(printf '%s' "$_existing_transport" | tr '[:upper:]' '[:lower:]')" in
-  smtp) MAIL_TRANSPORT_DEFAULT=2 ;;
-  zoho) MAIL_TRANSPORT_DEFAULT=3 ;;
-  http|notifications|api_http) MAIL_TRANSPORT_DEFAULT=4 ;;
-  exchange|exchange_oauth|graph|"") MAIL_TRANSPORT_DEFAULT=1 ;;
+  exchange|exchange_oauth|graph) MAIL_TRANSPORT_DEFAULT=2 ;;
+  smtp) MAIL_TRANSPORT_DEFAULT=3 ;;
+  zoho) MAIL_TRANSPORT_DEFAULT=4 ;;
+  http|notifications|api_http|"") MAIL_TRANSPORT_DEFAULT=1 ;;
 esac
 prompt_choice MAIL_TRANSPORT_CHOICE "Outbound mail transport?" \
-  "1) Exchange / Microsoft Graph (default)  2) SMTP  3) Zoho SMTP  4) HTTP (notifications.africacdc.org)" \
+  "1) HTTP notifications.africacdc.org (default)  2) Exchange / Microsoft Graph  3) SMTP  4) Zoho SMTP" \
   "$MAIL_TRANSPORT_DEFAULT"
 case "$MAIL_TRANSPORT_CHOICE" in
-  2) MAIL_TRANSPORT=smtp ;;
-  3) MAIL_TRANSPORT=zoho ;;
-  4) MAIL_TRANSPORT=http ;;
-  *) MAIL_TRANSPORT=exchange ;;
+  2) MAIL_TRANSPORT=exchange ;;
+  3) MAIL_TRANSPORT=smtp ;;
+  4) MAIL_TRANSPORT=zoho ;;
+  *) MAIL_TRANSPORT=http ;;
 esac
 echo "    MAIL_TRANSPORT=$MAIL_TRANSPORT"
 
@@ -386,6 +386,12 @@ env_set "$ROOT_ENV" MAIL_TRANSPORT "$MAIL_TRANSPORT"
 env_set "$ROOT_ENV" MAIL_MAILER "$MAIL_MAILER"
 env_set "$ROOT_ENV" USE_EXCHANGE_EMAIL "$USE_EXCHANGE_EMAIL"
 env_set "$ROOT_ENV" MAIL_FROM_ADDRESS "$MAIL_FROM_ADDRESS_SHARED"
+# Portal mail hub: modules POST to Share by default (auto = portal then local fallback)
+_existing_dispatch="$(env_get "$ROOT_ENV" STAFF_MAIL_DISPATCH)"
+env_set "$ROOT_ENV" STAFF_MAIL_DISPATCH "${_existing_dispatch:-auto}"
+if [[ -z "$(env_get "$ROOT_ENV" STAFF_MAIL_CONFIG_KEY)" ]]; then
+  env_set "$ROOT_ENV" STAFF_MAIL_CONFIG_KEY ""
+fi
 if [[ "$MAIL_TRANSPORT" == "smtp" || "$MAIL_TRANSPORT" == "zoho" ]]; then
   env_set "$ROOT_ENV" MAIL_HOST "$MAIL_HOST"
   env_set "$ROOT_ENV" MAIL_PORT "$MAIL_PORT"

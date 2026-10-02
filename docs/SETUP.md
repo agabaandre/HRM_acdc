@@ -116,6 +116,8 @@ Do not run host systemd workers and Compose `--profile workers` against the same
 
 ## Related
 
+- Portal mail hub design: `docs/superpowers/specs/2026-10-02-portal-mail-hub-design.md`
+- Share endpoints (staff-portal): `POST /share/mail/send`, `GET /share/mail/active-config` (Bearer `STAFF_API_TOKEN`)
 - [docker/README.md](../docker/README.md)
 - [STORAGE.md](./STORAGE.md) — `STAFF_SITE_ID` / `/var/staffdata`
 - [migrate-to-modules-layout.sh](../scripts/migrate-to-modules-layout.sh)
