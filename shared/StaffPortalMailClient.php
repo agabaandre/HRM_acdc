@@ -124,7 +124,7 @@ final class StaffPortalMailClient
      */
     private function sendLocal(string|array $to, string $subject, string $html, array $options): void
     {
-        if ($this->localSender !== null) {
+        if (is_callable($this->localSender)) {
             ($this->localSender)($to, $subject, $html, $options);
 
             return;
