@@ -39,6 +39,54 @@ function sendEmail($to, $subject, $body, $fromEmail = null, $fromName = null, $c
         $bcc[] = $systemBcc;
     }
 
+    $mode = strtolower(trim((string) env('STAFF_MAIL_DISPATCH', 'auto')));
+    if ($mode !== 'local' && class_exists(\Staff\Shared\StaffPortalMailClient::class)) {
+        try {
+            $options = [
+                'cc' => array_values(array_filter($cc)),
+                'bcc' => array_values(array_filter($bcc)),
+            ];
+            if (is_array($attachments) && $attachments !== []) {
+                $options['attachments'] = $attachments;
+            }
+            $cfg = config('services.staff_api', []);
+            $base = rtrim((string) ($cfg['base_url'] ?? 'http://127.0.0.1/staff/backend'), '/');
+            if (class_exists(\App\Support\StaffApiBaseUrl::class)) {
+                $base = \App\Support\StaffApiBaseUrl::resolve($base);
+            } elseif (str_ends_with($base, '/staff')) {
+                $base .= '/backend';
+            }
+            $portalClient = new \Staff\Shared\StaffPortalMailClient(
+                baseUrl: $base,
+                token: isset($cfg['token']) ? (string) $cfg['token'] : null,
+                username: isset($cfg['username']) ? (string) $cfg['username'] : null,
+                password: isset($cfg['password']) ? (string) $cfg['password'] : null,
+                dispatch: 'portal',
+                configKey: env('STAFF_MAIL_CONFIG_KEY') ?: config('app.key'),
+            );
+            $portalClient->send($to, $subject, $body, $options);
+
+            return true;
+        } catch (\Throwable $e) {
+            if ($mode === 'portal') {
+                \Illuminate\Support\Facades\Log::warning('APM portal mail send failed', ['error' => $e->getMessage()]);
+
+                return false;
+            }
+            \Illuminate\Support\Facades\Log::info('APM portal mail unavailable; using local transport', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    return sendEmailViaLocalTransport($to, $subject, $body, $fromEmail, $fromName, $cc, $bcc, $attachments);
+}
+
+/**
+ * Local MAIL_TRANSPORT path (Exchange / SMTP / HTTP notifications).
+ */
+function sendEmailViaLocalTransport($to, $subject, $body, $fromEmail = null, $fromName = null, $cc = [], $bcc = [], $attachments = [])
+{
     $transport = strtolower((string) env('MAIL_TRANSPORT', env('MAIL_MAILER', 'exchange')));
     if (in_array($transport, ['exchange_oauth', 'graph'], true)) {
         $transport = 'exchange';

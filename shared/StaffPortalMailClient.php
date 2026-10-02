@@ -37,6 +37,44 @@ final class StaffPortalMailClient
     ) {}
 
     /**
+     * Build from Laravel `services.staff_api` (or helpdesk.staff_api) + STAFF_MAIL_* env.
+     *
+     * @param  (callable(string|array, string, string, array): void)|null  $localSender
+     */
+    public static function fromAppConfig(?callable $localSender = null, ?string $dispatchOverride = null): self
+    {
+        $cfg = [];
+        if (function_exists('config')) {
+            $cfg = config('services.staff_api', config('helpdesk.staff_api', []));
+            if (! is_array($cfg)) {
+                $cfg = [];
+            }
+        }
+        $base = rtrim((string) ($cfg['base_url'] ?? getenv('STAFF_API_INTERNAL_BASE_URL') ?: getenv('BASE_URL') ?: 'http://127.0.0.1/staff/backend'), '/');
+        if (str_ends_with($base, '/staff')) {
+            $base .= '/backend';
+        }
+        $mode = $dispatchOverride ?? (string) (getenv('STAFF_MAIL_DISPATCH') ?: 'auto');
+        if (function_exists('env') && $dispatchOverride === null) {
+            $mode = (string) env('STAFF_MAIL_DISPATCH', 'auto');
+        }
+        $key = getenv('STAFF_MAIL_CONFIG_KEY') ?: null;
+        if (function_exists('env')) {
+            $key = env('STAFF_MAIL_CONFIG_KEY') ?: (function_exists('config') ? config('app.key') : null);
+        }
+
+        return new self(
+            baseUrl: $base,
+            token: isset($cfg['token']) ? (string) $cfg['token'] : (getenv('STAFF_API_TOKEN') ?: null),
+            username: isset($cfg['username']) ? (string) $cfg['username'] : (getenv('STAFF_API_USERNAME') ?: null),
+            password: isset($cfg['password']) ? (string) $cfg['password'] : (getenv('STAFF_API_PASSWORD') ?: null),
+            dispatch: strtolower(trim($mode ?: 'auto')),
+            configKey: $key ? (string) $key : null,
+            localSender: $localSender,
+        );
+    }
+
+    /**
      * @param  string|list<string>  $to
      * @param  array{
      *   cc?: list<string>,

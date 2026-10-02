@@ -46,5 +46,14 @@ return [
         'redirect_uri' => env('MICROSOFT_REDIRECT_URI', env('EXCHANGE_REDIRECT_URI')),
     ],
 
+    'staff_api' => [
+        'base_url' => env(
+            'STAFF_API_INTERNAL_BASE_URL',
+            env('STAFF_API_BASE_URL', env('BASE_URL', 'http://127.0.0.1/staff/backend'))
+        ),
+        'token' => env('STAFF_API_TOKEN'),
+        'username' => env('STAFF_API_USERNAME'),
+        'password' => env('STAFF_API_PASSWORD'),
+    ],
 
 ];

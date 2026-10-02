@@ -27,6 +27,37 @@ class PortalMailer
         ?PortalEmailProvider $provider = null,
         array $bcc = [],
     ): void {
+        $mode = strtolower(trim((string) env('STAFF_MAIL_DISPATCH', 'auto')));
+        if ($mode !== 'local' && class_exists(\Staff\Shared\StaffPortalMailClient::class) && $provider === null) {
+            try {
+                $cfg = config('services.staff_api', []);
+                $base = rtrim((string) ($cfg['base_url'] ?? 'http://127.0.0.1/staff/backend'), '/');
+                if (str_ends_with($base, '/staff')) {
+                    $base .= '/backend';
+                }
+                $options = ['bcc' => array_values($bcc)];
+                if ($attachments !== []) {
+                    $options['attachments'] = $attachments;
+                }
+                $client = new \Staff\Shared\StaffPortalMailClient(
+                    baseUrl: $base,
+                    token: isset($cfg['token']) ? (string) $cfg['token'] : null,
+                    username: isset($cfg['username']) ? (string) $cfg['username'] : null,
+                    password: isset($cfg['password']) ? (string) $cfg['password'] : null,
+                    dispatch: 'portal',
+                    configKey: env('STAFF_MAIL_CONFIG_KEY') ?: config('app.key'),
+                );
+                $client->send($to, $subject, $htmlBody, $options);
+
+                return;
+            } catch (\Throwable $e) {
+                if ($mode === 'portal') {
+                    throw $e;
+                }
+                Log::info('Portal hub mail unavailable; using local PortalMailer', ['error' => $e->getMessage()]);
+            }
+        }
+
         $resolved = $this->providers->resolveForSend($provider);
         $driver = $resolved['driver'] ?? $resolved['provider']->driver;
         $config = $resolved['config'];
