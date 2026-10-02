@@ -68,6 +68,14 @@ WORKDIR /var/www/staff
 COPY docker/entrypoint.sh /usr/local/bin/staff-entrypoint.sh
 RUN chmod +x /usr/local/bin/staff-entrypoint.sh
 
+# Thin layer: Supervisord for compose profile `workers` (keeps PHP extension layer cached).
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends supervisor \
+    && mkdir -p /var/log/supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 80
 
 ENTRYPOINT ["/usr/local/bin/staff-entrypoint.sh"]
@@ -79,10 +87,12 @@ COPY . /var/www/staff
 RUN chown -R www-data:www-data \
     /var/www/staff/modules/apm/storage \
     /var/www/staff/modules/apm/bootstrap/cache \
-    /var/www/staff/modules/finance/storage \
-    /var/www/staff/modules/finance/bootstrap/cache \
+    /var/www/staff/modules/finance/backend/storage \
+    /var/www/staff/modules/finance/backend/bootstrap/cache \
     /var/www/staff/modules/helpdesk/backend/storage \
     /var/www/staff/modules/helpdesk/backend/bootstrap/cache \
     /var/www/staff/modules/staff-portal/backend/storage \
     /var/www/staff/modules/staff-portal/backend/bootstrap/cache \
+    /var/www/staff/modules/risk-register/backend/storage \
+    /var/www/staff/modules/risk-register/backend/bootstrap/cache \
     2>/dev/null || true

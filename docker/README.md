@@ -57,11 +57,18 @@ Do **not** put Compose-only vars in the repo-root `.env`; use `docker/.env`.
 ## Profiles
 
 ```bash
-# Queue workers (APM + Helpdesk)
+# Supervisor workers: queue + scheduler for staff-portal, helpdesk, finance,
+# risk-register, and APM (see docker/supervisord-workers.conf)
 docker compose --env-file docker/.env --profile workers up -d --build
 
 # Bundled MySQL 8 (greenfield)
 docker compose --env-file docker/.env --profile bundled-db up -d --build
+```
+
+Check workers:
+
+```bash
+docker compose --env-file docker/.env --profile workers exec workers supervisorctl status
 ```
 
 Bundled MySQL creates schemas `staff` and `apm_local` (see `docker/mysql/init/`).

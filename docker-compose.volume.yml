@@ -9,11 +9,7 @@ services:
     volumes:
       - staff_code:/var/www/staff
 
-  queue-apm:
-    volumes:
-      - staff_code:/var/www/staff
-
-  queue-helpdesk:
+  workers:
     volumes:
       - staff_code:/var/www/staff
 

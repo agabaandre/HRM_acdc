@@ -838,7 +838,7 @@ if [[ "$SITE_KIND" == "demo" ]]; then
   echo "==> Skipping Supervisor install (demo)"
 elif [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo
-  echo "Note: Docker deploy usually uses Compose --profile workers instead of host Supervisor."
+  echo "Note: Docker deploy uses Compose --profile workers (Supervisor in-container)."
   echo "==> Skipping host Supervisor (Docker)"
 else
   SUP_DEFAULT=2

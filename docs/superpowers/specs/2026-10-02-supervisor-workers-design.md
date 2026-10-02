@@ -10,7 +10,7 @@
 2. Manage install/reload through root **`./setup.sh`** (optional prompt; default Yes on Linux production).
 3. **Remove** systemd unit files and install scripts from the repo; retire any leftover host systemd units when Supervisor is chosen (and on Demo).
 4. **Always** fix Laravel storage permissions for all modules during setup (no prompt).
-5. Keep **Docker** on Compose `--profile workers` (do not install host Supervisor under Docker deploy mode).
+5. Keep **Docker** on Compose `--profile workers`, which runs the same five apps under **Supervisor** (`docker/supervisord-workers.conf`) — do not install host Supervisor under Docker deploy mode.
 
 ## Non-goals
 

@@ -123,7 +123,7 @@ Under **Docker Compose**, prefer:
 docker compose --env-file docker/.env --profile workers up -d
 ```
 
-Do not run host Supervisor workers and Compose `--profile workers` against the same queue at once.
+That starts one `workers` container running **Supervisor** (`docker/supervisord-workers.conf`) with queue + scheduler for all five Laravel apps — same process set as the host installer. Do not also run host Supervisor against the same queues.
 
 ## Related
 

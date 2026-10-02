@@ -17,14 +17,16 @@ services:
   redis:
     restart: unless-stopped
 
-  queue-apm:
+  workers:
     build:
       target: prod
     volumes: []
     restart: unless-stopped
-
-  queue-helpdesk:
-    build:
-      target: prod
-    volumes: []
-    restart: unless-stopped
+    # Bake still ships docker/supervisord-workers.conf under /var/www/staff
+    command:
+      [
+        "supervisord",
+        "-n",
+        "-c",
+        "/var/www/staff/docker/supervisord-workers.conf",
+      ]

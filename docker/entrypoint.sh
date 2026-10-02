@@ -16,10 +16,23 @@ fix_laravel_writable() {
 }
 
 fix_laravel_writable "${STAFF_ROOT}/modules/apm"
-fix_laravel_writable "${STAFF_ROOT}/modules/finance"
+fix_laravel_writable "${STAFF_ROOT}/modules/finance/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/helpdesk/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/staff-portal/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/risk-register/backend"
+
+# Supervisor worker logs (compose profile workers)
+for _log_root in \
+    "${STAFF_ROOT}/modules/apm/storage/logs" \
+    "${STAFF_ROOT}/modules/finance/backend/storage/logs" \
+    "${STAFF_ROOT}/modules/helpdesk/backend/storage/logs" \
+    "${STAFF_ROOT}/modules/staff-portal/backend/storage/logs" \
+    "${STAFF_ROOT}/modules/risk-register/backend/storage/logs"
+do
+    mkdir -p "${_log_root}" 2>/dev/null || true
+    chown www-data:www-data "${_log_root}" 2>/dev/null || true
+done
+mkdir -p /var/log/supervisor /var/run 2>/dev/null || true
 
 # Optional one-shot: STAFF_CHMOD_TREE=1 chmod -R a+rX (avoid unless you hit 403s).
 if [[ "${STAFF_CHMOD_TREE:-0}" == "1" && -d "${STAFF_ROOT}" ]]; then
