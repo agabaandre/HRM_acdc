@@ -302,31 +302,16 @@ class EmailProvidersService
     /**
      * Merge provider config with env fallbacks for Exchange / SMTP / HTTP.
      *
-     * When no explicit provider is passed, MAIL_TRANSPORT (from setup.sh) selects the driver
-     * so all apps share the same outbound channel without re-entering Azure/SMTP secrets.
+     * When no explicit provider is passed, prefer a healthy active HTTP provider,
+     * then the UI default, then Exchange → SMTP/Zoho → other active drivers,
+     * then an env-only virtual provider.
      *
-     * @return array{provider: PortalEmailProvider, config: array<string, mixed>, from_address: string, from_name: string}
+     * @return array{provider: PortalEmailProvider, driver: string, config: array<string, mixed>, from_address: string, from_name: string}
      */
     public function resolveForSend(?PortalEmailProvider $provider = null): array
     {
-        $envTransport = $this->normalizeTransport((string) config('mail.transport', env('MAIL_TRANSPORT', 'exchange')));
-
         if ($provider === null) {
-            $db = $this->defaultProvider();
-            if ($db && $this->normalizeTransport($db->driver) === $envTransport) {
-                $provider = $db;
-            } else {
-                $provider = new PortalEmailProvider([
-                    'name' => 'Env '.$envTransport,
-                    'slug' => 'env-'.$envTransport,
-                    'driver' => $envTransport === 'zoho' ? 'zoho' : $envTransport,
-                    'config' => [],
-                    'from_address' => (string) config('mail.from.address'),
-                    'from_name' => (string) config('mail.from.name'),
-                    'is_default' => true,
-                    'is_active' => true,
-                ]);
-            }
+            $provider = $this->resolveAutomaticProvider();
         }
 
         $driver = $this->normalizeTransport($provider->driver);
@@ -339,6 +324,70 @@ class EmailProvidersService
             'from_address' => $provider->from_address ?: (string) config('mail.from.address'),
             'from_name' => $provider->from_name ?: (string) config('mail.from.name'),
         ];
+    }
+
+    /**
+     * True when an HTTP provider has client_id + client_secret after env fallbacks.
+     */
+    public function httpProviderHealthy(PortalEmailProvider $provider): bool
+    {
+        if ($this->normalizeTransport($provider->driver) !== 'http' || ! $provider->is_active) {
+            return false;
+        }
+        $config = $this->withEnvFallbacks('http', $provider->config ?? []);
+
+        return trim((string) ($config['client_id'] ?? '')) !== ''
+            && trim((string) ($config['client_secret'] ?? '')) !== '';
+    }
+
+    private function resolveAutomaticProvider(): PortalEmailProvider
+    {
+        $http = PortalEmailProvider::query()
+            ->where('is_active', true)
+            ->where('driver', 'http')
+            ->orderBy('id')
+            ->get()
+            ->first(fn (PortalEmailProvider $row) => $this->httpProviderHealthy($row));
+        if ($http) {
+            return $http;
+        }
+
+        $default = PortalEmailProvider::query()
+            ->where('is_active', true)
+            ->where('is_default', true)
+            ->first();
+        if ($default) {
+            return $default;
+        }
+
+        foreach (['exchange', 'smtp', 'zoho'] as $driver) {
+            $row = PortalEmailProvider::query()
+                ->where('is_active', true)
+                ->where('driver', $driver)
+                ->orderBy('id')
+                ->first();
+            if ($row) {
+                return $row;
+            }
+        }
+
+        $any = PortalEmailProvider::query()->where('is_active', true)->orderBy('id')->first();
+        if ($any) {
+            return $any;
+        }
+
+        $envTransport = $this->normalizeTransport((string) config('mail.transport', env('MAIL_TRANSPORT', 'http')));
+
+        return new PortalEmailProvider([
+            'name' => 'Env '.$envTransport,
+            'slug' => 'env-'.$envTransport,
+            'driver' => $envTransport === 'zoho' ? 'zoho' : $envTransport,
+            'config' => [],
+            'from_address' => (string) config('mail.from.address'),
+            'from_name' => (string) config('mail.from.name'),
+            'is_default' => true,
+            'is_active' => true,
+        ]);
     }
 
     private function normalizeTransport(string $driver): string
