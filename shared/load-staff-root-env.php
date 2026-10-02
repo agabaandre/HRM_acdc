@@ -107,6 +107,8 @@ function staff_shared_env_keys(): array
         'MAIL_HTTP_BASE_URL',
         'MAIL_HTTP_CLIENT_ID',
         'MAIL_HTTP_CLIENT_SECRET',
+        'STAFF_MAIL_CONFIG_KEY',
+        'STAFF_MAIL_DISPATCH',
         'MAIL_HOST',
         'MAIL_PORT',
         'MAIL_USERNAME',
