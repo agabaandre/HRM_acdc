@@ -14,7 +14,7 @@
 #   --skip-migrate    Skip php artisan migrate
 #   --skip-seed       Skip category seeder
 #   --skip-build      Skip npm run build
-#   --skip-systemd    Skip systemd install/restart
+#   --skip-supervisor Skip Supervisor install/restart
 #   --skip-optimize   Skip config/route/view cache
 #   --with-demo-seed  Run full DatabaseSeeder (NOT for production)
 #   -h, --help        Show help
@@ -35,7 +35,7 @@ FRONTEND="$ROOT/frontend"
 SKIP_MIGRATE=0
 SKIP_SEED=0
 SKIP_BUILD=0
-SKIP_SYSTEMD=0
+SKIP_SUPERVISOR=0
 SKIP_OPTIMIZE=0
 WITH_DEMO_SEED=0
 
@@ -48,7 +48,7 @@ while [[ $# -gt 0 ]]; do
         --skip-migrate) SKIP_MIGRATE=1 ;;
         --skip-seed) SKIP_SEED=1 ;;
         --skip-build) SKIP_BUILD=1 ;;
-        --skip-systemd) SKIP_SYSTEMD=1 ;;
+        --skip-supervisor) SKIP_SUPERVISOR=1 ;;
         --skip-optimize) SKIP_OPTIMIZE=1 ;;
         --with-demo-seed) WITH_DEMO_SEED=1 ;;
         -h|--help) usage; exit 0 ;;
@@ -87,7 +87,7 @@ APP_ENV=production
 APP_DEBUG=false
 export HELPDESK_PRODUCTION_SETUP=1
 
-INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-auto}"
+INSTALL_SUPERVISOR="${INSTALL_SUPERVISOR:-auto}"
 HELPDESK_USER="${HELPDESK_USER:-www-data}"
 HELPDESK_GROUP="${HELPDESK_GROUP:-www-data}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
@@ -102,8 +102,8 @@ fi
 command -v composer >/dev/null 2>&1 || die "composer not found on PATH"
 command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
 
-chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" 2>/dev/null || true
-chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
+chmod +x "$ROOT/scripts/configure-env.sh" 2>/dev/null || true
+chmod +x "/deploy/bin/"*.sh 2>/dev/null || true
 
 # Force production flags into setup.env snapshot for configure-env.sh
 export APP_ENV APP_DEBUG HELPDESK_PRODUCTION_SETUP
@@ -264,17 +264,20 @@ log "Fixing storage permissions ($HELPDESK_USER:$HELPDESK_GROUP)"
 export HELPDESK_USER HELPDESK_GROUP PHP_BIN
 "$ROOT/fix-storage-permissions.sh" || warn "Run: sudo HELPDESK_USER=$HELPDESK_USER HELPDESK_GROUP=$HELPDESK_GROUP $ROOT/fix-storage-permissions.sh"
 
-if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
-    log "Installing / restarting systemd (queue + scheduler)"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed — run: sudo $ROOT/scripts/install-systemd.sh"
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo HELPDESK_SETUP_ENV="$SETUP_ENV" "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed"
+if [[ "$SKIP_SUPERVISOR" -eq 0 ]]; then
+    log "Installing / restarting Supervisor (queue + scheduler)"
+    STAFF_ROOT="$(cd "$ROOT/../.." && pwd)"
+    WEB_ROOT="${WEB_ROOT:-$(basename "$STAFF_ROOT")}"
+    PHP_BIN_RESOLVED="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
+    if INSTALL_SUPERVISOR=true WEB_ROOT="$WEB_ROOT" PHP_BIN="$PHP_BIN_RESOLVED" \
+      SUPERVISOR_USER="${STAFF_PORTAL_USER:-${HELPDESK_USER:-www-data}}" \
+      bash "$STAFF_ROOT/scripts/setup/install-supervisor.sh"; then
+      :
     else
-        warn "Skipping systemd (no root/sudo). Run queue manually: cd backend && php artisan queue:work database --queue=default,helpdesk,helpdesk-ai"
+      warn "Supervisor install failed — run: sudo WEB_ROOT=$WEB_ROOT $STAFF_ROOT/scripts/setup/install-supervisor.sh"
     fi
 else
-    log "Skipping systemd (--skip-systemd)"
+    log "Skipping Supervisor (--skip-supervisor)"
 fi
 
 log "Verifying production readiness (schema, Protocol, schedule, queues)"
@@ -313,7 +316,7 @@ echo "  API:     ${APP_URL:-}/api/v1/health"
 echo "  Staff:   ${HELPDESK_STAFF_PORTAL_URL:-/staff} (open Help Desk tile; permissions 85, 92, 93)"
 echo ""
 echo "Post-deploy:"
-echo "  1. systemctl status helpdesk-queue.service helpdesk-scheduler.timer"
+echo "  1. supervisorctl status"
 echo "  2. cd backend && php artisan helpdesk:verify-production"
 echo "  3. Settings → General: enable email ticket intake when Graph Mail.ReadWrite is ready"
 echo "  4. Confirm Staff tile label is Help Desk (cbp_modules.helpdesk_itsm)"

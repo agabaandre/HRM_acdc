@@ -13,7 +13,7 @@
 # Options:
 #   --skip-migrate    Skip php artisan migrate / module:migrate
 #   --skip-build      Skip npm run build
-#   --skip-systemd    Skip systemd install/restart
+#   --skip-supervisor Skip Supervisor install/restart
 #   --skip-optimize   Skip config/route/view cache
 #   --with-demo-seed  Run DatabaseSeeder (NOT for production)
 #   -h, --help        Show help
@@ -33,7 +33,7 @@ FRONTEND="$ROOT/frontend"
 
 SKIP_MIGRATE=0
 SKIP_BUILD=0
-SKIP_SYSTEMD=0
+SKIP_SUPERVISOR=0
 SKIP_OPTIMIZE=0
 WITH_DEMO_SEED=0
 
@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --skip-migrate) SKIP_MIGRATE=1 ;;
         --skip-build) SKIP_BUILD=1 ;;
-        --skip-systemd) SKIP_SYSTEMD=1 ;;
+        --skip-supervisor) SKIP_SUPERVISOR=1 ;;
         --skip-optimize) SKIP_OPTIMIZE=1 ;;
         --with-demo-seed) WITH_DEMO_SEED=1 ;;
         -h|--help) usage; exit 0 ;;
@@ -80,7 +80,7 @@ APP_ENV=production
 APP_DEBUG=false
 export STAFF_PORTAL_PRODUCTION_SETUP=1
 
-INSTALL_SYSTEMD="${INSTALL_SYSTEMD:-auto}"
+INSTALL_SUPERVISOR="${INSTALL_SUPERVISOR:-auto}"
 STAFF_PORTAL_USER="${STAFF_PORTAL_USER:-www-data}"
 STAFF_PORTAL_GROUP="${STAFF_PORTAL_GROUP:-www-data}"
 PHP_BIN="${PHP_BIN:-/usr/bin/php}"
@@ -122,8 +122,8 @@ if [[ "$(id -u)" -eq 0 ]]; then
     warn "running as root — COMPOSER_ALLOW_SUPERUSER=1 so module autoload plugins stay enabled"
 fi
 
-chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/scripts/install-systemd.sh" "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
-chmod +x "$ROOT/deploy/systemd/install.sh" "$ROOT/deploy/bin/"*.sh 2>/dev/null || true
+chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/fix-storage-permissions.sh" 2>/dev/null || true
+chmod +x "/deploy/bin/"*.sh 2>/dev/null || true
 
 export APP_ENV APP_DEBUG STAFF_PORTAL_PRODUCTION_SETUP
 
@@ -360,17 +360,20 @@ log "Fixing storage permissions ($STAFF_PORTAL_USER:$STAFF_PORTAL_GROUP)"
 export STAFF_PORTAL_USER STAFF_PORTAL_GROUP PHP_BIN
 "$ROOT/fix-storage-permissions.sh" || warn "Run: sudo STAFF_PORTAL_USER=$STAFF_PORTAL_USER STAFF_PORTAL_GROUP=$STAFF_PORTAL_GROUP $ROOT/fix-storage-permissions.sh"
 
-if [[ "$SKIP_SYSTEMD" -eq 0 ]]; then
-    log "Installing / restarting systemd (queue + scheduler)"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed — run: sudo $ROOT/scripts/install-systemd.sh"
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo STAFF_PORTAL_SETUP_ENV="$SETUP_ENV" "$ROOT/scripts/install-systemd.sh" || warn "systemd install failed"
+if [[ "$SKIP_SUPERVISOR" -eq 0 ]]; then
+    log "Installing / restarting Supervisor (queue + scheduler)"
+    STAFF_ROOT="$(cd "$ROOT/../.." && pwd)"
+    WEB_ROOT="${WEB_ROOT:-$(basename "$STAFF_ROOT")}"
+    PHP_BIN_RESOLVED="${PHP_BIN:-$(command -v php || echo /usr/bin/php)}"
+    if INSTALL_SUPERVISOR=true WEB_ROOT="$WEB_ROOT" PHP_BIN="$PHP_BIN_RESOLVED" \
+      SUPERVISOR_USER="${STAFF_PORTAL_USER:-${HELPDESK_USER:-www-data}}" \
+      bash "$STAFF_ROOT/scripts/setup/install-supervisor.sh"; then
+      :
     else
-        warn "Skipping systemd (no root/sudo). Run queue manually: cd backend && php artisan queue:work database"
+      warn "Supervisor install failed — run: sudo WEB_ROOT=$WEB_ROOT $STAFF_ROOT/scripts/setup/install-supervisor.sh"
     fi
 else
-    log "Skipping systemd (--skip-systemd)"
+    log "Skipping Supervisor (--skip-supervisor)"
 fi
 
 log "Shared file storage (CI3 + APM → host path outside git)"
@@ -457,7 +460,7 @@ echo "  SPA:     ${SPA_URL:-/staff/}"
 echo "  API:     ${API_UP_URL:-}"
 echo ""
 echo "Post-deploy:"
-echo "  1. systemctl status staff-portal-queue.service staff-portal-scheduler.timer"
+echo "  1. supervisorctl status"
 echo "  2. Confirm SPA login + Microsoft SSO (STAFF_PORTAL_SPA_ENABLED=true)"
 echo "  3. JWT_SECRET must match APM / Helpdesk / Staff CI"
 echo ""
