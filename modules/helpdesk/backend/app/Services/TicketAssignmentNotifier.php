@@ -7,10 +7,13 @@ use App\Models\HelpdeskProfile;
 use App\Models\HelpdeskTicket;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class TicketAssignmentNotifier
 {
+    public function __construct(
+        private CbpMailDispatcher $mail,
+    ) {}
+
     /**
      * Call from {@see HelpdeskTicket} `created` when the row was inserted with an assignee.
      */
@@ -55,7 +58,7 @@ class TicketAssignmentNotifier
                 continue;
             }
             try {
-                Mail::to($email)->send(new TicketAssignedToAgentMail(
+                $this->mail->sendMailable($email, new TicketAssignedToAgentMail(
                     $ticket->fresh(['category']),
                     $assignee,
                     true,
@@ -83,7 +86,7 @@ class TicketAssignmentNotifier
         }
 
         try {
-            Mail::to($email)->send(new TicketAssignedToAgentMail(
+            $this->mail->sendMailable($email, new TicketAssignedToAgentMail(
                 $ticket->fresh(['category']),
                 $assignee,
                 $isReassignment,
