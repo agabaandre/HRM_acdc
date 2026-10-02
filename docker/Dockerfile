@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1
 #
-# Fast default runtime: PHP 8.2 + Apache + extensions via prebuilt
-# install-php-extensions (avoids compiling from source).
+# Runtime: PHP 8.2-FPM + Apache event MPM (proxy_fcgi).
 # Heavy APM PDF/Office tools are OFF by default (INSTALL_PDF_TOOLS=1).
 #
 #   docker compose --env-file docker/.env up -d --build
 
-FROM php:8.2-apache-bookworm AS runtime
+FROM php:8.2-fpm-bookworm AS runtime
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
@@ -22,6 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
+        apache2 \
         unzip \
         git \
         curl \
@@ -45,23 +45,31 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         bcmath \
         exif \
         zip \
-        redis
+        redis; \
+    a2dismod mpm_prefork mpm_worker 2>/dev/null || true; \
+    a2enmod mpm_event proxy proxy_fcgi rewrite headers setenvif; \
+    mkdir -p /var/run/php; \
+    chown www-data:www-data /var/run/php
 
-RUN { \
-    echo 'opcache.memory_consumption=128'; \
-    echo 'opcache.interned_strings_buffer=8'; \
-    echo 'opcache.max_accelerated_files=10000'; \
-    echo 'opcache.validate_timestamps=1'; \
-    echo 'upload_max_filesize=64M'; \
-    echo 'post_max_size=64M'; \
-    echo 'memory_limit=512M'; \
-} > /usr/local/etc/php/conf.d/staff.ini
+RUN rm -f /usr/local/etc/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/www.conf.default 2>/dev/null || true
 
-RUN a2enmod rewrite headers
-
+COPY docker/php/www.conf /usr/local/etc/php-fpm.d/zz-staff-www.conf
+COPY docker/php/staff.ini /usr/local/etc/php/conf.d/staff.ini
+COPY docker/apache/mpm_event.conf /etc/apache2/conf-available/cbp-mpm-event.conf
 COPY docker/apache/000-staff.conf /etc/apache2/sites-available/000-staff.conf
-RUN a2dissite 000-default.conf 2>/dev/null || true \
-    && a2ensite 000-staff.conf
+
+RUN a2enconf cbp-mpm-event \
+    && a2dissite 000-default.conf 2>/dev/null || true \
+    && a2ensite 000-staff.conf \
+    && printf '%s\n' 'ServerName localhost' > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername \
+    && printf '%s\n' \
+        '#!/bin/bash' \
+        'set -e' \
+        'rm -f /var/run/apache2/apache2.pid' \
+        'exec apachectl -D FOREGROUND' \
+        > /usr/local/bin/apache2-foreground \
+    && chmod +x /usr/local/bin/apache2-foreground
 
 WORKDIR /var/www/staff
 
@@ -81,8 +89,9 @@ EXPOSE 80
 ENTRYPOINT ["/usr/local/bin/staff-entrypoint.sh"]
 CMD ["apache2-foreground"]
 
-# Production bake: copy tree into the image (no bind-mount).
+# Production bake: copy tree into the image (no bind-mount) + prod OPcache.
 FROM runtime AS prod
+COPY docker/php/staff-prod.ini /usr/local/etc/php/conf.d/z-staff-prod.ini
 COPY . /var/www/staff
 RUN chown -R www-data:www-data \
     /var/www/staff/modules/apm/storage \
