@@ -116,7 +116,8 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 ```bash
-./setup.sh   # interactive env for all modules (+ installers default Yes / production)
+./setup.sh              # interactive env for all modules (+ installers default Yes / production)
+./setup.sh --defaults   # same defaults, no prompts (-y / --yes / --non-interactive)
 ```
 
 Full guide: [docs/SETUP.md](./docs/SETUP.md). Wizard notes: Docker deploy defaults Redis to Compose `redis`; MySQL defaults to **external** and always prompts username/password; installers always migrate and seed only empty schemas.

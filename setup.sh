@@ -1,12 +1,48 @@
 #!/usr/bin/env bash
 # Interactive CBP root setup: env for all modules + optional installers + Supervisor.
+# Non-interactive: ./setup.sh --defaults   (or -y / --yes / --non-interactive)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-if [[ ! -t 0 ]]; then
-  echo "error: ./setup.sh requires an interactive TTY (see docs/SETUP.md)" >&2
+SETUP_ASSUME_DEFAULTS=0
+setup_print_usage() {
+  cat <<'EOF'
+Usage: ./setup.sh [options]
+
+  (no flags)              Interactive wizard (requires a TTY)
+  --defaults, --yes, -y   Accept wizard defaults and continue (no prompts)
+  --non-interactive       Same as --defaults
+  -h, --help              Show this help
+
+Defaults mode uses the same default answers as pressing Enter in the wizard
+(Docker Compose, external MySQL, run production installers, rebuild SPA, etc.)
+and keeps existing .env values for secrets when present.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --defaults|--yes|--non-interactive|-y)
+      SETUP_ASSUME_DEFAULTS=1
+      shift
+      ;;
+    -h|--help)
+      setup_print_usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown option: $1" >&2
+      setup_print_usage >&2
+      exit 1
+      ;;
+  esac
+done
+export SETUP_ASSUME_DEFAULTS
+
+if [[ "$SETUP_ASSUME_DEFAULTS" != "1" && ! -t 0 ]]; then
+  echo "error: ./setup.sh requires an interactive TTY (or pass --defaults). See docs/SETUP.md" >&2
   exit 1
 fi
 
@@ -29,6 +65,9 @@ source "$ROOT/scripts/setup/db-probe.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
+if [[ "$SETUP_ASSUME_DEFAULTS" == "1" ]]; then
+  echo "Mode: defaults (non-interactive) — accepting wizard defaults / existing .env values"
+fi
 echo
 
 DEFAULT_WEB_ROOT="$(basename "$ROOT")"
@@ -161,7 +200,12 @@ fi
 # --- Microsoft Entra SSO + Graph mail (single Azure app → EXCHANGE_* in root .env) ---
 echo
 echo "==> Auth (Microsoft SSO + password login)"
-prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) for login + Graph mail?" "1) Yes  2) Keep existing / skip" "1"
+# Defaults mode: keep existing Azure values (do not force empty prompts).
+_ms_default=1
+if [[ "$SETUP_ASSUME_DEFAULTS" == "1" ]]; then
+  _ms_default=2
+fi
+prompt_choice CONFIGURE_MS "Configure Microsoft Entra (Azure AD) for login + Graph mail?" "1) Yes  2) Keep existing / skip" "$_ms_default"
 # Prefer EXCHANGE_*; fall back to legacy TENANT_ID / CLIENT_* / MICROSOFT_* in root .env.
 _ex_tenant="$(env_get "$ROOT_ENV" EXCHANGE_TENANT_ID)"
 [[ -z "$_ex_tenant" ]] && _ex_tenant="$(env_get "$ROOT_ENV" MICROSOFT_TENANT_ID)"
@@ -233,7 +277,9 @@ esac
 echo "    MAIL_TRANSPORT=$MAIL_TRANSPORT"
 
 _mail_from_def="$(env_get "$ROOT_ENV" MAIL_FROM_ADDRESS)"
-# Do not ship a public default address — operator must enter notifications email.
+[[ -z "$_mail_from_def" ]] && _mail_from_def="$(env_get "$ROOT_ENV" MAIL_USERNAME)"
+# Do not ship a public default address — operator must enter notifications email
+# (defaults mode keeps existing .env or MAIL_USERNAME).
 prompt_required_email MAIL_FROM_ADDRESS_SHARED \
   "Notifications / send-as email (MAIL_FROM_ADDRESS)" \
   "$_mail_from_def"

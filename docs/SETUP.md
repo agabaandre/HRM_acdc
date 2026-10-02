@@ -9,7 +9,16 @@ cd /path/to/staff   # or cbp / demo_cbp / cbpdemo
 ./setup.sh
 ```
 
-Requires a TTY. Passwords are entered without echo.
+Requires a TTY for the interactive wizard. Passwords are entered without echo.
+
+**Non-interactive (accept defaults and continue):**
+
+```bash
+./setup.sh --defaults
+# aliases: ./setup.sh -y   ./setup.sh --yes   ./setup.sh --non-interactive
+```
+
+Defaults mode uses the same answers as pressing Enter throughout the wizard (Docker Compose, external MySQL, production installers, SPA rebuild, Supervisor on Linux production when available) and keeps existing `.env` secrets / Microsoft Entra values. Set `MAIL_FROM_ADDRESS` (or `MAIL_USERNAME`) in root `.env` first if it is empty.
 
 ## What it asks
 
