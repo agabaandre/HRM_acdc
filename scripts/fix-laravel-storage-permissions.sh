@@ -24,7 +24,9 @@ fi
 
 APPS=(
   "modules/apm"
+  # Inertia finance app (module root) and Vue/API app under backend/ (SSO + SPA API).
   "modules/finance"
+  "modules/finance/backend"
   "modules/helpdesk/backend"
   "modules/staff-portal/backend"
   "modules/risk-register/backend"
@@ -140,6 +142,11 @@ fix_app() {
 
   run_priv chmod -R ug+rwX,o+rX "${base}/storage" "${base}/bootstrap/cache" \
     || chmod -R ug+rwX,o+rX "${base}/storage" "${base}/bootstrap/cache" 2>/dev/null || true
+  # Homebrew Apache (_www) often cannot use the checkout owner group; open write
+  # access so session/view cache does not fall back to tempnam() → HTTP 500.
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    chmod -R a+rwX "${base}/storage" "${base}/bootstrap/cache" 2>/dev/null || true
+  fi
   run_priv chmod -R a+rX "${base}/public" || chmod -R a+rX "${base}/public" 2>/dev/null || true
   find "${base}/storage" "${base}/bootstrap/cache" -type d -exec chmod ug+rwx,g+s {} + 2>/dev/null || true
 

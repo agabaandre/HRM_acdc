@@ -3,10 +3,11 @@ import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import { fetchDataQuality } from '@/lib/staffApi'
 
-const loading = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
 const counts = ref({ missing_email: 0, missing_dob: 0, missing_sap: 0 })
 const sample = ref<Array<Record<string, unknown>>>([])
@@ -34,7 +35,7 @@ onMounted(async () => {
     </PortalPageChrome>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
-    <div v-if="loading" class="text-medium-emphasis">Loading…</div>
+    <PortalPageSkeleton v-if="loading" variant="table" :rows="6" :cols="4" />
 
     <template v-else>
       <v-row dense class="mb-4">

@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import StaffColumnPicker from '@/components/molecules/StaffColumnPicker.vue'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import CbpAvatar from '@cbp/common/CbpAvatar.vue'
 import { resolveAvatarUrl } from '@/lib/api'
@@ -25,7 +26,7 @@ import {
   type StaffPreset,
 } from '@/lib/staffApi'
 
-const loading = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
 const exporting = ref(false)
 const rows = ref<StaffListRow[]>([])
@@ -524,9 +525,9 @@ onMounted(() => {
         </PortalTableToolbar>
       </div>
 
-      <div v-if="loading" class="text-medium-emphasis px-4 py-3">Loading…</div>
+      <PortalPageSkeleton v-if="loading" variant="table" :rows="10" :cols="7" />
 
-      <v-table density="compact" class="portal-data-table">
+      <v-table v-else density="compact" class="portal-data-table">
         <thead>
           <tr>
             <th style="width: 3rem">#</th>
@@ -561,7 +562,7 @@ onMounted(() => {
               </RouterLink>
             </td>
           </tr>
-          <tr v-if="!loading && !rows.length">
+          <tr v-if="!rows.length">
             <td :colspan="visibleColumns.length + 2" class="text-medium-emphasis text-center py-6">
               No staff found.
             </td>

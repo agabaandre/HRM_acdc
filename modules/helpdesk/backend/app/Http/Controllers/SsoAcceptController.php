@@ -65,10 +65,14 @@ class SsoAcceptController extends Controller
                 'X-Frame-Options' => 'DENY',
             ]);
         } catch (Throwable $e) {
-            Log::warning('Helpdesk SSO accept failed', [
-                'error' => $e->getMessage(),
-                'jwt_len' => strlen($jwt),
-            ]);
+            try {
+                Log::warning('Helpdesk SSO accept failed', [
+                    'error' => $e->getMessage(),
+                    'jwt_len' => strlen($jwt),
+                ]);
+            } catch (Throwable) {
+                // Never turn a logging/storage failure into HTTP 500 for SSO.
+            }
 
             return $this->redirectStaffHome('unauthorized');
         }

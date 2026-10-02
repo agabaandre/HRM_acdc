@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import {
@@ -13,7 +14,7 @@ import {
 import { useLocaleStore } from '@/stores/locale'
 
 const locale = useLocaleStore()
-const loading = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
 const rows = ref<BirthdayRow[]>([])
 const range = ref<BirthdayRange>('today')
@@ -102,7 +103,7 @@ function setRange(key: string) {
       @select="setRange"
     />
 
-    <div v-if="loading" class="text-medium-emphasis">Loading…</div>
+    <PortalPageSkeleton v-if="loading" variant="table" :rows="8" :cols="6" />
 
     <v-table v-else density="compact" class="portal-data-table">
       <thead>

@@ -15,6 +15,22 @@ const skeletonVariant = computed(() => {
   if (name === 'home' || path === '/' || path.startsWith('/home')) return 'home'
   if (name === 'dashboard' || path.startsWith('/dashboard')) return 'dashboard'
   if (name === 'staff-new' || path === '/staff/new') return 'form'
+  if (
+    name === 'staff' ||
+    name === 'staff-history' ||
+    name === 'staff-birthdays' ||
+    name === 'staff-next-of-kin' ||
+    name === 'staff-signatures' ||
+    name === 'staff-data-quality' ||
+    path === '/staff' ||
+    path === '/staff/history' ||
+    path === '/staff/birthdays' ||
+    path === '/staff/next-of-kin' ||
+    path === '/staff/signatures' ||
+    path === '/staff/data-quality'
+  ) {
+    return 'table'
+  }
   if (path.includes('/new') || path.includes('/edit') || path.includes('/settings')) return 'form'
   return 'default'
 })

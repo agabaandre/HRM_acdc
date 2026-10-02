@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import PortalSkeleton from '@/components/atoms/PortalSkeleton.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     /** Layout shaped to the destination page while JS/API loads. */
-    variant?: 'default' | 'home' | 'dashboard' | 'form'
+    variant?: 'default' | 'home' | 'dashboard' | 'form' | 'table'
+    /** Skeleton table body rows (table variant). */
+    rows?: number
+    /** Skeleton table columns (table variant). */
+    cols?: number
   }>(),
-  { variant: 'default' },
+  { variant: 'default', rows: 8, cols: 6 },
 )
+
+const tableRows = Array.from({ length: Math.max(1, props.rows) }, (_, i) => i)
+const tableCols = Array.from({ length: Math.max(2, props.cols) }, (_, i) => i)
 </script>
 
 <template>
@@ -52,6 +59,32 @@ withDefaults(
           <div class="portal-page-skel__form-fields">
             <PortalSkeleton v-for="n in 6" :key="n" height="2.5rem" />
           </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="variant === 'table'">
+      <div class="portal-page-skel__table-toolbar">
+        <PortalSkeleton height="2.25rem" width="9rem" />
+        <PortalSkeleton height="2.25rem" width="7rem" />
+        <PortalSkeleton height="2.25rem" width="5.5rem" />
+      </div>
+      <div class="portal-page-skel__table">
+        <div class="portal-page-skel__table-head">
+          <PortalSkeleton
+            v-for="c in tableCols"
+            :key="`h-${c}`"
+            height="0.75rem"
+            :width="c === 0 ? '2rem' : '70%'"
+          />
+        </div>
+        <div v-for="r in tableRows" :key="`r-${r}`" class="portal-page-skel__table-row">
+          <PortalSkeleton
+            v-for="c in tableCols"
+            :key="`c-${r}-${c}`"
+            height="0.85rem"
+            :width="c === 0 ? '1.5rem' : `${55 + ((r + c) % 4) * 8}%`"
+          />
         </div>
       </div>
     </template>
@@ -208,5 +241,43 @@ html.helpdesk-theme-dark .portal-page-skel__form-card {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.portal-page-skel__table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+.portal-page-skel__table {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  overflow: hidden;
+}
+html.helpdesk-theme-dark .portal-page-skel__table {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+.portal-page-skel__table-head,
+.portal-page-skel__table-row {
+  display: grid;
+  grid-template-columns: 2.5rem repeat(auto-fit, minmax(4.5rem, 1fr));
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+html.helpdesk-theme-dark .portal-page-skel__table-head,
+html.helpdesk-theme-dark .portal-page-skel__table-row {
+  border-bottom-color: rgba(148, 163, 184, 0.18);
+}
+.portal-page-skel__table-head {
+  background: rgba(15, 23, 42, 0.03);
+}
+html.helpdesk-theme-dark .portal-page-skel__table-head {
+  background: rgba(148, 163, 184, 0.08);
+}
+.portal-page-skel__table-row:last-child {
+  border-bottom: 0;
 }
 </style>

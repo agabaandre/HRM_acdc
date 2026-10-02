@@ -63,7 +63,11 @@ class SsoAcceptController extends Controller
                 'X-Frame-Options' => 'DENY',
             ]);
         } catch (Throwable $e) {
-            Log::warning('Finance SSO accept failed', ['error' => $e->getMessage()]);
+            try {
+                Log::warning('Finance SSO accept failed', ['error' => $e->getMessage()]);
+            } catch (Throwable) {
+                // Never turn a logging/storage failure into HTTP 500 for SSO.
+            }
 
             return $this->redirectAccessError('unauthorized');
         }

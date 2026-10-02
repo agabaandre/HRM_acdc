@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import CbpAvatar from '@cbp/common/CbpAvatar.vue'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
@@ -33,7 +34,7 @@ function personPhotoUrl(row: NextOfKinRow): string | null {
   return toAbsoluteMediaUrl(resolveAvatarUrl(row.photo_url))
 }
 
-const loading = ref(false)
+const loading = ref(true)
 const exporting = ref(false)
 const error = ref<string | null>(null)
 const rows = ref<NextOfKinRow[]>([])
@@ -226,7 +227,7 @@ onMounted(async () => {
       </v-row>
     </v-sheet>
 
-    <div v-if="loading" class="text-medium-emphasis mb-3">Loading…</div>
+    <PortalPageSkeleton v-if="loading" variant="table" :rows="8" :cols="5" />
 
     <v-row v-else dense>
       <v-col v-for="row in rows" :key="row.staff_id" cols="12" md="6" lg="4">

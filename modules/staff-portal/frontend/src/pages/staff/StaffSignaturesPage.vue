@@ -3,6 +3,7 @@ import { onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
@@ -17,7 +18,7 @@ import {
 } from '@/lib/staffApi'
 import { renderTypedSignatureDataUrl } from '@/lib/typedSignature'
 
-const loading = ref(false)
+const loading = ref(true)
 const exporting = ref(false)
 const busy = ref(false)
 const error = ref<string | null>(null)
@@ -311,7 +312,7 @@ onMounted(() => {
       </v-row>
     </v-sheet>
 
-    <div v-if="loading" class="text-medium-emphasis mb-3">Loading…</div>
+    <PortalPageSkeleton v-if="loading" variant="table" :rows="8" :cols="6" />
 
     <v-table v-else density="compact" class="mb-3">
       <thead>
