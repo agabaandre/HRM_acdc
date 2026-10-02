@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import StatusText from '@/components/atoms/StatusText.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import ModuleGrid from '@/components/organisms/ModuleGrid.vue'
 import { fetchCbpModules, type CbpModuleLink } from '@/lib/cbpModules'
 import { launchCbpModule, moduleLaunchKey } from '@/lib/cbpLaunch'
@@ -107,7 +108,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <StatusText v-if="loading" :message="locale.t('chrome.loading_modules', 'Loading modules…')" tone="muted" />
+          <PortalPageSkeleton v-if="loading" variant="home" />
           <StatusText v-else-if="error" :message="error" tone="error" />
           <ModuleGrid v-else :modules="modules" :query="query" :on-module-click="onModuleClick" />
 
@@ -293,7 +294,7 @@ onMounted(async () => {
   overflow: hidden;
   width: 100%;
   max-width: 100%;
-  border-radius: 0.5rem;
+  border-radius: 0;
   animation: cbpFadeInUp 0.55s ease forwards;
   box-sizing: border-box;
 }

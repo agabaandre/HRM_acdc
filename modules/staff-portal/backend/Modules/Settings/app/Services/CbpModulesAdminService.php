@@ -214,6 +214,8 @@ class CbpModulesAdminService
             }
         }
 
+        $this->disableDuplicateCoreLaunchTargets();
+
         // Any other enabled modules also get admin auto-assign (new systems).
         $rows = DB::table('cbp_modules')->select(['id', 'permission_code'])->get();
         foreach ($rows as $row) {
@@ -225,6 +227,100 @@ class CbpModulesAdminService
         }
 
         return ['inserted' => $inserted, 'assigned' => $assigned];
+    }
+
+    /**
+     * Disable extra enabled rows that launch the same app path as a CORE module
+     * (e.g. a legacy HelpDesk row beside helpdesk_itsm). Keeps the CORE module_key.
+     */
+    protected function disableDuplicateCoreLaunchTargets(): void
+    {
+        $canonicalByPath = [];
+        foreach (self::CORE_MODULES as $def) {
+            $path = self::launchPathKey((string) ($def['base_url'] ?? ''));
+            if ($path === '') {
+                continue;
+            }
+            $canonicalByPath[$path] = (string) $def['module_key'];
+        }
+
+        if ($canonicalByPath === []) {
+            return;
+        }
+
+        $enabled = DB::table('cbp_modules')
+            ->where('is_enabled', 1)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'module_key', 'base_url', 'system_name']);
+
+        /** @var array<string, list<object>> $groups */
+        $groups = [];
+        foreach ($enabled as $row) {
+            $path = self::launchPathKey((string) ($row->base_url ?? ''));
+            if ($path === '' || ! isset($canonicalByPath[$path])) {
+                $name = strtolower(preg_replace('/\s+/', '', (string) ($row->system_name ?? '')) ?? '');
+                if ($name === 'helpdesk' && isset($canonicalByPath['helpdesk'])) {
+                    $path = 'helpdesk';
+                } else {
+                    continue;
+                }
+            }
+            $groups[$path][] = $row;
+        }
+
+        $disableIds = [];
+        foreach ($groups as $path => $rows) {
+            if (count($rows) < 2) {
+                continue;
+            }
+            $canonicalKey = $canonicalByPath[$path];
+            $keepId = null;
+            foreach ($rows as $row) {
+                if ((string) $row->module_key === $canonicalKey) {
+                    $keepId = (int) $row->id;
+                    break;
+                }
+            }
+            if ($keepId === null) {
+                $keepId = (int) $rows[0]->id;
+            }
+            foreach ($rows as $row) {
+                if ((int) $row->id !== $keepId) {
+                    $disableIds[] = (int) $row->id;
+                }
+            }
+        }
+
+        if ($disableIds === []) {
+            return;
+        }
+
+        DB::table('cbp_modules')
+            ->whereIn('id', $disableIds)
+            ->update(['is_enabled' => 0, 'updated_at' => now()]);
+    }
+
+    /**
+     * Normalize base_url / absolute URL to the last path segment (apm, helpdesk, …).
+     */
+    public static function launchPathKey(string $baseUrl): string
+    {
+        $s = trim($baseUrl);
+        if ($s === '') {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $s)) {
+            $path = (string) (parse_url($s, PHP_URL_PATH) ?: '');
+            $s = $path;
+        }
+        $s = strtolower(trim(str_replace('\\', '/', $s), '/'));
+        if ($s === '') {
+            return '';
+        }
+        $parts = array_values(array_filter(explode('/', $s), static fn ($p) => $p !== ''));
+
+        return $parts === [] ? '' : (string) $parts[array_key_last($parts)];
     }
 
     protected function groupHasPermission(int $permissionId, int $groupId): bool

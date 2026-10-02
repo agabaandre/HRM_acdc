@@ -361,7 +361,7 @@ onMounted(() => {
       </template>
     </PortalPageChrome>
 
-    <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+    <v-alert type="success" color="primary" variant="tonal" density="compact" class="mb-3">
       Staff are included if any contract overlaps these dates (start on or before the period end, and end on or after
       the period start, or open-ended). If several contracts overlap, the row shows the one with the
       <strong>largest overlap</strong> (tie-break: most recent contract).

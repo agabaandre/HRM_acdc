@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import { fetchPayrollSettings } from '@/lib/payrollApi'
 import { PAYROLL_PERMS } from '@/lib/payrollPermissions'
@@ -31,7 +32,7 @@ type ApiFailure = {
 const router = useRouter()
 const auth = useAuthStore()
 
-const loading = ref(false)
+const loading = ref(true)
 const saving = ref(false)
 const forbidden = ref(false)
 const error = ref<string | null>(null)
@@ -367,7 +368,7 @@ onMounted(() => void loadLookups())
     <v-alert v-if="validationMessage" type="warning" variant="tonal" class="mb-3">
       {{ validationMessage }}
     </v-alert>
-    <div v-if="loading" class="text-medium-emphasis">Loading…</div>
+    <PortalPageSkeleton v-if="loading" variant="form" />
 
     <form v-else-if="lookups && !forbidden" @submit.prevent="onSubmit">
       <v-row>

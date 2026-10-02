@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import PortalAfricaMap from '@/components/molecules/PortalAfricaMap.vue'
@@ -19,7 +20,7 @@ import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 
 const auth = useAuthStore()
 const locale = useLocaleStore()
-const loading = ref(false)
+const loading = ref(!readDashboardSession())
 const refreshing = ref(false)
 const error = ref<string | null>(null)
 const exporting = ref(false)
@@ -202,7 +203,7 @@ onMounted(() => {
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
 
-    <div class="portal-staff-filters">
+    <div v-if="data || !loading" class="portal-staff-filters">
       <v-row dense>
         <v-col cols="12" sm="6" md="3">
           <v-select
@@ -243,8 +244,8 @@ onMounted(() => {
       </v-row>
     </div>
 
-    <div v-if="loading && !data" class="text-medium-emphasis">Loading…</div>
-    <div v-else-if="refreshing" class="text-caption text-medium-emphasis mb-2">Updating…</div>
+    <PortalPageSkeleton v-if="loading && !data" variant="dashboard" />
+    <div v-else-if="refreshing" class="text-caption text-medium-emphasis mb-2" aria-live="polite">Updating…</div>
 
     <template v-if="data">
       <v-row dense class="mb-4">

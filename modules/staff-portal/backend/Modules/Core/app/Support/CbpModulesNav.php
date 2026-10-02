@@ -53,7 +53,11 @@ class CbpModulesNav
         $rows = DB::table('cbp_modules')
             ->where('is_enabled', 1)
             ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
+
+        /** @var array<string, true> $seenLaunchKeys */
+        $seenLaunchKeys = [];
 
         foreach ($rows as $row) {
             $moduleKey = trim((string) ($row->module_key ?? ''));
@@ -95,6 +99,15 @@ class CbpModulesNav
                 $href = self::spaPathForCiRoute($href, $spaUrl);
             }
 
+            // One card per launch target (legacy + CORE HelpDesk rows both pointed at /helpdesk).
+            $dedupeKey = self::moduleDedupeKey($row, $href);
+            if ($dedupeKey !== '' && isset($seenLaunchKeys[$dedupeKey])) {
+                continue;
+            }
+            if ($dedupeKey !== '') {
+                $seenLaunchKeys[$dedupeKey] = true;
+            }
+
             $icon = trim((string) ($row->icon_class ?: 'fa-th'));
             if ($icon !== '' && ! str_starts_with($icon, 'fa ') && str_starts_with($icon, 'fa-')) {
                 $icon = 'fa '.$icon;
@@ -119,6 +132,26 @@ class CbpModulesNav
         }
 
         return ['home' => $home, 'modules' => $modules];
+    }
+
+    /**
+     * Stable key so duplicate HelpDesk (or other) cards collapse to one launcher.
+     */
+    protected static function moduleDedupeKey(object $row, string $href): string
+    {
+        $path = \Modules\Settings\Services\CbpModulesAdminService::launchPathKey((string) ($row->base_url ?? ''));
+        if ($path !== '') {
+            return 'path:'.$path;
+        }
+
+        $fromHref = \Modules\Settings\Services\CbpModulesAdminService::launchPathKey($href);
+        if ($fromHref !== '') {
+            return 'path:'.$fromHref;
+        }
+
+        $label = strtolower(preg_replace('/\s+/', '', (string) ($row->system_name ?? '')) ?? '');
+
+        return $label !== '' ? 'label:'.$label : '';
     }
 
     /**
