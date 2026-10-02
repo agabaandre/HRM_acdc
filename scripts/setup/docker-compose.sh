@@ -160,14 +160,14 @@ staff_retire_host_supervisor() {
   echo "==> Retiring host Supervisor programs (Docker owns workers; slug=$slug)"
 
   _staff_svctl() {
-    if command -v supervisorctl >/dev/null 2>&1; then
-      if [[ "$(id -u)" -eq 0 ]]; then
-        supervisorctl "$@"
-      elif command -v sudo >/dev/null 2>&1; then
-        sudo -n supervisorctl "$@" 2>/dev/null || sudo supervisorctl "$@"
-      else
-        supervisorctl "$@"
-      fi
+    # Never fall back to interactive sudo/polkit prompts.
+    if ! command -v supervisorctl >/dev/null 2>&1; then
+      return 1
+    fi
+    if [[ "$(id -u)" -eq 0 ]]; then
+      supervisorctl "$@"
+    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+      sudo -n supervisorctl "$@"
     else
       return 1
     fi
@@ -177,8 +177,8 @@ staff_retire_host_supervisor() {
     local f="$1"
     if [[ -w "$(dirname "$f")" ]] || [[ "$(id -u)" -eq 0 ]]; then
       rm -f "$f" 2>/dev/null || true
-    elif command -v sudo >/dev/null 2>&1; then
-      sudo -n rm -f "$f" 2>/dev/null || sudo rm -f "$f" 2>/dev/null || true
+    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+      sudo -n rm -f "$f" 2>/dev/null || true
     fi
   }
 

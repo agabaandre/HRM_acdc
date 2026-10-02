@@ -117,6 +117,7 @@ Use external/managed MySQL only (no `bundled-db`). Publish SPA assets before bak
 ## PDF annex tools (optional — slow to build)
 
 LibreOffice / Ghostscript / Poppler are **off by default** so local rebuilds stay fast.
+When enabled, the image installs **`libreoffice-writer-nogui`** (headless Word→PDF) — not a desktop environment.
 
 ```bash
 # One-off image with Office/PDF tools (APM Word→PDF annex)
@@ -127,7 +128,7 @@ docker compose --env-file docker/.env up -d --build
 
 ```bash
 docker compose --env-file docker/.env exec web \
-  bash -lc "php -m | grep -i redis; command -v gs pdftoppm libreoffice || true"
+  bash -lc "php -m | grep -i redis; command -v gs pdftoppm libreoffice soffice || true"
 ```
 
 ## Troubleshooting

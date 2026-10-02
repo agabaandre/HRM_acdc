@@ -28,10 +28,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         mariadb-client \
         redis-tools; \
     if [ "$INSTALL_PDF_TOOLS" = "1" ]; then \
+        # Headless Writer only (no GNOME/desktop stack). Word→PDF for APM annex.
         apt-get install -y --no-install-recommends \
             ghostscript \
             poppler-utils \
-            libreoffice-writer \
+            libreoffice-writer-nogui \
             fonts-liberation \
             fonts-dejavu-core; \
     fi; \

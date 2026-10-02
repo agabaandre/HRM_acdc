@@ -427,7 +427,7 @@ Install on the **application server** (production and any environment where memo
 
 ```bash
 sudo apt update
-sudo apt install ghostscript poppler-utils libreoffice-writer
+sudo apt install ghostscript poppler-utils libreoffice-writer-nogui
 # Optional: sudo apt install php-imagick && sudo phpenmod imagick
 ```
 
@@ -435,6 +435,7 @@ sudo apt install ghostscript poppler-utils libreoffice-writer
 
 ```bash
 sudo dnf install ghostscript poppler-utils libreoffice-writer
+# (prefer *-nogui / headless packages when your distro provides them)
 # Optional: sudo dnf install php-pecl-imagick
 ```
 
