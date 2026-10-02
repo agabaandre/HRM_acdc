@@ -41,17 +41,73 @@ staff_ensure_docker_env() {
   return 0
 }
 
+staff_docker_permission_hint() {
+  local user
+  user="$(id -un 2>/dev/null || echo "$USER")"
+  cat >&2 <<EOF
+error: cannot use the Docker API (permission denied on /var/run/docker.sock).
+
+  Your user ($user) is not allowed to talk to the Docker daemon.
+  Fix (pick one), then re-run ./setup.sh:
+
+  1) Add yourself to the docker group (recommended), then re-login:
+       sudo usermod -aG docker $user
+       newgrp docker   # or log out and back in
+       docker info     # should succeed without sudo
+
+  2) Or allow passwordless sudo for docker during setup:
+       sudo -n docker info
+
+  3) Or run setup as a user that already has Docker access.
+
+  Host deploy (no Docker): choose "Host Apache" in the wizard, or set
+  DEPLOY_MODE=host in root .env.
+EOF
+}
+
+# Resolve how to invoke docker: plain, or sudo -n (never interactive sudo).
+# Sets STAFF_DOCKER_PREFIX (empty or "sudo -n").
+staff_docker_resolve_access() {
+  if [[ -n "${STAFF_DOCKER_ACCESS_OK:-}" ]]; then
+    return 0
+  fi
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "error: docker not found (required for Docker deploy)" >&2
+    return 1
+  fi
+  # Already root — docker.sock is usually reachable.
+  if [[ "$(id -u)" -eq 0 ]]; then
+    STAFF_DOCKER_PREFIX=()
+    STAFF_DOCKER_ACCESS_OK=1
+    export STAFF_DOCKER_ACCESS_OK
+    return 0
+  fi
+  if docker info >/dev/null 2>&1; then
+    STAFF_DOCKER_PREFIX=()
+    STAFF_DOCKER_ACCESS_OK=1
+    export STAFF_DOCKER_ACCESS_OK
+    return 0
+  fi
+  # Passwordless sudo only — never prompt for a password mid-setup.
+  if command -v sudo >/dev/null 2>&1 && sudo -n docker info >/dev/null 2>&1; then
+    echo "    docker: using sudo -n (user lacks docker group membership)"
+    STAFF_DOCKER_PREFIX=(sudo -n)
+    STAFF_DOCKER_ACCESS_OK=1
+    export STAFF_DOCKER_ACCESS_OK
+    return 0
+  fi
+  staff_docker_permission_hint
+  return 1
+}
+
 # Run: docker compose --env-file docker/.env "$@"
 staff_docker_compose() {
   local root envf
   root="$(staff_docker_root)"
   envf="$(staff_docker_env_file)"
   staff_ensure_docker_env || return 1
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "error: docker not found (required for Docker deploy)" >&2
-    return 1
-  fi
-  (cd "$root" && docker compose --env-file "$envf" "$@")
+  staff_docker_resolve_access || return 1
+  (cd "$root" && "${STAFF_DOCKER_PREFIX[@]}" docker compose --env-file "$envf" "$@")
 }
 
 # Map a host path under STAFF_ROOT to the container bind path (/var/www/staff/...).

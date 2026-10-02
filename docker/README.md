@@ -34,6 +34,14 @@ After deploy, cache Laravel config/routes per module backend (`config:cache`, `r
 
 ## Quick start
 
+Your Linux user must reach the Docker daemon (otherwise: `permission denied … docker.sock`):
+
+```bash
+sudo usermod -aG docker "$USER"
+newgrp docker   # or log out / back in
+docker info     # must work without sudo
+```
+
 ```bash
 cp docker/compose.env.example docker/.env
 # Point each module .env at Docker Redis / host MySQL (see below).

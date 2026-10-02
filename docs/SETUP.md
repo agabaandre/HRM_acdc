@@ -157,6 +157,8 @@ DEPLOY_MODE=docker ./scripts/setup/ensure-composer-vendors.sh
 
 Do not also run host Supervisor against the same queues.
 
+**Docker socket permission:** if setup prints `permission denied … /var/run/docker.sock`, add your user to the `docker` group and re-login (`sudo usermod -aG docker "$USER"`), or use passwordless `sudo docker`. Setup will try `sudo -n docker` automatically when available; it never prompts for a sudo password.
+
 ## Related
 
 - Portal mail hub design: `docs/superpowers/specs/2026-10-02-portal-mail-hub-design.md`

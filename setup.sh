@@ -204,6 +204,21 @@ prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" 
 export DEPLOY_MODE
 export STAFF_ROOT="$ROOT"
 
+SETUP_ERRORS=0
+setup_warn() {
+  echo "warn: $*" >&2
+  SETUP_ERRORS=$((SETUP_ERRORS + 1))
+  return 0
+}
+
+if [[ "$DEPLOY_MODE" == "docker" ]]; then
+  echo "==> Checking Docker API access…"
+  if ! staff_docker_resolve_access; then
+    setup_warn "Docker deploy selected but this user cannot use docker.sock — fix group membership (see above) or choose Host Apache"
+    # Continue so env can still be written; Compose steps will skip/fail clearly.
+  fi
+fi
+
 # Default: External MySQL (bundled Compose MySQL is opt-in). Always collect credentials.
 DB_DEFAULT=2
 prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL" "$DB_DEFAULT"
@@ -215,13 +230,6 @@ esac
 ROOT_ENV="$ROOT/.env"
 env_ensure_file "$ROOT_ENV" "$ROOT/scripts/setup/templates/root.env.example"
 PREV_WEB_ROOT="$(env_get "$ROOT_ENV" WEB_ROOT)"
-
-SETUP_ERRORS=0
-setup_warn() {
-  echo "warn: $*" >&2
-  SETUP_ERRORS=$((SETUP_ERRORS + 1))
-  return 0
-}
 
 DEFAULT_BASE="$(env_get "$ROOT_ENV" BASE_URL)"
 DEFAULT_BASE="${DEFAULT_BASE%/}"
@@ -1105,9 +1113,13 @@ elif [[ "$DEPLOY_MODE" == "docker" ]]; then
     # Workers need vendor/; install any missing trees via Compose Composer first.
     "$ROOT/scripts/setup/ensure-composer-vendors.sh" \
       || setup_warn "ensure-composer-vendors failed — workers may FATAL until fixed"
-    staff_docker_up_workers || setup_warn "docker compose workers failed"
-    echo "==> Compose worker status:"
-    staff_docker_workers_status || true
+    if staff_docker_resolve_access; then
+      staff_docker_up_workers || setup_warn "docker compose workers failed"
+      echo "==> Compose worker status:"
+      staff_docker_workers_status || true
+    else
+      setup_warn "skipped Compose workers — fix Docker socket access, then re-run or: docker compose --env-file docker/.env --profile workers up -d"
+    fi
   else
     echo "==> Skipping Compose workers (later: docker compose --env-file docker/.env --profile workers up -d)"
     echo "    Host CBP Supervisor programs were still stopped/removed above."
