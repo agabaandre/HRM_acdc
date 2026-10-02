@@ -65,10 +65,24 @@ source "$ROOT/scripts/setup/db-probe.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
-if [[ "$SETUP_ASSUME_DEFAULTS" == "1" ]]; then
-  echo "Mode: defaults (non-interactive) — accepting wizard defaults / existing .env values"
-fi
 echo
+
+# First question (interactive only): run with wizard/env defaults, or step through.
+if [[ "$SETUP_ASSUME_DEFAULTS" != "1" ]]; then
+  prompt_choice SETUP_MODE_CHOICE \
+    "How do you want to run setup?" \
+    "1) Run with current defaults (no further prompts)  2) Configure step by step" \
+    "1"
+  if [[ "$SETUP_MODE_CHOICE" == "1" ]]; then
+    SETUP_ASSUME_DEFAULTS=1
+    export SETUP_ASSUME_DEFAULTS
+  fi
+fi
+
+if [[ "$SETUP_ASSUME_DEFAULTS" == "1" ]]; then
+  echo "Mode: defaults — accepting wizard defaults / existing .env values (no further prompts)"
+  echo
+fi
 
 DEFAULT_WEB_ROOT="$(basename "$ROOT")"
 if [[ ! "$DEFAULT_WEB_ROOT" =~ ^[A-Za-z0-9_-]+$ ]]; then

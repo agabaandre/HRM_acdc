@@ -11,19 +11,25 @@ cd /path/to/staff   # or cbp / demo_cbp / cbpdemo
 
 Requires a TTY for the interactive wizard. Passwords are entered without echo.
 
-**Non-interactive (accept defaults and continue):**
+The **first prompt** is:
+
+1. **Run with current defaults** — no further questions (same as pressing Enter on every later step; keeps existing `.env` secrets)
+2. **Configure step by step** — full wizard
+
+**Skip the first prompt entirely (CI / scripts):**
 
 ```bash
 ./setup.sh --defaults
 # aliases: ./setup.sh -y   ./setup.sh --yes   ./setup.sh --non-interactive
 ```
 
-Defaults mode uses the same answers as pressing Enter throughout the wizard (Docker Compose, external MySQL, production installers, SPA rebuild, Supervisor on Linux production when available) and keeps existing `.env` secrets / Microsoft Entra values. Set `MAIL_FROM_ADDRESS` (or `MAIL_USERNAME`) in root `.env` first if it is empty.
+Defaults mode uses Docker Compose, external MySQL, production installers, SPA rebuild, Supervisor on Linux production when available, and keeps existing Microsoft Entra values. Set `MAIL_FROM_ADDRESS` (or `MAIL_USERNAME`) in root `.env` first if it is empty.
 
 ## What it asks
 
 | Step | Options |
 |------|---------|
+| **Start** | **Run with current defaults (default)** · Configure step by step |
 | **Site role** | **Production · Demo** (demo never enables Supervisor workers) |
 | Install type | New · Existing |
 | Deploy | Host Apache · **Docker Compose (default)** |
