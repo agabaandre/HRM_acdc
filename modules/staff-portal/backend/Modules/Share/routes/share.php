@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Share\Http\Controllers\ShareApiController;
+use Modules\Share\Http\Controllers\ShareMailController;
 use Modules\Share\Http\Controllers\ShareReferenceApiController;
 use Modules\Share\Http\Middleware\AuthenticateShareApi;
 
@@ -39,5 +40,8 @@ Route::prefix('share')->group(function (): void {
             ->where('token', '[^/]+');
         Route::post('mark_helpdesk_agents/{token?}', [ShareReferenceApiController::class, 'markHelpdeskAgents'])
             ->where('token', '[^/]+');
+
+        Route::post('mail/send', [ShareMailController::class, 'send']);
+        Route::get('mail/active-config', [ShareMailController::class, 'activeConfig']);
     });
 });
