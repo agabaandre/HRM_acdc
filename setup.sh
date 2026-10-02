@@ -24,6 +24,8 @@ source "$ROOT/scripts/setup/update-htaccess.sh"
 source "$ROOT/scripts/setup/systemd-cleanup.sh"
 # shellcheck source=scripts/setup/fix-laravel-storage.sh
 source "$ROOT/scripts/setup/fix-laravel-storage.sh"
+# shellcheck source=scripts/setup/db-probe.sh
+source "$ROOT/scripts/setup/db-probe.sh"
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
@@ -55,14 +57,12 @@ prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing inst
 prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host
 
-# Default: External MySQL (bundled Compose MySQL is opt-in). Existing installs keep current.
+# Default: External MySQL (bundled Compose MySQL is opt-in). Always collect credentials.
 DB_DEFAULT=2
-[[ "$INSTALL_TYPE" == "2" ]] && DB_DEFAULT=3
-prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL  3) Keep current" "$DB_DEFAULT"
+prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL" "$DB_DEFAULT"
 case "$DB_CHOICE" in
   1) DB_MODE=bundled ;;
-  2) DB_MODE=external ;;
-  *) DB_MODE=keep ;;
+  *) DB_MODE=external ;;
 esac
 
 ROOT_ENV="$ROOT/.env"
@@ -301,12 +301,18 @@ USE_EXCHANGE_EMAIL=false
 [[ "$MAIL_TRANSPORT" == "exchange" ]] && USE_EXCHANGE_EMAIL=true
 
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
-  REDIS_DEF="$REDIS_HOST_DEFAULT"
+  prompt_choice REDIS_CHOICE "Redis" "1) Docker Redis  2) External Redis" "1"
+  if [[ "$REDIS_CHOICE" == "2" ]]; then
+    _rh="$(env_get "$ROOT_ENV" REDIS_HOST)"
+    prompt_value REDIS_HOST "REDIS_HOST" "${_rh:-127.0.0.1}"
+  else
+    REDIS_HOST=redis
+  fi
 else
   REDIS_DEF="$(env_get "$ROOT_ENV" REDIS_HOST)"
   REDIS_DEF="${REDIS_DEF:-$REDIS_HOST_DEFAULT}"
+  prompt_value REDIS_HOST "REDIS_HOST" "$REDIS_DEF"
 fi
-prompt_value REDIS_HOST "REDIS_HOST" "$REDIS_DEF"
 _rport="$(env_get "$ROOT_ENV" REDIS_PORT)"
 prompt_value REDIS_PORT "REDIS_PORT" "${_rport:-6379}"
 prompt_secret REDIS_PASSWORD "REDIS_PASSWORD" "$(env_get "$ROOT_ENV" REDIS_PASSWORD)"
@@ -323,7 +329,7 @@ if [[ "$DB_MODE" == "bundled" ]]; then
   prompt_value DB_USER "DB_USER" "${DB_USER:-staff}"
   prompt_secret DB_PASS "DB_PASS" "${DB_PASS:-staff}"
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
-elif [[ "$DB_MODE" == "external" ]]; then
+else
   _dh="$DB_HOST"
   [[ -z "$_dh" && "$DEPLOY_MODE" == "docker" ]] && _dh=host.docker.internal
   [[ -z "$_dh" ]] && _dh=127.0.0.1
@@ -332,8 +338,6 @@ elif [[ "$DB_MODE" == "external" ]]; then
   prompt_value DB_USER "DB_USER" "${DB_USER:-root}"
   prompt_secret DB_PASS "DB_PASS" "$DB_PASS"
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
-else
-  echo "==> Keeping current DB_* (host=${DB_HOST:-unset})"
 fi
 
 DB_USERNAME="${DB_USER:-}"
@@ -404,17 +408,15 @@ if [[ "$MAIL_TRANSPORT" == "http" ]]; then
   [[ -n "${MAIL_HTTP_CLIENT_ID:-}" ]] && env_set "$ROOT_ENV" MAIL_HTTP_CLIENT_ID "$MAIL_HTTP_CLIENT_ID"
   [[ -n "${MAIL_HTTP_CLIENT_SECRET:-}" ]] && env_set "$ROOT_ENV" MAIL_HTTP_CLIENT_SECRET "$MAIL_HTTP_CLIENT_SECRET"
 fi
-if [[ "$DB_MODE" != "keep" ]]; then
-  env_set "$ROOT_ENV" DB_HOST "$DB_HOST"
-  env_set "$ROOT_ENV" DB_PORT "$DB_PORT"
-  env_set "$ROOT_ENV" DB_USER "$DB_USER"
-  env_set "$ROOT_ENV" DB_PASS "$DB_PASS"
-  env_set "$ROOT_ENV" DB_NAME "$DB_NAME"
-fi
+env_set "$ROOT_ENV" DB_HOST "$DB_HOST"
+env_set "$ROOT_ENV" DB_PORT "$DB_PORT"
+env_set "$ROOT_ENV" DB_USER "$DB_USER"
+env_set "$ROOT_ENV" DB_PASS "$DB_PASS"
+env_set "$ROOT_ENV" DB_NAME "$DB_NAME"
 
 apply_db_to_file() {
   local file="$1" user_key="${2:-DB_USERNAME}" pass_key="${3:-DB_PASSWORD}"
-  [[ "$DB_MODE" == "keep" ]] && return 0
+  env_set "$file" DB_CONNECTION "mysql" || return 1
   env_set "$file" DB_HOST "${DB_HOST:-}" || return 1
   env_set "$file" DB_PORT "${DB_PORT:-}" || return 1
   env_set "$file" "$user_key" "${DB_USER:-}" || return 1
