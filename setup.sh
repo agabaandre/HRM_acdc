@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Interactive CBP root setup: env for all modules + optional installers + systemd.
+# Interactive CBP root setup: env for all modules + optional installers + Supervisor.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -799,12 +799,17 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
   setup_fix_laravel_storage
 fi
 
-# ----- systemd -----
+# ----- Supervisor (queue / scheduler) -----
 if [[ "$SITE_KIND" == "demo" ]]; then
   echo
-  echo "==> Demo site: disabling/skipping systemd workers"
-  env_set "$SP_SETUP" INSTALL_SYSTEMD "false" 2>/dev/null || true
-  env_set "$HD_SETUP" INSTALL_SYSTEMD "false" 2>/dev/null || true
+  echo "==> Demo site: disabling/skipping Supervisor workers"
+  for setupf in "$SP_SETUP" "$HD_SETUP" \
+    "$ROOT/modules/finance/setup.env" \
+    "$ROOT/modules/risk-register/setup.env"
+  do
+    [[ -f "$setupf" ]] || continue
+    env_set "$setupf" INSTALL_SUPERVISOR "false" 2>/dev/null || true
+  done
   if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
     echo "    Retiring any existing CBP systemd units on this host (demo must not run queues)"
     _retire=(
@@ -830,67 +835,40 @@ if [[ "$SITE_KIND" == "demo" ]]; then
     done
     systemd_retire_units "${_retire[@]}" || true
   fi
-  echo "==> Skipping systemd install (demo)"
+  echo "==> Skipping Supervisor install (demo)"
 elif [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo
-  echo "Note: Docker deploy usually uses Compose --profile workers instead of host systemd."
-  echo "==> Skipping host systemd (Docker)"
+  echo "Note: Docker deploy usually uses Compose --profile workers instead of host Supervisor."
+  echo "==> Skipping host Supervisor (Docker)"
 else
-  SYS_DEFAULT=2
-  if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
-    if [[ "$SITE_KIND" == "production" ]]; then
-      if [[ "$INST_PROFILE" == "2" || "$INSTALL_TYPE" == "2" ]]; then
-        SYS_DEFAULT=1
-      fi
+  SUP_DEFAULT=2
+  if [[ "$(uname -s)" == "Linux" ]] && [[ "$SITE_KIND" == "production" ]]; then
+    if command -v supervisorctl >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
+      SUP_DEFAULT=1
     fi
   fi
-  prompt_choice RUN_SYSTEMD "Install systemd background workers (queue/scheduler)?" "1) Yes  2) No" "$SYS_DEFAULT"
+  prompt_choice RUN_SUPERVISOR "Install Supervisor background workers (queue/scheduler)?" "1) Yes  2) No" "$SUP_DEFAULT"
 
-  if [[ "$RUN_SYSTEMD" == "1" ]]; then
+  if [[ "$RUN_SUPERVISOR" == "1" ]]; then
     PHP_BIN_RESOLVED="$(command -v php || echo /usr/bin/php)"
-    SP_BACKEND="$(cd "$ROOT/modules/staff-portal/backend" && pwd)"
-    HD_BACKEND="$(cd "$ROOT/modules/helpdesk/backend" && pwd)"
-    APM_ABS="$(cd "$ROOT/modules/apm" && pwd)"
-    SP_HEALTH="${PUBLIC_BASE}/backend/up"
-    HD_HEALTH="${PUBLIC_BASE}/helpdesk/backend/api/v1/health"
-
-    env_set "$SP_SETUP" INSTALL_SYSTEMD "true"
-    env_set "$SP_SETUP" STAFF_PORTAL_HEALTH_URL "$SP_HEALTH"
-    env_set "$SP_SETUP" PHP_BIN "$PHP_BIN_RESOLVED"
-    env_set "$SP_SETUP" WEB_ROOT "$WEB_ROOT"
-    env_set "$HD_SETUP" INSTALL_SYSTEMD "true"
-    env_set "$HD_SETUP" PHP_BIN "$PHP_BIN_RESOLVED"
-    env_set "$HD_SETUP" WEB_ROOT "$WEB_ROOT"
-    env_set "$HD_SETUP" HELPDESK_HEALTH_URL "$HD_HEALTH"
-
-    echo "==> staff-portal systemd (ROOT=$SP_BACKEND WEB_ROOT=$WEB_ROOT)"
-    if [[ -x "$ROOT/modules/staff-portal/scripts/install-systemd.sh" ]]; then
-      WEB_ROOT="$WEB_ROOT" \
-      STAFF_PORTAL_ROOT="$SP_BACKEND" \
-      STAFF_PORTAL_HEALTH_URL="$SP_HEALTH" \
-      PHP_BIN="$PHP_BIN_RESOLVED" \
-        "$ROOT/modules/staff-portal/scripts/install-systemd.sh" \
-        || echo "warn: staff-portal systemd install failed" >&2
-    fi
-
-    echo "==> helpdesk systemd (ROOT=$HD_BACKEND WEB_ROOT=$WEB_ROOT)"
-    if [[ -x "$ROOT/modules/helpdesk/scripts/install-systemd.sh" ]]; then
-      WEB_ROOT="$WEB_ROOT" \
-      HELPDESK_ROOT="$HD_BACKEND" \
-      HELPDESK_HEALTH_URL="$HD_HEALTH" \
-      PHP_BIN="$PHP_BIN_RESOLVED" \
-        "$ROOT/modules/helpdesk/scripts/install-systemd.sh" \
-        || echo "warn: helpdesk systemd install failed" >&2
-    fi
-
-    echo "==> APM systemd (ROOT=$APM_ABS WEB_ROOT=$WEB_ROOT)"
+    for setupf in "$SP_SETUP" "$HD_SETUP" \
+      "$ROOT/modules/finance/setup.env" \
+      "$ROOT/modules/risk-register/setup.env"
+    do
+      [[ -f "$setupf" ]] || continue
+      env_set "$setupf" INSTALL_SUPERVISOR "true"
+      env_set "$setupf" PHP_BIN "$PHP_BIN_RESOLVED"
+      env_set "$setupf" WEB_ROOT "$WEB_ROOT"
+    done
+    echo "==> Supervisor (WEB_ROOT=$WEB_ROOT)"
     WEB_ROOT="$WEB_ROOT" \
-    APM_ROOT="$APM_ABS" \
     PHP_BIN="$PHP_BIN_RESOLVED" \
-      "$ROOT/scripts/setup/install-apm-systemd.sh" \
-      || echo "warn: APM systemd install failed" >&2
+    SUPERVISOR_USER="${SUPERVISOR_USER:-www-data}" \
+    INSTALL_SUPERVISOR=true \
+      "$ROOT/scripts/setup/install-supervisor.sh" \
+      || echo "warn: Supervisor install failed" >&2
   else
-    echo "==> Skipping systemd"
+    echo "==> Skipping Supervisor"
   fi
 fi
 
