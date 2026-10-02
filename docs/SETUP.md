@@ -21,7 +21,7 @@ Requires a TTY. Passwords are entered without echo.
 | Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** · Keep current — under Docker, external host defaults to `host.docker.internal` |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
 | **Auth** | Microsoft Entra (`EXCHANGE_TENANT_ID` / `EXCHANGE_CLIENT_ID` / `EXCHANGE_CLIENT_SECRET`) written to **root `.env` only**; modules inherit via `shared/load-staff-root-env.php` and keep per-app `MICROSOFT_REDIRECT_URI` / `EXCHANGE_REDIRECT_URI`; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
-| **Mail** | Shared `MAIL_TRANSPORT` (**exchange** default · **smtp** · **zoho** · **http** [notifications.africacdc.org](https://notifications.africacdc.org/api/documentation)); Graph/SMTP/HTTP creds in root `.env`; per app only `MAIL_FROM_NAME` (+ optional FROM address) |
+| **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
@@ -54,10 +54,12 @@ Outbound transports:
 
 | `MAIL_TRANSPORT` | Laravel `MAIL_MAILER` | Notes |
 |------------------|----------------------|--------|
-| `exchange` (default) | `exchange` | Microsoft Graph; needs `EXCHANGE_*` (copied from SSO Azure app) |
+| `http` (preferred) | `http` | [Africa CDC Email Server](https://notifications.africacdc.org/api/documentation) via `MAIL_HTTP_*`; seeded into Settings → Email servers when missing |
+| `exchange` | `exchange` | Microsoft Graph; needs `EXCHANGE_*` (copied from SSO Azure app) |
 | `smtp` | `smtp` | Shared `MAIL_HOST` / user / password |
 | `zoho` | `smtp` | Defaults `smtp.zoho.com`; same SMTP keys |
-| `http` | `http` | [Africa CDC Email Server](https://notifications.africacdc.org/api/documentation) via `MAIL_HTTP_*` |
+
+Modules dispatch via Share by default (`STAFF_MAIL_DISPATCH=auto`): portal `POST …/share/mail/send`, with encrypted `active-config` local fallback. Set `STAFF_MAIL_CONFIG_KEY` (or rely on `APP_KEY`) for AES-GCM.
 
 ## Site role, systemd, and CI3 uploads
 

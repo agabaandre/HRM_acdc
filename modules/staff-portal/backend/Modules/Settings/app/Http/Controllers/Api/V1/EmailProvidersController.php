@@ -26,6 +26,7 @@ class EmailProvidersController extends Controller
     public function index(): JsonResponse
     {
         PortalPermission::authorize(15);
+        $this->providers->seedHttpFromEnvIfMissing();
 
         return response()->json(['data' => $this->providers->list()]);
     }

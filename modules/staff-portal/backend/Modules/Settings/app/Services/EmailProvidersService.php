@@ -219,6 +219,45 @@ class EmailProvidersService
     }
 
     /**
+     * Create an HTTP provider from MAIL_HTTP_* when none exists.
+     * Never overwrites an existing HTTP row (UI edits win).
+     */
+    public function seedHttpFromEnvIfMissing(): ?PortalEmailProvider
+    {
+        $existing = PortalEmailProvider::query()->where('driver', 'http')->orderBy('id')->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $clientId = trim((string) config('mail.http.client_id', ''));
+        $clientSecret = trim((string) config('mail.http.client_secret', ''));
+        $baseUrl = trim((string) config('mail.http.base_url', 'https://notifications.africacdc.org/api/v1'));
+        if ($clientId === '' && $clientSecret === '') {
+            return null;
+        }
+
+        $hasDefault = PortalEmailProvider::query()
+            ->where('is_default', true)
+            ->exists();
+
+        return $this->create([
+            'name' => 'Africa CDC Email Server',
+            'slug' => 'africa-cdc-http',
+            'driver' => 'http',
+            'config' => [
+                'base_url' => $baseUrl !== '' ? $baseUrl : 'https://notifications.africacdc.org/api/v1',
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+            ],
+            'from_address' => (string) config('mail.from.address', ''),
+            'from_name' => (string) config('mail.from.name', ''),
+            'description' => 'Seeded from MAIL_HTTP_* env',
+            'is_default' => ! $hasDefault,
+            'is_active' => true,
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      */
     public function create(array $data): PortalEmailProvider

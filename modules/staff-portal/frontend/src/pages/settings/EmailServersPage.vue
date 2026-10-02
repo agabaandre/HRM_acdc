@@ -27,7 +27,7 @@ const testTo = ref('')
 
 const form = reactive({
   name: '',
-  driver: 'exchange',
+  driver: 'http',
   from_address: '',
   from_name: '',
   description: '',
@@ -49,13 +49,13 @@ function buildDefaultConfig(driver?: EmailDriverDef) {
 function openCreate() {
   editing.value = null
   form.name = ''
-  form.driver = 'exchange'
+  form.driver = 'http'
   form.from_address = ''
   form.from_name = ''
   form.description = ''
   form.is_default = false
   form.is_active = true
-  form.config = buildDefaultConfig(drivers.value.find((d) => d.key === 'exchange'))
+  form.config = buildDefaultConfig(drivers.value.find((d) => d.key === 'http'))
   testTo.value = ''
   dialog.value = true
 }
