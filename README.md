@@ -126,8 +126,8 @@ Full guide: [docs/SETUP.md](./docs/SETUP.md). Wizard notes: Docker deploy defaul
 
 - Full guide: [docker/README.md](./docker/README.md)
 - Requires Docker Desktop or Docker Engine running (fix “Cannot connect to the Docker daemon” by starting Docker).
-- Compose vars live in `docker/.env` (do not overwrite the repo-root `.env`). Redis runs in Compose; MySQL defaults to the physical host (`DB_HOST=host.docker.internal` in each module `.env`).
-- The `web` image includes **Ghostscript**, **Poppler**, and **LibreOffice** for APM PDF annex embedding. Rebuild after updates: `docker compose --env-file docker/.env up -d --build`.
+- Compose vars live in `docker/.env` (do not overwrite the repo-root `.env`). Redis runs in Compose (`maxmemory` + LRU); MySQL defaults to the physical host (`DB_HOST=host.docker.internal` in each module `.env`).
+- The `web` image is **Apache event + PHP-FPM** (tuned for ~8 CPU / 32 GB). Optional **Ghostscript / Poppler / LibreOffice** via `INSTALL_PDF_TOOLS=1`. Rebuild: `docker compose --env-file docker/.env up -d --build`.
 
 ```bash
 cp docker/compose.env.example docker/.env

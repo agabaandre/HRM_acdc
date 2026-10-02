@@ -1,7 +1,7 @@
 # Docker PHP-FPM performance tuning (8 CPU / ~32 GB)
 
 **Date:** 2026-10-02  
-**Status:** Approved (pending implementation)  
+**Status:** Implemented  
 **Approach:** Apache event MPM + PHP-FPM in the same `web` image (Approach A)  
 **Reference:** [PHP_laravel_Codeigniter_wordpress_server_optimisation_enterprise](https://github.com/agabaandre/PHP_laravel_Codeigniter_wordpress_server_optimisation_enterprise) (tier **L / 32 GB**, adjusted for **8 CPUs**)
 

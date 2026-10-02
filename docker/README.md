@@ -1,9 +1,32 @@
 # Docker (CBP modules)
 
-One Compose project at the **repository root** runs **Apache + PHP** and **Redis**.
+One Compose project at the **repository root** runs **Apache (event MPM) + PHP-FPM** and **Redis**.
 **MySQL defaults to the host** (or any reachable server). Bundled MySQL and queue workers are optional profiles.
 
 Root `./setup.sh` (Docker deploy): Redis defaults to Compose service `redis` (external optional); MySQL defaults to **external** with username/password prompts; module installers default to production, always migrate, and seed only when the target database has no tables.
+
+## Performance (8 CPU / ~32 GB)
+
+The `web` image uses **Apache event + PHP-FPM** (not mod_php), with pool/OPcache sized for ~8 cores / 32 GB RAM (see `docs/superpowers/specs/2026-10-02-docker-php-fpm-tuning-design.md`).
+
+```bash
+# Rebuild after PHP/Apache conf changes
+docker compose --env-file docker/.env up -d --build
+
+# Production bake (OPcache validate_timestamps=0, no bind-mount)
+docker compose --env-file docker/.env \
+  -f docker-compose.yml -f docker-compose.prod.yml \
+  --profile workers up -d --build
+```
+
+Verify inside the container:
+
+```bash
+docker compose --env-file docker/.env exec web bash -lc \
+  'apachectl -V | grep MPM; pgrep -a php-fpm | head -3; ls -l /var/run/php/php-fpm.sock'
+```
+
+After deploy, cache Laravel config/routes per module backend (`config:cache`, `route:cache`). Prefer `CACHE_STORE=redis`, `SESSION_DRIVER=redis`, `QUEUE_CONNECTION=redis` with `REDIS_HOST=redis`. Redis defaults to `maxmemory=2gb` + `allkeys-lru` (`REDIS_MAXMEMORY` in `docker/.env`).
 
 ## Quick start
 
