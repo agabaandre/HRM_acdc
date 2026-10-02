@@ -108,6 +108,12 @@ On Linux, `./setup.sh` can install **Supervisor** programs for every Laravel mod
 | Logs | `{app}/storage/logs/supervisor-queue.log` / `supervisor-scheduler.log` |
 
 ```bash
+# Enable the daemon once (fixes: unix:///var/run/supervisor.sock no such file)
+sudo apt-get install -y supervisor
+sudo systemctl enable --now supervisor
+
+sudo supervisorctl reread
+sudo supervisorctl update
 sudo supervisorctl status
 sudo supervisorctl restart cbp-staff-:
 sudo tail -f modules/staff-portal/backend/storage/logs/supervisor-queue.log
