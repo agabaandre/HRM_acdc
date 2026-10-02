@@ -1,6 +1,6 @@
 # CBP root setup (`./setup.sh`)
 
-Interactive wizard at the repository root that configures **shared and per-module** environment files, rewrites **public path prefixes** in `.htaccess` when the deploy folder is not `/staff`, optionally runs each module’s installer, and can install **systemd** queue/scheduler units.
+Interactive wizard at the repository root that configures **shared and per-module** environment files, rewrites **public path prefixes** in `.htaccess` when the deploy folder is not `/staff`, optionally runs each module’s installer, and can install **Supervisor** queue/scheduler programs.
 
 ## Quick start
 
@@ -15,7 +15,7 @@ Requires a TTY. Passwords are entered without echo.
 
 | Step | Options |
 |------|---------|
-| **Site role** | **Production · Demo** (demo never enables systemd workers) |
+| **Site role** | **Production · Demo** (demo never enables Supervisor workers) |
 | Install type | New · Existing |
 | Deploy | Host Apache · **Docker Compose (default)** |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** · Keep current — under Docker, external host defaults to `host.docker.internal` |
@@ -25,8 +25,8 @@ Requires a TTY. Passwords are entered without echo.
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced mapped URLs / storage) |
 | Installers | Optional `setup.sh` or `setup-production.sh` |
-| **Storage** | Always: Laravel `storage/` + `bootstrap/cache` permissions; **unlink + relink** `public/storage` for portal, APM, helpdesk, finance |
-| Systemd | **Production only** |
+| **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for **all five** modules (staff-portal, helpdesk, finance, risk-register, APM); host `STAFF_DATA_ROOT` when set |
+| **Supervisor** | **Production host only** (optional; default Yes on Linux) — queue + scheduler for all five apps |
 
 Folder names containing `demo` default the site role to **Demo**.
 
@@ -61,12 +61,12 @@ Outbound transports:
 
 Modules dispatch via Share by default (`STAFF_MAIL_DISPATCH=auto`): portal `POST …/share/mail/send`, with encrypted `active-config` local fallback. Set `STAFF_MAIL_CONFIG_KEY` (or rely on `APP_KEY`) for AES-GCM.
 
-## Site role, systemd, and CI3 uploads
+## Site role, Supervisor, and CI3 uploads
 
-| Role | Systemd | Storage |
-|------|---------|---------|
-| **Production** | Prompt to install workers (default Yes on Linux prod-style installs) | `STAFF_SITE_ID` → `/var/staffdata/{id}/ci` for CI3 uploads |
-| **Demo** | **Never installs**; retires existing CBP units if present | Same site-id rules so demo does not share production upload trees |
+| Role | Supervisor | Storage |
+|------|------------|---------|
+| **Production** | Prompt to install workers (default Yes on Linux) | `STAFF_SITE_ID` → `/var/staffdata/{id}/ci` for CI3 uploads |
+| **Demo** | **Never installs**; retires leftover CBP **systemd** units if present | Same site-id rules so demo does not share production upload trees |
 
 `STAFF_SITE_ID` is derived from the public base URL (host + path), e.g. `https://cpb.africacdc.org/cbpdemo` → `cpb-africacdc-org-cbpdemo`. Confirm or override in the wizard so migrations never land under another site’s folder.
 
@@ -91,20 +91,31 @@ Share internal base: `http://127.0.0.1/{WEB_ROOT}/backend` (host) or `http://web
 
 `.htaccess` REQUEST_URI match groups keep common aliases (`staff`, `demo_staff`, `cbp`, `demo_cbp`, `cbpdemo`) so legacy bookmarks still match; absolute redirects use the current `WEB_ROOT`.
 
-## Systemd (production only)
+## Supervisor (production host)
 
-On Linux with `systemctl`, installers write **site-scoped** units and env files so the WorkingDirectory matches this checkout:
+On Linux, `./setup.sh` can install **Supervisor** programs for every Laravel module (queue + scheduler). Choosing Yes also **retires** legacy CBP systemd units so workers are not doubled.
 
-| App | Example paths (`WEB_ROOT=cbp`) |
-|-----|--------------------------------|
-| staff-portal | `STAFF_PORTAL_ROOT=…/modules/staff-portal/backend`, `/etc/staff-portal/cbp.env`, units `staff-portal-queue-cbp.service` |
-| helpdesk | `HELPDESK_ROOT=…/modules/helpdesk/backend`, `/etc/helpdesk/cbp.env` |
-| APM | `WorkingDirectory=…/modules/apm`, `laravel-queue-apm-cbp.service` |
+| Item | Detail |
+|------|--------|
+| Installer | `scripts/setup/install-supervisor.sh` |
+| Flag | `INSTALL_SUPERVISOR=true\|false\|auto` |
+| Conf dir | `/etc/supervisor/conf.d/cbp-{WEB_ROOT}-*.conf` |
+| Apps | staff-portal, helpdesk, finance, risk-register, apm |
+| Program names | `cbp-{slug}-{app}-queue`, `cbp-{slug}-{app}-scheduler` |
+| Logs | `{app}/storage/logs/supervisor-queue.log` / `supervisor-scheduler.log` |
 
-Health URLs use `/{WEB_ROOT}/…` (not a hardcoded `/staff/`). Installers **stop, disable, and remove** prior units for that app before writing new ones.
+```bash
+sudo supervisorctl status
+sudo supervisorctl restart cbp-staff-:
+sudo tail -f modules/staff-portal/backend/storage/logs/supervisor-queue.log
+```
 
-- **staff-portal** / **helpdesk** — `scripts/install-systemd.sh` (sets `INSTALL_SYSTEMD=true`)
-- **APM** — `scripts/setup/install-apm-systemd.sh`
+Dry-run (no root / no `/etc` writes):
+
+```bash
+CBP_SUPERVISOR_DRY_RUN=1 INSTALL_SUPERVISOR=true WEB_ROOT=staff \
+  ./scripts/setup/install-supervisor.sh
+```
 
 Under **Docker Compose**, prefer:
 
@@ -112,11 +123,12 @@ Under **Docker Compose**, prefer:
 docker compose --env-file docker/.env --profile workers up -d
 ```
 
-Do not run host systemd workers and Compose `--profile workers` against the same queue at once.
+Do not run host Supervisor workers and Compose `--profile workers` against the same queue at once.
 
 ## Related
 
 - Portal mail hub design: `docs/superpowers/specs/2026-10-02-portal-mail-hub-design.md`
+- Supervisor workers design: `docs/superpowers/specs/2026-10-02-supervisor-workers-design.md`
 - Share endpoints (staff-portal): `POST /share/mail/send`, `GET /share/mail/active-config` (Bearer `STAFF_API_TOKEN`)
 - [docker/README.md](../docker/README.md)
 - [STORAGE.md](./STORAGE.md) — `STAFF_SITE_ID` / `/var/staffdata`

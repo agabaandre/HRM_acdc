@@ -116,7 +116,7 @@ The platform consists of four integrated modules working seamlessly together:
 ### 👨‍💻 For Developers
 
 ```bash
-./setup.sh   # interactive env for all modules (+ optional installers / systemd)
+./setup.sh   # interactive env for all modules (+ optional installers / Supervisor)
 ```
 
 Full guide: [docs/SETUP.md](./docs/SETUP.md)
@@ -250,7 +250,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 | [**🧑‍💻 Helpdesk Developer Guide**](./modules/helpdesk/documentation/DEVELOPER_GUIDE.md) | Architecture, schema, REST API, extension points & runbooks |
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
 | [**🔁 CI (GitHub + Azure)**](./docs/CI.md) | Build gates and GHCR image publish |
-| [**🛠️ Root setup**](./docs/SETUP.md) | Interactive env + installers + systemd |
+| [**🛠️ Root setup**](./docs/SETUP.md) | Interactive env + installers + Supervisor |
 
 </div>
 
@@ -265,7 +265,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 - [Environment Variables](./assets/ENVIRONMENT_VARIABLES.md) - Configuration guide
 - [APM Environment Guide](./modules/apm/documentation/ENVIRONMENT.md) - `.env` setup and examples
 - [APM Queue Setup](./modules/apm/documentation/QUEUE_SETUP_GUIDE.md) - Queue worker configuration
-- [Systemd Queue Guide](./modules/apm/documentation/SYSTEMD_QUEUE_GUIDE.md) - Systemd queue management
+- [Supervisor Queue Guide](./modules/apm/documentation/SUPERVISOR_QUEUE_GUIDE.md) - Supervisor queue management
 - [Cron Configuration](./modules/apm/documentation/CRON_SETUP.md) - Scheduled tasks
 - [Database Backup System](./modules/apm/README_BACKUP.md) - Automatic database backups and retention policies
 

@@ -1,7 +1,7 @@
 # Supervisor workers for all CBP modules
 
 **Date:** 2026-10-02  
-**Status:** Approved — implementation plan ready  
+**Status:** Implemented  
 **Approach:** Central Supervisor installer (Approach 1)
 
 ## Goals
