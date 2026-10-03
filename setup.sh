@@ -544,15 +544,14 @@ if [[ "$DB_MODE" == "bundled" ]]; then
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
 else
   _dh="$DB_HOST"
-  # Stale Compose hostname left in .env from a prior bundled run — never keep on host
-  # Apache, and never use as "external" under Docker (use host gateway instead).
-  if [[ "$_dh" == "mysql" ]]; then
-    if [[ "$DEPLOY_MODE" == "docker" ]]; then
-      _dh=host.docker.internal
-    else
-      _dh=127.0.0.1
-    fi
-    echo "    Note: replacing DB_HOST=mysql with ${_dh} for ${DEPLOY_MODE} + external MySQL"
+  # Stale Compose hostnames left in .env — never keep on Host Apache (no Docker DNS).
+  # Under Docker + external MySQL, prefer host.docker.internal for in-container PHP.
+  if [[ "$DEPLOY_MODE" == "host" && ( "$_dh" == "mysql" || "$_dh" == "host.docker.internal" ) ]]; then
+    echo "    Note: replacing DB_HOST=${_dh} with 127.0.0.1 (Host Apache)"
+    _dh=127.0.0.1
+  elif [[ "$_dh" == "mysql" ]]; then
+    _dh=host.docker.internal
+    echo "    Note: replacing DB_HOST=mysql with ${_dh} for Docker + external MySQL"
   fi
   [[ -z "$_dh" && "$DEPLOY_MODE" == "docker" ]] && _dh=host.docker.internal
   [[ -z "$_dh" ]] && _dh=127.0.0.1
@@ -563,10 +562,10 @@ else
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
 fi
 
-# Final safety: host deploy must never persist an unresolvable Compose DB hostname.
-if [[ "$DEPLOY_MODE" == "host" && "$DB_HOST" == "mysql" ]]; then
+# Final safety: host deploy must never persist Compose-only DB hostnames.
+if [[ "$DEPLOY_MODE" == "host" && ( "$DB_HOST" == "mysql" || "$DB_HOST" == "host.docker.internal" ) ]]; then
+  echo "    Note: forced DB_HOST=127.0.0.1 (Host Apache cannot resolve ${DB_HOST})"
   DB_HOST=127.0.0.1
-  echo "    Note: forced DB_HOST=127.0.0.1 (Host Apache cannot resolve mysql)"
 fi
 
 DB_USERNAME="${DB_USER:-}"
