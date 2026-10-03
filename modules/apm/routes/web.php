@@ -76,6 +76,10 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
     ->name('home')
     ->middleware(CheckSessionMiddleware::class);
 
+Route::post('/division-context', [App\Http\Controllers\DivisionContextController::class, 'update'])
+    ->name('division-context.update')
+    ->middleware(CheckSessionMiddleware::class);
+
 // Memo print routes: allow session OR JWT (header Authorization: Bearer <token> or ?token= for GET)
 $printMiddleware = ['accept.token.in.query', 'auth.session.or.jwt'];
 Route::get('service-requests/{serviceRequest}/print', [App\Http\Controllers\ServiceRequestController::class, 'print'])

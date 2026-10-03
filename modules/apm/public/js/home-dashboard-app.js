@@ -48,15 +48,38 @@
                 const modules = computed(() => cfg.modules || []);
                 const totalPending = computed(() => Number(cfg.totalPending || 0));
                 const userName = computed(() => cfg.userName || '');
+                const divisionContext = computed(() => cfg.divisionContext || { enabled: false, divisions: [] });
+                const activeDivisionId = Vue.ref(Number((cfg.divisionContext && cfg.divisionContext.activeId) || 0));
                 const docSearch = (window.ApmDocumentSearch && window.ApmDocumentSearch.setupSearchState)
                     ? window.ApmDocumentSearch.setupSearchState(cfg.documentSearch || {}, { reactive, watch, onMounted, computed })
                     : null;
+
+                function switchDivision(id) {
+                    const ctx = cfg.divisionContext || {};
+                    if (!ctx.updateUrl || !id || Number(id) === Number(ctx.activeId)) return;
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = ctx.updateUrl;
+                    form.style.display = 'none';
+                    [['division_id', String(id)], ['_token', ctx.csrfToken || '']].forEach(([name, value]) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = value;
+                        form.appendChild(input);
+                    });
+                    document.body.appendChild(form);
+                    form.submit();
+                }
 
                 return {
                     modules,
                     totalPending,
                     userName,
                     docSearch,
+                    divisionContext,
+                    activeDivisionId,
+                    switchDivision,
                 };
             },
             template: `
@@ -94,6 +117,25 @@
           >
             No pending approvals
           </v-chip>
+        </div>
+
+        <div v-if="divisionContext.enabled" class="mt-3" style="max-width: 420px;">
+          <div class="text-caption text-medium-emphasis mb-1">Acting division</div>
+          <v-select
+            v-model="activeDivisionId"
+            :items="divisionContext.divisions"
+            item-title="name"
+            item-value="id"
+            density="comfortable"
+            hide-details
+            variant="outlined"
+            prepend-inner-icon="mdi-office-building-outline"
+            @update:model-value="switchDivision"
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props" :subtitle="item.raw.is_primary ? 'Primary (contract)' : null"></v-list-item>
+            </template>
+          </v-select>
         </div>
 
         <div v-if="docSearch" class="mt-4">

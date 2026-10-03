@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\DivisionWeeklyBriefGate;
 use App\Services\PendingApprovalsService;
+use App\Support\StaffDivisionContext;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -11,6 +12,7 @@ class HomeController extends Controller
     public function index(): View
     {
         $pendingCounts = $this->resolvePendingCounts();
+        $switchable = StaffDivisionContext::switchableDivisions();
 
         return view('home', [
             'pageConfig' => [
@@ -23,6 +25,13 @@ class HomeController extends Controller
                     'yearsUrl' => route('document-search.years'),
                     'defaultYear' => (int) date('Y'),
                     'placeholder' => 'Document number or title…',
+                ],
+                'divisionContext' => [
+                    'enabled' => count($switchable) >= 2,
+                    'activeId' => StaffDivisionContext::activeDivisionId(),
+                    'divisions' => $switchable,
+                    'updateUrl' => route('division-context.update'),
+                    'csrfToken' => csrf_token(),
                 ],
             ],
         ]);
