@@ -425,12 +425,25 @@ class MatrixController extends Controller
         string $selectedStatus
     ): void {
         $query->where(function ($q): void {
-            $userDivisionId = user_session('division_id');
-            $userStaffId = user_session('staff_id');
+            $userStaffId = (int) (user_session('staff_id') ?? 0);
+            $divisionIds = class_exists(\App\Support\StaffDivisionContext::class)
+                ? \App\Support\StaffDivisionContext::listDivisionIds($userStaffId > 0 ? $userStaffId : null)
+                : [];
+            if ($divisionIds === []) {
+                $fallback = (int) (user_session('division_id') ?? 0);
+                if ($fallback > 0) {
+                    $divisionIds = [$fallback];
+                }
+            }
 
-            $q->where('division_id', $userDivisionId);
+            if ($divisionIds !== []) {
+                $q->whereIn('division_id', $divisionIds);
+            } else {
+                $q->whereRaw('1 = 0');
+            }
 
-            if ($userStaffId) {
+            // Keep head match as a safety net when association sync is incomplete.
+            if ($userStaffId > 0) {
                 $q->orWhereHas('division', function ($divisionQuery) use ($userStaffId): void {
                     $divisionQuery->where('division_head', $userStaffId);
                 });

@@ -92,10 +92,16 @@ final class ApmPageCache
     public static function sessionKeyParts(): array
     {
         $session = user_session();
+        $staffId = (int) ($session['staff_id'] ?? 0);
+        $divisionIds = '';
+        if ($staffId > 0 && class_exists(\App\Support\StaffDivisionContext::class)) {
+            $divisionIds = implode(',', \App\Support\StaffDivisionContext::listDivisionIds($staffId));
+        }
 
         return [
-            '_staff_id' => (int) ($session['staff_id'] ?? 0),
+            '_staff_id' => $staffId,
             '_division_id' => (int) ($session['division_id'] ?? 0),
+            '_division_ids' => $divisionIds,
             '_perms' => implode(',', $session['permissions'] ?? []),
             '_role' => (int) (($session['role'] ?? $session['user_role'] ?? 0)),
         ];

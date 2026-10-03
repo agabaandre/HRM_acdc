@@ -45,6 +45,23 @@ final class StaffDivisionContext
     }
 
     /**
+     * Division IDs for "My Division" style lists (union of switchable set).
+     *
+     * @return list<int>
+     */
+    public static function listDivisionIds(?int $staffId = null): array
+    {
+        $ids = self::switchableIds($staffId);
+        if ($ids !== []) {
+            return $ids;
+        }
+
+        $primary = self::primaryDivisionId($staffId);
+
+        return $primary !== null ? [$primary] : [];
+    }
+
+    /**
      * @return list<array{id:int,name:string,is_primary:bool,sources:list<string>}>
      */
     public static function switchableDivisions(?int $staffId = null): array

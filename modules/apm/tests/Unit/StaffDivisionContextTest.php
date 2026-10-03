@@ -94,6 +94,18 @@ test('switchable includes primary and associated but not finance-officer-only di
         ->not->toContain(910030);
 });
 
+test('listDivisionIds returns the full switchable union for my-division lists', function () {
+    seedDivisionForContext(910610, 'Primary Div');
+    seedDivisionForContext(910620, 'Associated Div');
+    seedDivisionForContext(910630, 'Focal Div', ['focal_person' => 910506]);
+    seedStaffForContext(910506, 910610, [910620]);
+
+    expect(StaffDivisionContext::listDivisionIds(910506))
+        ->toContain(910610)
+        ->toContain(910620)
+        ->toContain(910630);
+});
+
 test('switchable includes division where staff is focal person', function () {
     seedDivisionForContext(910110, 'Home');
     seedDivisionForContext(910140, 'Focal Div', ['focal_person' => 910502]);
