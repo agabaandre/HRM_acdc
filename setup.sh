@@ -240,8 +240,14 @@ if [[ "${INSTALL_TYPE}" == "1" ]]; then
 else
   export ALLOW_INTERACTIVE_SUDO=0
 fi
-# Default: Docker Compose (Host Apache remains available as choice 1).
-prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
+PREV_DEPLOY_MODE=""
+if [[ -f "$ROOT/.env" ]]; then
+  PREV_DEPLOY_MODE="$(env_get "$ROOT/.env" DEPLOY_MODE)"
+fi
+# Production hosts typically use Host Apache; Docker remains opt-in.
+DEPLOY_DEFAULT=1
+[[ "$SITE_KIND" == "demo" ]] && DEPLOY_DEFAULT=2
+prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "$DEPLOY_DEFAULT"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host
 export DEPLOY_MODE
 export STAFF_ROOT="$ROOT"
@@ -252,6 +258,11 @@ setup_warn() {
   SETUP_ERRORS=$((SETUP_ERRORS + 1))
   return 0
 }
+
+if [[ "$DEPLOY_MODE" == "host" && "$PREV_DEPLOY_MODE" == "docker" ]]; then
+  echo "==> Switching Docker → Host Apache: stopping Compose and clearing Compose-only settings"
+  staff_docker_down_stack || true
+fi
 
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
   echo "==> Checking Docker API access…"
@@ -516,18 +527,31 @@ if [[ "$DEPLOY_MODE" == "docker" ]]; then
   prompt_choice REDIS_CHOICE "Redis" "1) Docker Redis  2) External Redis" "1"
   if [[ "$REDIS_CHOICE" == "2" ]]; then
     _rh="$(env_get "$ROOT_ENV" REDIS_HOST)"
+    [[ "$_rh" == "redis" ]] && _rh=127.0.0.1
     prompt_value REDIS_HOST "REDIS_HOST" "${_rh:-127.0.0.1}"
   else
     REDIS_HOST=redis
   fi
 else
   REDIS_DEF="$(env_get "$ROOT_ENV" REDIS_HOST)"
+  # Stale Compose hostname from a prior Docker deploy.
+  if [[ "$REDIS_DEF" == "redis" ]]; then
+    echo "    Note: replacing REDIS_HOST=redis with 127.0.0.1 (Host Apache)"
+    REDIS_DEF=127.0.0.1
+  fi
   REDIS_DEF="${REDIS_DEF:-$REDIS_HOST_DEFAULT}"
+  [[ "$REDIS_DEF" == "redis" ]] && REDIS_DEF=127.0.0.1
   prompt_value REDIS_HOST "REDIS_HOST" "$REDIS_DEF"
 fi
 _rport="$(env_get "$ROOT_ENV" REDIS_PORT)"
 prompt_value REDIS_PORT "REDIS_PORT" "${_rport:-6379}"
 prompt_secret REDIS_PASSWORD "REDIS_PASSWORD" "$(env_get "$ROOT_ENV" REDIS_PASSWORD)"
+
+# Host Apache must never keep Compose-only Redis DNS.
+if [[ "$DEPLOY_MODE" == "host" && "$REDIS_HOST" == "redis" ]]; then
+  echo "    Note: forced REDIS_HOST=127.0.0.1 (Host Apache cannot resolve redis)"
+  REDIS_HOST=127.0.0.1
+fi
 
 DB_HOST="$(env_get "$ROOT_ENV" DB_HOST)"
 DB_PORT="$(env_get "$ROOT_ENV" DB_PORT)"
@@ -690,7 +714,11 @@ apply_db_to_file() {
 
 apply_redis_to_file() {
   local file="$1"
-  env_set "$file" REDIS_HOST "${REDIS_HOST:-}" || return 1
+  local rh="${REDIS_HOST:-}"
+  if [[ "$DEPLOY_MODE" == "host" && "$rh" == "redis" ]]; then
+    rh=127.0.0.1
+  fi
+  env_set "$file" REDIS_HOST "$rh" || return 1
   env_set "$file" REDIS_PORT "${REDIS_PORT:-}" || return 1
   # Important: do not let a failed [[ ]] be the function's last status under set -e
   # when REDIS_PASSWORD is empty (that previously aborted ./setup.sh mid-module).

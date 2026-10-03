@@ -34,7 +34,7 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | **Start** | **Run with current defaults (default)** · Configure step by step |
 | **Site role** | **Production · Demo** (demo never enables Supervisor workers) |
 | Install type | New · Existing |
-| Deploy | Host Apache · **Docker Compose (default)** |
+| Deploy | **Host Apache (default on production)** · Docker Compose (default on demo) — switching Docker → Host Apache stops Compose and rewrites Compose-only `DB_HOST`/`REDIS_HOST` to `127.0.0.1` |
 | **Redis** (Docker) | **Docker Redis (default)** · External Redis |
 | **Redis** (Host) | Host/port/password (default `127.0.0.1`) |
 | Database | **External MySQL (default):** always persists host-reachable `DB_HOST` (default `127.0.0.1`) in root + module `.env` — never `host.docker.internal` / `mysql` on disk. **Docker + external:** Compose injects `DB_HOST=host.docker.internal` for `web`/`workers` only (`extra_hosts: host-gateway`). **Bundled MySQL (Docker opt-in):** `DB_HOST=mysql`; host-side artisan remaps to `127.0.0.1` + published port |

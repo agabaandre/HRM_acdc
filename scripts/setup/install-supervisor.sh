@@ -464,16 +464,25 @@ if command -v supervisorctl >/dev/null 2>&1; then
     exit 1
   fi
   supervisorctl_safe reread
-  supervisorctl_safe update
-  # Clear FATAL state and try a clean start after ownership fixes.
-  supervisorctl_safe start "cbp-${SLUG}-:" 2>/dev/null || true
+  # "No config updates to processes" is normal when confs are unchanged.
+  supervisorctl_safe update || true
+  # Programs are named cbp-{slug}-{app}-queue|scheduler — not a group "cbp-{slug}-".
+  # Start each program (trailing ":" starts all numprocs for that program).
+  local_prog=""
+  for local_prog in "$CONF_DIR"/cbp-"${SLUG}"-*.conf; do
+    [[ -e "$local_prog" ]] || continue
+    local_prog="$(basename "$local_prog" .conf)"
+    supervisorctl_safe start "${local_prog}:" 2>/dev/null \
+      || supervisorctl_safe start "$local_prog" 2>/dev/null \
+      || true
+  done
   sleep 2
   print_cbp_status
 else
   echo "warn: supervisorctl missing; confs written to $CONF_DIR" >&2
 fi
 
-echo "Done. Manage with: sudo supervisorctl status"
+echo "Done. Manage with: sudo supervisorctl status | grep cbp-${SLUG}-"
 echo "If helpdesk/finance stay FATAL, inspect:"
 echo "  sudo tail -n 80 modules/helpdesk/backend/storage/logs/supervisor-queue.log"
 echo "  sudo tail -n 80 modules/finance/backend/storage/logs/supervisor-queue.log"

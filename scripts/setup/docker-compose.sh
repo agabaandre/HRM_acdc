@@ -200,6 +200,20 @@ staff_docker_build_once() {
   export STAFF_DOCKER_BUILT
 }
 
+# Stop Compose stack when switching to Host Apache (best-effort).
+staff_docker_down_stack() {
+  if ! staff_docker_resolve_access 2>/dev/null; then
+    echo "    (Docker not available — skip compose down)"
+    return 0
+  fi
+  echo "==> Docker Compose: stopping stack (Host Apache will own the site)"
+  # Include optional profiles so workers / bundled MySQL containers stop too.
+  staff_docker_compose --profile workers --profile bundled-db down --remove-orphans 2>/dev/null \
+    || staff_docker_compose down --remove-orphans 2>/dev/null \
+    || true
+  return 0
+}
+
 # Start Redis + web without rebuilding (call staff_docker_build_once first if needed).
 staff_docker_up_web() {
   echo "==> Docker Compose: starting redis + web (no rebuild)"
