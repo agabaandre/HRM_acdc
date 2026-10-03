@@ -59,6 +59,9 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withSchedule(function (Schedule $schedule) {
+        // File mutexes so withoutOverlapping does not hit MySQL cache_locks.
+        $schedule->useCache(env('SCHEDULE_CACHE_STORE', 'file'));
+
         // Schedule instant reminders at 9 AM and 4 PM
         $schedule->command('reminders:schedule')
             ->dailyAt('09:00')

@@ -15,7 +15,9 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    // Prefer file over database: schedule withoutOverlapping() uses this store for
+    // mutex locks, and a brief MySQL outage must not break every schedule:run.
+    'default' => env('CACHE_STORE', 'file'),
 
     /*
     |--------------------------------------------------------------------------

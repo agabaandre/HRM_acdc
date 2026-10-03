@@ -32,6 +32,9 @@ class ScheduleServiceProvider extends ServiceProvider
      */
     protected function schedule(Schedule $schedule): void
     {
+        // File mutexes: avoid cache_locks MySQL dependency (Connection refused → noisy ERROR logs).
+        $schedule->useCache(env('SCHEDULE_CACHE_STORE', 'file'));
+
         // Set timezone to GMT+3 (East Africa Time)
         $schedule->timezone('Africa/Addis_Ababa');
         
