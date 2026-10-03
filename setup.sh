@@ -207,12 +207,24 @@ esac
 prompt_choice SITE_KIND_CHOICE "Site role" "1) Production  2) Demo" "$SITE_KIND_DEFAULT"
 if [[ "$SITE_KIND_CHOICE" == "2" ]]; then
   SITE_KIND=demo
+  APP_ENV=local
+  APP_DEBUG=true
 else
   SITE_KIND=production
+  APP_ENV=production
+  APP_DEBUG=false
 fi
-echo "    Site role: $SITE_KIND"
+export SITE_KIND APP_ENV APP_DEBUG
+echo "    Site role: $SITE_KIND  (APP_ENV=$APP_ENV APP_DEBUG=$APP_DEBUG)"
 if [[ "$SITE_KIND" == "demo" ]]; then
   echo "    Demo: Supervisor queue/scheduler workers will NOT be enabled."
+else
+  echo "    Production: APP_DEBUG=false forced on every module .env"
+  # Module configure-env / setup-production honour these.
+  export STAFF_PORTAL_PRODUCTION_SETUP=1
+  export HELPDESK_PRODUCTION_SETUP=1
+  export FINANCE_PRODUCTION_SETUP=1
+  export RISK_REGISTER_PRODUCTION_SETUP=1
 fi
 
 INSTALL_TYPE_DEFAULT=1
@@ -534,6 +546,8 @@ DB_PASSWORD="${DB_PASS:-}"
 echo
 echo "==> Writing root .env"
 env_set "$ROOT_ENV" SITE_KIND "$SITE_KIND"
+env_set "$ROOT_ENV" APP_ENV "$APP_ENV"
+env_set "$ROOT_ENV" APP_DEBUG "$APP_DEBUG"
 env_set "$ROOT_ENV" DEPLOY_MODE "$DEPLOY_MODE"
 env_set "$ROOT_ENV" BASE_URL "$BASE_URL"
 env_set "$ROOT_ENV" CI_BASE_URL "$CI_BASE_URL"
@@ -602,6 +616,15 @@ env_set "$ROOT_ENV" DB_PORT "$DB_PORT"
 env_set "$ROOT_ENV" DB_USER "$DB_USER"
 env_set "$ROOT_ENV" DB_PASS "$DB_PASS"
 env_set "$ROOT_ENV" DB_NAME "$DB_NAME"
+
+# APP_ENV / APP_DEBUG from site role (production → debug off on every module).
+apply_app_runtime_to_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  env_set "$file" APP_ENV "${APP_ENV:-production}" || return 1
+  env_set "$file" APP_DEBUG "${APP_DEBUG:-false}" || return 1
+  return 0
+}
 
 apply_db_to_file() {
   local file="$1" user_key="${2:-DB_USERNAME}" pass_key="${3:-DB_PASSWORD}"
@@ -724,6 +747,7 @@ prompt_value SP_MAIL_FROM_ADDRESS "staff-portal MAIL_FROM_ADDRESS" \
 write_staff_portal_env() {
   local f
   for f in "$SP_SETUP" "$SP_ENV"; do
+    apply_app_runtime_to_file "$f" || return 1
     env_set "$f" APP_URL "$STAFF_PORTAL_APP_URL" || return 1
     env_set "$f" STAFF_PORTAL_BASE_URL "$STAFF_PORTAL_APP_URL" || return 1
     env_set "$f" STAFF_PORTAL_SPA_URL "$STAFF_PORTAL_SPA_URL" || return 1
@@ -787,8 +811,9 @@ if "$ROOT/scripts/setup/configure-apm-env.sh"; then
 else
   setup_warn "APM configure-apm-env failed"
 fi
-# Force again so empty-skip in configure-apm cannot leave stale APP_URL
-if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
+# Force again so empty-skip in configure-apm cannot leave stale APP_URL / debug
+if apply_app_runtime_to_file "$APM_ENV" \
+  && env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && env_set "$APM_ENV" BASE_URL "$BASE_URL" \
   && env_set "$APM_ENV" CI_BASE_URL "$CI_BASE_URL" \
   && env_set "$APM_ENV" APM_BASE_URL "$APM_BASE_URL" \
@@ -806,7 +831,7 @@ if env_set "$APM_ENV" APP_URL "$APM_APP_URL" \
   && apply_mail_shared_to_file "$APM_ENV" \
   && apply_mail_from_to_file "$APM_ENV" "$APM_MAIL_FROM_ADDRESS" "$APM_MAIL_FROM_NAME"
 then
-  echo "    forced URLs/JWT/Redis/storage/Microsoft/mail on modules/apm/.env"
+  echo "    forced APP_ENV/APP_DEBUG/URLs/JWT/Redis/storage/Microsoft/mail on modules/apm/.env"
 else
   setup_warn "APM env write failed — fix ownership and re-run"
 fi
@@ -831,6 +856,7 @@ write_finance_env() {
         env_ensure_file "$f" "$ROOT/modules/finance/backend/.env.example" || continue
       fi
     fi
+    apply_app_runtime_to_file "$f" || return 1
     env_set "$f" APP_URL "$FINANCE_APP_URL" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
@@ -878,6 +904,7 @@ prompt_value HD_MAIL_FROM_ADDRESS "helpdesk MAIL_FROM_ADDRESS" \
 write_helpdesk_env() {
   local f
   for f in "$HD_SETUP" "$HD_ENV"; do
+    apply_app_runtime_to_file "$f" || return 1
     env_set "$f" APP_URL "$HELPDESK_APP_URL" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" HELPDESK_FRONTEND_URL "$HELPDESK_FRONTEND_URL" || return 1
@@ -929,6 +956,7 @@ RR_DB="${RR_DB:-risk_register}"
 write_risk_register_env() {
   local f
   for f in "$RR_SETUP" "$RR_ENV"; do
+    apply_app_runtime_to_file "$f" || return 1
     env_set "$f" APP_URL "${RISK_REGISTER_APP_URL}/backend" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" DB_DATABASE "$RR_DB" || return 1
@@ -953,6 +981,25 @@ fi
 
 # Writable Laravel dirs + public/storage after .env paths are known.
 setup_fix_laravel_storage
+
+# Drop stale config cache so APP_DEBUG=false takes effect immediately (Ignition).
+if [[ "$SITE_KIND" == "production" ]]; then
+  echo
+  echo "==> Clearing Laravel config cache (production APP_DEBUG=false)"
+  for _cfg_dir in \
+    "$ROOT/modules/apm" \
+    "$ROOT/modules/staff-portal/backend" \
+    "$ROOT/modules/helpdesk/backend" \
+    "$ROOT/modules/finance/backend" \
+    "$ROOT/modules/finance" \
+    "$ROOT/modules/risk-register/backend"
+  do
+    [[ -f "$_cfg_dir/artisan" ]] || continue
+    [[ -f "$_cfg_dir/vendor/autoload.php" ]] || continue
+    (cd "$_cfg_dir" && php artisan config:clear --no-interaction 2>/dev/null) \
+      || echo "    warn: config:clear failed in $_cfg_dir" >&2
+  done
+fi
 
 echo
 echo "=== Staff Share API connection ==="
