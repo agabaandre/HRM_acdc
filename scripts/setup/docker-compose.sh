@@ -165,10 +165,10 @@ staff_docker_composer() {
     esac
   done
 
-  # Prefer --no-build so setup's single build at the end is the only image build.
-  # If the runtime image is missing, compose run will still fail clearly.
+  # Do not pass --no-build: `docker compose run` has no such flag (only `up` does).
+  # Omit --build so Compose uses the existing runtime image from staff_docker_build_once.
   echo "    composer (docker): -w $container_cwd composer ${args[*]}"
-  staff_docker_compose run --rm --no-deps --no-build \
+  staff_docker_compose run --rm --no-deps \
     -w "$container_cwd" \
     -e COMPOSER_ALLOW_SUPERUSER=1 \
     web \

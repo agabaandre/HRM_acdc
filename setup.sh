@@ -1195,22 +1195,34 @@ setup_module_needs_full_install() {
 }
 
 # Always attempt pending migrations (new migration files after git pull).
-# Host-side PHP cannot resolve Compose service hostname `mysql`. Export overrides
-# for artisan/setup-production subprocesses (Laravel prefers real env over .env).
+# Host-side mysql client / PHP cannot use Compose DNS names. Remap for probes and
+# artisan subprocesses (Laravel prefers real env over .env).
+setup_host_reachable_db_host() {
+  case "${1:-}" in
+    mysql|host.docker.internal) printf '%s\n' '127.0.0.1' ;;
+    *) printf '%s\n' "${1:-127.0.0.1}" ;;
+  esac
+}
+
 setup_export_host_db_overrides() {
-  if [[ "${DB_HOST:-}" != "mysql" ]]; then
-    return 0
-  fi
-  export DB_HOST=127.0.0.1
-  local pub=""
-  if [[ -f "$ROOT/docker/.env" ]]; then
-    pub="$(env_get "$ROOT/docker/.env" MYSQL_PUBLISH_PORT)"
-  fi
-  pub="${pub:-33060}"
-  # Bundled Compose publishes host 33060 → container 3306 by default.
-  if [[ "${DB_PORT:-3306}" == "3306" ]]; then
-    export DB_PORT="$pub"
-  fi
+  case "${DB_HOST:-}" in
+    mysql)
+      export DB_HOST=127.0.0.1
+      local pub=""
+      if [[ -f "$ROOT/docker/.env" ]]; then
+        pub="$(env_get "$ROOT/docker/.env" MYSQL_PUBLISH_PORT)"
+      fi
+      pub="${pub:-33060}"
+      # Bundled Compose publishes host 33060 → container 3306 by default.
+      if [[ "${DB_PORT:-3306}" == "3306" ]]; then
+        export DB_PORT="$pub"
+      fi
+      ;;
+    host.docker.internal)
+      # Linux hosts rarely resolve this outside Compose; MySQL listens on loopback.
+      export DB_HOST=127.0.0.1
+      ;;
+  esac
 }
 
 setup_migrate_laravel() {
@@ -1248,19 +1260,16 @@ setup_run_module_production() {
   local name="$1" dir="$2" database="$3"
   shift 3
   local is_new=0
-  local probe_host="$DB_HOST"
+  local probe_host
   local extra=()
-  # Host-side probe: Compose service name mysql is not resolvable on the host.
-  if [[ "$probe_host" == "mysql" ]]; then
-    probe_host="127.0.0.1"
-  fi
+  probe_host="$(setup_host_reachable_db_host "${DB_HOST:-}")"
   if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$database"; then
     is_new=1
     echo "==> $name: new DB — migrate (+ seed when supported)"
   else
     echo "==> $name: existing DB — migrate only (skip seed)"
   fi
-  # Helpdesk category seeder on new DBs; portal/RR skip demo DatabaseSeeder (needs faker, not for prod).
+  # Helpdesk category seeder on new DBs; portal/finance/RR skip demo seeders (faker / not for prod).
   case "$name" in
     helpdesk)
       [[ "$is_new" -eq 0 ]] && extra=(--skip-seed)
@@ -1270,13 +1279,7 @@ setup_run_module_production() {
     setup_export_host_db_overrides
     cd "$dir" && ./setup-production.sh "$@" "${extra[@]}"
   ) || echo "warn: $name setup-production failed" >&2
-  # Finance has no seed flag — seed new schemas via artisan when present.
-  if [[ "$name" == "finance" && "$is_new" -eq 1 && -f "$dir/artisan" ]]; then
-    (
-      setup_export_host_db_overrides
-      cd "$dir" && php artisan db:seed --force --no-interaction
-    ) || echo "warn: finance db:seed failed" >&2
-  fi
+  # Finance DatabaseSeeder uses factories (needs faker / --dev) — never run on production setup.
 }
 
 if [[ "$RUN_INSTALL" == "1" ]]; then
@@ -1346,8 +1349,7 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
         php artisan key:generate --force 2>/dev/null || true
         php artisan jwt:secret --force 2>/dev/null || true
         php artisan migrate --force --no-interaction || true
-        probe_host="${DB_HOST}"
-        [[ "$probe_host" == "mysql" ]] && probe_host="127.0.0.1"
+        probe_host="$(setup_host_reachable_db_host "${DB_HOST:-}")"
         if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
           php artisan db:seed --force --no-interaction 2>/dev/null || true
         fi
