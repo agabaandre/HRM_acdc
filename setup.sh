@@ -931,6 +931,29 @@ fi
 setup_fix_laravel_storage
 
 echo
+echo "=== Staff Share API connection ==="
+# Host-reachable base (PUBLIC_BASE/backend). Compose hostname `web` is rewritten inside the probe.
+SHARE_PROBE_BASE="${PUBLIC_BASE%/}/backend"
+export STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN STAFF_API_INTERNAL_BASE_URL
+env_set "$ROOT_ENV" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" 2>/dev/null || true
+if ! "$ROOT/scripts/setup/probe-staff-share-api.sh" "$SHARE_PROBE_BASE"; then
+  # Retry loopback internal URL when public host differs (e.g. DNS only inside LAN).
+  _retry_internal=1
+  case "$STAFF_API_INTERNAL_BASE_URL" in
+    "$SHARE_PROBE_BASE"|http://web/*|https://web/*) _retry_internal=0 ;;
+  esac
+  if [[ "$_retry_internal" -eq 1 ]]; then
+    echo "    retrying via STAFF_API_INTERNAL_BASE_URL…"
+    if ! "$ROOT/scripts/setup/probe-staff-share-api.sh" "$STAFF_API_INTERNAL_BASE_URL"; then
+      setup_warn "Staff Share API unreachable with current credentials/token — Helpdesk/APM directory sync will fail"
+    fi
+  else
+    setup_warn "Staff Share API unreachable with current credentials/token — Helpdesk/APM directory sync will fail"
+  fi
+  unset _retry_internal
+fi
+
+echo
 echo "=== Summary ==="
 echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
 echo "STAFF_SITE_ID=$STAFF_SITE_ID"
@@ -941,6 +964,7 @@ echo "Mail transport=$MAIL_TRANSPORT (MAIL_MAILER=$MAIL_MAILER) from=$MAIL_FROM_
 echo "EXCHANGE sync=$EXCHANGE_FROM_MS"
 echo "Password login=$ALLOW_ALTERNATIVE_LOGIN"
 echo "Share internal=$STAFF_API_INTERNAL_BASE_URL"
+echo "Share probe=$SHARE_PROBE_BASE"
 echo "Redis=$REDIS_HOST:$REDIS_PORT"
 echo "DB host=${DB_HOST:-unset}  databases: portal=$SP_DB apm=$APM_DB_DATABASE finance=$FN_DB helpdesk=$HD_DB risk=$RR_DB"
 if [[ "$SETUP_ERRORS" -gt 0 ]]; then

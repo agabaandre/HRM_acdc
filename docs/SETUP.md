@@ -39,6 +39,7 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | **Redis** (Host) | Host/port/password (default `127.0.0.1`) |
 | Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** — always prompts user/password; under Docker, external host defaults to `host.docker.internal` |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
+| **Staff Share API** | After credentials are written, setup probes `{PUBLIC_BASE}/backend/share` (JWT via username/password, then static token) and prints CONNECTED / FAILED |
 | **Auth** | Microsoft Entra (`EXCHANGE_TENANT_ID` / `EXCHANGE_CLIENT_ID` / `EXCHANGE_CLIENT_SECRET`) written to **root `.env` only**; modules inherit via `shared/load-staff-root-env.php` and keep per-app `MICROSOFT_REDIRECT_URI` / `EXCHANGE_REDIRECT_URI`; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
