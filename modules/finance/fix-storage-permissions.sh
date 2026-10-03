@@ -81,7 +81,10 @@ run_chmod() {
   # Compiled Blade views: web server must create/rename *.php temp files here.
   chmod ug+rwx storage/framework/views 2>/dev/null || true
   if command -v sudo >/dev/null 2>&1; then
-    sudo chmod ug+rwx storage/framework/views 2>/dev/null || true
+    sudo -n chmod ug+rwx storage/framework/views 2>/dev/null || true
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      sudo chmod ug+rwx storage/framework/views 2>/dev/null || true
+    fi
   fi
 }
 
@@ -91,7 +94,13 @@ scrub_root_owned_views() {
   if [[ -d storage/framework/views ]]; then
     while IFS= read -r -d '' f; do
       bad=1
-      rm -f "$f" 2>/dev/null || sudo rm -f "$f" 2>/dev/null || true
+      if ! rm -f "$f" 2>/dev/null; then
+        if command -v sudo >/dev/null 2>&1; then
+          sudo -n rm -f "$f" 2>/dev/null \
+            || { [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]] && sudo rm -f "$f" 2>/dev/null; } \
+            || true
+        fi
+      fi
     done < <(find storage/framework/views -type f ! -user "$DEPLOY_USER" -print0 2>/dev/null || true)
   fi
   if [[ "$bad" -eq 1 ]]; then

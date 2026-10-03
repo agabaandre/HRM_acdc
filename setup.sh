@@ -234,6 +234,12 @@ if [[ -f "$SETUP_STATE_FILE" ]]; then
   INSTALL_TYPE_DEFAULT=2
 fi
 prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "$INSTALL_TYPE_DEFAULT"
+# New install may prompt for sudo when fixing perms; existing installs never block on a password.
+if [[ "${INSTALL_TYPE}" == "1" ]]; then
+  export ALLOW_INTERACTIVE_SUDO=1
+else
+  export ALLOW_INTERACTIVE_SUDO=0
+fi
 # Default: Docker Compose (Host Apache remains available as choice 1).
 prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host

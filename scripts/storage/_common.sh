@@ -135,11 +135,35 @@ verify_sizes() {
   log "Verify OK: ${src} ↔ ${dest}"
 }
 
+# Non-interactive privilege helper (interactive sudo only when ALLOW_INTERACTIVE_SUDO=1).
+_staff_run_priv() {
+  if "$@" 2>/dev/null; then
+    return 0
+  fi
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+    return $?
+  fi
+  if command -v sudo >/dev/null 2>&1; then
+    if sudo -n "$@" 2>/dev/null; then
+      return 0
+    fi
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      sudo "$@" && return 0
+    fi
+  fi
+  return 1
+}
+
 ensure_dest() {
   local dest="$1"
   if [[ ! -d "$dest" ]]; then
-    sudo mkdir -p "$dest"
+    mkdir -p "$dest" 2>/dev/null || _staff_run_priv mkdir -p "$dest" || true
   fi
-  sudo chown -R "${OWNER}:${GROUP}" "$(dirname "$dest")" "$dest" 2>/dev/null || true
+  if [[ -d "$dest" && -w "$dest" ]]; then
+    chmod -R ug+rwX "$dest" 2>/dev/null || true
+    return 0
+  fi
+  _staff_run_priv chown -R "${OWNER}:${GROUP}" "$(dirname "$dest")" "$dest" 2>/dev/null || true
   chmod -R ug+rwX "$dest" 2>/dev/null || true
 }

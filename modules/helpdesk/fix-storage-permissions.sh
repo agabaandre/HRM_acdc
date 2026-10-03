@@ -78,7 +78,7 @@ resolve_public_root() {
 }
 
 run_as_priv() {
-  # Prefer running as current user when possible (avoids sudo password prompts).
+  # Prefer current user / passwordless sudo. Interactive sudo only on new install.
   if "$@" 2>/dev/null; then
     return 0
   fi
@@ -90,8 +90,10 @@ run_as_priv() {
     if sudo -n "$@" 2>/dev/null; then
       return 0
     fi
-    # Last resort — may prompt; callers should tolerate failure.
-    sudo "$@" 2>/dev/null || return 1
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      sudo "$@" 2>/dev/null || return 1
+      return 0
+    fi
   fi
   return 1
 }

@@ -4,6 +4,12 @@
 #
 # Usage (from repo root):
 #   ./scripts/fix-laravel-storage-permissions.sh
+#   ./scripts/fix-laravel-storage-permissions.sh modules/apm
+#
+# Privilege elevation:
+#   - Never prompts for a sudo password by default (sudo -n only).
+#   - Set ALLOW_INTERACTIVE_SUDO=1 for a new install when interactive sudo is OK.
+#   - Skips chown/sudo entirely when storage dirs are already writable.
 #
 set -euo pipefail
 
@@ -22,7 +28,7 @@ else
   WEB_GROUP="${LARAVEL_WEB_GROUP:-${WEB_GROUP:-www-data}}"
 fi
 
-APPS=(
+DEFAULT_APPS=(
   "modules/apm"
   # Inertia finance app (module root) and Vue/API app under backend/ (SSO + SPA API).
   "modules/finance"
@@ -32,6 +38,13 @@ APPS=(
   "modules/risk-register/backend"
 )
 
+if [[ $# -gt 0 ]]; then
+  APPS=("$@")
+else
+  APPS=("${DEFAULT_APPS[@]}")
+fi
+
+# Passwordless elevation only, unless ALLOW_INTERACTIVE_SUDO=1 (new install).
 run_priv() {
   if "$@" 2>/dev/null; then
     return 0
@@ -41,10 +54,35 @@ run_priv() {
     return $?
   fi
   if command -v sudo >/dev/null 2>&1; then
-    sudo -n "$@" 2>/dev/null && return 0
-    sudo "$@" 2>/dev/null && return 0
+    if sudo -n "$@" 2>/dev/null; then
+      return 0
+    fi
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      sudo "$@" && return 0
+    fi
   fi
   return 1
+}
+
+# True when the web/deploy user can already create files in key Laravel dirs.
+writable_ok() {
+  local base="$1" d probe
+  for d in \
+    storage/logs \
+    bootstrap/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/framework/cache; do
+    [[ -d "${base}/${d}" ]] || return 1
+    [[ -w "${base}/${d}" ]] || return 1
+    probe="${base}/${d}/.cbp-perm-probe.$$"
+    if ! printf 'ok\n' >"$probe" 2>/dev/null; then
+      rm -f "$probe" 2>/dev/null || true
+      return 1
+    fi
+    rm -f "$probe" 2>/dev/null || return 1
+  done
+  return 0
 }
 
 ensure_dirs() {
@@ -129,6 +167,17 @@ fix_app() {
     chmod -RN "${base}/storage" "${base}/bootstrap/cache" 2>/dev/null || true
   fi
 
+  if writable_ok "$base"; then
+    echo "    permissions already OK — skip chown/sudo"
+    chmod -R ug+rwX,o+rX "${base}/storage" "${base}/bootstrap/cache" 2>/dev/null || true
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      chmod -R a+rwX "${base}/storage" "${base}/bootstrap/cache" 2>/dev/null || true
+    fi
+    relink_storage "$base" || true
+    echo "    ok (${OWNER}:${WEB_GROUP})"
+    return 0
+  fi
+
   local targets=("${base}/storage" "${base}/bootstrap/cache" "${base}/public")
   if [[ -d "${base}/database" ]]; then
     targets+=("${base}/database")
@@ -137,7 +186,12 @@ fix_app() {
   if run_priv chown -R "${OWNER}:${WEB_GROUP}" "${targets[@]}"; then
     :
   else
-    echo "    warning: chown ${OWNER}:${WEB_GROUP} failed — run with sudo if Apache cannot write" >&2
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      echo "    warning: chown ${OWNER}:${WEB_GROUP} failed — run with sudo if Apache cannot write" >&2
+    else
+      echo "    warning: storage not fully writable and sudo unavailable (non-interactive)." >&2
+      echo "             First install: re-run with sudo, or: sudo chown -R ${OWNER}:${WEB_GROUP} ${base}/storage ${base}/bootstrap/cache" >&2
+    fi
   fi
 
   run_priv chmod -R ug+rwX,o+rX "${base}/storage" "${base}/bootstrap/cache" \
@@ -163,11 +217,20 @@ fix_app() {
   fi
 
   relink_storage "$base" || true
-  echo "    ok (${OWNER}:${WEB_GROUP})"
+  if writable_ok "$base"; then
+    echo "    ok (${OWNER}:${WEB_GROUP})"
+  else
+    echo "    warning: still not fully writable for ${OWNER}" >&2
+  fi
 }
 
 echo "Fixing Laravel writable dirs + storage:link under ${ROOT}"
 echo "Owner/group: ${OWNER}:${WEB_GROUP}"
+if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+  echo "Sudo: interactive allowed (new installation)"
+else
+  echo "Sudo: non-interactive only (skip password prompts when perms are OK)"
+fi
 echo
 
 for rel in "${APPS[@]}"; do
