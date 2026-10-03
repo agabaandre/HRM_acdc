@@ -625,9 +625,11 @@ class MatrixController extends Controller
     }
     public function store(Request $request)
     {
-        $isAdmin = session('user.user_role') == 10;
-        $userDivisionId = session('user.division_id');
-        $userStaffId = session('user.auth_staff_id');
+        $isAdmin = (int) (user_session('user_role') ?? session('user.user_role')) === 10;
+        $userDivisionId = user_session('division_id') ?? session('user.division_id');
+        $userStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id'));
 
         // Validate form input
         $validated = $request->validate([
@@ -2253,10 +2255,12 @@ class MatrixController extends Controller
                 ->with('error', 'Only draft, returned, or on-hold matrices can be updated.');
         }
 
-        $isAdmin = session('user.user_role') == 10;
-        $userDivisionId = session('user.division_id');
-        $userStaffId = session('user.auth_staff_id');
-    
+        $isAdmin = (int) (user_session('user_role') ?? session('user.user_role')) === 10;
+        $userDivisionId = user_session('division_id') ?? session('user.division_id');
+        $userStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id'));
+
         // Validate basic fields
         $validated = $request->validate([
             'year' => 'required|integer|min:2020|max:2030',

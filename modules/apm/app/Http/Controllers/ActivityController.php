@@ -190,8 +190,19 @@ class ActivityController extends Controller
 
     public function store(Request $request, Matrix $matrix): RedirectResponse|JsonResponse
     {
-        $userStaffId = session('user.auth_staff_id');
-    
+        $userStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id'));
+        if ($userStaffId === null || (int) $userStaffId <= 0) {
+            $errorMsg = 'Your session has no staff ID. Please sign out and sign in again, then retry.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'msg' => $errorMsg], 422);
+            }
+
+            return redirect()->back()->withInput()->with(['msg' => $errorMsg, 'type' => 'error']);
+        }
+        $userStaffId = (int) $userStaffId;
+
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
                 if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
@@ -1047,21 +1058,18 @@ class ActivityController extends Controller
                 ->with('error', $message);
         }
 
-        $userStaffId = session('user.auth_staff_id');
-        
-        // Temporary fix for testing: If no session, create a test session
-        // if (!$userStaffId) {
-        //     // Create a test session for staff ID 558
-        //     session(['user' => [
-        //         'staff_id' => 558,
-        //         'auth_staff_id' => 558,
-        //         'user_id' => 558,
-        //         'fname' => 'Test',
-        //         'lname' => 'User',
-        //         'division_id' => 1
-        //     ]]);
-        //     $userStaffId = 558;
-        // }
+        $userStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id'));
+        if ($userStaffId === null || (int) $userStaffId <= 0) {
+            $message = 'Your session has no staff ID. Please sign out and sign in again, then retry.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'msg' => $message], 422);
+            }
+
+            return redirect()->back()->withInput()->with(['msg' => $message, 'type' => 'error']);
+        }
+        $userStaffId = (int) $userStaffId;
 
         return DB::transaction(function () use ($request, $matrix, $activity, $userStaffId) {
             try {

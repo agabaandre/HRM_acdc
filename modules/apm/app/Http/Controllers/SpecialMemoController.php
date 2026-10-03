@@ -111,9 +111,25 @@ class SpecialMemoController extends Controller
      */
     public function store(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        $userStaffId = session('user.auth_staff_id');
-        $userDivisionId = session('user.division_id');
-    
+        // Prefer staff_id (portal SSO); fall back to auth_staff_id (legacy APM session).
+        $userStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id'));
+        $userDivisionId = user_session('division_id') ?? session('user.division_id');
+
+        if ($userStaffId === null || (int) $userStaffId <= 0) {
+            $errorMsg = 'Your session has no staff ID. Please sign out and sign in again, then retry.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 422);
+            }
+
+            return redirect()->back()->withInput()->with([
+                'msg' => $errorMsg,
+                'type' => 'error',
+            ]);
+        }
+        $userStaffId = (int) $userStaffId;
+
         $validated = $request->validate([
             'activity_title' => 'required|string|max:200',
             'date_from' => 'required|date',
