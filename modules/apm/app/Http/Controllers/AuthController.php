@@ -178,6 +178,8 @@ class AuthController extends Controller
             'permissions' => $json['permissions'] ?? [],
             'last_activity' => now(),
         ]);
+        // Staff Portal JWT may carry base_url=http://localhost/staff/ — rewrite on prod hosts.
+        RuntimeUrl::sanitizeSessionUserBaseUrl();
         session()->save();
     }
 

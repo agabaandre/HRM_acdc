@@ -477,8 +477,7 @@ class ActivityController extends Controller
             }
             
             // Redirect to CodeIgniter login page which will check session and redirect to home if authenticated
-            $base_url = env('BASE_URL', 'http://localhost/staff/');
-            return redirect($base_url . 'auth/login');
+            return redirect(\App\Support\RuntimeUrl::staffPortalLoginUrl());
         }
         
         // Load related models

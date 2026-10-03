@@ -35,7 +35,7 @@ class AuthenticateSessionOrJwt
             }
         }
 
-        $loginUrl = rtrim(env('BASE_URL', 'http://localhost/staff'), '/') . '/auth';
+        $loginUrl = \App\Support\RuntimeUrl::staffPortalLoginUrl();
         return redirect($loginUrl);
     }
 }

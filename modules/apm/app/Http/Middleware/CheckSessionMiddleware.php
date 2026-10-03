@@ -20,14 +20,7 @@ class CheckSessionMiddleware
         // Check if user session exists
         if (!session()->has('user')) {
             try {
-                // Get the parent URL from config or environment, fallback to a default if not set
-                $parentUrl = env('BASE_URL', 'http://localhost/staff');
-                
-                // Ensure the URL ends with /auth for login page
-                $loginUrl = rtrim($parentUrl, '/') . '/auth';
-                
-                // If no session, redirect to parent application's login page
-                return redirect($loginUrl);
+                return redirect(\App\Support\RuntimeUrl::staffPortalLoginUrl());
             } catch (\Exception $e) {
                 // If redirect fails, try a simple redirect to /auth
                 Log::error('CheckSessionMiddleware redirect error: ' . $e->getMessage());

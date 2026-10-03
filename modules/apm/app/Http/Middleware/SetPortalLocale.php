@@ -16,6 +16,7 @@ class SetPortalLocale
         if (function_exists('normalize_session_staff_ids')) {
             normalize_session_staff_ids();
         }
+        \App\Support\RuntimeUrl::sanitizeSessionUserBaseUrl();
 
         $hadCookie = (string) $request->cookie(PortalLocale::cookieName(), '') !== ''
             || (string) ($_COOKIE[PortalLocale::cookieName()] ?? '') !== '';

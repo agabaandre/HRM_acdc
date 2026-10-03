@@ -12,7 +12,7 @@
     <meta name="apm-image-upload-url" content="{{ route('image.upload') }}">
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
-    <meta name="base-url" content="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}">
+    <meta name="base-url" content="{{ \App\Support\RuntimeUrl::staffPortalBaseUrl() }}">
     {{-- Clear stale googtrans before Google Translate can auto-apply a previous language. --}}
     <script>
     (function () {
