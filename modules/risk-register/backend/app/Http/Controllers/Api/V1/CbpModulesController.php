@@ -32,8 +32,14 @@ class CbpModulesController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        if ($this->cbpModulesAdmin->tableExists()) {
-            $this->cbpModulesAdmin->ensureCoreModules();
+        try {
+            if ($this->cbpModulesAdmin->tableExists()) {
+                $this->cbpModulesAdmin->ensureCoreModules();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Risk Register CBP modules: ensureCoreModules failed', [
+                'message' => $e->getMessage(),
+            ]);
         }
 
         $path = trim((string) $request->query('path', ''), '/');
@@ -87,12 +93,17 @@ class CbpModulesController extends Controller
         array $permissionIds,
     ): array {
         $cacheKey = 'rr_cbp_modules_local_v1_'.$staffId.'_'.md5($exclude.'|'.$active.'|'.implode(',', $permissionIds));
-
-        return Cache::remember($cacheKey, 120, function () use ($staffId, $path, $exclude, $active, $permissionIds) {
+        $build = function () use ($staffId, $path, $exclude, $active, $permissionIds) {
             $session = $this->sessionForStaff($staffId, $permissionIds);
 
             return CbpModulesNav::payload($session, $path, $exclude, $active);
-        });
+        };
+
+        try {
+            return Cache::remember($cacheKey, 120, $build);
+        } catch (\Throwable) {
+            return $build();
+        }
     }
 
     /**

@@ -731,6 +731,17 @@ apply_redis_to_file() {
   if [[ -n "${REDIS_PASSWORD:-}" ]]; then
     env_set "$file" REDIS_PASSWORD "$REDIS_PASSWORD" || return 1
   fi
+  # Host Apache often has no Redis daemon (Compose-only). File cache keeps SSO
+  # bearer tokens working; Docker keeps redis.
+  if [[ "$DEPLOY_MODE" == "host" ]]; then
+    local cur_store
+    cur_store="$(env_get "$file" CACHE_STORE 2>/dev/null || true)"
+    if [[ -z "$cur_store" || "$cur_store" == "redis" ]]; then
+      if ! (command -v redis-cli >/dev/null 2>&1 && redis-cli -h "${rh:-127.0.0.1}" -p "${REDIS_PORT:-6379}" ping 2>/dev/null | grep -qi pong); then
+        env_set "$file" CACHE_STORE "file" || return 1
+      fi
+    fi
+  fi
   return 0
 }
 
@@ -947,6 +958,8 @@ write_finance_env() {
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
     env_set "$f" VITE_APP_BASE_PATH "$VITE_FINANCE_BASE_PATH" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_FINANCE_BASE_PATH:-${PUBLIC_PATH}/finance/}" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_FINANCE_API_BASE_URL:-${PUBLIC_PATH}/finance/backend}" || return 1
     env_set "$f" SESSION_PATH "$FINANCE_SESSION_PATH" || return 1
     # JWT_SECRET / SESSION_SECRET: staff root .env only
     env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
@@ -957,6 +970,15 @@ write_finance_env() {
     apply_storage_to_file "$f" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
+  done
+  local fe_prod="$ROOT/modules/finance/frontend/.env.production"
+  local fe_local="$ROOT/modules/finance/frontend/.env.production.local"
+  env_ensure_file "$fe_prod" "" || true
+  env_ensure_file "$fe_local" "" || true
+  for f in "$fe_prod" "$fe_local"; do
+    [[ -f "$f" ]] || continue
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_FINANCE_BASE_PATH:-${PUBLIC_PATH}/finance/}" || true
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_FINANCE_API_BASE_URL:-${PUBLIC_PATH}/finance/backend}" || true
   done
 }
 if write_finance_env; then
@@ -1046,9 +1068,24 @@ write_risk_register_env() {
     env_set "$f" APP_URL "${RISK_REGISTER_APP_URL}/backend" || return 1
     env_set "$f" BASE_URL "$BASE_URL" || return 1
     env_set "$f" DB_DATABASE "$RR_DB" || return 1
+    # SPA asset base must be /{web}/risk-register/ — not portal /{web}/.
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_RISK_REGISTER_BASE_PATH:-${PUBLIC_PATH}/risk-register/}" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_RISK_REGISTER_API_BASE_URL:-${PUBLIC_PATH}/risk-register/backend}" || return 1
+    env_set "$f" VITE_RISK_REGISTER_BASE_PATH "${VITE_RISK_REGISTER_BASE_PATH:-${PUBLIC_PATH}/risk-register/}" || return 1
+    env_set "$f" VITE_RISK_REGISTER_API_BASE_URL "${VITE_RISK_REGISTER_API_BASE_URL:-${PUBLIC_PATH}/risk-register/backend}" || return 1
     apply_storage_to_file "$f" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
+  done
+  # Vite loadEnv reads frontend/.env.production*
+  local fe_prod="$ROOT/modules/risk-register/frontend/.env.production"
+  local fe_local="$ROOT/modules/risk-register/frontend/.env.production.local"
+  env_ensure_file "$fe_prod" "" || true
+  env_ensure_file "$fe_local" "" || true
+  for f in "$fe_prod" "$fe_local"; do
+    [[ -f "$f" ]] || continue
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_RISK_REGISTER_BASE_PATH:-${PUBLIC_PATH}/risk-register/}" || true
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_RISK_REGISTER_API_BASE_URL:-${PUBLIC_PATH}/risk-register/backend}" || true
   done
 }
 if write_risk_register_env; then

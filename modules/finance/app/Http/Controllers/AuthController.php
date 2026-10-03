@@ -51,7 +51,9 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
+        // Strip /backend if present — logout lives on staff-portal Laravel web routes.
+        $base = preg_replace('#/backend$#', '', $base) ?? $base;
 
-        return redirect($base.'/auth/logout');
+        return redirect($base.'/backend/logout');
     }
 }

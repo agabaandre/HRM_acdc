@@ -40,7 +40,9 @@ class CbpPlatformMenuService
         $permissions = array_map('strval', session('permissions', []));
 
         $sessionForToken = $user;
-        $sessionForToken['base_url'] = rtrim(\App\Support\RuntimeUrl::staffPortalBaseUrl(), '/').'/';
+        if (! isset($sessionForToken['base_url'])) {
+            $sessionForToken['base_url'] = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/').'/';
+        }
 
         $out = [];
         foreach ($rows as $row) {
@@ -216,6 +218,8 @@ class CbpPlatformMenuService
 
     private static function staffWebBaseUrl(): string
     {
-        return RuntimeUrl::staffPortalBaseUrl();
+        $u = (string) session('user.base_url', env('BASE_URL', 'http://localhost/staff/'));
+
+        return RuntimeUrl::normalizeStaffPortalPublicUrl($u);
     }
 }

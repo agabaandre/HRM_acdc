@@ -19,11 +19,9 @@ class SessionMonitor {
             this.useFallbackMode = false; // Will be set to true if session API fails
             this.apiTimeout = 5000; // 5 second timeout for API calls
             
-            // Get base URL for logout redirect (from meta tag or session data)
-            // Using logout endpoint to destroy both Laravel and CodeIgniter sessions
-            const baseUrlMeta = document.querySelector('meta[name="base-url"]')?.getAttribute('content');
-            const baseUrlFromSession = window.baseUrl || baseUrlMeta || '';
-            this.logoutUrl = baseUrlFromSession ? (baseUrlFromSession + '/auth/logout') : '/staff/auth/logout';
+            // APM /logout → Staff Portal /backend/logout (never SPA /auth/logout placeholder)
+            const logoutMeta = document.querySelector('meta[name="logout-url"]')?.getAttribute('content');
+            this.logoutUrl = logoutMeta || '/staff/apm/logout';
             
             this.init();
         } catch (error) {

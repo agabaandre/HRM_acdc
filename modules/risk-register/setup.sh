@@ -69,10 +69,21 @@ fi
 if [[ -n "${VITE_STAFF_PORTAL_BASE_PATH:-}" ]]; then
   dotenv_set "$PROD_ENV" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH"
 fi
-dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_API_BASE_URL \
-  "${VITE_STAFF_PORTAL_API_BASE_URL:-/staff/backend}"
-dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_BASE_PATH \
-  "${VITE_STAFF_PORTAL_BASE_PATH:-/staff/}"
+# Prefer module mounts. Root setup.sh exports portal-wide VITE_STAFF_PORTAL_BASE_PATH=/staff/
+# which must not be used for this SPA (assets would 404 under staff-portal).
+_rr_base="${VITE_RISK_REGISTER_BASE_PATH:-}"
+_rr_api="${VITE_RISK_REGISTER_API_BASE_URL:-}"
+if [[ -z "$_rr_base" || "$_rr_base" == "/" || "$_rr_base" == "/staff/" || "$_rr_base" == "${PUBLIC_PATH:-/staff}/" ]]; then
+  _rr_base="/${WEB_ROOT:-staff}/risk-register/"
+fi
+if [[ -z "$_rr_api" || "$_rr_api" == "/staff/backend" || "$_rr_api" == "${PUBLIC_PATH:-/staff}/backend" ]]; then
+  _rr_api="/${WEB_ROOT:-staff}/risk-register/backend"
+fi
+case "$_rr_base" in */) ;; *) _rr_base="${_rr_base}/" ;; esac
+VITE_STAFF_PORTAL_BASE_PATH="$_rr_base"
+VITE_STAFF_PORTAL_API_BASE_URL="$_rr_api"
+dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_API_BASE_URL "$VITE_STAFF_PORTAL_API_BASE_URL"
+dotenv_set "$ROOT/frontend/.env.production" VITE_STAFF_PORTAL_BASE_PATH "$VITE_STAFF_PORTAL_BASE_PATH"
 export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
 
 npm run build

@@ -93,18 +93,36 @@ fi
 WEB_ROOT="$(printf '%s' "$WEB_ROOT" | sed -E 's#^/##; s#/$##')"
 [[ -n "$WEB_ROOT" ]] || WEB_ROOT=staff
 WEB_PREFIX="/${WEB_ROOT}"
-# Always align Vite paths to this deploy (stale .env.production.local must not keep
-# /cbpdemo/ or /staff/ when the folder is now demo_staff).
-VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-${WEB_PREFIX}/backend}"
-VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-${WEB_PREFIX}/}"
-# Force away legacy /…/staff-portal/ bases and any mismatched prefix.
+# Risk Register SPA lives at /{web}/risk-register/ — never the portal root /{web}/.
+# Building with /staff/ makes index.html request /staff/assets/* (staff-portal), which
+# 404s with text/plain MIME under Host Apache.
+MODULE_BASE="${WEB_PREFIX}/risk-register/"
+MODULE_API="${WEB_PREFIX}/risk-register/backend"
+VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH:-$MODULE_BASE}"
+VITE_STAFF_PORTAL_API_BASE_URL="${VITE_STAFF_PORTAL_API_BASE_URL:-$MODULE_API}"
 case "${VITE_STAFF_PORTAL_BASE_PATH}" in
-    "${WEB_PREFIX}/"|"${WEB_PREFIX}") ;;
-    *)
-        VITE_STAFF_PORTAL_BASE_PATH="${WEB_PREFIX}/"
-        VITE_STAFF_PORTAL_API_BASE_URL="${WEB_PREFIX}/backend"
+    "${MODULE_BASE}"|"${MODULE_BASE%/}") ;;
+    "${WEB_PREFIX}/"|"${WEB_PREFIX}"|*/staff-portal/*|*/staff-portal/)
+        VITE_STAFF_PORTAL_BASE_PATH="$MODULE_BASE"
+        VITE_STAFF_PORTAL_API_BASE_URL="$MODULE_API"
         warn "Forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH} (WEB_ROOT=${WEB_ROOT})"
         ;;
+    *)
+        # Keep alternate prefixes (e.g. /demo_staff/risk-register/) when they already
+        # end with /risk-register/; otherwise force the module mount for this WEB_ROOT.
+        case "${VITE_STAFF_PORTAL_BASE_PATH}" in
+            */risk-register|*/risk-register/) ;;
+            *)
+                VITE_STAFF_PORTAL_BASE_PATH="$MODULE_BASE"
+                VITE_STAFF_PORTAL_API_BASE_URL="$MODULE_API"
+                warn "Forcing Vite base to ${VITE_STAFF_PORTAL_BASE_PATH} (WEB_ROOT=${WEB_ROOT})"
+                ;;
+        esac
+        ;;
+esac
+case "${VITE_STAFF_PORTAL_BASE_PATH}" in
+    */) ;;
+    *) VITE_STAFF_PORTAL_BASE_PATH="${VITE_STAFF_PORTAL_BASE_PATH}/" ;;
 esac
 log "Vite base: ${VITE_STAFF_PORTAL_BASE_PATH}  API: ${VITE_STAFF_PORTAL_API_BASE_URL}"
 

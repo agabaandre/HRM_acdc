@@ -60,8 +60,8 @@ async function loadCbpModules() {
   try {
     const path = route.path === '/' ? 'home' : route.path.replace(/^\//, '')
     nav.value = await fetchCbpModules({
-      exclude: 'risk_register',
-      active: 'risk_register',
+      exclude: 'finance',
+      active: 'finance',
       path,
       fresh: true,
     })

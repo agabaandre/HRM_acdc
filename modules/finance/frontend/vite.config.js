@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   const proxyTarget =
     env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/backend'
   const base = isProd
-    ? env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/'
+    ? env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/finance/'
     : '/'
   return {
     base,

@@ -75,7 +75,6 @@ final class RuntimeUrl
             (string) env('BASE_URL', ''),
         ];
 
-        $localFallback = '';
         foreach ($candidates as $raw) {
             $normalized = self::normalizeStaffPortalPublicUrl($raw);
             if ($normalized === '') {
@@ -86,67 +85,24 @@ final class RuntimeUrl
             if (! self::isLocalHost(is_string($host) ? $host : null) || self::requestIsLocal()) {
                 return $normalized;
             }
-            // Keep local candidate as last resort (local requests only).
-            if ($localFallback === '') {
-                $localFallback = $normalized;
-            }
+            // Keep local candidate as last resort below.
+            $localFallback = $normalized;
         }
 
-        // Live HTTP request on a non-local host + SSO/env still saying localhost
-        // → prefer the request host (also works under PHPUnit with a bound Request).
-        $requestHostUrl = self::requestStaffPortalBaseUrl();
-        if ($requestHostUrl !== '' && ! self::requestIsLocal()) {
-            return $requestHostUrl;
-        }
-
-        if ($localFallback !== '') {
+        if (! empty($localFallback)) {
             return $localFallback;
         }
 
-        if ($requestHostUrl !== '') {
-            return $requestHostUrl;
+        if (! app()->runningInConsole()) {
+            $request = request();
+            if ($request instanceof Request && $request->hasHeader('Host')) {
+                $webRoot = self::webRootSegment();
+
+                return $request->getSchemeAndHttpHost().'/'.$webRoot;
+            }
         }
 
         return 'http://localhost/'.self::webRootSegment();
-    }
-
-    /**
-     * Rewrite session user.base_url when SSO carried localhost into a production request.
-     */
-    public static function sanitizeSessionUserBaseUrl(): void
-    {
-        if (self::requestIsLocal()) {
-            return;
-        }
-
-        $user = session('user');
-        if (! is_array($user)) {
-            return;
-        }
-
-        $resolved = self::staffPortalBaseUrl();
-        $current = trim((string) ($user['base_url'] ?? ''));
-        $currentHost = parse_url($current !== '' ? $current : 'http://invalid', PHP_URL_HOST);
-        if ($current !== '' && ! self::isLocalHost(is_string($currentHost) ? $currentHost : null)) {
-            return;
-        }
-
-        $user['base_url'] = rtrim($resolved, '/').'/';
-        session(['user' => $user, 'base_url' => $user['base_url']]);
-    }
-
-    private static function requestStaffPortalBaseUrl(): string
-    {
-        try {
-            $request = request();
-        } catch (\Throwable) {
-            return '';
-        }
-        if (! $request instanceof Request || ! $request->hasHeader('Host')) {
-            return '';
-        }
-
-        return $request->getSchemeAndHttpHost().'/'.self::webRootSegment();
     }
 
     /**
@@ -155,6 +111,15 @@ final class RuntimeUrl
     public static function staffPortalLoginUrl(): string
     {
         return rtrim(self::staffPortalBaseUrl(), '/').'/login';
+    }
+
+    /**
+     * Staff Portal Laravel web logout (clears session, redirects to SPA login).
+     * Not /auth/logout — that path is an SPA catch-all placeholder.
+     */
+    public static function staffPortalLogoutUrl(): string
+    {
+        return rtrim(self::staffPortalBaseUrl(), '/').'/backend/logout';
     }
 
     /**
@@ -231,13 +196,12 @@ final class RuntimeUrl
 
     private static function requestIsLocal(): bool
     {
-        try {
-            $request = request();
-        } catch (\Throwable) {
-            return app()->runningInConsole();
+        if (app()->runningInConsole()) {
+            return true;
         }
-        if (! $request instanceof Request || ! $request->hasHeader('Host')) {
-            return app()->runningInConsole();
+        $request = request();
+        if (! $request instanceof Request) {
+            return true;
         }
 
         return self::isLocalHost($request->getHost());

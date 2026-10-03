@@ -122,7 +122,7 @@
                                     <div class="dropdown-divider mb-0"></div>
                                 </li>
                                 <li>
-                                    <a class="dropdown-item" href="{{ \App\Support\RuntimeUrl::staffPortalBaseUrl() }}/auth/logout">
+                                    <a class="dropdown-item" href="{{ route('logout') }}">
                                         <i class="bx bx-log-out-circle"></i><span>Logout</span>
                                     </a>
                                 </li>

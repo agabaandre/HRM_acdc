@@ -23,6 +23,16 @@ cp -a "$DIST/." "$ROOT/frontend/dist-user/"
 # Keep root index.html in sync for spa-static.php fallbacks (prefer dist-build via .htaccess).
 cp -f "$DIST/index.html" "$ROOT/index.html"
 
+# Guard: reject / rewrite builds that point at portal /…/assets (wrong Vite base).
+if grep -EEq 'src="/(staff|demo_staff|cbp|demo_cbp)[^"]*/assets/' "$ROOT/index.html"; then
+  if ! grep -EEq 'src="[^"]*/risk-register/assets/' "$ROOT/index.html"; then
+    echo "error: index.html asset URLs are not under …/risk-register/assets/ — Vite base is wrong." >&2
+    echo "       Rebuild with VITE_STAFF_PORTAL_BASE_PATH=/{web}/risk-register/" >&2
+    grep -E 'assets/' "$ROOT/index.html" | head -5 >&2 || true
+    exit 1
+  fi
+fi
+
 # Remove clone Staff Portal assets that steal /staff/risk-register/assets via wrong base.
 if [[ -d "$ROOT/assets" ]]; then
   # Only replace if assets are risk-register build copies under this module

@@ -11,8 +11,9 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
   const proxyTarget =
     env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/backend'
+  // Module mount only — never portal root /staff/ (conflicts with staff-portal assets).
   const base = isProd
-    ? env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/'
+    ? env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/risk-register/'
     : '/'
   return {
     base,

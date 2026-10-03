@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { navigateToLogout } from '../lib/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -369,6 +370,17 @@ const router = createRouter({
       // CI3 report builders are linked from Staff / Dashboard — no SPA hub.
       path: '/reports',
       redirect: { name: 'staff' },
+    },
+    {
+      // Legacy CI3 / module links hit SPA /auth/logout; real logout is Laravel /backend/logout.
+      path: '/auth/logout',
+      name: 'legacy-auth-logout',
+      meta: { chrome: false },
+      beforeEnter() {
+        navigateToLogout()
+        return false
+      },
+      component: () => import('../pages/LoginPage.vue'),
     },
     {
       path: '/:pathMatch(.*)*',

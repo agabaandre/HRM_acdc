@@ -49,7 +49,11 @@ class SsoAcceptController extends Controller
                 'sso_claims' => $payload,
             ];
             $request->session()->put('risk_register', $sessionPayload);
-            Cache::put('risk_api_token:'.$apiToken, $sessionPayload, now()->addHours(12));
+            try {
+                Cache::put('risk_api_token:'.$apiToken, $sessionPayload, now()->addHours(12));
+            } catch (Throwable $e) {
+                Log::warning('Finance SSO token cache put failed', ['error' => $e->getMessage()]);
+            }
 
             $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/finance'), '/');
             $redirect = '/'.$spaPath.'/';

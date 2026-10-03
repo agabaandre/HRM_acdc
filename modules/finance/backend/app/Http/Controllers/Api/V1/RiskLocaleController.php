@@ -24,16 +24,31 @@ class RiskLocaleController extends Controller
         $staffId = (int) $request->attributes->get('risk_staff_id', 0);
         $userLocale = null;
         if ($staffId > 0) {
-            $user = PortalUser::query()->where('auth_staff_id', $staffId)->where('status', 1)->first();
-            if ($user instanceof PortalUser) {
-                $userLocale = (string) ($user->langauge ?? '');
+            try {
+                $user = PortalUser::query()->where('auth_staff_id', $staffId)->where('status', 1)->first();
+                if ($user instanceof PortalUser) {
+                    $userLocale = (string) ($user->langauge ?? '');
+                }
+            } catch (\Throwable) {
+                $userLocale = null;
             }
         }
         $cookie = (string) $request->cookie((string) PortalLocalesConfig::get('cookie', 'staff_portal_locale'), '');
 
-        return response()->json([
-            'data' => $this->languages->catalog($userLocale ?: null, $cookie !== '' ? $cookie : null),
-        ]);
+        try {
+            $data = $this->languages->catalog($userLocale ?: null, $cookie !== '' ? $cookie : null);
+        } catch (\Throwable) {
+            $data = [
+                'locale' => 'en',
+                'direction' => 'ltr',
+                'is_rtl' => false,
+                'languages' => [
+                    ['code' => 'en', 'name' => 'English', 'flag' => '', 'google_code' => 'en', 'is_rtl' => false],
+                ],
+            ];
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     public function apply(Request $request): JsonResponse

@@ -19,9 +19,14 @@ class AuthenticateRiskSession
         $session = null;
 
         if ($bearer !== null && $bearer !== '') {
-            $cached = Cache::get('risk_api_token:'.$bearer);
-            if (is_array($cached)) {
-                $session = $cached;
+            try {
+                $cached = Cache::get('risk_api_token:'.$bearer);
+                if (is_array($cached)) {
+                    $session = $cached;
+                }
+            } catch (\Throwable) {
+                // Host Apache may lack Redis that Docker provides — fall through to session.
+                $session = null;
             }
         }
 
@@ -46,10 +51,14 @@ class AuthenticateRiskSession
 
         $staffId = (int) $session['staff_id'];
         $request->attributes->set('risk_staff_id', $staffId);
-        $resolvedDivisionId = StaffDivisionContext::resolveDivisionId($session, $staffId);
-        $staleActive = (int) ($session[StaffDivisionContext::SESSION_ACTIVE_ID] ?? 0);
-        if ($staleActive > 0 && $staleActive !== $resolvedDivisionId) {
-            StaffDivisionContext::clearActiveOnSession($request);
+        try {
+            $resolvedDivisionId = StaffDivisionContext::resolveDivisionId($session, $staffId);
+            $staleActive = (int) ($session[StaffDivisionContext::SESSION_ACTIVE_ID] ?? 0);
+            if ($staleActive > 0 && $staleActive !== $resolvedDivisionId) {
+                StaffDivisionContext::clearActiveOnSession($request);
+            }
+        } catch (\Throwable) {
+            $resolvedDivisionId = (int) ($session['division_id'] ?? 0);
         }
         $request->attributes->set('risk_division_id', $resolvedDivisionId);
         $perms = $session['permissions'] ?? [];

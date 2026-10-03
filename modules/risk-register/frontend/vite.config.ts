@@ -13,8 +13,10 @@ export default defineConfig(({ mode }) => {
   const proxyTarget =
     env.VITE_STAFF_PORTAL_API_PROXY_TARGET || 'http://localhost/staff/backend'
 
+  // Must be the module mount (/staff/risk-register/), never the portal root
+  // (/staff/) — that steals assets into staff-portal spa-static.php (404/MIME).
   const base = isProd
-    ? (env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/')
+    ? (env.VITE_STAFF_PORTAL_BASE_PATH || '/staff/risk-register/')
     : '/'
 
   return {

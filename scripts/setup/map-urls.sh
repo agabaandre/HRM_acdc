@@ -56,6 +56,9 @@ setup_map_urls() {
   VITE_STAFF_PORTAL_API_BASE_URL="${PUBLIC_PATH}/backend"
   VITE_STAFF_PORTAL_BASE_PATH="${PUBLIC_PATH}/"
   VITE_FINANCE_BASE_PATH="${PUBLIC_PATH}/finance/"
+  VITE_FINANCE_API_BASE_URL="${PUBLIC_PATH}/finance/backend"
+  VITE_RISK_REGISTER_BASE_PATH="${PUBLIC_PATH}/risk-register/"
+  VITE_RISK_REGISTER_API_BASE_URL="${PUBLIC_PATH}/risk-register/backend"
   FINANCE_SESSION_PATH="${PUBLIC_PATH}/finance"
 
   if [[ "$deploy" == "docker" ]]; then

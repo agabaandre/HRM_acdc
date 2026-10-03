@@ -13,6 +13,7 @@
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <meta name="base-url" content="{{ \App\Support\RuntimeUrl::staffPortalBaseUrl() }}">
+    <meta name="logout-url" content="{{ route('logout') }}">
     {{-- Clear stale googtrans before Google Translate can auto-apply a previous language. --}}
     <script>
     (function () {

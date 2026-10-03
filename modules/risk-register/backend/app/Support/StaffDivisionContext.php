@@ -257,11 +257,15 @@ final class StaffDivisionContext
             return;
         }
 
-        $cached = Cache::get('risk_api_token:'.$bearer);
-        if (! is_array($cached)) {
-            return;
-        }
+        try {
+            $cached = Cache::get('risk_api_token:'.$bearer);
+            if (! is_array($cached)) {
+                return;
+            }
 
-        Cache::put('risk_api_token:'.$bearer, $mutator($cached), now()->addHours(12));
+            Cache::put('risk_api_token:'.$bearer, $mutator($cached), now()->addHours(12));
+        } catch (\Throwable) {
+            // Redis/cache optional for bearer overlay; web session already updated above.
+        }
     }
 }
