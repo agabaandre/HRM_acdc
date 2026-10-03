@@ -261,13 +261,19 @@ if [[ "$DEPLOY_MODE" == "docker" ]]; then
   fi
 fi
 
-# Default: External MySQL (bundled Compose MySQL is opt-in). Always collect credentials.
+# Bundled Compose MySQL only makes sense with Docker deploy (hostname `mysql`).
+# Host Apache / host artisan must use a resolvable host (usually 127.0.0.1).
 DB_DEFAULT=2
-prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL" "$DB_DEFAULT"
-case "$DB_CHOICE" in
-  1) DB_MODE=bundled ;;
-  *) DB_MODE=external ;;
-esac
+if [[ "$DEPLOY_MODE" == "host" ]]; then
+  DB_MODE=external
+  echo "    Database: External MySQL (Host Apache cannot use Compose hostname mysql)"
+else
+  prompt_choice DB_CHOICE "Database" "1) Docker bundled MySQL  2) External MySQL" "$DB_DEFAULT"
+  case "$DB_CHOICE" in
+    1) DB_MODE=bundled ;;
+    *) DB_MODE=external ;;
+  esac
+fi
 
 ROOT_ENV="$ROOT/.env"
 env_ensure_file "$ROOT_ENV" "$ROOT/scripts/setup/templates/root.env.example"
@@ -530,6 +536,7 @@ DB_PASS="$(env_get "$ROOT_ENV" DB_PASS)"
 DB_NAME="$(env_get "$ROOT_ENV" DB_NAME)"
 
 if [[ "$DB_MODE" == "bundled" ]]; then
+  # In-container PHP resolves the Compose service name. Host-side artisan remaps below.
   DB_HOST=mysql
   prompt_value DB_PORT "DB_PORT" "${DB_PORT:-3306}"
   prompt_value DB_USER "DB_USER" "${DB_USER:-staff}"
@@ -537,6 +544,16 @@ if [[ "$DB_MODE" == "bundled" ]]; then
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
 else
   _dh="$DB_HOST"
+  # Stale Compose hostname left in .env from a prior bundled run — never keep on host
+  # Apache, and never use as "external" under Docker (use host gateway instead).
+  if [[ "$_dh" == "mysql" ]]; then
+    if [[ "$DEPLOY_MODE" == "docker" ]]; then
+      _dh=host.docker.internal
+    else
+      _dh=127.0.0.1
+    fi
+    echo "    Note: replacing DB_HOST=mysql with ${_dh} for ${DEPLOY_MODE} + external MySQL"
+  fi
   [[ -z "$_dh" && "$DEPLOY_MODE" == "docker" ]] && _dh=host.docker.internal
   [[ -z "$_dh" ]] && _dh=127.0.0.1
   prompt_value DB_HOST "DB_HOST" "$_dh"
@@ -544,6 +561,12 @@ else
   prompt_value DB_USER "DB_USER" "${DB_USER:-root}"
   prompt_secret DB_PASS "DB_PASS" "$DB_PASS"
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
+fi
+
+# Final safety: host deploy must never persist an unresolvable Compose DB hostname.
+if [[ "$DEPLOY_MODE" == "host" && "$DB_HOST" == "mysql" ]]; then
+  DB_HOST=127.0.0.1
+  echo "    Note: forced DB_HOST=127.0.0.1 (Host Apache cannot resolve mysql)"
 fi
 
 DB_USERNAME="${DB_USER:-}"
@@ -1172,6 +1195,24 @@ setup_module_needs_full_install() {
 }
 
 # Always attempt pending migrations (new migration files after git pull).
+# Host-side PHP cannot resolve Compose service hostname `mysql`. Export overrides
+# for artisan/setup-production subprocesses (Laravel prefers real env over .env).
+setup_export_host_db_overrides() {
+  if [[ "${DB_HOST:-}" != "mysql" ]]; then
+    return 0
+  fi
+  export DB_HOST=127.0.0.1
+  local pub=""
+  if [[ -f "$ROOT/docker/.env" ]]; then
+    pub="$(env_get "$ROOT/docker/.env" MYSQL_PUBLISH_PORT)"
+  fi
+  pub="${pub:-33060}"
+  # Bundled Compose publishes host 33060 → container 3306 by default.
+  if [[ "${DB_PORT:-3306}" == "3306" ]]; then
+    export DB_PORT="$pub"
+  fi
+}
+
 setup_migrate_laravel() {
   local label="$1" dir="$2"
   local artisan=""
@@ -1189,6 +1230,7 @@ setup_migrate_laravel() {
   fi
   echo "==> $label: php artisan migrate --force"
   (
+    setup_export_host_db_overrides
     cd "$(dirname "$artisan")"
     php artisan migrate --force --no-interaction 2>/dev/null \
       || php artisan migrate --force --no-interaction \
@@ -1224,12 +1266,16 @@ setup_run_module_production() {
       [[ "$is_new" -eq 0 ]] && extra=(--skip-seed)
       ;;
   esac
-  (cd "$dir" && ./setup-production.sh "$@" "${extra[@]}") \
-    || echo "warn: $name setup-production failed" >&2
+  (
+    setup_export_host_db_overrides
+    cd "$dir" && ./setup-production.sh "$@" "${extra[@]}"
+  ) || echo "warn: $name setup-production failed" >&2
   # Finance has no seed flag — seed new schemas via artisan when present.
   if [[ "$name" == "finance" && "$is_new" -eq 1 && -f "$dir/artisan" ]]; then
-    (cd "$dir" && php artisan db:seed --force --no-interaction) \
-      || echo "warn: finance db:seed failed" >&2
+    (
+      setup_export_host_db_overrides
+      cd "$dir" && php artisan db:seed --force --no-interaction
+    ) || echo "warn: finance db:seed failed" >&2
   fi
 }
 
@@ -1294,12 +1340,13 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
   if [[ -f "$ROOT/modules/apm/artisan" ]]; then
     if setup_module_needs_full_install apm; then
       (
+        setup_export_host_db_overrides
         cd "$ROOT/modules/apm"
         composer install --no-interaction --prefer-dist || true
         php artisan key:generate --force 2>/dev/null || true
         php artisan jwt:secret --force 2>/dev/null || true
         php artisan migrate --force --no-interaction || true
-        probe_host="$DB_HOST"
+        probe_host="${DB_HOST}"
         [[ "$probe_host" == "mysql" ]] && probe_host="127.0.0.1"
         if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
           php artisan db:seed --force --no-interaction 2>/dev/null || true
