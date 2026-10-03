@@ -73,6 +73,7 @@ if (! function_exists('user_session')) {
                     return $key === null ? $user : $default;
                 }
                 sync_session_staff_id_aliases($user);
+                apply_active_division_overlay($user);
 
                 if ($key === null) {
                     return $user;
@@ -95,6 +96,7 @@ if (! function_exists('user_session')) {
                 $user = [];
             }
             sync_session_staff_id_aliases($user);
+            apply_active_division_overlay($user);
 
             if ($key === null) {
                 return $user;
@@ -110,6 +112,34 @@ if (! function_exists('user_session')) {
             }
 
             return $value;
+        }
+
+        /**
+         * When session active_division_id is set and switchable, expose it via user_session.
+         *
+         * @param  array<string, mixed>  $user
+         */
+        function apply_active_division_overlay(array &$user): void
+        {
+            if (! class_exists(\App\Support\StaffDivisionContext::class)) {
+                return;
+            }
+            $stored = (int) session(\App\Support\StaffDivisionContext::SESSION_ACTIVE_ID, 0);
+            if ($stored <= 0) {
+                return;
+            }
+            // Pass staff id explicitly — never call user_session() here (would recurse).
+            $staffId = (int) ($user['staff_id'] ?? $user['auth_staff_id'] ?? 0);
+            $staffId = $staffId > 0 ? $staffId : null;
+            $activeId = \App\Support\StaffDivisionContext::activeDivisionId($staffId);
+            if ($activeId === null || $activeId <= 0) {
+                return;
+            }
+            $user['division_id'] = $activeId;
+            $name = \App\Support\StaffDivisionContext::activeDivisionName($staffId);
+            if (is_string($name) && $name !== '') {
+                $user['division_name'] = $name;
+            }
         }
 
         /**

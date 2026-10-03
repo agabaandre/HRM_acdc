@@ -171,6 +171,9 @@ class AuthController extends Controller
         if (function_exists('sync_session_staff_id_aliases')) {
             sync_session_staff_id_aliases($json);
         }
+        if (class_exists(\App\Support\StaffDivisionContext::class)) {
+            \App\Support\StaffDivisionContext::clearActive();
+        }
 
         session([
             'user' => $json,
@@ -178,8 +181,6 @@ class AuthController extends Controller
             'permissions' => $json['permissions'] ?? [],
             'last_activity' => now(),
         ]);
-        // Staff Portal JWT may carry base_url=http://localhost/staff/ — rewrite on prod hosts.
-        RuntimeUrl::sanitizeSessionUserBaseUrl();
         session()->save();
     }
 

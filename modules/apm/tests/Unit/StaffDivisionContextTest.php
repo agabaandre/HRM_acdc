@@ -121,3 +121,16 @@ test('setActive accepts associated division', function () {
     expect((int) session(StaffDivisionContext::SESSION_ACTIVE_ID))->toBe(910320);
     expect(StaffDivisionContext::activeDivisionId(910504))->toBe(910320);
 });
+
+test('user_session division_id prefers active_division_id when switchable', function () {
+    seedDivisionForContext(910410, 'Primary Div');
+    seedDivisionForContext(910420, 'Associated Div');
+    seedStaffForContext(910505, 910410, [910420]);
+
+    session(['user' => ['staff_id' => 910505, 'division_id' => 910410, 'division_name' => 'Primary Div']]);
+    expect((int) user_session('division_id'))->toBe(910410);
+
+    expect(StaffDivisionContext::setActive(910420, 910505))->toBeTrue();
+    expect((int) user_session('division_id'))->toBe(910420);
+    expect((string) user_session('division_name'))->toBe('Associated Div');
+});
