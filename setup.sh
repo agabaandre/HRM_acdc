@@ -259,9 +259,15 @@ setup_warn() {
   return 0
 }
 
-if [[ "$DEPLOY_MODE" == "host" && "$PREV_DEPLOY_MODE" == "docker" ]]; then
-  echo "==> Switching Docker → Host Apache: stopping Compose and clearing Compose-only settings"
-  staff_docker_down_stack || true
+if [[ "$DEPLOY_MODE" == "host" ]]; then
+  # Always retire Compose workers on Host Apache (even if PREV was unset/wrong).
+  if [[ "$PREV_DEPLOY_MODE" == "docker" ]]; then
+    echo "==> Switching Docker → Host Apache: stopping Compose stack and Docker Supervisor jobs"
+    staff_docker_down_stack || true
+  else
+    echo "==> Host Apache: ensuring Docker Compose workers/Supervisor are stopped"
+    staff_retire_docker_workers || true
+  fi
 fi
 
 if [[ "$DEPLOY_MODE" == "docker" ]]; then
@@ -1498,6 +1504,10 @@ else
   fi
   prompt_choice RUN_SUPERVISOR "Install Supervisor background workers (queue/scheduler)?" "1) Yes  2) No" "$SUP_DEFAULT"
 
+  # Host Apache must not share queues with Compose workers (cbp-docker-*).
+  echo "==> Stopping Docker Compose workers before host Supervisor"
+  staff_retire_docker_workers || true
+
   if [[ "$RUN_SUPERVISOR" == "1" ]]; then
     PHP_BIN_RESOLVED="$(command -v php || echo /usr/bin/php)"
     for setupf in "$SP_SETUP" "$HD_SETUP" \
@@ -1509,7 +1519,7 @@ else
       env_set "$setupf" PHP_BIN "$PHP_BIN_RESOLVED"
       env_set "$setupf" WEB_ROOT "$WEB_ROOT"
     done
-    echo "==> Supervisor (WEB_ROOT=$WEB_ROOT)"
+    echo "==> Host Supervisor (WEB_ROOT=$WEB_ROOT)"
     WEB_ROOT="$WEB_ROOT" \
     PHP_BIN="$PHP_BIN_RESOLVED" \
     SUPERVISOR_USER="${SUPERVISOR_USER:-www-data}" \
@@ -1517,7 +1527,7 @@ else
       "$ROOT/scripts/setup/install-supervisor.sh" \
       || echo "warn: Supervisor install failed" >&2
   else
-    echo "==> Skipping Supervisor"
+    echo "==> Skipping host Supervisor (Docker workers were still stopped above)"
   fi
 fi
 

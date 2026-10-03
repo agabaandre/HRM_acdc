@@ -200,6 +200,45 @@ staff_docker_build_once() {
   export STAFF_DOCKER_BUILT
 }
 
+# Stop Compose `workers` supervisord (cbp-docker-*) so host Supervisor can take over.
+# Safe no-op when Docker/Compose/workers are not running.
+staff_retire_docker_workers() {
+  if ! staff_docker_resolve_access 2>/dev/null; then
+    echo "    (Docker not available — skip Compose worker retirement)"
+    return 0
+  fi
+  staff_ensure_docker_env 2>/dev/null || true
+
+  echo "==> Retiring Docker Compose workers (in-container Supervisor cbp-docker-*)"
+
+  # Cleanly stop queue/scheduler programs inside the workers container first.
+  if staff_docker_compose --profile workers ps --status running 2>/dev/null | grep -Eqi '[[:space:]]workers[[:space:]]'; then
+    echo "    supervisorctl stop all (Compose workers)"
+    staff_docker_compose --profile workers exec -T workers supervisorctl stop all 2>/dev/null || true
+  fi
+
+  echo "    stop/remove Compose service: workers"
+  staff_docker_compose --profile workers stop workers 2>/dev/null || true
+  staff_docker_compose --profile workers rm -f -v workers 2>/dev/null || true
+
+  # Catch leftover workers containers (wrong project name / orphans).
+  local ids="" dcmd=(docker)
+  if [[ "${#STAFF_DOCKER_PREFIX[@]}" -gt 0 ]]; then
+    dcmd=("${STAFF_DOCKER_PREFIX[@]}" docker)
+  fi
+  ids="$("${dcmd[@]}" ps -aq --filter "label=com.docker.compose.service=workers" 2>/dev/null || true)"
+  if [[ -n "$ids" ]]; then
+    echo "    removing leftover compose workers container(s)"
+    # shellcheck disable=SC2086
+    "${dcmd[@]}" stop $ids 2>/dev/null || true
+    # shellcheck disable=SC2086
+    "${dcmd[@]}" rm -f $ids 2>/dev/null || true
+  fi
+
+  echo "    Docker worker Supervisor jobs retired"
+  return 0
+}
+
 # Stop Compose stack when switching to Host Apache (best-effort).
 staff_docker_down_stack() {
   if ! staff_docker_resolve_access 2>/dev/null; then
@@ -207,6 +246,7 @@ staff_docker_down_stack() {
     return 0
   fi
   echo "==> Docker Compose: stopping stack (Host Apache will own the site)"
+  staff_retire_docker_workers || true
   # Include optional profiles so workers / bundled MySQL containers stop too.
   staff_docker_compose --profile workers --profile bundled-db down --remove-orphans 2>/dev/null \
     || staff_docker_compose down --remove-orphans 2>/dev/null \
