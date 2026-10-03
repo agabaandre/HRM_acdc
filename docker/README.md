@@ -78,7 +78,7 @@ Port comes from `APP_PORT` in `docker/.env` (default **8088**).
 
 | Variable | Typical Docker value |
 |----------|----------------------|
-| `DB_HOST` | `host.docker.internal` (host MySQL) or `mysql` (profile `bundled-db`) |
+| `DB_HOST` | Keep `127.0.0.1` in module `.env` for host MySQL (Host Apache / Share). Compose overrides to `host.docker.internal` for `web`/`workers`. Use `mysql` only with profile `bundled-db`. |
 | `REDIS_HOST` | `redis` |
 | `REDIS_PORT` | `6379` |
 | Staff Share base (APM/Helpdesk/Finance) | `http://web/staff/backend` for in-network calls |

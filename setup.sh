@@ -536,36 +536,39 @@ DB_PASS="$(env_get "$ROOT_ENV" DB_PASS)"
 DB_NAME="$(env_get "$ROOT_ENV" DB_NAME)"
 
 if [[ "$DB_MODE" == "bundled" ]]; then
-  # In-container PHP resolves the Compose service name. Host-side artisan remaps below.
+  # Compose service name — only valid inside the Compose network. Host artisan remaps.
   DB_HOST=mysql
   prompt_value DB_PORT "DB_PORT" "${DB_PORT:-3306}"
   prompt_value DB_USER "DB_USER" "${DB_USER:-staff}"
   prompt_secret DB_PASS "DB_PASS" "${DB_PASS:-staff}"
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
 else
+  # Persist a host-reachable address in every module .env (Host Apache + Share probes).
+  # Docker Compose injects DB_HOST=host.docker.internal for web/workers only
+  # (see docker-compose.yml extra_hosts + environment) — do not write that into .env files.
   _dh="$DB_HOST"
-  # Stale Compose hostnames left in .env — never keep on Host Apache (no Docker DNS).
-  # Under Docker + external MySQL, prefer host.docker.internal for in-container PHP.
-  if [[ "$DEPLOY_MODE" == "host" && ( "$_dh" == "mysql" || "$_dh" == "host.docker.internal" ) ]]; then
-    echo "    Note: replacing DB_HOST=${_dh} with 127.0.0.1 (Host Apache)"
+  if [[ "$_dh" == "mysql" || "$_dh" == "host.docker.internal" ]]; then
+    echo "    Note: replacing DB_HOST=${_dh} with 127.0.0.1 (persist host-reachable MySQL)"
     _dh=127.0.0.1
-  elif [[ "$_dh" == "mysql" ]]; then
-    _dh=host.docker.internal
-    echo "    Note: replacing DB_HOST=mysql with ${_dh} for Docker + external MySQL"
   fi
-  [[ -z "$_dh" && "$DEPLOY_MODE" == "docker" ]] && _dh=host.docker.internal
   [[ -z "$_dh" ]] && _dh=127.0.0.1
-  prompt_value DB_HOST "DB_HOST" "$_dh"
+  prompt_value DB_HOST "DB_HOST (MySQL on this machine = 127.0.0.1)" "$_dh"
   prompt_value DB_PORT "DB_PORT" "${DB_PORT:-3306}"
   prompt_value DB_USER "DB_USER" "${DB_USER:-root}"
   prompt_secret DB_PASS "DB_PASS" "$DB_PASS"
   prompt_value DB_NAME "Root DB_NAME" "${DB_NAME:-staff}"
 fi
 
-# Final safety: host deploy must never persist Compose-only DB hostnames.
-if [[ "$DEPLOY_MODE" == "host" && ( "$DB_HOST" == "mysql" || "$DB_HOST" == "host.docker.internal" ) ]]; then
-  echo "    Note: forced DB_HOST=127.0.0.1 (Host Apache cannot resolve ${DB_HOST})"
+# Never persist Compose-only hostnames for external MySQL (breaks Host Apache / Share).
+if [[ "$DB_MODE" != "bundled" && ( "$DB_HOST" == "mysql" || "$DB_HOST" == "host.docker.internal" ) ]]; then
+  echo "    Note: forced DB_HOST=127.0.0.1 (was ${DB_HOST})"
   DB_HOST=127.0.0.1
+fi
+
+if [[ "$DEPLOY_MODE" == "docker" && "$DB_MODE" == "external" ]]; then
+  echo "    Docker: containers use host.docker.internal via compose env override;"
+  echo "            module .env keeps DB_HOST=${DB_HOST} for host Apache/Share."
+  echo "            Host MySQL must accept Docker bridge clients (not bind-address=127.0.0.1 only)."
 fi
 
 DB_USERNAME="${DB_USER:-}"
@@ -672,8 +675,13 @@ apply_app_runtime_to_file() {
 
 apply_db_to_file() {
   local file="$1" user_key="${2:-DB_USERNAME}" pass_key="${3:-DB_PASSWORD}"
+  local host="${DB_HOST:-}"
+  # External MySQL: never leave Compose DNS names in on-disk .env (Host Apache / Share).
+  if [[ "$DB_MODE" != "bundled" && ( "$host" == "mysql" || "$host" == "host.docker.internal" ) ]]; then
+    host=127.0.0.1
+  fi
   env_set "$file" DB_CONNECTION "mysql" || return 1
-  env_set "$file" DB_HOST "${DB_HOST:-}" || return 1
+  env_set "$file" DB_HOST "$host" || return 1
   env_set "$file" DB_PORT "${DB_PORT:-}" || return 1
   env_set "$file" "$user_key" "${DB_USER:-}" || return 1
   env_set "$file" "$pass_key" "${DB_PASS:-}" || return 1

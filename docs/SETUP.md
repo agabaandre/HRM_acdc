@@ -37,7 +37,7 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | Deploy | Host Apache · **Docker Compose (default)** |
 | **Redis** (Docker) | **Docker Redis (default)** · External Redis |
 | **Redis** (Host) | Host/port/password (default `127.0.0.1`) |
-| Database | **Host Apache:** External MySQL only (default `127.0.0.1`; never writes Compose hostname `mysql`). **Docker:** Bundled MySQL (`DB_HOST=mysql`, opt-in) · **External MySQL (default)** — external host defaults to `host.docker.internal`; host-side `artisan migrate` remaps `mysql` → `127.0.0.1` (+ published port) |
+| Database | **External MySQL (default):** always persists host-reachable `DB_HOST` (default `127.0.0.1`) in root + module `.env` — never `host.docker.internal` / `mysql` on disk. **Docker + external:** Compose injects `DB_HOST=host.docker.internal` for `web`/`workers` only (`extra_hosts: host-gateway`). **Bundled MySQL (Docker opt-in):** `DB_HOST=mysql`; host-side artisan remaps to `127.0.0.1` + published port |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
 | **Runtime** | Site role **Production** forces `APP_ENV=production` and `APP_DEBUG=false` on root + every module `.env` (APM, portal, helpdesk, finance, risk-register) and clears Laravel config cache so Ignition stays off |
 | **Logging** | Forces `LOG_CHANNEL=stack` + `LOG_STACK=daily` (14-day retention) so each module writes `storage/logs/laravel-YYYY-MM-DD.log`; settings UIs can filter by date and level |
