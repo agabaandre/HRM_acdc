@@ -1,4 +1,4 @@
-export const SETTINGS_SECTIONS = ['general', 'ai', 'agents', 'categories', 'it-assets', 'risk-matrix', 'jobs', 'integrations', 'software-requests', 'logging'] as const
+export const SETTINGS_SECTIONS = ['general', 'staff-api', 'email', 'ai', 'agents', 'categories', 'it-assets', 'risk-matrix', 'jobs', 'integrations', 'software-requests', 'logging'] as const
 
 export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]
 
@@ -9,6 +9,8 @@ export function parseSettingsSection(value: unknown): SettingsSectionId {
 
 export const SETTINGS_SECTION_LABELS: Record<SettingsSectionId, string> = {
   general: 'General',
+  'staff-api': 'Staff API',
+  email: 'Email settings',
   ai: 'AI models & provider',
   agents: 'Agents & support groups',
   categories: 'Issue categories',
@@ -23,6 +25,8 @@ export const SETTINGS_SECTION_LABELS: Record<SettingsSectionId, string> = {
 /** Top primary nav → Settings dropdown (paths must match router children). */
 export const SETTINGS_NAV_DROPDOWN_ITEMS = [
   { path: '/settings/general', label: SETTINGS_SECTION_LABELS.general },
+  { path: '/settings/staff-api', label: SETTINGS_SECTION_LABELS['staff-api'] },
+  { path: '/settings/email', label: SETTINGS_SECTION_LABELS.email },
   { path: '/settings/ai', label: SETTINGS_SECTION_LABELS.ai },
   { path: '/settings/agents', label: SETTINGS_SECTION_LABELS.agents },
   { path: '/settings/categories', label: SETTINGS_SECTION_LABELS.categories },

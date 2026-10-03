@@ -72,6 +72,12 @@
             @case('stale-memos')
                 @include('stale-memos.index', $panelData)
                 @break
+            @case('email')
+                @include('email-settings.index', $panelData)
+                @break
+            @case('staff-api')
+                @include('staff-api-settings.index', $panelData)
+                @break
             @case('whatsapp')
                 @include('whatsapp-settings.index', $panelData)
                 @break

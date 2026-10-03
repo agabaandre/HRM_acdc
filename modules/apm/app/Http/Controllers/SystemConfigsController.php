@@ -40,6 +40,16 @@ class SystemConfigsController extends Controller
             'icon' => 'bx-archive-in',
             'description' => 'Auto-archive abandoned draft memos holding budget & archive history',
         ],
+        'email' => [
+            'label' => 'Email',
+            'icon' => 'bx-envelope',
+            'description' => 'Outbound mail dispatch, local transport fallback & test send',
+        ],
+        'staff-api' => [
+            'label' => 'Staff API',
+            'icon' => 'bx-key',
+            'description' => 'Staff Share API credentials (DB overrides env) & connection test',
+        ],
         'whatsapp' => [
             'label' => 'WhatsApp',
             'icon' => 'bxl-whatsapp',
@@ -107,6 +117,8 @@ class SystemConfigsController extends Controller
             'audit-logs' => app(AuditLogsController::class)->getIndexData($request),
             'backups' => app(BackupController::class)->getIndexData(),
             'stale-memos' => app(StaleMemoArchivesController::class)->getIndexData($request),
+            'email' => app(EmailSettingsController::class)->getIndexData(),
+            'staff-api' => app(StaffApiSettingsController::class)->getIndexData(),
             'whatsapp' => app(WhatsAppSettingsController::class)->getIndexData(),
             default => [],
         };

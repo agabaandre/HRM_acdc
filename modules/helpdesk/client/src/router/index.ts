@@ -47,6 +47,12 @@ const routes: RouteRecordRaw[] = [
         meta: { settingsTitle: 'General' },
       },
       {
+        path: 'email',
+        name: 'settings-email',
+        component: () => import('../components/settings/EmailSettingsPanel.vue'),
+        meta: { settingsTitle: 'Email settings' },
+      },
+      {
         path: 'ai',
         component: () => import('../views/settings/AiSettingsLayoutView.vue'),
         meta: { settingsTitle: 'AI models & provider' },

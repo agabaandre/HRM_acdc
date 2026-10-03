@@ -7,6 +7,7 @@ use Modules\Settings\Http\Controllers\Api\V1\OrgStructureController;
 use Modules\Settings\Http\Controllers\Api\V1\OrgUnitsSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\SharedStorageController;
 use Modules\Settings\Http\Controllers\Api\V1\SettingsApiController;
+use Modules\Settings\Http\Controllers\Api\V1\StaffApiSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\StaffJobsSettingsController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
@@ -22,6 +23,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::post('settings/shared-storage/purge-ci', [SharedStorageController::class, 'purgeCi']);
     Route::get('settings/portal-modules', [SettingsApiController::class, 'showPortalModules']);
     Route::put('settings/portal-modules', [SettingsApiController::class, 'updatePortalModules']);
+    Route::get('settings/staff-api', [StaffApiSettingsController::class, 'show']);
+    Route::put('settings/staff-api', [StaffApiSettingsController::class, 'update']);
+    Route::post('settings/staff-api/test', [StaffApiSettingsController::class, 'test']);
     Route::get('settings/email-servers/drivers', [EmailProvidersController::class, 'drivers']);
     Route::get('settings/email-servers', [EmailProvidersController::class, 'index']);
     Route::post('settings/email-servers', [EmailProvidersController::class, 'store']);

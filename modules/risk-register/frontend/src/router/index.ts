@@ -121,6 +121,18 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'Risk settings', titleKey: 'rr.settings_title', module: 'settings' },
     },
     {
+      path: '/risk-settings/email',
+      name: 'risk-settings-email',
+      component: () => import('../pages/risks/EmailSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Email settings', module: 'settings' },
+    },
+    {
+      path: '/risk-settings/staff-api',
+      name: 'risk-settings-staff-api',
+      component: () => import('../pages/risks/StaffApiSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Staff API credentials', module: 'settings' },
+    },
+    {
       path: '/risk-settings/lookups/:key',
       name: 'risk-settings-lookup',
       component: () => import('../pages/risks/RiskLookupListPage.vue'),

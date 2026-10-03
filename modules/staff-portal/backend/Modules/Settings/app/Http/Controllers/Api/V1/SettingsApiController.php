@@ -29,13 +29,14 @@ class SettingsApiController extends Controller
         PortalPermission::authorize(15);
 
         $cards = [
+            ['to' => '/settings/staff-api', 'label' => 'Staff API credentials', 'icon' => 'bx-key', 'special' => true, 'i18n_key' => 'card_staff_api'],
+            ['to' => '/settings/email-servers', 'label' => 'Email settings', 'icon' => 'bx-envelope', 'special' => true, 'i18n_key' => 'card_email_servers'],
             ['to' => '/settings/portal-modules', 'label' => 'Portal modules', 'icon' => 'bx-toggle-left', 'special' => true, 'i18n_key' => 'card_portal_modules'],
             ['to' => '/settings/languages', 'label' => 'Languages', 'icon' => 'bx-globe', 'special' => true, 'i18n_key' => 'card_languages'],
             ['to' => '/settings/ai-providers', 'label' => 'AI providers', 'icon' => 'bx-bot', 'special' => true, 'i18n_key' => 'card_ai_providers'],
             ['to' => '/settings/shared-storage', 'label' => 'Shared storage', 'icon' => 'bx-hdd', 'special' => true, 'i18n_key' => 'card_shared_storage'],
             ['to' => '/settings/staff-jobs', 'label' => 'Staff jobs', 'icon' => 'bx-timer', 'special' => true, 'i18n_key' => 'card_staff_jobs'],
             ['to' => '/settings/workplan', 'label' => 'Workplan / PRA', 'icon' => 'bx-cloud-download', 'special' => true, 'i18n_key' => 'card_workplan_pra'],
-            ['to' => '/settings/email-servers', 'label' => 'Email servers', 'icon' => 'bx-envelope', 'special' => true, 'i18n_key' => 'card_email_servers'],
             ['to' => '/settings/lookup/cbp_modules', 'label' => 'CBP modules', 'icon' => 'bx-grid-alt', 'special' => true, 'i18n_key' => 'card_cbp_modules'],
             ['to' => '/settings/lookup/nationalities', 'label' => 'Nationalities', 'icon' => 'bx-globe', 'i18n_key' => 'card_nationalities'],
             ['to' => '/settings/lookup/duty_stations', 'label' => 'Duty Stations', 'icon' => 'bx-map', 'i18n_key' => 'card_duty_stations'],

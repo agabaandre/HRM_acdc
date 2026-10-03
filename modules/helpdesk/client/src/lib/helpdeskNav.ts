@@ -15,6 +15,7 @@ export const HELP_DESK_NAV_ICONS = {
 
 export const SETTINGS_NAV_ICONS: Record<string, string> = {
   general: 'bx bx-slider-alt',
+  email: 'bx bx-envelope',
   ai: 'bx bx-bot',
   agents: 'bx bx-group',
   categories: 'bx bx-category-alt',

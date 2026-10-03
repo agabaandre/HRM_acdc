@@ -128,13 +128,10 @@ class StaffPortalReferenceClient
             return $this->http;
         }
 
-        $base = StaffApiBaseUrl::resolve((string) config('helpdesk.staff_api.base_url'));
-        $this->http = StaffShareHttp::fromConfig([
-            'base_url' => $base,
-            'username' => config('helpdesk.staff_api.username'),
-            'password' => config('helpdesk.staff_api.password'),
-            'token' => config('helpdesk.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
-        ], 120);
+        $bag = class_exists(\App\Support\HelpdeskSettingsBag::class)
+            ? new \App\Support\HelpdeskSettingsBag
+            : null;
+        $this->http = \Staff\Shared\StaffApiCredentials::client($bag, 120);
 
         return $this->http;
     }

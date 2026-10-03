@@ -62,7 +62,9 @@ class StaffPortalOrgClient
 
     public function isConfigured(): bool
     {
-        return $this->username() !== '' && $this->password() !== '' && $this->token() !== '';
+        $r = $this->credentials();
+
+        return ($r['username'] !== '' && $r['password'] !== '') || $r['token'] !== '';
     }
 
     /**
@@ -448,15 +450,7 @@ class StaffPortalOrgClient
 
     private function buildUrl(string $endpointKey): string
     {
-        $base = rtrim((string) config('risk-register.staff_api.base_url', env('STAFF_API_BASE_URL', '')), '/');
-        if ($base === '') {
-            $base = rtrim((string) env('STAFF_API_INTERNAL_BASE_URL', ''), '/');
-        }
-        if ($base === '') {
-            // Prefer staff portal root, not this module's APP_URL (/staff/risk-register/backend).
-            $portal = rtrim((string) env('BASE_URL', 'http://localhost/staff'), '/');
-            $base = $portal.'/backend';
-        }
+        $base = rtrim($this->credentials()['base_url'], '/');
         $path = match ($endpointKey) {
             'divisions' => (string) config('risk-register.staff_api.endpoints.divisions', '/share/divisions'),
             'directorates' => (string) config('risk-register.staff_api.endpoints.directorates', '/share/directorates'),
@@ -471,6 +465,24 @@ class StaffPortalOrgClient
         }
 
         return $base.rtrim($path, '/').'/'.$token;
+    }
+
+    /**
+     * @return array{base_url: string, username: string, password: string, token: string}
+     */
+    private function credentials(): array
+    {
+        $bag = class_exists(\App\Support\RrSettingsBag::class)
+            ? new \App\Support\RrSettingsBag
+            : null;
+        $r = \Staff\Shared\StaffApiCredentials::resolve($bag);
+
+        return [
+            'base_url' => $r['base_url'],
+            'username' => $r['username'],
+            'password' => $r['password'],
+            'token' => $r['token'],
+        ];
     }
 
     /**
@@ -542,17 +554,17 @@ class StaffPortalOrgClient
 
     private function username(): string
     {
-        return trim((string) config('risk-register.staff_api.username', env('STAFF_API_USERNAME', '')));
+        return $this->credentials()['username'];
     }
 
     private function password(): string
     {
-        return trim((string) config('risk-register.staff_api.password', env('STAFF_API_PASSWORD', '')));
+        return $this->credentials()['password'];
     }
 
     private function token(): string
     {
-        return trim((string) config('risk-register.staff_api.token', env('STAFF_API_TOKEN', '')));
+        return $this->credentials()['token'];
     }
 
     private function formatHttpError(Response $response): string

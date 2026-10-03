@@ -15,6 +15,8 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/dashboard': 'fa-solid fa-chart-pie',
   '/portfolio/entry': 'fa-solid fa-table',
   '/sap-import': 'fa-solid fa-file-import',
+  '/settings/email': 'fa-solid fa-envelope',
+  '/settings/staff-api': 'fa-solid fa-key',
 }
 
 export function pageIconForPath(path: string): string {
@@ -54,6 +56,24 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     group: 'primary',
     icon: 'fa-solid fa-file-import',
     module: 'sap',
+  },
+  {
+    label: 'Email settings',
+    i18nKey: 'finance.email_settings',
+    to: '/settings/email',
+    match: ['/settings/email'],
+    group: 'more',
+    icon: 'fa-solid fa-envelope',
+    module: 'settings',
+  },
+  {
+    label: 'Staff API',
+    i18nKey: 'finance.staff_api',
+    to: '/settings/staff-api',
+    match: ['/settings/staff-api'],
+    group: 'more',
+    icon: 'fa-solid fa-key',
+    module: 'settings',
   },
 ]
 

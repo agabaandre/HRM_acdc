@@ -33,12 +33,10 @@ class SyncDirectoratesCommand extends Command
         $this->info('Starting directorates sync from Africa CDC API...');
 
         try {
-            $client = StaffShareHttp::fromConfig([
-                'base_url' => StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url')),
-                'username' => config('services.staff_api.username'),
-                'password' => config('services.staff_api.password'),
-                'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
-            ], 120);
+            $client = \Staff\Shared\StaffApiCredentials::client(
+                class_exists(\App\Support\SystemSettingsBag::class) ? new \App\Support\SystemSettingsBag('staff_api') : null,
+                120
+            );
             if (! $client->isConfigured()) {
                 throw new Exception('Set STAFF_API_USERNAME + STAFF_API_PASSWORD and/or STAFF_API_TOKEN for Share API.');
             }

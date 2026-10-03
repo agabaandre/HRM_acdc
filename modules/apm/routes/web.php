@@ -239,12 +239,22 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // System configuration hub (jobs default tab)
     Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
-        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos|whatsapp')
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos|email|staff-api|whatsapp')
         ->name('system-configs.index');
     Route::post('/system-configs/stale-memos/archive-all', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveAll'])
         ->name('stale-memos.archive-all');
     Route::post('/system-configs/stale-memos/unarchive', [App\Http\Controllers\StaleMemoArchivesController::class, 'unarchiveOne'])
         ->name('stale-memos.unarchive');
+    Route::post('/system-configs/email', [App\Http\Controllers\EmailSettingsController::class, 'update'])
+        ->name('email-settings.update');
+    Route::post('/system-configs/email/test', [App\Http\Controllers\EmailSettingsController::class, 'test'])
+        ->middleware('throttle:10,1')
+        ->name('email-settings.test');
+    Route::post('/system-configs/staff-api', [App\Http\Controllers\StaffApiSettingsController::class, 'update'])
+        ->name('staff-api-settings.update');
+    Route::post('/system-configs/staff-api/test', [App\Http\Controllers\StaffApiSettingsController::class, 'test'])
+        ->middleware('throttle:10,1')
+        ->name('staff-api-settings.test');
     Route::post('/system-configs/whatsapp', [App\Http\Controllers\WhatsAppSettingsController::class, 'update'])
         ->middleware(['whatsapp.access:config', 'throttle:20,1'])
         ->name('whatsapp-settings.update');

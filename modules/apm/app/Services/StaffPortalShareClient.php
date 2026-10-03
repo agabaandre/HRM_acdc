@@ -101,13 +101,10 @@ class StaffPortalShareClient
             return $this->http;
         }
 
-        $base = StaffApiBaseUrl::resolve((string) config('services.staff_api.base_url'));
-        $this->http = StaffShareHttp::fromConfig([
-            'base_url' => $base,
-            'username' => config('services.staff_api.username'),
-            'password' => config('services.staff_api.password'),
-            'token' => config('services.staff_api.token') ?: 'YWZyY2FjZGNzdGFmZnRyYWNrZXI',
-        ], 60);
+        $bag = class_exists(\App\Support\SystemSettingsBag::class)
+            ? new \App\Support\SystemSettingsBag('staff_api')
+            : null;
+        $this->http = \Staff\Shared\StaffApiCredentials::client($bag, 60);
 
         return $this->http;
     }

@@ -39,6 +39,18 @@ const router = createRouter({
       component: () => import('../pages/finance/SapImportPage.vue'),
       meta: { requiresAuth: true, title: 'SAP import', module: 'sap' },
     },
+    {
+      path: '/settings/email',
+      name: 'settings-email',
+      component: () => import('../pages/finance/EmailSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Email settings', module: 'settings' },
+    },
+    {
+      path: '/settings/staff-api',
+      name: 'settings-staff-api',
+      component: () => import('../pages/finance/StaffApiSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Staff API credentials', module: 'settings' },
+    },
   ],
 })
 

@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\V1\RiskImportController;
 use App\Http\Controllers\Api\V1\RiskReportsController;
 use App\Http\Controllers\Api\V1\RiskLookupsController;
 use App\Http\Controllers\Api\V1\RiskReviewController;
+use App\Http\Controllers\Api\V1\EmailSettingsController;
+use App\Http\Controllers\Api\V1\StaffApiSettingsController;
 use App\Http\Controllers\Api\V1\RiskSettingsController;
 use App\Http\Controllers\Api\V1\RiskWorkflowController;
 use App\Http\Controllers\Api\V1\PortfolioController;
@@ -37,6 +39,12 @@ Route::prefix('v1')->group(function () {
         Route::delete('/settings/lookups/{table}/{id}', [RiskSettingsController::class, 'deleteLookup'])->whereNumber('id');
         Route::post('/settings/rating-bands/publish', [RiskSettingsController::class, 'publishRatingBands']);
         Route::post('/settings/rating-bands/activate', [RiskSettingsController::class, 'activateRatingVersion']);
+        Route::get('/settings/email', [EmailSettingsController::class, 'show']);
+        Route::put('/settings/email', [EmailSettingsController::class, 'update']);
+        Route::post('/settings/email/test', [EmailSettingsController::class, 'test']);
+        Route::get('/settings/staff-api', [StaffApiSettingsController::class, 'show']);
+        Route::put('/settings/staff-api', [StaffApiSettingsController::class, 'update']);
+        Route::post('/settings/staff-api/test', [StaffApiSettingsController::class, 'test']);
 
         Route::get('/import/status', [RiskImportController::class, 'status']);
         Route::post('/import/preview', [RiskImportController::class, 'preview']);

@@ -16,11 +16,17 @@
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # Vite hashed assets from dist-build
+    # Vite hashed assets — prefer dist-user (local), then dist-build
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/finance/frontend/dist-user/$1 -f
+    RewriteRule ^(.*)$ frontend/dist-user/$1 [L]
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
     RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
     # SPA fallback
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/finance/frontend/dist-user/index.html -f
+    RewriteRule ^ frontend/dist-user/index.html [L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>

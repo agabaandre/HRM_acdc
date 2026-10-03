@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import SettingsSubnav from '@/components/molecules/SettingsSubnav.vue'
 import {
   createEmailProvider,
   deleteEmailProvider,
@@ -168,13 +169,14 @@ onMounted(load)
 <template>
   <div>
     <PortalPageChrome
-      title="Email servers"
-      lede="Configure how Staff Portal sends mail. Exchange is the default; empty fields fall back to EXCHANGE_* / MAIL_* env values."
+      title="Email settings"
+      lede="Providers used by Staff Portal and CBP modules (Share mail hub). Prefer HTTP (notifications.africacdc.org); empty fields fall back to EXCHANGE_* / MAIL_* env values."
     >
       <template #actions>
         <v-btn color="primary" @click="openCreate">Add provider</v-btn>
       </template>
     </PortalPageChrome>
+    <SettingsSubnav />
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
     <v-alert v-if="success" type="success" variant="tonal" class="mb-3" density="compact">{{ success }}</v-alert>

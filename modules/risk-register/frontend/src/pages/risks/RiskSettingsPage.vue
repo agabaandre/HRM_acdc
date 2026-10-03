@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { api } from '@/lib/api'
 import { useRiskLookups } from '@/composables/useRiskLookups'
@@ -263,6 +264,18 @@ onMounted(() => {
 
     <RrSkeleton v-if="loading" variant="cards" :rows="3" />
     <template v-else>
+      <section class="rr-card">
+        <h2>Staff API</h2>
+        <p class="rr-muted">Share API credentials (DB overrides env) and connection test.</p>
+        <RouterLink class="rr-btn" :to="{ name: 'risk-settings-staff-api' }">Open Staff API settings</RouterLink>
+      </section>
+
+      <section class="rr-card">
+        <h2>Email settings</h2>
+        <p class="rr-muted">Outbound mail dispatch (portal hub / local transport) and test send.</p>
+        <RouterLink class="rr-btn" :to="{ name: 'risk-settings-email' }">Open email settings</RouterLink>
+      </section>
+
       <section class="rr-card">
         <h2>{{ locale.t('rr.excel_import', 'Excel import') }}</h2>
         <label class="rr-toggle">

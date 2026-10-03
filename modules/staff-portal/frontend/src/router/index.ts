@@ -197,10 +197,20 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 15, title: 'Portal modules', module: 'settings' },
     },
     {
+      path: '/settings/staff-api',
+      name: 'settings-staff-api',
+      component: () => import('../pages/settings/StaffApiSettingsPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'Staff API credentials', module: 'settings' },
+    },
+    {
       path: '/settings/email-servers',
       name: 'settings-email-servers',
       component: () => import('../pages/settings/EmailServersPage.vue'),
-      meta: { requiresAuth: true, permission: 15, title: 'Email servers', module: 'settings' },
+      meta: { requiresAuth: true, permission: 15, title: 'Email settings', module: 'settings' },
+    },
+    {
+      path: '/settings/email',
+      redirect: { name: 'settings-email-servers' },
     },
     {
       path: '/settings/shared-storage',

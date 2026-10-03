@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
+import SettingsSubnav from '@/components/molecules/SettingsSubnav.vue'
 import { fetchSettingsHub, type SettingsHubCard } from '@/lib/settingsApi'
 import { useLocaleStore } from '@/stores/locale'
 
@@ -37,7 +38,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PortalPageChrome :title="locale.t('settings.title', 'Settings')" :lede="locale.t('settings.lede', 'Configure portal modules, languages, AI, lookups, leave, and performance.')" />
+    <PortalPageChrome :title="locale.t('settings.title', 'Settings')" :lede="locale.t('settings.lede', 'Configure email, portal modules, languages, AI, lookups, leave, and performance.')" />
+    <SettingsSubnav />
     <v-text-field
       v-model="search"
       :label="locale.t('settings.search', 'Search settings')"
