@@ -118,8 +118,16 @@ class NonTravelMemoController extends Controller
             $data['fund_type_id'] = (int) $resolvedFundType;
         }
 
-        $data['staff_id'] = user_session('staff_id');
+        $data['staff_id'] = resolved_session_staff_id();
         $data['division_id'] = user_session('division_id');
+        if ($data['staff_id'] === null) {
+            $errorMsg = 'Your session has no staff ID. Please sign out and sign in again, then retry.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 422);
+            }
+
+            return redirect()->back()->withInput()->with(['msg' => $errorMsg, 'type' => 'error']);
+        }
 
         // Extract fund_type_id from budget codes if not provided
         if (empty($data['fund_type_id']) && !empty($data['budget_codes'])) {

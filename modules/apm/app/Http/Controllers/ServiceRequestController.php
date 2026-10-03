@@ -359,7 +359,10 @@ class ServiceRequestController extends Controller
             'change_request_id' => 'nullable|integer|exists:change_request,id',
             'parent_service_request_id' => 'nullable|integer|exists:service_requests,id',
         ]);
-        $validated['staff_id'] = user_session('staff_id');
+        $validated['staff_id'] = resolved_session_staff_id();
+        if ($validated['staff_id'] === null) {
+            return redirect()->back()->withInput()->with('error', 'Your session has no staff ID. Please sign out and sign in again, then retry.');
+        }
         // Use division_id from request (source memo's division) instead of user's division
         $validated['division_id'] = $request->input('division_id', user_session('division_id'));
         $validated['request_number'] = ServiceRequest::generateRequestNumber();

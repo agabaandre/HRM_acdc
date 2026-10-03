@@ -11,6 +11,12 @@ class SetPortalLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Portal SSO often has staff_id only; legacy APM had auth_staff_id only.
+        // Mirror both on the session so every memo/service create path sees a staff id.
+        if (function_exists('normalize_session_staff_ids')) {
+            normalize_session_staff_ids();
+        }
+
         $hadCookie = (string) $request->cookie(PortalLocale::cookieName(), '') !== ''
             || (string) ($_COOKIE[PortalLocale::cookieName()] ?? '') !== '';
 

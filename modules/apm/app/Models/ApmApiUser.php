@@ -101,6 +101,7 @@ class ApmApiUser extends Authenticatable implements JWTSubject
         $photo = !empty(trim((string) $photoFromStaff)) ? trim((string) $photoFromStaff) : ($this->photo ?? null);
         $data = [
             'staff_id' => $this->auth_staff_id,
+            'auth_staff_id' => $this->auth_staff_id,
             'division_id' => $staff->division_id ?? null,
             'permissions' => [],
             'name' => $name,

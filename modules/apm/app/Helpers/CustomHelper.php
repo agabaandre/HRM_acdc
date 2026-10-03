@@ -10,44 +10,122 @@ use Illuminate\Support\Facades\DB;
 
 if (! function_exists('user_session')) {
     /**
-     * Get a value from the session('user') array using dot notation.
+     * Ensure portal SSO (`staff_id`) and legacy APM (`auth_staff_id`) map to one staff identity.
      *
-     * @param  string|null  $key
-     * @param  mixed  $default
-     * @return mixed
+     * @param  array<string, mixed>  $user
      */
+    function sync_session_staff_id_aliases(array &$user): bool
+    {
+        $staffId = $user['staff_id'] ?? null;
+        $authStaffId = $user['auth_staff_id'] ?? null;
+        $staffEmpty = $staffId === null || $staffId === '' || (int) $staffId <= 0;
+        $authEmpty = $authStaffId === null || $authStaffId === '' || (int) $authStaffId <= 0;
+        $changed = false;
+
+        if ($staffEmpty && ! $authEmpty) {
+            $user['staff_id'] = (int) $authStaffId;
+            $staffEmpty = false;
+            $changed = true;
+        }
+        if ($authEmpty && ! $staffEmpty) {
+            $user['auth_staff_id'] = (int) $user['staff_id'];
+            $changed = true;
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Persist staff_id ↔ auth_staff_id aliases on the web session (and API request attribute).
+     */
+    function normalize_session_staff_ids(): void
+    {
+        if (app()->runningInConsole() === false && request()->attributes->get('api_user_session') !== null) {
+            $user = request()->attributes->get('api_user_session');
+            if (is_array($user) && sync_session_staff_id_aliases($user)) {
+                request()->attributes->set('api_user_session', $user);
+            }
+
+            return;
+        }
+
+        $user = session('user');
+        if (! is_array($user) || $user === []) {
+            return;
+        }
+
+        if (sync_session_staff_id_aliases($user)) {
+            session(['user' => $user]);
+        }
+    }
+
     if (! function_exists('user_session')) {
         /**
-         * Get a value from session('user') using dot notation
+         * Get a value from session('user') using dot notation.
+         * `staff_id` and `auth_staff_id` resolve to the same identity (portal SSO vs legacy APM).
          */
         function user_session(?string $key = null, mixed $default = null): mixed
         {
             // API context: use request attribute set by SetApmApiUserContext middleware (does not touch web session)
             if (app()->runningInConsole() === false && request()->attributes->get('api_user_session') !== null) {
                 $user = request()->attributes->get('api_user_session');
+                if (! is_array($user)) {
+                    return $key === null ? $user : $default;
+                }
+                sync_session_staff_id_aliases($user);
 
-                return $key === null ? $user : data_get($user, $key, $default);
+                if ($key === null) {
+                    return $user;
+                }
+
+                $value = data_get($user, $key, $default);
+                if (($key === 'staff_id' || $key === 'auth_staff_id') && ($value === null || $value === '' || (int) $value <= 0)) {
+                    $fallback = $key === 'staff_id'
+                        ? ($user['auth_staff_id'] ?? null)
+                        : ($user['staff_id'] ?? null);
+
+                    return ($fallback === null || $fallback === '' || (int) $fallback <= 0) ? $default : $fallback;
+                }
+
+                return $value;
             }
-            $user = session('user', []);
 
-            return $key == null ? $user : data_get($user, $key, $default);
+            $user = session('user', []);
+            if (! is_array($user)) {
+                $user = [];
+            }
+            sync_session_staff_id_aliases($user);
+
+            if ($key === null) {
+                return $user;
+            }
+
+            $value = data_get($user, $key, $default);
+            if (($key === 'staff_id' || $key === 'auth_staff_id') && ($value === null || $value === '' || (int) $value <= 0)) {
+                $fallback = $key === 'staff_id'
+                    ? data_get($user, 'auth_staff_id')
+                    : data_get($user, 'staff_id');
+
+                return ($fallback === null || $fallback === '' || (int) $fallback <= 0) ? $default : $fallback;
+            }
+
+            return $value;
         }
 
         /**
-         * Resolve the current user's staff_id from session (same fallbacks as memo action checks).
+         * Resolve the current user's staff_id from session (portal staff_id or legacy auth_staff_id).
          */
         function resolved_session_staff_id(): ?int
         {
-            $id = user_session('staff_id')
-                ?? user_session('auth_staff_id')
-                ?? data_get(session('user', []), 'staff_id')
-                ?? data_get(session('user', []), 'auth_staff_id');
+            $id = user_session('staff_id');
 
             if ($id === null || $id === '') {
                 return null;
             }
 
-            return (int) $id;
+            $id = (int) $id;
+
+            return $id > 0 ? $id : null;
         }
 
         function current_apm_year(): int
@@ -72,9 +150,8 @@ if (! function_exists('user_session')) {
 
         function isfocal_person()
         {
-            $user = session('user');
-            $staff_id = $user['staff_id'] ?? null;
-            $division_id = $user['division_id'] ?? null;
+            $staff_id = resolved_session_staff_id();
+            $division_id = user_session('division_id');
 
             if (! $staff_id || ! $division_id) {
                 return false;
@@ -105,8 +182,7 @@ if (! function_exists('user_session')) {
          */
         function still_with_creator($matrix, $activity = null)
         {
-            $user = session('user', []);
-            $staffId = $user['staff_id'] ?? null;
+            $staffId = resolved_session_staff_id();
 
             // dd($staffId);
 
@@ -790,11 +866,8 @@ if (! function_exists('user_session')) {
     if (! function_exists('can_request_services_for_change_request')) {
         function can_request_services_for_change_request($changeRequest)
         {
-            $currentUserId = user_session('staff_id')
-                ?? user_session('auth_staff_id')
-                ?? session('user.staff_id')
-                ?? session('user.auth_staff_id');
-            if (! $changeRequest || $currentUserId === null || $currentUserId === '') {
+            $currentUserId = resolved_session_staff_id();
+            if (! $changeRequest || $currentUserId === null) {
                 return false;
             }
             $isResponsible = (string) ($changeRequest->staff_id ?? '') === (string) $currentUserId

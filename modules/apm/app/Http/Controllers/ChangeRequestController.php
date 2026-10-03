@@ -273,8 +273,16 @@ class ChangeRequestController extends Controller
      */
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $userStaffId = user_session('staff_id');
+        $userStaffId = resolved_session_staff_id();
         $userDivisionId = user_session('division_id');
+        if ($userStaffId === null) {
+            $errorMsg = 'Your session has no staff ID. Please sign out and sign in again, then retry.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errorMsg], 422);
+            }
+
+            return redirect()->back()->withInput()->with(['msg' => $errorMsg, 'type' => 'error']);
+        }
 
         return DB::transaction(function () use ($request, $userStaffId, $userDivisionId) {
             try {

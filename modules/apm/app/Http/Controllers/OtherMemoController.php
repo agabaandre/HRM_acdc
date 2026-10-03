@@ -634,7 +634,7 @@ class OtherMemoController extends Controller
 
     private function staffId(): int
     {
-        return (int) user_session('staff_id', 0);
+        return (int) (resolved_session_staff_id() ?? 0);
     }
 
     private function resolveDefinition(Request $request): MemoTypeDefinition

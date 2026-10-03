@@ -168,6 +168,9 @@ class AuthController extends Controller
         if (isset($json['exp'])) {
             $json['sso_jwt_exp'] = (int) $json['exp'];
         }
+        if (function_exists('sync_session_staff_id_aliases')) {
+            sync_session_staff_id_aliases($json);
+        }
 
         session([
             'user' => $json,

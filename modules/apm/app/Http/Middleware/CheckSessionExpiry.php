@@ -52,9 +52,15 @@ class CheckSessionExpiry
             return $next($request);
         }
 
-        // Check if user is logged in (using CI session data)
+        // Check if user is logged in (using CI/portal session data)
+        if (function_exists('normalize_session_staff_ids')) {
+            normalize_session_staff_ids();
+        }
         $userSession = session('user', []);
-        if (empty($userSession) || !isset($userSession['staff_id'])) {
+        $sessionStaffId = function_exists('resolved_session_staff_id')
+            ? resolved_session_staff_id()
+            : (int) ($userSession['staff_id'] ?? $userSession['auth_staff_id'] ?? 0);
+        if (empty($userSession) || ! $sessionStaffId) {
             // User is not logged in, redirect to login page which checks session and redirects to home if authenticated
             if ($request->expectsJson()) {
                 return response()->json([
