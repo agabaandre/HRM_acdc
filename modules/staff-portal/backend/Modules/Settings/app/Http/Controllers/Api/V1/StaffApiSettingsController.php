@@ -40,26 +40,37 @@ class StaffApiSettingsController extends Controller
         try {
             $msg = StaffApiCredentials::persist($bag, $validated);
             $resolved = StaffApiCredentials::resolve($bag);
-            // Mirror into env when writable so Share middleware + modules inherit.
-            $envPath = base_path('.env');
-            $root = dirname(base_path(), 2).'/.env';
-            $pairs = [
-                'STAFF_API_INTERNAL_BASE_URL' => $resolved['base_url'],
-                'STAFF_API_USERNAME' => $resolved['username'],
-                'STAFF_API_TOKEN' => $resolved['token'],
-            ];
-            if ($resolved['password'] !== '') {
+            // Mirror only non-empty values into env so empty DB fields keep falling
+            // back to root / module .env (same behaviour as Helpdesk).
+            $pairs = [];
+            if ($bag->has(StaffApiCredentials::KEY_BASE_URL) && $resolved['base_url'] !== '') {
+                $pairs['STAFF_API_INTERNAL_BASE_URL'] = $resolved['base_url'];
+            }
+            if ($bag->has(StaffApiCredentials::KEY_USERNAME) && $resolved['username'] !== '') {
+                $pairs['STAFF_API_USERNAME'] = $resolved['username'];
+            }
+            if ($bag->has(StaffApiCredentials::KEY_PASSWORD) && $resolved['password'] !== '') {
                 $pairs['STAFF_API_PASSWORD'] = $resolved['password'];
             }
-            foreach ([$envPath, $root] as $path) {
-                if (is_file($path) && is_writable($path)) {
-                    ModuleEmailSettings::upsertEnvKeys($path, $pairs);
-                }
+            if ($bag->has(StaffApiCredentials::KEY_TOKEN) && $resolved['token'] !== '') {
+                $pairs['STAFF_API_TOKEN'] = $resolved['token'];
             }
-            foreach ($pairs as $k => $v) {
-                putenv($k.'='.$v);
-                $_ENV[$k] = $v;
-                $_SERVER[$k] = $v;
+            if ($pairs !== []) {
+                $envPath = base_path('.env');
+                $root = dirname(base_path(), 3).'/.env';
+                if (! is_file($root)) {
+                    $root = dirname(base_path(), 2).'/.env';
+                }
+                foreach ([$envPath, $root] as $path) {
+                    if (is_file($path) && is_writable($path)) {
+                        ModuleEmailSettings::upsertEnvKeys($path, $pairs);
+                    }
+                }
+                foreach ($pairs as $k => $v) {
+                    putenv($k.'='.$v);
+                    $_ENV[$k] = $v;
+                    $_SERVER[$k] = $v;
+                }
             }
 
             return response()->json(['success' => true, 'message' => $msg]);

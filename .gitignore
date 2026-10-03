@@ -38,3 +38,6 @@ Africa CDC Funding Portfolio.xlsx
 
 # Symlink to staff-portal/backend
 /backend
+
+# Local setup watermark (install-what-changed)
+.setup-last-head

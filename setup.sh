@@ -56,13 +56,27 @@ if [[ "$SETUP_ASSUME_DEFAULTS" != "1" && ! -t 0 ]]; then
 fi
 
 # ----- Sync from git (stash local tracked edits, pull, restore stash) -----
+# SETUP_GIT_BEFORE / SETUP_GIT_AFTER track the pull range for "install what changed".
+SETUP_GIT_BEFORE="${SETUP_GIT_BEFORE:-}"
+SETUP_GIT_AFTER="${SETUP_GIT_AFTER:-}"
+SETUP_STATE_FILE="$ROOT/.setup-last-head"
+
 setup_git_sync() {
   if [[ "$SETUP_SKIP_GIT" == "1" ]]; then
     echo "==> Skipping git stash/pull (--skip-git)"
+    if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      SETUP_GIT_AFTER="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+      SETUP_GIT_BEFORE="${SETUP_GIT_BEFORE:-$SETUP_GIT_AFTER}"
+      export SETUP_GIT_BEFORE SETUP_GIT_AFTER
+    fi
     return 0
   fi
   if [[ "${SETUP_SKIP_GIT_SYNC:-0}" == "1" ]]; then
     # Inner re-exec after pull already synced.
+    if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      SETUP_GIT_AFTER="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+      export SETUP_GIT_AFTER
+    fi
     return 0
   fi
   if ! command -v git >/dev/null 2>&1; then
@@ -125,11 +139,15 @@ setup_git_sync() {
     fi
   fi
 
+  SETUP_GIT_BEFORE="$before"
+  SETUP_GIT_AFTER="$after"
+  export SETUP_GIT_BEFORE SETUP_GIT_AFTER
+
   local setup_after
   setup_after="$(git -C "$ROOT" hash-object "$ROOT/setup.sh" 2>/dev/null || echo none)"
   if [[ "$setup_before" != "$setup_after" && "$setup_after" != "none" ]]; then
     echo "==> setup.sh was updated by git pull — re-running with the new script"
-    export SETUP_SKIP_GIT_SYNC=1
+    export SETUP_SKIP_GIT_SYNC=1 SETUP_GIT_BEFORE SETUP_GIT_AFTER
     exec bash "$ROOT/setup.sh" "${SETUP_ARGV[@]}"
   fi
 }
@@ -197,7 +215,13 @@ if [[ "$SITE_KIND" == "demo" ]]; then
   echo "    Demo: Supervisor queue/scheduler workers will NOT be enabled."
 fi
 
-prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "1"
+INSTALL_TYPE_DEFAULT=1
+# Re-runs after a successful setup default to "existing" so we only full-install
+# modules that changed (migrations still always run).
+if [[ -f "$SETUP_STATE_FILE" ]]; then
+  INSTALL_TYPE_DEFAULT=2
+fi
+prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "$INSTALL_TYPE_DEFAULT"
 # Default: Docker Compose (Host Apache remains available as choice 1).
 prompt_choice DEPLOY_CHOICE "Deploy target" "1) Host Apache  2) Docker Compose" "2"
 [[ "$DEPLOY_CHOICE" == "2" ]] && DEPLOY_MODE=docker || DEPLOY_MODE=host
@@ -1001,8 +1025,113 @@ else
   echo "==> Skipping SPA rebuild (assets may still point at an old folder name)"
 fi
 
-prompt_choice RUN_INSTALL "Run module installers now?" "1) Yes  2) No" "1"
-prompt_choice INST_PROFILE "Installer profile" "1) development (setup.sh)  2) production (setup-production.sh)" "$INST_PROFILE_DEFAULT"
+# Always run module installers (no prompt). Production profile applies migrations;
+# seed only on empty schemas. Existing installs skip full installer for unchanged modules.
+RUN_INSTALL=1
+INST_PROFILE="$INST_PROFILE_DEFAULT"
+echo "==> Module installers: always on (production) — migrate every module; full install for changed modules"
+
+# Resolve the git range used to detect "what changed" since last successful setup / pull.
+setup_change_range_from() {
+  local last=""
+  if [[ -f "$SETUP_STATE_FILE" ]]; then
+    last="$(tr -d '[:space:]' <"$SETUP_STATE_FILE" 2>/dev/null || true)"
+  fi
+  if [[ -n "$last" && "$last" != "unknown" ]]; then
+    printf '%s' "$last"
+    return 0
+  fi
+  if [[ -n "${SETUP_GIT_BEFORE:-}" && "$SETUP_GIT_BEFORE" != "unknown" ]]; then
+    printf '%s' "$SETUP_GIT_BEFORE"
+    return 0
+  fi
+  printf ''
+}
+
+# True when paths under $1 changed since the range start, or working tree is dirty there.
+setup_paths_changed() {
+  local path="$1"
+  local from
+  from="$(setup_change_range_from)"
+  if ! command -v git >/dev/null 2>&1 \
+    || ! git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    return 0
+  fi
+  if [[ -z "$from" ]]; then
+    return 0
+  fi
+  if ! git -C "$ROOT" cat-file -e "${from}^{commit}" 2>/dev/null; then
+    return 0
+  fi
+  if [[ -n "$(git -C "$ROOT" diff --name-only "$from" HEAD -- "$path" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+  if [[ -n "$(git -C "$ROOT" diff --name-only -- "$path" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+  if [[ -n "$(git -C "$ROOT" diff --cached --name-only -- "$path" 2>/dev/null || true)" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# Shared PHP / setup scripts affect every module — force full installers.
+setup_shared_changed() {
+  setup_paths_changed setup.sh \
+    || setup_paths_changed scripts/setup \
+    || setup_paths_changed shared \
+    || setup_paths_changed docker
+}
+
+setup_module_needs_full_install() {
+  local name="$1"
+  # New installation → always full installers.
+  if [[ "${INSTALL_TYPE:-1}" == "1" ]]; then
+    return 0
+  fi
+  if setup_shared_changed; then
+    return 0
+  fi
+  case "$name" in
+    staff-portal) setup_paths_changed modules/staff-portal ;;
+    finance) setup_paths_changed modules/finance ;;
+    helpdesk) setup_paths_changed modules/helpdesk ;;
+    risk-register) setup_paths_changed modules/risk-register ;;
+    apm) setup_paths_changed modules/apm ;;
+    *) return 0 ;;
+  esac
+}
+
+# Always attempt pending migrations (new migration files after git pull).
+setup_migrate_laravel() {
+  local label="$1" dir="$2"
+  local artisan=""
+  if [[ -f "$dir/backend/artisan" ]]; then
+    artisan="$dir/backend/artisan"
+    dir="$dir/backend"
+  elif [[ -f "$dir/artisan" ]]; then
+    artisan="$dir/artisan"
+  else
+    return 0
+  fi
+  if [[ ! -f "$(dirname "$artisan")/vendor/autoload.php" ]]; then
+    echo "    $label: skip migrate (vendor missing — run full installer)"
+    return 0
+  fi
+  echo "==> $label: php artisan migrate --force"
+  (
+    cd "$(dirname "$artisan")"
+    php artisan migrate --force --no-interaction 2>/dev/null \
+      || php artisan migrate --force --no-interaction \
+      || echo "warn: $label migrate failed" >&2
+    # Staff Portal nwidart modules (e.g. Settings portal_kv_settings).
+    if [[ "$label" == "staff-portal" ]]; then
+      php artisan module:migrate --force --no-interaction 2>/dev/null \
+        || php artisan module:migrate --force 2>/dev/null \
+        || true
+    fi
+  ) || echo "warn: $label migrate failed" >&2
+}
 
 setup_run_module_production() {
   local name="$1" dir="$2" database="$3"
@@ -1054,11 +1183,39 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
       staff_docker_build_once || setup_warn "docker image build failed"
     fi
   fi
+
+  local_from="$(setup_change_range_from)"
+  if [[ -n "$local_from" ]]; then
+    echo "==> Change range for installers: ${local_from:0:9} → ${SETUP_GIT_AFTER:-HEAD}"
+  else
+    echo "==> No prior setup marker — full installers for all modules"
+  fi
+
   if [[ "$INST_PROFILE" == "2" ]]; then
-    setup_run_module_production staff-portal "$ROOT/modules/staff-portal" "$SP_DB" --skip-build
-    setup_run_module_production finance "$ROOT/modules/finance" "$FN_DB"
-    setup_run_module_production helpdesk "$ROOT/modules/helpdesk" "$HD_DB"
-    setup_run_module_production risk-register "$ROOT/modules/risk-register" "${RR_DB:-risk_register}"
+    if setup_module_needs_full_install staff-portal; then
+      setup_run_module_production staff-portal "$ROOT/modules/staff-portal" "$SP_DB" --skip-build
+    else
+      echo "==> staff-portal: unchanged — migrate only"
+      setup_migrate_laravel staff-portal "$ROOT/modules/staff-portal"
+    fi
+    if setup_module_needs_full_install finance; then
+      setup_run_module_production finance "$ROOT/modules/finance" "$FN_DB"
+    else
+      echo "==> finance: unchanged — migrate only"
+      setup_migrate_laravel finance "$ROOT/modules/finance"
+    fi
+    if setup_module_needs_full_install helpdesk; then
+      setup_run_module_production helpdesk "$ROOT/modules/helpdesk" "$HD_DB"
+    else
+      echo "==> helpdesk: unchanged — migrate only"
+      setup_migrate_laravel helpdesk "$ROOT/modules/helpdesk"
+    fi
+    if setup_module_needs_full_install risk-register; then
+      setup_run_module_production risk-register "$ROOT/modules/risk-register" "${RR_DB:-risk_register}"
+    else
+      echo "==> risk-register: unchanged — migrate only"
+      setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
+    fi
   else
     (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
     (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
@@ -1066,19 +1223,40 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
     (cd "$ROOT/modules/risk-register" && ./setup.sh) || echo "warn: risk-register setup failed" >&2
   fi
   if [[ -f "$ROOT/modules/apm/artisan" ]]; then
-    (
-      cd "$ROOT/modules/apm"
-      composer install --no-interaction --prefer-dist || true
-      php artisan key:generate --force 2>/dev/null || true
-      php artisan jwt:secret --force 2>/dev/null || true
-      php artisan migrate --force --no-interaction || true
-      probe_host="$DB_HOST"
-      [[ "$probe_host" == "mysql" ]] && probe_host="127.0.0.1"
-      if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
-        php artisan db:seed --force --no-interaction 2>/dev/null || true
-      fi
-    ) || echo "warn: APM bootstrap failed" >&2
+    if setup_module_needs_full_install apm; then
+      (
+        cd "$ROOT/modules/apm"
+        composer install --no-interaction --prefer-dist || true
+        php artisan key:generate --force 2>/dev/null || true
+        php artisan jwt:secret --force 2>/dev/null || true
+        php artisan migrate --force --no-interaction || true
+        probe_host="$DB_HOST"
+        [[ "$probe_host" == "mysql" ]] && probe_host="127.0.0.1"
+        if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
+          php artisan db:seed --force --no-interaction 2>/dev/null || true
+        fi
+      ) || echo "warn: APM bootstrap failed" >&2
+    else
+      echo "==> apm: unchanged — migrate only"
+      setup_migrate_laravel apm "$ROOT/modules/apm"
+    fi
   fi
+
+  # Safety net: always try pending migrations on every Laravel app (new files after pull).
+  echo "==> Ensuring pending migrations on all modules"
+  setup_migrate_laravel staff-portal "$ROOT/modules/staff-portal"
+  setup_migrate_laravel finance "$ROOT/modules/finance"
+  setup_migrate_laravel helpdesk "$ROOT/modules/helpdesk"
+  setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
+  setup_migrate_laravel apm "$ROOT/modules/apm"
+
+  # Remember HEAD so the next setup only full-installs modules that changed.
+  if command -v git >/dev/null 2>&1 \
+    && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$ROOT" rev-parse HEAD >"$SETUP_STATE_FILE" 2>/dev/null \
+      || true
+  fi
+
   # Installers may recreate dirs as root — fix perms and relink again.
   setup_fix_laravel_storage
 fi

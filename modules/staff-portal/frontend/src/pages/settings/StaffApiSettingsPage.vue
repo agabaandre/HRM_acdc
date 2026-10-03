@@ -124,13 +124,18 @@ onMounted(() => {
   <div>
     <PortalPageChrome
       title="Staff API credentials"
-      lede="Share API base URL, username/password (JWT), and static token. DB values override env; leave blank to use env / defaults. Modules inherit when their own DB overrides are empty."
+      lede="Optional DB overrides for Share API credentials. Leave fields blank to use root .env (STAFF_API_*) and the default static token — same fallback Helpdesk uses. Test connection works without saving DB values."
     />
     <SettingsSubnav />
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
     <v-alert v-if="success" type="success" variant="tonal" class="mb-3" density="compact">{{ success }}</v-alert>
     <div v-if="loading" class="text-medium-emphasis">Loading…</div>
     <template v-else>
+      <v-alert type="info" variant="tonal" class="mb-4" density="compact">
+        Empty DB fields fall back to env / default token. Effective base:
+        <code>{{ resolved.base_url }}</code>
+        ({{ sources.base_url || 'unset' }})
+      </v-alert>
       <v-card variant="outlined" class="mb-4">
         <v-card-title class="text-subtitle-1">Resolved (effective)</v-card-title>
         <v-card-text>

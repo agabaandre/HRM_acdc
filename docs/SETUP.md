@@ -44,7 +44,7 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
 | Per module | `DB_DATABASE` (+ forced `DB_CONNECTION=mysql`, mapped URLs / storage) for staff-portal, APM, finance, helpdesk, risk-register |
-| Installers | Default **Yes** · profile default **production** — always migrate; seed only when the target schema has **no tables**. **Docker:** `composer` runs via Compose `web` |
+| Installers | **Always on** (no prompt) · **production** profile — always `artisan migrate` on every module; full `setup-production.sh` only for modules that changed since `.setup-last-head` (or all modules on a new install). Seed only when the target schema has **no tables**. **Docker:** `composer` runs via Compose `web` |
 | **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for **all five** modules (staff-portal, helpdesk, finance, risk-register, APM); host `STAFF_DATA_ROOT` when set |
 | **Workers** | **Host:** optional Supervisor (default Yes on Linux production). **Docker:** retires host `cbp-*` Supervisor programs, then Compose `--profile workers` (in-container Supervisor; prompted Yes by default). PHP 8.2 + extensions + Composer binary are in the image; `vendor/` is installed via Compose Composer onto the bind mount. |
 

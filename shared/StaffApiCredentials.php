@@ -32,12 +32,34 @@ final class StaffApiCredentials
     public static function resolve(?ModuleSettingsBag $bag = null): array
     {
         $env = static function (string $key, string $default = ''): string {
+            $candidates = [];
             if (function_exists('env')) {
-                return trim((string) env($key, $default));
+                $candidates[] = env($key);
             }
-            $v = getenv($key);
+            $candidates[] = $_ENV[$key] ?? null;
+            $candidates[] = $_SERVER[$key] ?? null;
+            $g = getenv($key);
+            if ($g !== false) {
+                $candidates[] = $g;
+            }
+            foreach ($candidates as $v) {
+                if (is_string($v) && trim($v) !== '') {
+                    return trim($v);
+                }
+            }
+            // Last resort: staff root .env (portal may omit STAFF_API_* in its own file).
+            if (function_exists('staff_root_env_path') && function_exists('staff_parse_env_file')) {
+                $root = staff_root_env_path();
+                if ($root !== '') {
+                    $vars = staff_parse_env_file($root);
+                    $rv = $vars[$key] ?? '';
+                    if (is_string($rv) && trim($rv) !== '') {
+                        return trim($rv);
+                    }
+                }
+            }
 
-            return is_string($v) ? trim($v) : $default;
+            return $default;
         };
 
         $pick = static function (string $dbKey, array $envKeys, string $default = '') use ($bag, $env): array {

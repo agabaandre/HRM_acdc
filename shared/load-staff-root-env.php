@@ -114,6 +114,12 @@ function staff_shared_env_keys(): array
         'MAIL_USERNAME',
         'MAIL_PASSWORD',
         'MAIL_DRIVER',
+        // Share API credentials (modules inherit when their DB overrides are empty)
+        'STAFF_API_INTERNAL_BASE_URL',
+        'STAFF_API_BASE_URL',
+        'STAFF_API_USERNAME',
+        'STAFF_API_PASSWORD',
+        'STAFF_API_TOKEN',
     ];
 }
 
