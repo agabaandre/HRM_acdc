@@ -13,6 +13,33 @@
     <meta name="user-logged-in" content="{{ !empty(session('user')) ? 'true' : 'false' }}">
     <meta name="api-base-url" content="{{ url('/api') }}">
     <meta name="base-url" content="{{ session('user.base_url', env('BASE_URL', 'http://localhost/staff')) }}">
+    {{-- Clear stale googtrans before Google Translate can auto-apply a previous language. --}}
+    <script>
+    (function () {
+        try {
+            var fromStorage = (localStorage.getItem('staff_portal_locale') || '').toLowerCase().trim();
+            var match = document.cookie.match(/(?:^|; )staff_portal_locale=([^;]*)/);
+            var fromCookie = match && match[1] ? decodeURIComponent(match[1]).toLowerCase().trim() : '';
+            var preferred = fromStorage || fromCookie || @json(\App\Support\PortalLocale::normalize(app()->getLocale()));
+            if (preferred && preferred !== 'en') return;
+            var host = (location.hostname || '').toLowerCase();
+            var domains = [''];
+            if (host && host !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+                domains.push(host);
+                var parts = host.split('.');
+                if (parts.length >= 2) domains.push('.' + parts.slice(-2).join('.'));
+                if (parts.length >= 3) domains.push('.' + parts.slice(-3).join('.'));
+            }
+            var paths = ['/', '/staff', '/staff/', '/staff/apm', '/staff/apm/', location.pathname || '/'];
+            domains.forEach(function (domain) {
+                paths.forEach(function (path) {
+                    var base = 'googtrans=;expires=Thu, 01 Jan 1970 00:00:00 GMT;max-age=0;path=' + path + ';SameSite=Lax';
+                    try { document.cookie = domain ? (base + ';domain=' + domain) : base; } catch (e) {}
+                });
+            });
+        } catch (e) {}
+    })();
+    </script>
     @include('partials.apm-vuetify-runtime-head')
     @stack('head-meta')
     <title>@yield('title', config('app.name', 'Business Management System'))</title>

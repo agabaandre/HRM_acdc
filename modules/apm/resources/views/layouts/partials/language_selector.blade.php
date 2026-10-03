@@ -62,11 +62,56 @@
         menu.hidden = false;
     }
 
+    function cookieDomains() {
+        var host = (location.hostname || '').toLowerCase();
+        var domains = [''];
+        if (!host || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+            return domains;
+        }
+        domains.push(host);
+        var parts = host.split('.');
+        if (parts.length >= 2) domains.push('.' + parts.slice(-2).join('.'));
+        if (parts.length >= 3) domains.push('.' + parts.slice(-3).join('.'));
+        return domains;
+    }
+
+    function cookiePaths() {
+        var paths = ['/', '/staff', '/staff/', '/staff/apm', '/staff/apm/'];
+        var path = location.pathname || '/';
+        if (paths.indexOf(path) === -1) paths.push(path);
+        return paths;
+    }
+
+    function expireCookie(name, path, domain) {
+        var base = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;max-age=0;path=' + path + ';SameSite=Lax';
+        try {
+            document.cookie = domain ? (base + ';domain=' + domain) : base;
+        } catch (e) {}
+    }
+
+    /** Google Translate keeps /en/fr (etc.) and re-applies after reload unless cleared on all path/domain variants. */
+    function clearGoogleTranslateCookies() {
+        cookieDomains().forEach(function (domain) {
+            cookiePaths().forEach(function (path) {
+                expireCookie('googtrans', path, domain);
+            });
+        });
+    }
+
     function writeSharedLocale(locale) {
         try { localStorage.setItem(STORAGE_KEY, locale); } catch (e) {}
+        // Drop stale path-scoped copies so English is not overridden by an old /staff/apm cookie.
+        cookieDomains().forEach(function (domain) {
+            cookiePaths().forEach(function (path) {
+                expireCookie(COOKIE_NAME, path, domain);
+            });
+        });
         var maxAge = 60 * 60 * 24 * 365;
         document.cookie = COOKIE_NAME + '=' + encodeURIComponent(locale)
             + ';path=/;max-age=' + maxAge + ';SameSite=Lax';
+        if (locale === 'en') {
+            clearGoogleTranslateCookies();
+        }
     }
 
     function readSharedLocale() {
@@ -97,7 +142,12 @@
         applying = true;
         btn.disabled = true;
         writeSharedLocale(locale);
-        if (typeof window.doGTranslate === 'function' && locale !== 'en') {
+        if (locale === 'en') {
+            clearGoogleTranslateCookies();
+            if (typeof window.doGTranslate === 'function') {
+                try { window.doGTranslate('en'); } catch (err) {}
+            }
+        } else if (typeof window.doGTranslate === 'function') {
             try { window.doGTranslate(locale); } catch (err) {}
         }
         var url = root.getAttribute('data-locale-url');

@@ -90,6 +90,8 @@
 
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 @if (! View::hasSection('suppress_google_translate'))
+{{-- Define init + English restore helpers before loading the Translate widget. --}}
+@include('layouts.partials.google_translate_boot')
 <script type="text/javascript"
     src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 @endif
@@ -282,110 +284,11 @@
     });
 </script> -->
 
-@if (! View::hasSection('suppress_google_translate'))
-<script type="text/javascript">
-    (function() {
-        var translateApplied = false;
-        function googleTranslateElementInit() {
-            try {
-                if (typeof google === 'undefined' || !google.translate || !google.translate.TranslateElement) return;
-                new google.translate.TranslateElement({
-                    pageLanguage: 'en',
-                    autoDisplay: false,
-                    disableAutoHover: true,
-                    showBanner: false
-                }, 'google_translate_element');
-            } catch (e) {
-                if (typeof console !== 'undefined' && console.warn) console.warn('Google Translate init failed:', e);
-            }
-        }
-        window.googleTranslateElementInit = googleTranslateElementInit;
-
-        function GTranslateFireEvent(element, event) {
-            try {
-                if (!element) return;
-                if (document.createEventObject) {
-                    var evt = document.createEventObject();
-                    element.fireEvent('on' + event, evt);
-                } else {
-                    var evt = document.createEvent('HTMLEvents');
-                    evt.initEvent(event, true, true);
-                    element.dispatchEvent(evt);
-                }
-            } catch (err) { }
-        }
-
-        function doGTranslate(lang_code) {
-            if (translateApplied) return;
-            var lang = lang_code || 'en';
-            var attempts = 0;
-            var maxAttempts = 24;
-            var interval = setInterval(function () {
-                attempts++;
-                if (attempts > maxAttempts) {
-                    clearInterval(interval);
-                    return;
-                }
-                try {
-                    var teCombo = document.querySelector('select.goog-te-combo');
-                    if (teCombo && teCombo.options && teCombo.options.length > 0) {
-                        var langIndex = Array.from(teCombo.options).findIndex(function(option) { return option.value === lang; });
-                        if (langIndex !== -1) {
-                            teCombo.selectedIndex = langIndex;
-                            GTranslateFireEvent(teCombo, 'change');
-                            translateApplied = true;
-                            clearInterval(interval);
-                        }
-                    }
-                } catch (err) {
-                    if (typeof console !== 'undefined' && console.warn) console.warn('Google Translate apply failed:', err);
-                    clearInterval(interval);
-                }
-            }, 500);
-        }
-        window.doGTranslate = doGTranslate;
-
-        document.addEventListener("DOMContentLoaded", function () {
-            @php
-                // Prefer shared Staff Portal locale (cookie → profile → default).
-                $preferredLang = \App\Support\PortalLocale::normalize(app()->getLocale());
-            @endphp
-            function readSharedPortalLocale() {
-                try {
-                    var fromStorage = (localStorage.getItem('staff_portal_locale') || '').toLowerCase().trim();
-                    if (fromStorage) return fromStorage;
-                } catch (e) {}
-                try {
-                    var match = document.cookie.match(/(?:^|; )staff_portal_locale=([^;]*)/);
-                    if (match && match[1]) return decodeURIComponent(match[1]).toLowerCase().trim();
-                } catch (e) {}
-                return '';
-            }
-            var preferredLang = readSharedPortalLocale() || "{{ $preferredLang }}";
-            var allowed = { en: 1, fr: 1, sw: 1, ar: 1, pt: 1, es: 1 };
-            if (!allowed[preferredLang]) preferredLang = 'en';
-            // Keep Google Translate / UI in sync with Staff Portal selection.
-            try {
-                localStorage.setItem('staff_portal_locale', preferredLang);
-                document.cookie = 'staff_portal_locale=' + encodeURIComponent(preferredLang)
-                    + ';path=/;max-age=' + (60 * 60 * 24 * 365) + ';SameSite=Lax';
-            } catch (e) {}
-            if (preferredLang && preferredLang !== 'en') {
-                setTimeout(function() { doGTranslate(preferredLang); }, 1500);
-            } else {
-                // Clear stale Google Translate cookie so English source UI stays English.
-                try {
-                    document.cookie = 'googtrans=;path=/;max-age=0;SameSite=Lax';
-                    document.cookie = 'googtrans=/en/en;path=/;max-age=0;SameSite=Lax';
-                } catch (e) {}
-            }
-        });
-    })();
-</script>
-@else
+@if (View::hasSection('suppress_google_translate'))
 <script type="text/javascript">
     window.googleTranslateElementInit = function () {};
     window.doGTranslate = function () {};
+    window.clearGoogleTranslateCookies = function () {};
 </script>
 @endif
 
