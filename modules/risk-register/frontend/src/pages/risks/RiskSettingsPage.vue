@@ -271,6 +271,12 @@ onMounted(() => {
       </section>
 
       <section class="rr-card">
+        <h2>App logs &amp; telemetry</h2>
+        <p class="rr-muted">Laravel daily log files — filter by date and severity.</p>
+        <RouterLink class="rr-btn" :to="{ name: 'risk-settings-app-logs' }">Open application logs</RouterLink>
+      </section>
+
+      <section class="rr-card">
         <h2>Email settings</h2>
         <p class="rr-muted">Outbound mail dispatch (portal hub / local transport) and test send.</p>
         <RouterLink class="rr-btn" :to="{ name: 'risk-settings-email' }">Open email settings</RouterLink>

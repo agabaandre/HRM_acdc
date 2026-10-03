@@ -25,6 +25,13 @@ const items = computed<PortalPillNavItem[]>(() => {
       active: path.startsWith('/settings/staff-api'),
     },
     {
+      key: 'app-logs',
+      label: locale.t('settings.nav_app_logs', 'App logs & alerts'),
+      icon: 'bx bx-file',
+      to: '/settings/app-logs',
+      active: path.startsWith('/settings/app-logs'),
+    },
+    {
       key: 'email',
       label: locale.t('settings.nav_email', 'Email settings'),
       icon: 'bx bx-envelope',

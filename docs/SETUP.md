@@ -40,6 +40,7 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | Database | Bundled MySQL (`DB_HOST=mysql`) · **External MySQL (default)** — always prompts user/password; under Docker, external host defaults to `host.docker.internal` |
 | Shared | Public base URL, `STAFF_SITE_ID`, secrets, Redis, DB |
 | **Runtime** | Site role **Production** forces `APP_ENV=production` and `APP_DEBUG=false` on root + every module `.env` (APM, portal, helpdesk, finance, risk-register) and clears Laravel config cache so Ignition stays off |
+| **Logging** | Forces `LOG_CHANNEL=stack` + `LOG_STACK=daily` (14-day retention) so each module writes `storage/logs/laravel-YYYY-MM-DD.log`; settings UIs can filter by date and level |
 | **Staff Share API** | After credentials are written, setup probes `{PUBLIC_BASE}/backend/share` (JWT via username/password, then static token) and prints CONNECTED / FAILED |
 | **Auth** | Microsoft Entra (`EXCHANGE_TENANT_ID` / `EXCHANGE_CLIENT_ID` / `EXCHANGE_CLIENT_SECRET`) written to **root `.env` only**; modules inherit via `shared/load-staff-root-env.php` and keep per-app `MICROSOFT_REDIRECT_URI` / `EXCHANGE_REDIRECT_URI`; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |

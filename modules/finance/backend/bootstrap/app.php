@@ -5,12 +5,14 @@ if (is_file($__staffRootEnv)) {
     require_once $__staffRootEnv;
 }
 
+use App\Support\RrSettingsBag;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Modules\Audit\Http\Middleware\LogStaffPortalAccess;
 use Modules\Auth\Http\Middleware\RefreshPortalSession;
 use Modules\Share\Http\Middleware\AuthenticateShareApi;
+use Staff\Shared\ModuleCriticalErrorAlerts;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -60,5 +62,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        ModuleCriticalErrorAlerts::register(
+            $exceptions,
+            'Finance',
+            static fn () => new RrSettingsBag,
+        );
     })->create();

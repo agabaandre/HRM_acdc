@@ -51,6 +51,12 @@ const router = createRouter({
       component: () => import('../pages/finance/StaffApiSettingsPage.vue'),
       meta: { requiresAuth: true, title: 'Staff API credentials', module: 'settings' },
     },
+    {
+      path: '/settings/app-logs',
+      name: 'settings-app-logs',
+      component: () => import('../pages/finance/AppLogsPage.vue'),
+      meta: { requiresAuth: true, title: 'Application logs', module: 'settings' },
+    },
   ],
 })
 

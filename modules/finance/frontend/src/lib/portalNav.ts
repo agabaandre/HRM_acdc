@@ -17,6 +17,7 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/sap-import': 'fa-solid fa-file-import',
   '/settings/email': 'fa-solid fa-envelope',
   '/settings/staff-api': 'fa-solid fa-key',
+  '/settings/app-logs': 'fa-solid fa-file-lines',
 }
 
 export function pageIconForPath(path: string): string {
@@ -73,6 +74,15 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     match: ['/settings/staff-api'],
     group: 'more',
     icon: 'fa-solid fa-key',
+    module: 'settings',
+  },
+  {
+    label: 'App logs',
+    i18nKey: 'finance.app_logs',
+    to: '/settings/app-logs',
+    match: ['/settings/app-logs'],
+    group: 'more',
+    icon: 'fa-solid fa-file-lines',
     module: 'settings',
   },
 ]

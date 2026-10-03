@@ -203,6 +203,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 15, title: 'Staff API credentials', module: 'settings' },
     },
     {
+      path: '/settings/app-logs',
+      name: 'settings-app-logs',
+      component: () => import('../pages/settings/AppLogsPage.vue'),
+      meta: { requiresAuth: true, permission: 15, title: 'Application logs', module: 'settings' },
+    },
+    {
       path: '/settings/email-servers',
       name: 'settings-email-servers',
       component: () => import('../pages/settings/EmailServersPage.vue'),

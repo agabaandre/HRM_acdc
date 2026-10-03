@@ -30,6 +30,7 @@ class SettingsApiController extends Controller
 
         $cards = [
             ['to' => '/settings/staff-api', 'label' => 'Staff API credentials', 'icon' => 'bx-key', 'special' => true, 'i18n_key' => 'card_staff_api'],
+            ['to' => '/settings/app-logs', 'label' => 'Application logs', 'icon' => 'bx-file', 'special' => true, 'i18n_key' => 'card_app_logs'],
             ['to' => '/settings/email-servers', 'label' => 'Email settings', 'icon' => 'bx-envelope', 'special' => true, 'i18n_key' => 'card_email_servers'],
             ['to' => '/settings/portal-modules', 'label' => 'Portal modules', 'icon' => 'bx-toggle-left', 'special' => true, 'i18n_key' => 'card_portal_modules'],
             ['to' => '/settings/languages', 'label' => 'Languages', 'icon' => 'bx-globe', 'special' => true, 'i18n_key' => 'card_languages'],

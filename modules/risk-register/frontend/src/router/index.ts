@@ -133,6 +133,12 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'Staff API credentials', module: 'settings' },
     },
     {
+      path: '/risk-settings/app-logs',
+      name: 'risk-settings-app-logs',
+      component: () => import('../pages/risks/AppLogsPage.vue'),
+      meta: { requiresAuth: true, title: 'App logs & telemetry', module: 'settings' },
+    },
+    {
       path: '/risk-settings/lookups/:key',
       name: 'risk-settings-lookup',
       component: () => import('../pages/risks/RiskLookupListPage.vue'),

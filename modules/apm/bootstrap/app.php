@@ -5,10 +5,12 @@ if (is_file($__staffRootEnv)) {
     require_once $__staffRootEnv;
 }
 
+use App\Support\SystemSettingsBag;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
+use Staff\Shared\ModuleCriticalErrorAlerts;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -44,6 +46,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        ModuleCriticalErrorAlerts::register(
+            $exceptions,
+            'APM',
+            static fn () => new SystemSettingsBag('telemetry'),
+        );
         $exceptions->renderable(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             // API routes: return 401 JSON so we don't redirect to route('login') which may not exist.
             if ($request->is('api/*') || $request->is('*/api/*')) {

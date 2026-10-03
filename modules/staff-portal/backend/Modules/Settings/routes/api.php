@@ -7,6 +7,7 @@ use Modules\Settings\Http\Controllers\Api\V1\OrgStructureController;
 use Modules\Settings\Http\Controllers\Api\V1\OrgUnitsSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\SharedStorageController;
 use Modules\Settings\Http\Controllers\Api\V1\SettingsApiController;
+use Modules\Settings\Http\Controllers\Api\V1\AppLogsController;
 use Modules\Settings\Http\Controllers\Api\V1\StaffApiSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\StaffJobsSettingsController;
 
@@ -26,6 +27,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     Route::get('settings/staff-api', [StaffApiSettingsController::class, 'show']);
     Route::put('settings/staff-api', [StaffApiSettingsController::class, 'update']);
     Route::post('settings/staff-api/test', [StaffApiSettingsController::class, 'test']);
+    Route::get('settings/app-logs', [AppLogsController::class, 'show']);
+    Route::put('settings/app-logs/telemetry', [AppLogsController::class, 'updateTelemetry']);
+    Route::post('settings/app-logs/critical-alert/test', [AppLogsController::class, 'testCriticalAlert']);
     Route::get('settings/email-servers/drivers', [EmailProvidersController::class, 'drivers']);
     Route::get('settings/email-servers', [EmailProvidersController::class, 'index']);
     Route::post('settings/email-servers', [EmailProvidersController::class, 'store']);

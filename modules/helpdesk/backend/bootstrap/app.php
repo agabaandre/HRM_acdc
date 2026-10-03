@@ -12,10 +12,12 @@ use App\Jobs\GenerateMonthlyAgentReportsJob;
 use App\Jobs\LicenseExpiryAlertJob;
 use App\Jobs\PollBusinessUnitMailboxesJob;
 use App\Jobs\PurgeOldAgentReportsJob;
+use App\Support\HelpdeskSettingsBag;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
+use Staff\Shared\ModuleCriticalErrorAlerts;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -45,5 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(5);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        ModuleCriticalErrorAlerts::register(
+            $exceptions,
+            'Helpdesk',
+            static fn () => new HelpdeskSettingsBag,
+        );
     })->create();

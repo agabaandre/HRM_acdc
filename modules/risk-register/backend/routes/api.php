@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\RiskImportController;
 use App\Http\Controllers\Api\V1\RiskReportsController;
 use App\Http\Controllers\Api\V1\RiskLookupsController;
 use App\Http\Controllers\Api\V1\RiskReviewController;
+use App\Http\Controllers\Api\V1\AppLogsController;
 use App\Http\Controllers\Api\V1\EmailSettingsController;
 use App\Http\Controllers\Api\V1\StaffApiSettingsController;
 use App\Http\Controllers\Api\V1\RiskSettingsController;
@@ -43,6 +44,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/settings/staff-api', [StaffApiSettingsController::class, 'show']);
         Route::put('/settings/staff-api', [StaffApiSettingsController::class, 'update']);
         Route::post('/settings/staff-api/test', [StaffApiSettingsController::class, 'test']);
+        Route::get('/settings/app-logs', [AppLogsController::class, 'show']);
+        Route::put('/settings/app-logs/telemetry', [AppLogsController::class, 'updateTelemetry']);
+        Route::post('/settings/app-logs/critical-alert/test', [AppLogsController::class, 'testCriticalAlert']);
 
         Route::get('/import/status', [RiskImportController::class, 'status']);
         Route::post('/import/preview', [RiskImportController::class, 'preview']);

@@ -50,6 +50,11 @@ class SystemConfigsController extends Controller
             'icon' => 'bx-key',
             'description' => 'Staff Share API credentials (DB overrides env) & connection test',
         ],
+        'app-logs' => [
+            'label' => 'App logs',
+            'icon' => 'bx-file',
+            'description' => 'Laravel daily logs, severity filters & telemetry (Datadog, Sentry, …)',
+        ],
         'whatsapp' => [
             'label' => 'WhatsApp',
             'icon' => 'bxl-whatsapp',
@@ -119,6 +124,7 @@ class SystemConfigsController extends Controller
             'stale-memos' => app(StaleMemoArchivesController::class)->getIndexData($request),
             'email' => app(EmailSettingsController::class)->getIndexData(),
             'staff-api' => app(StaffApiSettingsController::class)->getIndexData(),
+            'app-logs' => app(AppLogsController::class)->getIndexData($request),
             'whatsapp' => app(WhatsAppSettingsController::class)->getIndexData(),
             default => [],
         };

@@ -548,6 +548,14 @@ echo "==> Writing root .env"
 env_set "$ROOT_ENV" SITE_KIND "$SITE_KIND"
 env_set "$ROOT_ENV" APP_ENV "$APP_ENV"
 env_set "$ROOT_ENV" APP_DEBUG "$APP_DEBUG"
+env_set "$ROOT_ENV" LOG_CHANNEL "stack"
+env_set "$ROOT_ENV" LOG_STACK "daily"
+env_set "$ROOT_ENV" LOG_DAILY_DAYS "${LOG_DAILY_DAYS:-14}"
+env_set "$ROOT_ENV" TELEMETRY_PROVIDER "${TELEMETRY_PROVIDER:-none}"
+env_set "$ROOT_ENV" CRITICAL_ALERT_ENABLED "${CRITICAL_ALERT_ENABLED:-false}"
+env_set "$ROOT_ENV" CRITICAL_ALERT_EMAILS "${CRITICAL_ALERT_EMAILS:-}"
+env_set "$ROOT_ENV" CRITICAL_ALERT_MIN_LEVEL "${CRITICAL_ALERT_MIN_LEVEL:-error}"
+env_set "$ROOT_ENV" CRITICAL_ALERT_COOLDOWN_MINUTES "${CRITICAL_ALERT_COOLDOWN_MINUTES:-30}"
 env_set "$ROOT_ENV" DEPLOY_MODE "$DEPLOY_MODE"
 env_set "$ROOT_ENV" BASE_URL "$BASE_URL"
 env_set "$ROOT_ENV" CI_BASE_URL "$CI_BASE_URL"
@@ -618,11 +626,19 @@ env_set "$ROOT_ENV" DB_PASS "$DB_PASS"
 env_set "$ROOT_ENV" DB_NAME "$DB_NAME"
 
 # APP_ENV / APP_DEBUG from site role (production → debug off on every module).
+# Also force daily log files (laravel-YYYY-MM-DD.log) for settings log viewers.
 apply_app_runtime_to_file() {
   local file="$1"
   [[ -f "$file" ]] || return 0
   env_set "$file" APP_ENV "${APP_ENV:-production}" || return 1
   env_set "$file" APP_DEBUG "${APP_DEBUG:-false}" || return 1
+  env_set "$file" LOG_CHANNEL "stack" || return 1
+  env_set "$file" LOG_STACK "daily" || return 1
+  env_set "$file" LOG_DAILY_DAYS "${LOG_DAILY_DAYS:-14}" || return 1
+  env_set "$file" TELEMETRY_PROVIDER "${TELEMETRY_PROVIDER:-none}" || return 1
+  env_set "$file" CRITICAL_ALERT_ENABLED "${CRITICAL_ALERT_ENABLED:-false}" || return 1
+  env_set "$file" CRITICAL_ALERT_MIN_LEVEL "${CRITICAL_ALERT_MIN_LEVEL:-error}" || return 1
+  env_set "$file" CRITICAL_ALERT_COOLDOWN_MINUTES "${CRITICAL_ALERT_COOLDOWN_MINUTES:-30}" || return 1
   return 0
 }
 

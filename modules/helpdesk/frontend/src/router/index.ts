@@ -53,6 +53,12 @@ const routes: RouteRecordRaw[] = [
         meta: { settingsTitle: 'Staff API' },
       },
       {
+        path: 'app-logs',
+        name: 'settings-app-logs',
+        component: () => import('../components/settings/AppLogsPanel.vue'),
+        meta: { settingsTitle: 'Application logs' },
+      },
+      {
         path: 'email',
         name: 'settings-email',
         component: () => import('../components/settings/EmailSettingsPanel.vue'),

@@ -239,7 +239,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     
     // System configuration hub (jobs default tab)
     Route::get('/system-configs/{tab?}', [App\Http\Controllers\SystemConfigsController::class, 'index'])
-        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos|email|staff-api|whatsapp')
+        ->where('tab', 'jobs|monitor|app-settings|audit-logs|backups|stale-memos|email|staff-api|app-logs|whatsapp')
         ->name('system-configs.index');
     Route::post('/system-configs/stale-memos/archive-all', [App\Http\Controllers\StaleMemoArchivesController::class, 'archiveAll'])
         ->name('stale-memos.archive-all');
@@ -255,6 +255,11 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::post('/system-configs/staff-api/test', [App\Http\Controllers\StaffApiSettingsController::class, 'test'])
         ->middleware('throttle:10,1')
         ->name('staff-api-settings.test');
+    Route::post('/system-configs/app-logs/telemetry', [App\Http\Controllers\AppLogsController::class, 'updateTelemetry'])
+        ->name('app-logs.telemetry.update');
+    Route::post('/system-configs/app-logs/critical-alert/test', [App\Http\Controllers\AppLogsController::class, 'testCriticalAlert'])
+        ->middleware('throttle:10,1')
+        ->name('app-logs.critical-alert.test');
     Route::post('/system-configs/whatsapp', [App\Http\Controllers\WhatsAppSettingsController::class, 'update'])
         ->middleware(['whatsapp.access:config', 'throttle:20,1'])
         ->name('whatsapp-settings.update');

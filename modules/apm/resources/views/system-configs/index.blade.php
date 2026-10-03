@@ -78,6 +78,9 @@
             @case('staff-api')
                 @include('staff-api-settings.index', $panelData)
                 @break
+            @case('app-logs')
+                @include('app-logs.index', $panelData)
+                @break
             @case('whatsapp')
                 @include('whatsapp-settings.index', $panelData)
                 @break
