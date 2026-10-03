@@ -96,7 +96,10 @@ run_as_priv() {
     if sudo -n "$@" 2>/dev/null; then
       return 0
     fi
-    sudo "$@" 2>/dev/null || return 1
+    if [[ "${ALLOW_INTERACTIVE_SUDO:-0}" == "1" ]]; then
+      sudo "$@" 2>/dev/null || return 1
+      return 0
+    fi
   fi
   return 1
 }
