@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Services\RiskSettingsService;
 use App\Services\StaffPortalOrgClient;
+use App\Support\StaffDivisionContext;
 use App\Support\StaffPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class MeController extends Controller
     {
         $importEnabled = $settings->importEnabled();
         $staffId = (int) $request->attributes->get('risk_staff_id');
+        $divisionId = (int) $request->attributes->get('risk_division_id') ?: 0;
         $identity = $this->resolveIdentity($staffId, $org);
 
         return response()->json([
@@ -29,9 +31,10 @@ class MeController extends Controller
                     'staff_id' => $staffId > 0 ? $staffId : 0,
                     'role' => 'staff',
                     'role_id' => 0,
-                    'division_id' => (int) $request->attributes->get('risk_division_id') ?: null,
+                    'division_id' => $divisionId > 0 ? $divisionId : null,
                     'permissions' => $request->attributes->get('risk_permissions', []),
                 ],
+                'division_context' => StaffDivisionContext::payloadFor($staffId, $divisionId),
                 'enabled_modules' => [
                     'risks' => true,
                     'dashboard' => true,

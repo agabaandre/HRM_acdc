@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\StaffDivisionContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -43,8 +44,14 @@ class AuthenticateRiskSession
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $request->attributes->set('risk_staff_id', (int) $session['staff_id']);
-        $request->attributes->set('risk_division_id', (int) ($session['division_id'] ?? 0));
+        $staffId = (int) $session['staff_id'];
+        $request->attributes->set('risk_staff_id', $staffId);
+        $resolvedDivisionId = StaffDivisionContext::resolveDivisionId($session, $staffId);
+        $staleActive = (int) ($session[StaffDivisionContext::SESSION_ACTIVE_ID] ?? 0);
+        if ($staleActive > 0 && $staleActive !== $resolvedDivisionId) {
+            StaffDivisionContext::clearActiveOnSession($request);
+        }
+        $request->attributes->set('risk_division_id', $resolvedDivisionId);
         $perms = $session['permissions'] ?? [];
         if (! is_array($perms)) {
             $perms = [];

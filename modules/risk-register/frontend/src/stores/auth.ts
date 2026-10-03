@@ -20,6 +20,19 @@ export interface PortalProfile {
   locale?: string
 }
 
+export interface DivisionContextRow {
+  id: number
+  name: string
+  is_primary: boolean
+  sources: string[]
+}
+
+export interface DivisionContext {
+  enabled: boolean
+  active_id: number | null
+  divisions: DivisionContextRow[]
+}
+
 export interface PortalUser {
   id: number
   name: string
@@ -27,11 +40,12 @@ export interface PortalUser {
   avatar_url?: string | null
   profile: PortalProfile | null
   impersonation?: ImpersonationStatus | null
+  division_context?: DivisionContext | null
   /** SPA feature flags from Settings → Portal modules */
   enabled_modules?: Record<string, boolean>
 }
 
-const ME_CACHE_KEY = 'risk_register_me_cache_v3'
+const ME_CACHE_KEY = 'risk_register_me_cache_v4'
 const ME_CACHE_TTL_MS = 5 * 60_000
 
 type MeCachePayload = { savedAt: number; user: PortalUser }

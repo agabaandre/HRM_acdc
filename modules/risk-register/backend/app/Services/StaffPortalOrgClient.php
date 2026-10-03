@@ -338,22 +338,32 @@ class StaffPortalOrgClient
             if ($id < 1) {
                 continue;
             }
+            $intOrNull = static function (mixed $value): ?int {
+                if ($value === null || $value === '') {
+                    return null;
+                }
+                $n = (int) $value;
+
+                return $n > 0 ? $n : null;
+            };
+
             $out[] = [
                 'division_id' => $id,
                 'division_short_name' => (string) ($row['division_short_name'] ?? $row['short_name'] ?? ''),
                 'division_name' => (string) ($row['division_name'] ?? $row['name'] ?? ''),
-                'directorate_id' => isset($row['directorate_id']) && $row['directorate_id'] !== '' && $row['directorate_id'] !== null
-                    ? (int) $row['directorate_id']
-                    : null,
-                'division_head' => isset($row['division_head']) && $row['division_head'] !== '' && $row['division_head'] !== null
-                    ? (int) $row['division_head']
-                    : null,
-                'risk_focal_person' => isset($row['risk_focal_person']) && $row['risk_focal_person'] !== '' && $row['risk_focal_person'] !== null
-                    ? (int) $row['risk_focal_person']
-                    : null,
-                'director_id' => isset($row['director_id']) && $row['director_id'] !== '' && $row['director_id'] !== null
-                    ? (int) $row['director_id']
-                    : null,
+                'directorate_id' => $intOrNull($row['directorate_id'] ?? null),
+                'division_head' => $intOrNull($row['division_head'] ?? null),
+                'focal_person' => $intOrNull($row['focal_person'] ?? null),
+                'risk_focal_person' => $intOrNull($row['risk_focal_person'] ?? null),
+                'admin_assistant' => $intOrNull($row['admin_assistant'] ?? null),
+                'finance_officer' => $intOrNull($row['finance_officer'] ?? null),
+                'director_id' => $intOrNull($row['director_id'] ?? null),
+                'head_oic_id' => $intOrNull($row['head_oic_id'] ?? null),
+                'head_oic_start_date' => $row['head_oic_start_date'] ?? null,
+                'head_oic_end_date' => $row['head_oic_end_date'] ?? null,
+                'director_oic_id' => $intOrNull($row['director_oic_id'] ?? null),
+                'director_oic_start_date' => $row['director_oic_start_date'] ?? null,
+                'director_oic_end_date' => $row['director_oic_end_date'] ?? null,
             ];
         }
 

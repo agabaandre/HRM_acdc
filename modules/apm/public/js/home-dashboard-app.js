@@ -88,13 +88,37 @@
     <v-card class="mb-4" elevation="1">
       <v-card-text class="pa-4 pa-md-5">
         <div class="d-flex flex-wrap align-center justify-space-between gap-3">
-          <div>
-            <div class="text-h5 font-weight-bold hd-title">
-              <v-icon icon="mdi-view-dashboard-outline" color="primary" class="me-2"></v-icon>
-              Approvals Management
+          <div class="d-flex flex-column flex-md-row align-md-center flex-grow-1 gap-3" style="min-width: 0;">
+            <div class="flex-shrink-0">
+              <div class="text-h5 font-weight-bold hd-title">
+                <v-icon icon="mdi-view-dashboard-outline" color="primary" class="me-2"></v-icon>
+                Approvals Management
+              </div>
+              <div v-if="userName" class="text-body-2 hd-subtitle mt-1">
+                Welcome back, <strong>{{ userName }}</strong>
+              </div>
             </div>
-            <div v-if="userName" class="text-body-2 hd-subtitle mt-1">
-              Welcome back, <strong>{{ userName }}</strong>
+            <div
+              v-if="divisionContext.enabled"
+              class="hd-division-switcher flex-grow-1"
+              style="min-width: 200px; max-width: 360px; width: 100%;"
+            >
+              <v-select
+                v-model="activeDivisionId"
+                :items="divisionContext.divisions"
+                item-title="name"
+                item-value="id"
+                label="Acting division"
+                density="compact"
+                hide-details
+                variant="outlined"
+                prepend-inner-icon="mdi-office-building-outline"
+                @update:model-value="switchDivision"
+              >
+                <template #item="{ props, item }">
+                  <v-list-item v-bind="props" :subtitle="item.raw.is_primary ? 'Primary (contract)' : null"></v-list-item>
+                </template>
+              </v-select>
             </div>
           </div>
           <v-chip
@@ -117,25 +141,6 @@
           >
             No pending approvals
           </v-chip>
-        </div>
-
-        <div v-if="divisionContext.enabled" class="mt-3" style="max-width: 420px;">
-          <div class="text-caption text-medium-emphasis mb-1">Acting division</div>
-          <v-select
-            v-model="activeDivisionId"
-            :items="divisionContext.divisions"
-            item-title="name"
-            item-value="id"
-            density="comfortable"
-            hide-details
-            variant="outlined"
-            prepend-inner-icon="mdi-office-building-outline"
-            @update:model-value="switchDivision"
-          >
-            <template #item="{ props, item }">
-              <v-list-item v-bind="props" :subtitle="item.raw.is_primary ? 'Primary (contract)' : null"></v-list-item>
-            </template>
-          </v-select>
         </div>
 
         <div v-if="docSearch" class="mt-4">
