@@ -114,4 +114,67 @@ class StaffPortalMailClientTest extends TestCase
         $client->send('a@b.c', 'S', '<p>x</p>');
         $this->assertTrue($called);
     }
+
+    public function test_local_http_fallback_includes_attachments(): void
+    {
+        $crypto = new MailConfigCrypto($this->key);
+        $enc = $crypto->encrypt([
+            'driver' => 'http',
+            'config' => [
+                'base_url' => 'https://notifications.test/api/v1',
+                'client_id' => 'cid',
+                'client_secret' => 'sec',
+            ],
+            'from_address' => 'n@example.org',
+            'from_name' => 'Notify',
+        ]);
+
+        Http::fake([
+            'http://portal.test/share/mail/send' => Http::response(['success' => false, 'error' => 'down'], 503),
+            'http://portal.test/share/mail/active-config' => Http::response([
+                'success' => true,
+                'data' => [
+                    'driver' => 'http',
+                    'from_address' => 'n@example.org',
+                    'from_name' => 'Notify',
+                    'expires_at' => $enc['expires_at'],
+                    'ciphertext' => $enc['ciphertext'],
+                    'iv' => $enc['iv'],
+                    'tag' => $enc['tag'],
+                ],
+            ], 200),
+            'https://notifications.test/api/v1/integrations/auth/token' => Http::response([
+                'token' => 'jwt-token',
+            ], 200),
+            'https://notifications.test/api/v1/integrations/send' => Http::response(['ok' => true], 200),
+        ]);
+
+        $client = new StaffPortalMailClient(
+            baseUrl: 'http://portal.test',
+            token: 'test-token',
+            dispatch: 'auto',
+            configKey: $this->key,
+        );
+
+        $client->send('user@example.org', 'With file', '<p>ok</p>', [
+            'attachments' => [
+                [
+                    'name' => 'note.txt',
+                    'content' => 'payload-bytes',
+                    'content_type' => 'text/plain',
+                ],
+            ],
+        ]);
+
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), '/integrations/send')) {
+                return false;
+            }
+            $data = $request->data();
+
+            return ($data['attachments'][0]['filename'] ?? null) === 'note.txt'
+                && ($data['attachments'][0]['content'] ?? null) === base64_encode('payload-bytes')
+                && ($data['attachments'][0]['content_type'] ?? null) === 'text/plain';
+        });
+    }
 }

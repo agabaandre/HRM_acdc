@@ -119,7 +119,7 @@ class PortalMailer
     }
 
     /**
-     * Africa CDC Email Server — attachments are not supported by the HTTP API; they are omitted with a log warning.
+     * Africa CDC Email Server — attachments as {filename, content (base64), content_type}.
      *
      * @param  list<string>  $to
      * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
@@ -134,13 +134,6 @@ class PortalMailer
         array $config,
         array $bcc = [],
     ): void {
-        if ($attachments !== []) {
-            Log::warning('HTTP notifications API does not accept attachments; sending without them.', [
-                'count' => count($attachments),
-                'subject' => $subject,
-            ]);
-        }
-
         $client = new HttpNotificationsMailClient;
         // Temporarily overlay config for this send
         $prev = [
@@ -154,7 +147,7 @@ class PortalMailer
             'mail.http.client_secret' => $config['client_secret'] ?? $prev['mail.http.client_secret'],
         ]);
         try {
-            $client->send(count($to) === 1 ? $to[0] : $to, $subject, $htmlBody, [], $bcc);
+            $client->send(count($to) === 1 ? $to[0] : $to, $subject, $htmlBody, [], $bcc, $attachments);
         } finally {
             config($prev);
         }

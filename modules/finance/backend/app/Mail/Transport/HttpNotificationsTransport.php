@@ -6,6 +6,7 @@ use App\Services\HttpNotificationsMailClient;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Symfony\Component\Mime\MessageConverter;
+use Symfony\Component\Mime\Part\DataPart;
 
 class HttpNotificationsTransport extends AbstractTransport
 {
@@ -47,12 +48,32 @@ class HttpNotificationsTransport extends AbstractTransport
             $html = stream_get_contents($html) ?: '';
         }
 
+        $attachments = [];
+        foreach ($email->getAttachments() as $part) {
+            if (! $part instanceof DataPart) {
+                continue;
+            }
+            $body = $part->getBody();
+            if (is_resource($body)) {
+                $body = stream_get_contents($body) ?: '';
+            }
+            if (! is_string($body) || $body === '') {
+                continue;
+            }
+            $attachments[] = [
+                'name' => $part->getFilename() ?: 'attachment',
+                'content' => $body,
+                'content_type' => $part->getContentType() ?: 'application/octet-stream',
+            ];
+        }
+
         $this->client->send(
             count($to) === 1 ? $to[0] : $to,
             $email->getSubject() ?? '(no subject)',
             (string) $html,
             $cc,
             $bcc,
+            $attachments,
         );
     }
 

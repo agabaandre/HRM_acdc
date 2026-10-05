@@ -104,17 +104,11 @@ function sendEmailViaLocalTransport($to, $subject, $body, $fromEmail = null, $fr
 
 /**
  * Send via Africa CDC Email Server (https://notifications.africacdc.org/api/documentation).
+ * Attachments: API expects [{filename, content (base64), content_type}].
  */
 function sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail = null, $fromName = null, $cc = [], $bcc = [], $attachments = [])
 {
     try {
-        if (!empty($attachments)) {
-            \Log::warning('HTTP notifications API does not accept attachments; sending without them.', [
-                'count' => count($attachments),
-                'subject' => $subject,
-            ]);
-        }
-
         $base = rtrim((string) env('MAIL_HTTP_BASE_URL', 'https://notifications.africacdc.org/api/v1'), '/');
         $clientId = (string) env('MAIL_HTTP_CLIENT_ID', '');
         $clientSecret = (string) env('MAIL_HTTP_CLIENT_SECRET', '');
@@ -129,10 +123,12 @@ function sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail = null,
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
             ]);
-        if (!$auth->successful() || empty($auth->json('token'))) {
+        $token = (string) ($auth->json('token') ?? $auth->json('access_token') ?? '');
+        if (!$auth->successful() || $token === '') {
             throw new \Exception('HTTP notifications auth failed: '.$auth->body());
         }
-        $token = (string) $auth->json('token');
+
+        $apiAttachments = normalizeHttpNotificationAttachments(is_array($attachments) ? $attachments : []);
 
         $recipients = is_array($to) ? $to : [$to];
         foreach ($recipients as $recipient) {
@@ -147,6 +143,9 @@ function sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail = null,
             }
             if (!empty($bcc)) {
                 $payload['bcc'] = array_values((array) $bcc);
+            }
+            if ($apiAttachments !== []) {
+                $payload['attachments'] = $apiAttachments;
             }
             $res = \Illuminate\Support\Facades\Http::withToken($token)
                 ->acceptJson()
@@ -163,6 +162,85 @@ function sendEmailWithHttpNotifications($to, $subject, $body, $fromEmail = null,
         \Log::error('HTTP notifications email failed: '.$e->getMessage());
         throw new \Exception('HTTP notifications email failed: '.$e->getMessage(), 0, $e);
     }
+}
+
+/**
+ * @param  list<array<string, mixed>|string>  $attachments
+ * @return list<array{filename: string, content: string, content_type: string}>
+ */
+function normalizeHttpNotificationAttachments(array $attachments): array
+{
+    $out = [];
+    $total = 0;
+    foreach ($attachments as $row) {
+        if (count($out) >= 10) {
+            break;
+        }
+        $filename = 'attachment';
+        $contentType = 'application/octet-stream';
+        $bytes = null;
+
+        if (is_string($row)) {
+            $path = $row;
+            if ($path === '' || ! is_readable($path)) {
+                continue;
+            }
+            $bytes = file_get_contents($path);
+            $filename = basename($path);
+            $contentType = mime_content_type($path) ?: $contentType;
+        } elseif (is_array($row)) {
+            $filename = (string) ($row['filename'] ?? $row['name'] ?? 'attachment');
+            $contentType = (string) ($row['content_type'] ?? $row['mime'] ?? 'application/octet-stream');
+            if (isset($row['content_base64']) && is_string($row['content_base64']) && $row['content_base64'] !== '') {
+                $decoded = base64_decode($row['content_base64'], true);
+                if ($decoded === false) {
+                    continue;
+                }
+                $bytes = $decoded;
+            } elseif (isset($row['content']) && is_string($row['content']) && $row['content'] !== '') {
+                if (isset($row['filename']) && ! isset($row['name'])) {
+                    $decoded = base64_decode($row['content'], true);
+                    $bytes = $decoded !== false ? $decoded : $row['content'];
+                } else {
+                    $bytes = $row['content'];
+                }
+            } else {
+                $path = (string) ($row['path'] ?? '');
+                if ($path !== '' && ! is_readable($path) && is_readable(storage_path('app/public/'.$path))) {
+                    $path = storage_path('app/public/'.$path);
+                }
+                if ($path === '' || ! is_readable($path)) {
+                    continue;
+                }
+                $bytes = file_get_contents($path);
+                if ($filename === 'attachment') {
+                    $filename = basename($path);
+                }
+                if ($contentType === 'application/octet-stream') {
+                    $contentType = mime_content_type($path) ?: $contentType;
+                }
+            }
+        }
+
+        if (! is_string($bytes) || $bytes === '') {
+            continue;
+        }
+        $len = strlen($bytes);
+        if ($len > 5 * 1024 * 1024) {
+            throw new \Exception('Attachment "'.$filename.'" exceeds 5 MB limit.');
+        }
+        $total += $len;
+        if ($total > 15 * 1024 * 1024) {
+            throw new \Exception('Attachments exceed 15 MB total limit.');
+        }
+        $out[] = [
+            'filename' => $filename,
+            'content' => base64_encode($bytes),
+            'content_type' => $contentType !== '' ? $contentType : 'application/octet-stream',
+        ];
+    }
+
+    return $out;
 }
 
 /**

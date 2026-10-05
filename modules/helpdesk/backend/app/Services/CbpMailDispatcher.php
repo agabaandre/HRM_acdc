@@ -30,21 +30,86 @@ class CbpMailDispatcher
 
         $html = $mailable->render();
         $subject = (string) ($mailable->envelope()->subject ?? $mailable->subject ?? 'Notification');
+        $attachments = $this->extractMailableAttachments($mailable);
 
         $client = $this->makeClient(
             $mode,
-            function (string|array $recipients, string $subj, string $body) use ($mailable): void {
-                Mail::html($body, function ($message) use ($recipients, $subj, $mailable): void {
+            function (string|array $recipients, string $subj, string $body, array $options = []) use ($mailable): void {
+                Mail::html($body, function ($message) use ($recipients, $subj, $mailable, $options): void {
                     $message->to($recipients)->subject($subj);
                     $from = $mailable->envelope()->from;
                     if ($from) {
                         $message->from($from->address, $from->name);
                     }
+                    foreach ($options['attachments'] ?? [] as $attachment) {
+                        if (! is_array($attachment)) {
+                            continue;
+                        }
+                        $bytes = $attachment['content'] ?? null;
+                        if ((! is_string($bytes) || $bytes === '') && isset($attachment['content_base64'])) {
+                            $decoded = base64_decode((string) $attachment['content_base64'], true);
+                            $bytes = $decoded !== false ? $decoded : null;
+                        }
+                        if (! is_string($bytes) || $bytes === '') {
+                            continue;
+                        }
+                        $message->attachData(
+                            $bytes,
+                            (string) ($attachment['name'] ?? $attachment['filename'] ?? 'attachment'),
+                            ['mime' => (string) ($attachment['content_type'] ?? 'application/octet-stream')],
+                        );
+                    }
                 });
             }
         );
 
-        $client->send($to, $subject, $html);
+        $options = [];
+        if ($attachments !== []) {
+            $options['attachments'] = $attachments;
+        }
+        $client->send($to, $subject, $html, $options);
+    }
+
+    /**
+     * @return list<array{name: string, content: string, content_type: string}>
+     */
+    private function extractMailableAttachments(Mailable $mailable): array
+    {
+        $out = [];
+
+        foreach ($mailable->rawAttachments ?? [] as $raw) {
+            if (! is_array($raw) || empty($raw['data'])) {
+                continue;
+            }
+            $out[] = [
+                'name' => (string) ($raw['name'] ?? 'attachment'),
+                'content' => (string) $raw['data'],
+                'content_type' => (string) ($raw['options']['mime'] ?? 'application/octet-stream'),
+            ];
+        }
+
+        foreach ($mailable->diskAttachments ?? [] as $disk) {
+            if (! is_array($disk) || empty($disk['path'])) {
+                continue;
+            }
+            $diskName = (string) ($disk['disk'] ?? 'local');
+            $path = (string) $disk['path'];
+            try {
+                $bytes = \Illuminate\Support\Facades\Storage::disk($diskName)->get($path);
+            } catch (\Throwable) {
+                continue;
+            }
+            if (! is_string($bytes) || $bytes === '') {
+                continue;
+            }
+            $out[] = [
+                'name' => (string) ($disk['name'] ?? basename($path)),
+                'content' => $bytes,
+                'content_type' => (string) ($disk['options']['mime'] ?? 'application/octet-stream'),
+            ];
+        }
+
+        return $out;
     }
 
     /**

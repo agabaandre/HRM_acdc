@@ -9,14 +9,23 @@ use RuntimeException;
 /**
  * Africa CDC Email Server (notifications.africacdc.org) — client-credentials JWT + /integrations/send.
  *
+ * Attachments: array of {filename, content (base64), content_type} — max 10 files, 5 MB each, 15 MB total.
+ *
  * @see https://notifications.africacdc.org/api/documentation
  */
 class HttpNotificationsMailClient
 {
+    private const MAX_FILES = 10;
+
+    private const MAX_BYTES_EACH = 5 * 1024 * 1024;
+
+    private const MAX_BYTES_TOTAL = 15 * 1024 * 1024;
+
     /**
      * @param  string|array<int, string>  $to
      * @param  array<int, string>  $cc
      * @param  array<int, string>  $bcc
+     * @param  list<array<string, mixed>|string>  $attachments  Portal/APM shapes normalized to API format
      */
     public function send(
         string|array $to,
@@ -24,10 +33,12 @@ class HttpNotificationsMailClient
         string $htmlBody,
         array $cc = [],
         array $bcc = [],
+        array $attachments = [],
     ): void {
         $base = rtrim((string) config('mail.http.base_url', env('MAIL_HTTP_BASE_URL', 'https://notifications.africacdc.org/api/v1')), '/');
         $token = $this->bearerToken($base);
         $recipients = is_array($to) ? $to : [$to];
+        $apiAttachments = $this->normalizeAttachments($attachments);
 
         foreach ($recipients as $recipient) {
             $payload = [
@@ -42,6 +53,9 @@ class HttpNotificationsMailClient
             if ($bcc !== []) {
                 $payload['bcc'] = array_values($bcc);
             }
+            if ($apiAttachments !== []) {
+                $payload['attachments'] = $apiAttachments;
+            }
 
             $res = Http::withToken($token)
                 ->acceptJson()
@@ -55,6 +69,126 @@ class HttpNotificationsMailClient
                 );
             }
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>|string>  $attachments
+     * @return list<array{filename: string, content: string, content_type: string}>
+     */
+    public function normalizeAttachments(array $attachments): array
+    {
+        $out = [];
+        $total = 0;
+
+        foreach ($attachments as $row) {
+            if (count($out) >= self::MAX_FILES) {
+                break;
+            }
+
+            $normalized = $this->normalizeOneAttachment($row);
+            if ($normalized === null) {
+                continue;
+            }
+
+            $raw = base64_decode($normalized['content'], true);
+            $rawLen = is_string($raw) ? strlen($raw) : 0;
+            if ($rawLen > self::MAX_BYTES_EACH) {
+                throw new RuntimeException(
+                    'Attachment "'.$normalized['filename'].'" exceeds 5 MB limit.'
+                );
+            }
+            $total += $rawLen;
+            if ($total > self::MAX_BYTES_TOTAL) {
+                throw new RuntimeException('Attachments exceed 15 MB total limit.');
+            }
+
+            $out[] = $normalized;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>|string  $row
+     * @return array{filename: string, content: string, content_type: string}|null
+     */
+    private function normalizeOneAttachment(array|string $row): ?array
+    {
+        if (is_string($row)) {
+            return $this->fromPath($row, basename($row), null);
+        }
+
+        $filename = (string) ($row['filename'] ?? $row['name'] ?? 'attachment');
+        $contentType = (string) ($row['content_type'] ?? $row['mime'] ?? 'application/octet-stream');
+        if ($contentType === '') {
+            $contentType = 'application/octet-stream';
+        }
+
+        if (isset($row['content_base64']) && is_string($row['content_base64']) && $row['content_base64'] !== '') {
+            return [
+                'filename' => $filename,
+                'content' => preg_replace('/\s+/', '', $row['content_base64']) ?? $row['content_base64'],
+                'content_type' => $contentType,
+            ];
+        }
+
+        // Explicit API shape: filename + base64 content (already encoded).
+        if (isset($row['filename'], $row['content']) && is_string($row['content']) && ! isset($row['name'])) {
+            $b64 = preg_replace('/\s+/', '', $row['content']) ?? $row['content'];
+            $decoded = base64_decode($b64, true);
+            if ($decoded !== false) {
+                return [
+                    'filename' => $filename,
+                    'content' => $b64,
+                    'content_type' => $contentType,
+                ];
+            }
+        }
+
+        // PortalMailer / Share: raw binary bytes in content + name.
+        if (isset($row['content']) && is_string($row['content']) && $row['content'] !== '') {
+            return [
+                'filename' => $filename,
+                'content' => base64_encode($row['content']),
+                'content_type' => $contentType,
+            ];
+        }
+
+        $path = (string) ($row['path'] ?? '');
+        if ($path !== '') {
+            return $this->fromPath($path, $filename, $contentType);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{filename: string, content: string, content_type: string}|null
+     */
+    private function fromPath(string $path, string $filename, ?string $contentType): ?array
+    {
+        if ($path === '') {
+            return null;
+        }
+        if (! is_readable($path) && is_readable(storage_path('app/public/'.$path))) {
+            $path = storage_path('app/public/'.$path);
+        }
+        if (! is_readable($path)) {
+            return null;
+        }
+        $bytes = file_get_contents($path);
+        if ($bytes === false) {
+            return null;
+        }
+        $mime = $contentType && $contentType !== 'application/octet-stream'
+            ? $contentType
+            : (mime_content_type($path) ?: 'application/octet-stream');
+
+        return [
+            'filename' => $filename !== '' && $filename !== 'attachment' ? $filename : basename($path),
+            'content' => base64_encode($bytes),
+            'content_type' => $mime,
+        ];
     }
 
     private function bearerToken(string $base): string
@@ -88,13 +222,12 @@ class HttpNotificationsMailClient
             );
         }
 
-        $token = (string) ($res->json('token') ?? '');
+        $token = (string) ($res->json('token') ?? $res->json('access_token') ?? '');
         if ($token === '') {
             throw new RuntimeException('HTTP notifications auth returned no token.');
         }
 
         $ttl = (int) ($res->json('expires_in') ?? 86400);
-        // Refresh a bit early
         Cache::put($cacheKey, $token, max(60, $ttl - 120));
 
         return $token;

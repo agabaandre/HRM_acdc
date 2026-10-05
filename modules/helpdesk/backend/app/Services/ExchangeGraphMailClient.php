@@ -13,6 +13,7 @@ class ExchangeGraphMailClient
      * @param  string|array<int, string>  $to
      * @param  array<int, string>  $cc
      * @param  array<int, string>  $bcc
+     * @param  list<array{name: string, content: string, content_type?: string}>  $attachments
      */
     public function send(
         string|array $to,
@@ -22,6 +23,7 @@ class ExchangeGraphMailClient
         ?string $fromName = null,
         array $cc = [],
         array $bcc = [],
+        array $attachments = [],
     ): void {
         $oauth = $this->oauth();
 
@@ -49,6 +51,7 @@ class ExchangeGraphMailClient
             $fromName,
             $cc,
             $bcc,
+            $attachments,
         );
 
         if (! $ok) {

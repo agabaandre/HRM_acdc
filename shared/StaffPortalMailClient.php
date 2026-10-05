@@ -128,18 +128,50 @@ final class StaffPortalMailClient
             }
         }
         if (! empty($options['attachments']) && is_array($options['attachments'])) {
-            $payload['attachments'] = array_map(function (array $row): array {
-                $b64 = $row['content_base64'] ?? null;
-                if ($b64 === null && isset($row['content'])) {
-                    $b64 = base64_encode((string) $row['content']);
+            $payload['attachments'] = [];
+            foreach ($options['attachments'] as $row) {
+                if (is_string($row)) {
+                    $row = ['path' => $row, 'name' => basename($row)];
                 }
-
-                return [
-                    'name' => (string) ($row['name'] ?? 'attachment'),
+                if (! is_array($row)) {
+                    continue;
+                }
+                $b64 = $row['content_base64'] ?? null;
+                if ($b64 === null && isset($row['content']) && is_string($row['content']) && $row['content'] !== '') {
+                    $b64 = base64_encode($row['content']);
+                }
+                if ($b64 === null || $b64 === '') {
+                    $path = (string) ($row['path'] ?? '');
+                    if ($path !== '' && ! is_readable($path) && function_exists('storage_path') && is_readable(storage_path('app/public/'.$path))) {
+                        $path = storage_path('app/public/'.$path);
+                    }
+                    if ($path !== '' && is_readable($path)) {
+                        $bytes = file_get_contents($path);
+                        if ($bytes !== false && $bytes !== '') {
+                            $b64 = base64_encode($bytes);
+                            if (empty($row['content_type']) || $row['content_type'] === 'application/octet-stream') {
+                                $row['content_type'] = function_exists('mime_content_type')
+                                    ? (mime_content_type($path) ?: 'application/octet-stream')
+                                    : 'application/octet-stream';
+                            }
+                            if (empty($row['name']) || $row['name'] === 'attachment') {
+                                $row['name'] = basename($path);
+                            }
+                        }
+                    }
+                }
+                if ($b64 === null || $b64 === '') {
+                    continue;
+                }
+                $payload['attachments'][] = [
+                    'name' => (string) ($row['name'] ?? $row['filename'] ?? 'attachment'),
                     'content_base64' => (string) $b64,
                     'content_type' => (string) ($row['content_type'] ?? 'application/octet-stream'),
                 ];
-            }, $options['attachments']);
+            }
+            if ($payload['attachments'] === []) {
+                unset($payload['attachments']);
+            }
         }
 
         $response = $this->http()->asJson()->post($url, $payload);
@@ -262,6 +294,9 @@ final class StaffPortalMailClient
         $recipients = is_array($to) ? $to : [$to];
         $cc = array_values($options['cc'] ?? []);
         $bcc = array_values($options['bcc'] ?? []);
+        $attachments = $this->normalizeAttachmentsForHttpApi(
+            is_array($options['attachments'] ?? null) ? $options['attachments'] : []
+        );
         foreach ($recipients as $recipient) {
             $payload = [
                 'to' => $recipient,
@@ -275,12 +310,78 @@ final class StaffPortalMailClient
             if ($bcc !== []) {
                 $payload['bcc'] = $bcc;
             }
+            if ($attachments !== []) {
+                $payload['attachments'] = $attachments;
+            }
             $res = Http::withToken($token)->acceptJson()->asJson()->timeout($this->timeoutSeconds)
                 ->post($base.'/integrations/send', $payload);
             if (! $res->successful()) {
                 throw new RuntimeException('HTTP local send failed: '.$res->body());
             }
         }
+    }
+
+    /**
+     * Map Share/module attachment shapes to notifications API
+     * [{filename, content (base64), content_type}].
+     *
+     * @param  list<array<string, mixed>|string>  $attachments
+     * @return list<array{filename: string, content: string, content_type: string}>
+     */
+    private function normalizeAttachmentsForHttpApi(array $attachments): array
+    {
+        $out = [];
+        foreach ($attachments as $row) {
+            if (count($out) >= 10) {
+                break;
+            }
+            if (is_string($row)) {
+                $row = ['path' => $row, 'name' => basename($row)];
+            }
+            if (! is_array($row)) {
+                continue;
+            }
+            $filename = (string) ($row['filename'] ?? $row['name'] ?? 'attachment');
+            $contentType = (string) ($row['content_type'] ?? 'application/octet-stream');
+            $b64 = $row['content_base64'] ?? null;
+            if (($b64 === null || $b64 === '') && isset($row['content']) && is_string($row['content']) && $row['content'] !== '') {
+                // Already API-shaped (filename + base64 content) vs Portal binary (name + bytes).
+                if (isset($row['filename']) && ! isset($row['name'])) {
+                    $decoded = base64_decode($row['content'], true);
+                    $b64 = $decoded !== false ? preg_replace('/\s+/', '', $row['content']) : base64_encode($row['content']);
+                } else {
+                    $b64 = base64_encode($row['content']);
+                }
+            }
+            if (($b64 === null || $b64 === '') && ! empty($row['path'])) {
+                $path = (string) $row['path'];
+                if (! is_readable($path) && function_exists('storage_path') && is_readable(storage_path('app/public/'.$path))) {
+                    $path = storage_path('app/public/'.$path);
+                }
+                if (is_readable($path)) {
+                    $bytes = file_get_contents($path);
+                    if ($bytes !== false && $bytes !== '') {
+                        $b64 = base64_encode($bytes);
+                        if ($filename === 'attachment') {
+                            $filename = basename($path);
+                        }
+                        if ($contentType === 'application/octet-stream' && function_exists('mime_content_type')) {
+                            $contentType = mime_content_type($path) ?: $contentType;
+                        }
+                    }
+                }
+            }
+            if ($b64 === null || $b64 === '') {
+                continue;
+            }
+            $out[] = [
+                'filename' => $filename,
+                'content' => (string) $b64,
+                'content_type' => $contentType !== '' ? $contentType : 'application/octet-stream',
+            ];
+        }
+
+        return $out;
     }
 
     private function endpoint(string $path): string
