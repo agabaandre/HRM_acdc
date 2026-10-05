@@ -109,6 +109,17 @@ async function testConnection() {
     if (data.success) success.value = data.message
     else error.value = data.message || 'Connection failed'
   } catch (e) {
+    if (e && typeof e === 'object' && 'response' in e) {
+      const raw = (e as { response?: { data?: { message?: string; details?: string[] } } }).response?.data
+      if (raw && typeof raw === 'object') {
+        if (Array.isArray(raw.details)) probeLines.value = raw.details
+        if (typeof raw.message === 'string' && raw.message.trim() !== '') {
+          error.value = raw.message
+          testing.value = false
+          return
+        }
+      }
+    }
     error.value = apiErrorMessage(e, 'Connection test failed')
   } finally {
     testing.value = false

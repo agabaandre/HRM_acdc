@@ -56,6 +56,6 @@ class StaffApiSettingsController extends Controller
         }
         $result = StaffApiCredentials::probe(new HelpdeskSettingsBag, $override !== [] ? $override : null);
 
-        return response()->json($result, $result['success'] ? 200 : 500);
+        return response()->json($result);
     }
 }

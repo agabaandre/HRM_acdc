@@ -130,10 +130,15 @@ final class StaffShareHttp
             return null;
         }
 
-        $response = Http::withBasicAuth($this->username, $this->password)
-            ->timeout(30)
-            ->acceptJson()
-            ->post($this->baseUrl.'/share/token');
+        try {
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->timeout(30)
+                ->acceptJson()
+                ->post($this->baseUrl.'/share/token');
+        } catch (\Throwable) {
+            // Unreachable host / TLS errors — callers fall back to STAFF_API_TOKEN.
+            return null;
+        }
 
         if (! $response->successful()) {
             return null;

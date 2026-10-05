@@ -192,7 +192,7 @@ final class StaffApiCredentials
     }
 
     /**
-     * @return array{success: bool, status: string, mode: string, details: list<string>, message: string}
+     * @return array{success: bool, status: string, mode: string, details: list<string>, message: string, base_url: string}
      */
     public static function probe(?ModuleSettingsBag $bag = null, ?array $override = null): array
     {
@@ -208,27 +208,28 @@ final class StaffApiCredentials
             }
         }
 
+        $token = $resolved['token'] !== '' ? $resolved['token'] : self::DEFAULT_TOKEN;
         $details = [];
         $client = StaffShareHttp::fromConfig([
             'base_url' => $resolved['base_url'],
             'username' => $resolved['username'],
             'password' => $resolved['password'],
-            'token' => $resolved['token'] !== '' ? $resolved['token'] : self::DEFAULT_TOKEN,
-        ], 45);
+            'token' => $token,
+        ], 20);
 
         $jwtOk = false;
-        $staticOk = false;
+        $sampleOk = false;
         $mode = '';
 
         if ($resolved['username'] !== '' && $resolved['password'] !== '') {
             try {
-                $token = $client->accessToken();
-                if (is_string($token) && $token !== '') {
+                $jwt = $client->accessToken();
+                if (is_string($jwt) && $jwt !== '') {
                     $jwtOk = true;
                     $mode = 'JWT (POST /share/token)';
                     $details[] = 'credentials → token: OK';
                 } else {
-                    $details[] = 'credentials → token: FAIL (rejected or empty)';
+                    $details[] = 'credentials → token: FAIL (rejected or empty — static token still tried)';
                 }
             } catch (Throwable $e) {
                 $details[] = 'credentials → token: FAIL ('.$e->getMessage().')';
@@ -239,7 +240,7 @@ final class StaffApiCredentials
 
         try {
             $staff = $client->getJson('/share/get_current_staff', ['limit' => 2]);
-            $staticOk = true;
+            $sampleOk = true;
             if ($mode === '') {
                 $mode = $jwtOk ? 'JWT' : 'static STAFF_API_TOKEN';
             }
@@ -248,18 +249,51 @@ final class StaffApiCredentials
             $details[] = 'staff sample: FAIL ('.$e->getMessage().')';
         }
 
+        $divisionsOk = false;
         try {
             $div = $client->getJson('/share/divisions');
+            $divisionsOk = true;
             $details[] = 'divisions: OK ('.(is_array($div) ? count($div) : 0).')';
         } catch (Throwable $e) {
             $details[] = 'divisions: FAIL ('.$e->getMessage().')';
-            $staticOk = false;
         }
 
-        $ok = $jwtOk || $staticOk;
+        // Same-app fallback: HTTP to loopback often deadlocks under Apache/PHP-FPM.
+        // When Share data is available in-process, verify token + DB without another HTTP hop.
+        if (! $sampleOk && class_exists(\Modules\Share\Services\ShareReferenceDataService::class)) {
+            try {
+                $expected = trim((string) config('share.api_token', ''));
+                if ($expected === '') {
+                    $expected = self::DEFAULT_TOKEN;
+                }
+                if (! hash_equals($expected, $token)) {
+                    $details[] = 'in-process: FAIL (STAFF_API_TOKEN does not match share.api_token / default)';
+                } else {
+                    /** @var \Modules\Share\Services\ShareReferenceDataService $data */
+                    $data = app(\Modules\Share\Services\ShareReferenceDataService::class);
+                    $staff = $data->currentStaff([], 2, null);
+                    $div = $data->divisions();
+                    $sampleOk = true;
+                    $divisionsOk = true;
+                    if ($mode === '') {
+                        $mode = 'in-process static STAFF_API_TOKEN';
+                    }
+                    $details[] = 'in-process staff sample: OK ('.count($staff).' rows)';
+                    $details[] = 'in-process divisions: OK ('.count($div).')';
+                }
+            } catch (Throwable $e) {
+                $details[] = 'in-process: FAIL ('.$e->getMessage().')';
+            }
+        }
+
+        $ok = $sampleOk || ($jwtOk && $divisionsOk);
         if ($ok && $mode === '') {
             $mode = 'static STAFF_API_TOKEN';
         }
+
+        $message = $ok
+            ? 'CONNECTED via '.$mode
+            : self::probeFailureMessage($resolved, $details);
 
         return [
             'success' => $ok,
@@ -267,10 +301,27 @@ final class StaffApiCredentials
             'mode' => $mode,
             'details' => $details,
             'base_url' => $resolved['base_url'],
-            'message' => $ok
-                ? 'CONNECTED via '.$mode
-                : 'FAILED — set STAFF_API_USERNAME/PASSWORD and/or STAFF_API_TOKEN (DB overrides env).',
+            'message' => $message,
         ];
+    }
+
+    /**
+     * @param  array{username: string, password: string, token: string}  $resolved
+     * @param  list<string>  $details
+     */
+    private static function probeFailureMessage(array $resolved, array $details): string
+    {
+        $hasCreds = $resolved['username'] !== '' && $resolved['password'] !== '';
+        $hasToken = ($resolved['token'] !== '' ? $resolved['token'] : self::DEFAULT_TOKEN) !== '';
+        if ($hasCreds || $hasToken) {
+            $hint = implode('; ', array_slice($details, 0, 3));
+
+            return 'FAILED — credentials are set but Share API did not accept them'
+                .($hint !== '' ? ' ('.$hint.')' : '')
+                .'. Check base URL reachability and that STAFF_API_TOKEN matches the portal Share config.';
+        }
+
+        return 'FAILED — set STAFF_API_USERNAME/PASSWORD and/or STAFF_API_TOKEN (DB overrides env).';
     }
 
     public static function normalizeBaseUrl(string $base): string

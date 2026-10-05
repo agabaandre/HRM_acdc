@@ -52,8 +52,20 @@ class AuthenticateShareApi
 
     protected function staticTokenValid(string $token): bool
     {
+        if ($token === '') {
+            return false;
+        }
+
         $expected = trim((string) config('share.api_token', ''));
-        if ($expected === '' || $token === '') {
+        // Empty cached config (e.g. blank STAFF_API_TOKEN= at config:cache time) —
+        // fall back to resolved root/.env token or the Share default.
+        if ($expected === '' && class_exists(\Staff\Shared\StaffApiCredentials::class)) {
+            $resolved = \Staff\Shared\StaffApiCredentials::resolve();
+            $expected = trim((string) ($resolved['token'] !== ''
+                ? $resolved['token']
+                : \Staff\Shared\StaffApiCredentials::DEFAULT_TOKEN));
+        }
+        if ($expected === '') {
             return false;
         }
 

@@ -55,7 +55,7 @@ class StaffApiSettingsController extends Controller
         }
         $result = StaffApiCredentials::probe(new RrSettingsBag, $override !== [] ? $override : null);
 
-        return response()->json($result, $result['success'] ? 200 : 500);
+        return response()->json($result);
     }
 
     private function authorizeManage(Request $request): void

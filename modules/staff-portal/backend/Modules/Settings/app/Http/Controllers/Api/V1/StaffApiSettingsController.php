@@ -93,6 +93,7 @@ class StaffApiSettingsController extends Controller
         }
         $result = StaffApiCredentials::probe($bag, $override !== [] ? $override : null);
 
-        return response()->json($result, $result['success'] ? 200 : 500);
+        // Always 200 so the UI can show probe details (HTTP 500 was dropping them in axios catch).
+        return response()->json($result);
     }
 }
