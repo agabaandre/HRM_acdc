@@ -64,3 +64,6 @@ Root `.htaccess` rewrites `/staff/share/{get_current_staff,divisions,directorate
 ## Docs
 
 Open [Swagger UI](http://localhost/staff/backend/share/docs).
+
+Integrating a **new CBP module** (launcher tile, Share client, optional APM REST):  
+[docs/MODULE_INTEGRATION.md](../../../../../docs/MODULE_INTEGRATION.md).

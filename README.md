@@ -25,7 +25,9 @@ Integrated with the Matrix Approval Management module, the system ensures struct
 
 This system enhances **transparency**, **accountability**, and **timely decision-making** across Africa CDC's internal operations.
 
-**Repository layout:** CBP apps live under `modules/{staff-portal,apm,finance,helpdesk}`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, and `/staff/helpdesk` (Apache maps these into `modules/`; there is no root `backend` symlink).
+**Repository layout:** CBP apps live under `modules/{staff-portal,apm,finance,helpdesk,risk-register}`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, `/staff/helpdesk`, and `/staff/risk-register` (Apache maps these into `modules/`; there is no root `backend` symlink).
+
+**Adding a new module?** See [docs/MODULE_INTEGRATION.md](./docs/MODULE_INTEGRATION.md) — register in the CBP launcher, call the Staff Share API, and optionally the APM REST APIs.
 
 ---
 
@@ -254,6 +256,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 | [**💾 File storage (uploads)**](./docs/STORAGE.md) | Host-side uploads, migration scripts, CI cache permissions, Knowledge Hub UI |
 | [**🔁 CI (GitHub + Azure)**](./docs/CI.md) | Build gates and GHCR image publish |
 | [**🛠️ Root setup**](./docs/SETUP.md) | Interactive env + installers + Supervisor |
+| [**🔌 New module integration**](./docs/MODULE_INTEGRATION.md) | Register in CBP launcher, Staff Share API, optional APM REST |
 
 </div>
 

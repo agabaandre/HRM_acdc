@@ -13,6 +13,7 @@ Welcome to the APM (Approvals Management) documentation. This directory contains
 
 - **[APM API Documentation](./API_DOCUMENTATION.md)** - REST API guide: auth, endpoints, pending approvals with approval trails, actions, memo list, and examples.
 - **[APM API (OpenAPI/Swagger)](./APM_API_OPENAPI.yaml)** - OpenAPI 3.0 specification (full request/response schemas). **Interactive docs:** open `/docs` in the browser (e.g. `http://localhost/staff/apm/docs`).
+- **[CBP module integration (Staff + APM)](../../../docs/MODULE_INTEGRATION.md)** - How a new CBP module links to Staff Share and consumes these APM APIs.
 
 ### Core Features
 

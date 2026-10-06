@@ -164,6 +164,7 @@ Do not also run host Supervisor against the same queues.
 
 ## Related
 
+- **New module integration (Staff Share + APM APIs):** [MODULE_INTEGRATION.md](./MODULE_INTEGRATION.md)
 - Portal mail hub design: `docs/superpowers/specs/2026-10-02-portal-mail-hub-design.md`
 - Supervisor workers design: `docs/superpowers/specs/2026-10-02-supervisor-workers-design.md`
 - Share endpoints (staff-portal): `POST /share/mail/send`, `GET /share/mail/active-config` (Bearer `STAFF_API_TOKEN`)

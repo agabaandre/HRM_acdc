@@ -12,6 +12,7 @@ REST API for the Approvals Management (APM) module. Used by the mobile app, appr
 | **Interactive docs (Swagger UI)** | `/docs` when the app is running (e.g. `http://localhost/staff/apm/docs`) |
 | **Environment / `.env` sample** | [ENVIRONMENT.md](./ENVIRONMENT.md) and [`.env.example`](../.env.example) |
 | **Main docs index** | [README.md](./README.md) |
+| **New CBP module → Staff + APM** | [MODULE_INTEGRATION.md](../../../docs/MODULE_INTEGRATION.md) |
 
 ---
 
