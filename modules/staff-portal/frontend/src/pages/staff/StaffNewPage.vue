@@ -381,7 +381,7 @@ onMounted(() => void loadLookups())
                   <v-text-field v-model="form.SAPNO" label="SAP number" density="comfortable" hide-details="auto" />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.title"
                     :items="titles"
                     label="Title"
@@ -412,7 +412,7 @@ onMounted(() => void loadLookups())
                   <v-text-field v-model="form.oname" label="Other name" density="comfortable" hide-details="auto" />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.gender"
                     :items="genders"
                     label="Gender"
@@ -432,7 +432,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.nationality_id"
                     :items="lookups.nationalities"
                     item-title="nationality"
@@ -545,7 +545,7 @@ onMounted(() => void loadLookups())
                     />
                   </v-col>
                   <v-col cols="12" sm="6">
-                    <v-select
+                    <v-autocomplete
                       v-model="row.relationship_id"
                       :items="kinItems"
                       label="Relationship"
@@ -596,7 +596,7 @@ onMounted(() => void loadLookups())
                 </p>
                 <v-row dense>
                   <v-col cols="12" sm="6">
-                    <v-select
+                    <v-autocomplete
                       v-model="payForm.currency"
                       :items="payCurrencies"
                       label="Currency"
@@ -615,7 +615,7 @@ onMounted(() => void loadLookups())
                     />
                   </v-col>
                   <v-col cols="12" sm="6">
-                    <v-select
+                    <v-autocomplete
                       v-model="payForm.pay_status"
                       :items="payStatusItems"
                       label="Pay status"
@@ -676,7 +676,7 @@ onMounted(() => void loadLookups())
             <v-card-text>
               <v-row>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.job_id"
                     :items="lookups.jobs"
                     :item-title="(item) => String(item.label || item.job_name || '')"
@@ -688,7 +688,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.job_acting_id"
                     :items="lookups.jobsActing"
                     :item-title="(item) => String(item.label || item.job_acting || '')"
@@ -700,7 +700,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.grade_id"
                     :items="lookups.grades"
                     item-title="grade"
@@ -712,7 +712,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.contracting_institution_id"
                     :items="lookups.institutions"
                     item-title="contracting_institution"
@@ -724,7 +724,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.funder_id"
                     :items="lookups.funders"
                     item-title="funder"
@@ -736,7 +736,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.contract_type_id"
                     :items="lookups.contractTypes"
                     :item-title="(item) => String(item.label || item.contract_type || '')"
@@ -806,7 +806,7 @@ onMounted(() => void loadLookups())
             <v-card-text>
               <v-row>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.duty_station_id"
                     :items="lookups.dutyStations"
                     item-title="duty_station_name"
@@ -818,7 +818,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.division_id"
                     :items="lookups.divisions"
                     item-title="division_name"
@@ -830,7 +830,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.unit_id"
                     :items="unitOptions"
                     item-title="unit_name"
@@ -843,7 +843,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.other_associated_divisions"
                     :items="lookups.divisions"
                     item-title="division_name"
@@ -857,7 +857,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.first_supervisor"
                     :items="lookups.supervisors"
                     :item-title="supervisorLabel"
@@ -869,7 +869,7 @@ onMounted(() => void loadLookups())
                   />
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.second_supervisor"
                     :items="lookups.supervisors"
                     :item-title="supervisorLabel"

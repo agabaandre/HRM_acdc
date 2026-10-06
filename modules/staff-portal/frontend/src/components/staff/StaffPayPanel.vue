@@ -441,7 +441,7 @@ defineExpose({ reload: load })
         <div class="text-subtitle-2 mb-2">1. Basic pay &amp; bank</div>
         <v-row dense>
           <v-col cols="12" sm="4" md="3">
-            <v-select
+            <v-autocomplete
               v-model="form.currency"
               :items="currencies"
               label="Currency"
@@ -461,7 +461,7 @@ defineExpose({ reload: load })
             />
           </v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select
+            <v-autocomplete
               v-model="form.pay_status"
               :items="statusItems"
               label="Pay status"
@@ -529,7 +529,7 @@ defineExpose({ reload: load })
 
       <v-sheet border rounded class="pa-3 mb-3">
         <div class="d-flex ga-2 flex-wrap align-start mb-2">
-          <v-select
+          <v-autocomplete
             v-model="newItem.wage_type_id"
             :items="typeSelectItems"
             item-title="title"

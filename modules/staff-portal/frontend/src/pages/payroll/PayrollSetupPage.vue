@@ -19,6 +19,7 @@ import {
   type TaxRule,
   type WageType,
 } from '@/lib/payrollApi'
+import { fetchStaffList } from '@/lib/staffApi'
 
 const auth = useAuthStore()
 const tab = ref<'settings' | 'wages' | 'tax' | 'staff'>('settings')
@@ -31,6 +32,7 @@ const settings = ref<PayrollSettings | null>(null)
 const wages = ref<WageType[]>([])
 const taxes = ref<TaxRule[]>([])
 const staffPay = ref<StaffPay[]>([])
+const staffChoices = ref<{ title: string; value: number; subtitle?: string }[]>([])
 
 const newWage = ref({ code: '', name: '', category: 'earning', calc_method: 'fixed', taxable: true, pre_tax: false })
 const staffId = ref<number | null>(null)
@@ -54,7 +56,21 @@ async function load() {
     settings.value = await fetchPayrollSettings()
     wages.value = await fetchWageTypes()
     taxes.value = await fetchTaxRules()
-    if (canStaffPay.value) staffPay.value = await fetchStaffPayDirectory()
+    if (canStaffPay.value) {
+      const [payDir, staffList] = await Promise.all([
+        fetchStaffPayDirectory(),
+        fetchStaffList({ preset: 'active', per_page: 500 }),
+      ])
+      staffPay.value = payDir
+      staffChoices.value = staffList.data.map((s) => {
+        const name = [s.title, s.fname, s.lname].filter(Boolean).join(' ').trim()
+        return {
+          value: s.staff_id,
+          title: name || `Staff #${s.staff_id}`,
+          subtitle: [s.SAPNO, s.work_email].filter(Boolean).join(' · ') || undefined,
+        }
+      })
+    }
     if (settings.value) staffForm.value.currency = settings.value.default_currency
   } catch (e) {
     error.value = apiErrorMessage(e)
@@ -139,6 +155,24 @@ const enabledCurrenciesText = computed({
   },
 })
 
+function filterStaffChoice(
+  _itemTitle: string,
+  queryText: string,
+  item: { raw: { title?: string; subtitle?: string; value?: number } },
+) {
+  const q = queryText.trim().toLowerCase()
+  if (!q) return true
+  const hay = `${item.raw.title || ''} ${item.raw.subtitle || ''} ${item.raw.value || ''}`.toLowerCase()
+  return hay.includes(q)
+}
+
+function pickStaffFromDirectory(row: StaffPay) {
+  staffId.value = row.staff_id
+  staffForm.value.currency = row.currency || settings.value?.default_currency || 'USD'
+  staffForm.value.basic_salary = Number(row.basic_salary) || 0
+  staffForm.value.pay_status = row.pay_status || 'active'
+}
+
 onMounted(load)
 </script>
 
@@ -182,9 +216,10 @@ onMounted(load)
         <div v-if="canSetup" class="payroll-panel d-flex ga-2 flex-wrap align-center">
           <v-text-field v-model="newWage.code" label="Code" density="compact" hide-details style="max-width: 120px" />
           <v-text-field v-model="newWage.name" label="Name" density="compact" hide-details style="max-width: 180px" />
-          <v-select
+          <v-autocomplete
             v-model="newWage.category"
             :items="['earning', 'benefit', 'deduction', 'tax', 'employer_contrib']"
+            label="Category"
             density="compact"
             hide-details
             style="max-width: 160px"
@@ -256,7 +291,27 @@ onMounted(load)
 
       <div v-else-if="tab === 'staff' && canStaffPay">
         <div class="payroll-panel d-flex ga-2 flex-wrap align-center">
-          <v-text-field v-model.number="staffId" label="Staff ID" type="number" density="compact" hide-details style="max-width: 120px" />
+          <v-autocomplete
+            v-model="staffId"
+            :items="staffChoices"
+            item-title="title"
+            item-value="value"
+            :custom-filter="filterStaffChoice"
+            label="Staff"
+            placeholder="Search by name, SAP, or email"
+            density="compact"
+            hide-details
+            clearable
+            style="min-width: 260px; max-width: 360px"
+          >
+            <template #item="{ props: itemProps, item }">
+              <v-list-item
+                v-bind="itemProps"
+                :title="String(item.raw.title)"
+                :subtitle="item.raw.subtitle || undefined"
+              />
+            </template>
+          </v-autocomplete>
           <v-text-field v-model="staffForm.currency" label="Currency" density="compact" hide-details style="max-width: 100px" />
           <v-text-field v-model.number="staffForm.basic_salary" label="Basic salary" type="number" density="compact" hide-details style="max-width: 150px" />
           <v-btn color="primary" size="small" :loading="busy" :disabled="!staffId" @click="savePay">Save pay</v-btn>
@@ -285,9 +340,14 @@ onMounted(load)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in staffPay" :key="s.id">
+              <tr
+                v-for="s in staffPay"
+                :key="s.id"
+                class="payroll-staff-row"
+                @click="pickStaffFromDirectory(s)"
+              >
                 <td>
-                  <RouterLink :to="{ name: 'staff-show', params: { id: s.staff_id } }">
+                  <RouterLink :to="{ name: 'staff-show', params: { id: s.staff_id } }" @click.stop>
                     {{ s.staff_name || `Staff #${s.staff_id}` }}
                   </RouterLink>
                 </td>
@@ -298,7 +358,10 @@ onMounted(load)
                   <span class="payroll-status" :class="`payroll-status--${s.pay_status}`">{{ s.pay_status }}</span>
                 </td>
                 <td>
-                  <v-btn size="x-small" variant="text" color="primary" :to="{ name: 'staff-show', params: { id: s.staff_id } }">
+                  <v-btn size="x-small" variant="text" color="primary" @click.stop="pickStaffFromDirectory(s)">
+                    Select
+                  </v-btn>
+                  <v-btn size="x-small" variant="text" color="primary" :to="{ name: 'staff-show', params: { id: s.staff_id } }" @click.stop>
                     Profile
                   </v-btn>
                 </td>
@@ -310,3 +373,12 @@ onMounted(load)
     </template>
   </PayrollPageShell>
 </template>
+
+<style scoped>
+.payroll-staff-row {
+  cursor: pointer;
+}
+.payroll-staff-row:hover {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+</style>
