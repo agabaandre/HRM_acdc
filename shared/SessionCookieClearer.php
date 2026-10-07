@@ -52,13 +52,26 @@ final class SessionCookieClearer
         ?string $sameSite = null,
         bool $httpOnly = true,
     ): void {
-        $response->headers->clearCookie(
-            $name,
-            $path,
-            $domain,
-            $secure,
-            $httpOnly,
-            $sameSite,
-        );
+        // Never let cookie clearing break logout (older/newer Symfony arg shapes).
+        try {
+            $response->headers->clearCookie(
+                $name,
+                $path,
+                $domain,
+                $secure,
+                $httpOnly,
+                $sameSite,
+            );
+        } catch (\TypeError|\Throwable) {
+            try {
+                $response->headers->clearCookie($name, $path, $domain, $secure, $httpOnly);
+            } catch (\TypeError|\Throwable) {
+                try {
+                    $response->headers->clearCookie($name, $path);
+                } catch (\Throwable) {
+                    // Last resort: leave cookie; session data is already invalidated.
+                }
+            }
+        }
     }
 }

@@ -86,12 +86,7 @@ final class StaffShareHttp
             throw new RuntimeException($this->formatHttpError($response));
         }
 
-        $data = $response->json();
-        if (! is_array($data)) {
-            throw new RuntimeException('Staff Share API returned non-array JSON.');
-        }
-
-        return $data;
+        return $this->decodeJsonArray($response);
     }
 
     /**
@@ -107,12 +102,31 @@ final class StaffShareHttp
             throw new RuntimeException($this->formatHttpError($response));
         }
 
+        return $this->decodeJsonArray($response);
+    }
+
+    /**
+     * @return array<int|string, mixed>
+     */
+    private function decodeJsonArray(Response $response): array
+    {
         $data = $response->json();
         if (! is_array($data)) {
-            throw new RuntimeException('Staff Share API returned non-array JSON.');
+            $snippet = mb_substr(trim((string) $response->body()), 0, 180);
+            throw new RuntimeException(
+                'Staff Share API returned non-array JSON (HTTP '.$response->status()
+                .($snippet !== '' ? ': '.$snippet : '').').'
+            );
         }
 
-        /** @var array<string, mixed> $data */
+        // Some Share endpoints wrap list payloads as { data: [...] }.
+        if (array_is_list($data)) {
+            return $data;
+        }
+        if (isset($data['data']) && is_array($data['data'])) {
+            return $data['data'];
+        }
+
         return $data;
     }
 
