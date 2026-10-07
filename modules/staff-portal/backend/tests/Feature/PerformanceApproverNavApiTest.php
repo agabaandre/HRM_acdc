@@ -98,6 +98,47 @@ class PerformanceApproverNavApiTest extends TestCase
         $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-null-supervisor')->value('supervisor_id'));
     }
 
+    public function test_pending_shows_second_supervisor_when_settings_flag_off_but_supervisor2_named(): void
+    {
+        // Mirrors CI3 get_pending_ppa: supervisor2_id presence drives the queue,
+        // even when ppa_requires_second_supervisor is disabled in settings.
+        DB::table('ppa_configs')->update(['ppa_requires_second_supervisor' => 0]);
+
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-sup2-ci3',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+        DB::table('ppa_approval_trail')->insert([
+            'entry_id' => 'ppa-entry-sup2-ci3',
+            'staff_id' => 50,
+            'comments' => 'First approved',
+            'action' => 'Approved',
+            'created_at' => '2026-03-01 10:00:00',
+        ]);
+
+        session()->put($this->portalSession(51, permissions: [74]));
+
+        $hubResponse = app(PerformanceHubApiController::class)->hub(
+            Request::create('/api/v1/performance/hub', 'GET', ['tab' => 'pending']),
+            app(PerformanceService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaSettingsService::class),
+            app(PpaFormService::class),
+        );
+
+        $pending = $hubResponse->getData(true)['data']['pending'];
+        $match = collect($pending)->firstWhere('entry_id', 'ppa-entry-sup2-ci3');
+
+        $this->assertNotNull($match);
+        $this->assertSame('ppa', $match['approval_type']);
+        $this->assertTrue($match['can_act']);
+        $this->assertStringContainsString('second', strtolower((string) $match['overall_status']));
+    }
+
     public function test_pending_queue_shows_named_second_supervisor_waiting_on_consent(): void
     {
         $this->insertPpaEntry([

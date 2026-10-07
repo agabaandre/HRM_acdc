@@ -101,8 +101,8 @@ class PerformanceWorkflowCorrectionService
                 'label' => $phase->label(),
                 'exists' => $exists,
                 'draft_status' => (int) ($entry->{$phase->draftStatusColumn()} ?? 1),
-                'requires_second_supervisor' => $this->settings->requiresSecondSupervisor($phase)
-                    && ! empty($sup['supervisor_2']),
+                'requires_second_supervisor' => ! empty($sup['supervisor_2'])
+                    && (int) $sup['supervisor_2'] !== (int) ($sup['supervisor_1'] ?? 0),
                 'supervisor_1_action' => $exists
                     ? $this->workflow->lastTrailAction((string) $entry->entry_id, $phase, $sup['supervisor_1'])
                     : null,

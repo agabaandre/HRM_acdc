@@ -191,7 +191,7 @@ class PerformanceWorkflowService
         $approval = DB::table($table)
             ->where('entry_id', $entryId)
             ->where('staff_id', $staffId)
-            ->where('action', 'Approved')
+            ->whereRaw('LOWER(action) = ?', ['approved'])
             ->orderByDesc('id')
             ->first();
 
@@ -199,9 +199,11 @@ class PerformanceWorkflowService
             return false;
         }
 
+        // Any later return (supervisor, employee, or HR) clears the approval so
+        // the phase must be reviewed again — including after reopen-to-draft.
         return ! DB::table($table)
             ->where('entry_id', $entryId)
-            ->where('action', 'Returned')
+            ->whereRaw('LOWER(action) = ?', ['returned'])
             ->where('id', '>', $approval->id)
             ->exists();
     }
@@ -219,7 +221,7 @@ class PerformanceWorkflowService
             ->orderByDesc('id')
             ->first();
 
-        return $row?->action;
+        return $row?->action !== null ? (string) $row->action : null;
     }
 
     /**
@@ -261,12 +263,16 @@ class PerformanceWorkflowService
     }
 
     /**
+     * CI3 pending/approval helpers key off whether supervisor2_id is set on the
+     * entry, not the settings toggle. Settings control whether a second
+     * supervisor is assigned at submit time; once named, they must approve.
+     *
      * @param  array{supervisor_1: ?int, supervisor_2: ?int}  $sup
      */
-    protected function requiresSecondSupervisor(PerformancePhase $phase, array $sup): bool
+    protected function requiresSecondSupervisor(PerformancePhase $_phase, array $sup): bool
     {
-        return $this->settings->requiresSecondSupervisor($phase)
-            && ! empty($sup['supervisor_2']);
+        return ! empty($sup['supervisor_2'])
+            && (int) $sup['supervisor_2'] !== (int) ($sup['supervisor_1'] ?? 0);
     }
 
     /**

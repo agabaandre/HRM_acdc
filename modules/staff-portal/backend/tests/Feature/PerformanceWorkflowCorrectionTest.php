@@ -27,9 +27,10 @@ class PerformanceWorkflowCorrectionTest extends TestCase
         $this->seedFixtures();
     }
 
-    public function test_preview_marks_ppa_correctable_after_first_supervisor_when_second_is_off(): void
+    public function test_preview_marks_ppa_correctable_after_first_supervisor_when_no_second_named(): void
     {
-        $this->insertSubmittedPpa();
+        // CI3: second supervisor is required only when supervisor2_id is set.
+        $this->insertSubmittedPpa(['supervisor2_id' => null]);
         $this->insertTrail('ppa-entry-1', 50, 'Approved');
 
         $preview = app(PerformanceWorkflowCorrectionService::class)->preview('ppa-entry-1');
@@ -45,10 +46,11 @@ class PerformanceWorkflowCorrectionTest extends TestCase
     public function test_apply_sets_ppa_and_midterm_draft_status_without_touching_endterm(): void
     {
         $this->insertSubmittedPpa([
+            'supervisor2_id' => null,
             'midterm_created_at' => now()->toDateTimeString(),
             'midterm_draft_status' => 0,
             'midterm_supervisor_1' => 50,
-            'midterm_supervisor_2' => 51,
+            'midterm_supervisor_2' => null,
             'endterm_created_at' => now()->toDateTimeString(),
             'endterm_draft_status' => 0,
             'endterm_supervisor_1' => 50,
@@ -68,9 +70,8 @@ class PerformanceWorkflowCorrectionTest extends TestCase
         $this->assertFalse($result['can_correct']);
     }
 
-    public function test_does_not_correct_when_ppa_second_supervisor_is_required(): void
+    public function test_does_not_correct_when_second_supervisor_is_named_and_pending(): void
     {
-        DB::table('ppa_configs')->update(['ppa_requires_second_supervisor' => 1]);
         $this->insertSubmittedPpa();
         $this->insertTrail('ppa-entry-1', 50, 'Approved');
 
@@ -83,7 +84,7 @@ class PerformanceWorkflowCorrectionTest extends TestCase
 
     public function test_finalize_if_ready_is_idempotent_once_approved(): void
     {
-        $this->insertSubmittedPpa();
+        $this->insertSubmittedPpa(['supervisor2_id' => null]);
         $this->insertTrail('ppa-entry-1', 50, 'Approved');
         $service = app(PerformanceWorkflowCorrectionService::class);
 
