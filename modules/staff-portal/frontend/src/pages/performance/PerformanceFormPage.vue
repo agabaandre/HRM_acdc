@@ -11,6 +11,7 @@ import ReviewSections from '@/components/performance/ReviewSections.vue'
 import { openApiPdf } from '@/lib/exportDownload'
 import { hasRichTextContent } from '@/lib/richText'
 import { useLocaleStore } from '@/stores/locale'
+import { usePerformancePendingStore } from '@/stores/performancePending'
 import {
   createPerformanceEntry,
   fetchPerformanceEntry,
@@ -30,6 +31,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const locale = useLocaleStore()
+const performancePending = usePerformancePendingStore()
 
 const loading = ref(false)
 const busy = ref(false)
@@ -416,6 +418,7 @@ async function approveAction(): Promise<void> {
     })
     applyPayload(next)
     success.value = 'Approval recorded.'
+    void performancePending.refresh()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not approve form')
   } finally {
@@ -444,6 +447,7 @@ async function returnAction(): Promise<void> {
     applyPayload(next)
     success.value =
       target === 'draft' ? 'Returned to draft.' : 'Returned to the employee for revision.'
+    void performancePending.refresh()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not return form')
   } finally {
@@ -501,6 +505,7 @@ async function consentAction(): Promise<void> {
     })
     applyPayload(next)
     success.value = 'Consent recorded.'
+    void performancePending.refresh()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not record consent')
   } finally {

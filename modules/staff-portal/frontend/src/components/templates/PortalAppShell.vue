@@ -10,6 +10,7 @@ import CbpPageFooter from '@cbp/layout/CbpPageFooter.vue'
 import CbpThemeSwitch from '@cbp/layout/CbpThemeSwitch.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
+import { usePerformancePendingStore } from '@/stores/performancePending'
 import { apiDocsUrl } from '@/lib/auth'
 
 defineProps<{
@@ -18,6 +19,7 @@ defineProps<{
 
 const auth = useAuthStore()
 const locale = useLocaleStore()
+const performancePending = usePerformancePendingStore()
 const vuetifyLocale = useLocale()
 const route = useRoute()
 const vuetifyTheme = useTheme()
@@ -53,6 +55,22 @@ watch(
   () => auth.isAuthenticated,
   (ok) => {
     if (ok) void locale.bootstrap()
+  },
+  { immediate: true },
+)
+
+watch(
+  () =>
+    [
+      auth.isAuthenticated,
+      !!auth.me,
+      auth.isModuleEnabled('performance'),
+      auth.hasPermission(74),
+    ] as const,
+  ([ok, hasMe, moduleOn, canPerf]) => {
+    if (ok && hasMe && moduleOn && canPerf) {
+      void performancePending.refresh()
+    }
   },
   { immediate: true },
 )

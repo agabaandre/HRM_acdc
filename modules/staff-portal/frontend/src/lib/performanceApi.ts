@@ -1,7 +1,27 @@
 import { api } from './api'
 
-export type PerformanceTab = 'dashboard' | 'my' | 'pending'
+export type PerformanceTab = 'dashboard' | 'my' | 'pending' | 'approval-history'
 export type PerformancePhase = 'ppa' | 'midterm' | 'endterm'
+
+export interface PerformanceApprovalHistoryItem {
+  entry_id: string
+  staff_id: number
+  staff_name: string
+  phase: PerformancePhase
+  phase_label: string
+  performance_period: string
+  action: string
+  comments: string
+  acted_at: string
+  form_url: string
+}
+
+export interface PerformanceApprovalHistoryMeta {
+  current_page: number
+  per_page: number
+  total: number
+  last_page: number
+}
 
 export interface PerformanceEntryRecord {
   entry_id: string
@@ -262,6 +282,29 @@ export async function fetchPerformanceHub(params: {
     },
   })
   return data.data
+}
+
+export async function fetchPerformancePendingCount(): Promise<number> {
+  const { data } = await api.get<{ data: { pending_count: number } }>(
+    '/api/v1/performance/pending-count',
+  )
+  return Number(data.data.pending_count || 0)
+}
+
+export async function fetchPerformanceApprovalHistory(params: {
+  page?: number
+  per_page?: number
+  period?: string
+  phase?: PerformancePhase
+} = {}): Promise<{
+  data: PerformanceApprovalHistoryItem[]
+  meta: PerformanceApprovalHistoryMeta
+}> {
+  const { data } = await api.get<{
+    data: PerformanceApprovalHistoryItem[]
+    meta: PerformanceApprovalHistoryMeta
+  }>('/api/v1/performance/approval-history', { params })
+  return { data: data.data, meta: data.meta }
 }
 
 function unwrapPerformanceForm(data: { data: PerformanceFormPayload }): PerformanceFormPayload {
