@@ -27,8 +27,6 @@ class PdfService
      */
     public function make(string $htmlBody, array $options = []): Mpdf
     {
-        @mkdir(storage_path('app/mpdf_tmp'), 0775, true);
-
         $arialFontDir = $this->resolveArialFontDir();
         $haveArial = $arialFontDir !== null;
 
@@ -39,7 +37,7 @@ class PdfService
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => ! empty($options['landscape']) ? 'A4-L' : 'A4',
-            'tempDir' => storage_path('app/mpdf_tmp'),
+            'tempDir' => $this->resolveTempDir(),
             'fontDir' => $haveArial ? array_merge($fontDirs, [$arialFontDir]) : $fontDirs,
             'fontdata' => $haveArial
                 ? $fontData + [
@@ -189,6 +187,63 @@ class PdfService
 
             return '';
         }
+    }
+
+    /**
+     * Prefer storage/app/mpdf_tmp, but fall back when that path is root-owned
+     * (common after privileged deploy scripts) so PDF exports still work.
+     */
+    protected function resolveTempDir(): string
+    {
+        $candidates = [
+            storage_path('app/mpdf_tmp'),
+            storage_path('framework/cache/mpdf_tmp'),
+            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'staff-portal-mpdf',
+        ];
+
+        foreach ($candidates as $dir) {
+            if ($this->ensureWritableTempDir($dir)) {
+                return $dir;
+            }
+        }
+
+        $fallback = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            .DIRECTORY_SEPARATOR
+            .'staff-portal-mpdf-'.(string) getmyuid();
+        if (! $this->ensureWritableTempDir($fallback)) {
+            throw new \RuntimeException(
+                'No writable mPDF temp directory. Fix permissions on storage/app/mpdf_tmp.'
+            );
+        }
+
+        return $fallback;
+    }
+
+    protected function ensureWritableTempDir(string $dir): bool
+    {
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        if (! is_dir($dir) || ! is_writable($dir)) {
+            return false;
+        }
+
+        // mPDF creates and requires a nested mpdf/ cache directory.
+        $nested = rtrim($dir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'mpdf';
+        if (! is_dir($nested)) {
+            @mkdir($nested, 0775, true);
+        }
+        if (! is_dir($nested) || ! is_writable($nested)) {
+            return false;
+        }
+
+        $probe = $nested.DIRECTORY_SEPARATOR.'.write_probe_'.getmypid();
+        if (@file_put_contents($probe, '1') === false) {
+            return false;
+        }
+        @unlink($probe);
+
+        return true;
     }
 
     protected function resolveArialFontDir(): ?string
