@@ -213,7 +213,9 @@ onMounted(() => {
     <p class="text-body-2 text-medium-emphasis mb-3">
       Home tiles and optional APM menu links. Use <strong>External system</strong> for APIs on other hosts.
       Enable <strong>Append Staff portal session token</strong> only if that system validates the same token as APM/Finance.
-      <strong>Production visibility</strong>: when unchecked, only role ID 10 sees the tile (still requires the permission).
+      <strong>Enabled</strong> modules are available to all signed-in users.
+      <strong>Permission code</strong> is for in-module feature RBAC (and admin group assignment), not for hiding the home tile.
+      <strong>Production visibility</strong>: when unchecked, only role ID 10 sees the tile.
     </p>
 
     <v-alert v-if="!loading && !tableExists" type="warning" variant="tonal" class="mb-3">
@@ -277,6 +279,8 @@ onMounted(() => {
                   label="Permission code *"
                   density="compact"
                   hide-details="auto"
+                  hint="Feature RBAC / admin assignment — not required to open the home tile."
+                  persistent-hint
                   class="bg-white"
                 />
               </v-col>
@@ -446,7 +450,8 @@ onMounted(() => {
         <v-card-subtitle>
           Unique module key (e.g. <code>learning_hub</code>) — cannot be changed later.
           A new permission will be created (next ID typically <strong>{{ nextPermissionHint }}</strong>)
-          and assigned to admin group <strong>{{ autoAssignGroupId }}</strong>.
+          and assigned to admin group <strong>{{ autoAssignGroupId }}</strong>
+          for feature RBAC — enabled modules stay visible to all signed-in users.
         </v-card-subtitle>
         <v-card-text>
           <v-row dense>

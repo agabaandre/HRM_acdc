@@ -85,7 +85,7 @@ Staff Portal stores launcher tiles in table `cbp_modules`. Admin UI: **Settings 
 | `module_key` | `your_module` | Stable snake_case id; used by nav `exclude` / `active` |
 | `system_name` | `Your Module` | Label on home + header |
 | `base_url` | `your-module` | Path under Staff host (`/{WEB_ROOT}/your-module`) |
-| `permission_code` | new permission id | Staff must have this permission to see/launch |
+| `permission_code` | new permission id | Feature RBAC / admin assignment (enabled modules are shown to all signed-in users) |
 | `uses_staff_portal_token` | `1` | Almost always **1** for Laravel modules (SSO bridge) |
 | `target_resolver` | `staff_app_token` | Same as APM / Finance / Helpdesk / Risk |
 | `is_enabled` / `is_production` | `1` | Visibility flags |
@@ -361,6 +361,6 @@ Use a stable `MODULE_KEY` matching `cbp_modules.module_key`.
 1. **Pointing `STAFF_API_*` at `/staff` without `/backend`** — Share lives on Laravel under `/backend` (client normalizes `/staff` → `/staff/backend`, but set the correct URL).
 2. **Using APM JWT against Share (or the reverse)** — different issuers and paths.
 3. **Forgetting `staff:sync` on APM** — API login fails with 403 if the staff row is missing.
-4. **Launcher without permission** — tile hidden if the user lacks `permission_code`.
+4. **Launcher when disabled / non-production** — tile hidden when `is_enabled=0`, or when `is_production=0` for non–role-10 users. `permission_code` does not hide the tile.
 5. **Missing `Staff\Shared` autoload** — `Class Staff\Shared\StaffShareHttp not found`.
 6. **Hard-coding production host** — use `STAFF_API_INTERNAL_BASE_URL` / `WEB_ROOT` from setup.

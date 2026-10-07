@@ -68,10 +68,8 @@ class CbpModulesNav
                 continue;
             }
 
-            $code = (string) $row->permission_code;
-            if (! PortalNavigation::can($permissions, $code)) {
-                continue;
-            }
+            // Enabled modules are available to every authenticated user.
+            // permission_code remains for in-module feature RBAC / admin assignment.
             if ((int) $row->is_production === 0 && $roleId !== 10) {
                 continue;
             }
@@ -82,10 +80,13 @@ class CbpModulesNav
             }
 
             // Staff Portal browser entry must be the SPA, never /backend (Share API).
-            if ($moduleKey === 'staff_portal' || preg_match('#(^|/)backend(/|$)#', $resolved)) {
-                if ($moduleKey === 'staff_portal' || ! preg_match('#/(apm|finance|helpdesk)(/|$)#', $resolved)) {
-                    $resolved = rtrim($spaUrl, '/').'/dashboard';
-                }
+            // Do not force /dashboard — that route requires permission 76 and rejects employees.
+            if ($moduleKey === 'staff_portal') {
+                $resolved = self::staffPortalSpaHref((string) $resolved, $permissions, $spaUrl);
+            } elseif (preg_match('#(^|/)backend(/|$)#', $resolved)
+                && ! preg_match('#/(apm|finance|helpdesk)(/|$)#', $resolved)
+            ) {
+                $resolved = self::staffPortalSpaHref('auth/profile', $permissions, $spaUrl);
             }
 
             $ssoLaunch = (int) ($row->uses_staff_portal_token ?? 0) === 1;
@@ -201,6 +202,28 @@ class CbpModulesNav
         }
 
         return null;
+    }
+
+    /**
+     * Staff Portal launcher path: honour configured CI route / role alternate,
+     * but fall back to profile when the user cannot open the HR dashboard (76).
+     *
+     * @param  list<int|string>  $permissions
+     */
+    public static function staffPortalSpaHref(string $ciPath, array $permissions, string $spaUrl): string
+    {
+        $ciPath = trim($ciPath, '/');
+        $wantsDashboard = $ciPath === ''
+            || $ciPath === 'dashboard'
+            || str_starts_with($ciPath, 'dashboard/');
+
+        if ($wantsDashboard && ! PortalNavigation::can($permissions, 76)) {
+            $ciPath = 'auth/profile';
+        } elseif ($ciPath === '') {
+            $ciPath = 'auth/profile';
+        }
+
+        return self::spaPathForCiRoute($ciPath, $spaUrl);
     }
 
     /**

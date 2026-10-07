@@ -43,7 +43,7 @@ class LicenseController extends Controller
     {
         $this->ensureLicenseManager($request);
 
-        $rows = HelpdeskLicense::query()->orderBy('name')->limit(5000)->get();
+        $rows = $this->filteredQuery($request)->orderBy('name')->limit(5000)->get();
 
         return Excel::download(
             new LicensesExport($rows),
@@ -90,6 +90,19 @@ class LicenseController extends Controller
     {
         $this->ensureLicenseManager($request);
 
+        $rows = $this->filteredQuery($request)
+            ->orderBy('expiry_date')
+            ->orderBy('name')
+            ->paginate(min(100, max(10, (int) $request->input('per_page', 25))));
+
+        return response()->json($rows);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\HelpdeskLicense>
+     */
+    private function filteredQuery(Request $request)
+    {
         $query = HelpdeskLicense::query();
 
         if ($request->boolean('expiring_soon')) {
@@ -108,11 +121,21 @@ class LicenseController extends Controller
                     ->orWhere('license_key', 'like', $q);
             });
         }
+        if ($request->filled('vendor')) {
+            $query->where('vendor', (string) $request->input('vendor'));
+        }
+        if ($request->filled('responsible_staff_id')) {
+            $rid = (int) $request->input('responsible_staff_id');
+            if ($rid === -1) {
+                $query->where(function ($sub) {
+                    $sub->whereNull('responsible_staff_id')->orWhere('responsible_staff_id', 0);
+                });
+            } elseif ($rid > 0) {
+                $query->where('responsible_staff_id', $rid);
+            }
+        }
 
-        $rows = $query->orderBy('expiry_date')->orderBy('name')
-            ->paginate(min(100, max(10, (int) $request->input('per_page', 25))));
-
-        return response()->json($rows);
+        return $query;
     }
 
     public function store(Request $request): JsonResponse
@@ -136,11 +159,8 @@ class LicenseController extends Controller
             'responsible_staff_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        if (empty($validated['expiry_date']) && ! empty($validated['purchase_date']) && ! empty($validated['duration_months'])) {
-            $validated['expiry_date'] = Carbon::parse($validated['purchase_date'])
-                ->addMonths((int) $validated['duration_months'])
-                ->toDateString();
-        }
+        $this->assertEndOnOrAfterStart($validated);
+        $this->syncDurationFromDates($validated);
 
         $row = HelpdeskLicense::query()->create(array_merge($validated, [
             'created_by_user_id' => $request->user()?->id,
@@ -170,10 +190,66 @@ class LicenseController extends Controller
             'responsible_staff_id' => ['nullable', 'integer', 'min:1'],
         ]);
 
+        // End date is user-entered; duration_months is derived from start/end when both exist.
+        $this->assertEndOnOrAfterStart($validated, $license);
+        $this->syncDurationFromDates($validated, $license);
+
         $license->fill($validated);
         $license->save();
 
         return response()->json(['data' => $license->fresh()]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function assertEndOnOrAfterStart(array $validated, ?HelpdeskLicense $existing = null): void
+    {
+        $purchase = $validated['purchase_date']
+            ?? $existing?->purchase_date?->format('Y-m-d');
+        $expiry = $validated['expiry_date']
+            ?? $existing?->expiry_date?->format('Y-m-d');
+        if (empty($purchase) || empty($expiry)) {
+            return;
+        }
+        if (Carbon::parse($expiry)->lt(Carbon::parse($purchase))) {
+            abort(response()->json([
+                'message' => 'The end date must be on or after the start date.',
+                'errors' => ['expiry_date' => ['The end date must be on or after the start date.']],
+            ], 422));
+        }
+    }
+
+    /**
+     * When start + end dates are present, store duration_months from the day span.
+     * Legacy fallback: if end is missing but months are set, derive end from start + months.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncDurationFromDates(array &$validated, ?HelpdeskLicense $existing = null): void
+    {
+        $purchase = $validated['purchase_date']
+            ?? $existing?->purchase_date?->format('Y-m-d');
+        $expiry = $validated['expiry_date']
+            ?? $existing?->expiry_date?->format('Y-m-d');
+        $months = $validated['duration_months']
+            ?? $existing?->duration_months;
+
+        if (! empty($purchase) && ! empty($expiry)) {
+            $days = Carbon::parse($purchase)->diffInDays(Carbon::parse($expiry), false);
+            if ($days < 0) {
+                return;
+            }
+            $validated['duration_months'] = max(1, (int) round($days / 30.4375));
+
+            return;
+        }
+
+        if (empty($expiry) && ! empty($purchase) && ! empty($months) && (int) $months >= 1) {
+            $validated['expiry_date'] = Carbon::parse($purchase)
+                ->addMonths((int) $months)
+                ->toDateString();
+        }
     }
 
     public function destroy(Request $request, HelpdeskLicense $license): JsonResponse

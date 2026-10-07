@@ -76,15 +76,8 @@ final class StaffSsoLaunch
      */
     public static function userCanAccessModule(array $session, object $row): bool
     {
-        $perm = (string) ($row->permission_code ?? '');
-        if ($perm === '') {
-            return false;
-        }
-        $permissions = $session['permissions'] ?? [];
-        $permList = array_map('strval', (array) $permissions);
-        if (! in_array($perm, $permList, true)) {
-            return false;
-        }
+        // Enabled CBP modules are launchable by any authenticated user.
+        // permission_code is for in-module feature RBAC, not launcher access.
         $roleId = (int) ($session['role_id'] ?? $session['role'] ?? 0);
         if ((int) ($row->is_production ?? 1) === 0 && $roleId !== 10) {
             return false;

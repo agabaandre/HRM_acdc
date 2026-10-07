@@ -47,11 +47,17 @@ interface Summary {
 
 type TabId = 'list' | 'form'
 
+type SelectStringItem = { label: string; value: string }
+type SelectNumberItem = { label: string; value: number }
+
 const summary = ref<Summary | null>(null)
 const licenses = ref<License[]>([])
 const loading = ref(false)
 const busy = ref(false)
+const exportBusy = ref(false)
 const search = ref('')
+const filterVendor = ref('')
+const filterResponsibleId = ref(0)
 const activeTab = ref<TabId>('list')
 const editing = ref<License | null>(null)
 
@@ -60,7 +66,7 @@ const form = reactive({
   vendor: '',
   license_key: '',
   purchase_date: '',
-  duration_months: 12,
+  expiry_date: '',
   seats_total: 1,
   seats_used: 0,
   cost: 0,
@@ -75,24 +81,76 @@ const responsibleInitialLabel = computed(() => {
   return p.email ? `${p.name} · ${p.email}` : p.name
 })
 
-const filteredLicenses = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return licenses.value
-  return licenses.value.filter((l) => {
-    const hay = [
-      l.name,
-      l.vendor,
-      l.license_key,
-      l.responsible_person?.name,
-      l.responsible_person?.email,
-      l.responsible_staff_id != null ? String(l.responsible_staff_id) : '',
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-    return hay.includes(q)
-  })
+const vendorFilterItems = computed((): SelectStringItem[] => {
+  const set = new Set<string>()
+  for (const l of licenses.value) {
+    const v = (l.vendor || '').trim()
+    if (v) set.add(v)
+  }
+  return [
+    { label: 'All vendors', value: '' },
+    ...[...set].sort((a, b) => a.localeCompare(b)).map((v) => ({ label: v, value: v })),
+  ]
 })
+
+const responsibleFilterItems = computed((): SelectNumberItem[] => {
+  const map = new Map<number, string>()
+  for (const l of licenses.value) {
+    const id = l.responsible_staff_id
+    const name = l.responsible_person?.name?.trim()
+    if (id && id > 0 && name) map.set(id, name)
+  }
+  return [
+    { label: 'All responsible', value: 0 },
+    { label: 'Unassigned', value: -1 },
+    ...[...map.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ label, value })),
+  ]
+})
+
+const filteredLicenses = computed(() => {
+  let rows = licenses.value
+  const q = search.value.trim().toLowerCase()
+  if (q) {
+    rows = rows.filter((l) => {
+      const hay = [
+        l.name,
+        l.vendor,
+        l.license_key,
+        l.responsible_person?.name,
+        l.responsible_person?.email,
+        l.responsible_staff_id != null ? String(l.responsible_staff_id) : '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }
+  const vendor = filterVendor.value.trim()
+  if (vendor) {
+    rows = rows.filter((l) => (l.vendor || '').trim() === vendor)
+  }
+  if (filterResponsibleId.value === -1) {
+    rows = rows.filter((l) => !l.responsible_staff_id)
+  } else if (filterResponsibleId.value > 0) {
+    rows = rows.filter((l) => l.responsible_staff_id === filterResponsibleId.value)
+  }
+  return rows
+})
+
+function listParams(includeFacetFilters = false): Record<string, string | number> {
+  const params: Record<string, string | number> = { per_page: 100 }
+  if (search.value.trim()) params.q = search.value.trim()
+  // Facet filters stay client-side on the list so dropdown options remain complete;
+  // export applies them on the server.
+  if (includeFacetFilters) {
+    if (filterVendor.value.trim()) params.vendor = filterVendor.value.trim()
+    if (filterResponsibleId.value !== 0) params.responsible_staff_id = filterResponsibleId.value
+  }
+  return params
+}
 
 const expiringList = computed(() =>
   licenses.value.filter((l) => l.expiry?.is_expiring_soon || l.expiry?.is_expired),
@@ -103,6 +161,38 @@ const activeCount = computed(() =>
 )
 
 const formTitle = computed(() => (editing.value ? 'Edit license' : 'Add license'))
+
+function parseYmd(value: string | undefined | null): Date | null {
+  const ymd = String(value || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d))
+}
+
+/** Calendar days between start and end (inclusive of span; end − start). */
+function daysBetween(startYmd: string | undefined | null, endYmd: string | undefined | null): number | null {
+  const start = parseYmd(startYmd)
+  const end = parseYmd(endYmd)
+  if (!start || !end) return null
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000)
+}
+
+/** Duration in days from user-entered start/end dates. */
+const computedDurationDays = computed(() => daysBetween(form.purchase_date, form.expiry_date))
+
+const computedDurationMonths = computed(() => {
+  const days = computedDurationDays.value
+  if (days == null || days < 0) return null
+  return Math.max(1, Math.round(days / 30.4375))
+})
+
+function durationLabel(row: License): string {
+  const days = daysBetween(row.purchase_date, row.expiry_date)
+  if (days != null && days >= 0) {
+    return `${days} day${days === 1 ? '' : 's'}`
+  }
+  return row.duration_months ? `${row.duration_months} mo` : '—'
+}
 
 function statusClass(l: License) {
   if (l.expiry?.is_expired) return 'status-expired'
@@ -130,11 +220,9 @@ const fmtMoney = (n: number | string | undefined) =>
 async function load() {
   loading.value = true
   try {
-    const params: Record<string, string | number> = { per_page: 100 }
-    if (search.value.trim()) params.q = search.value.trim()
     const [sumRes, listRes] = await Promise.all([
       api.get<{ data: Summary }>('/api/v1/tools/licenses/summary'),
-      api.get<{ data: License[] }>('/api/v1/tools/licenses', { params }),
+      api.get<{ data: License[] }>('/api/v1/tools/licenses', { params: listParams() }),
     ])
     summary.value = sumRes.data.data
     const paginated = listRes.data as { data?: License[] }
@@ -146,6 +234,14 @@ async function load() {
   }
 }
 
+function clearFilters() {
+  const hadSearch = !!search.value.trim()
+  search.value = ''
+  filterVendor.value = ''
+  filterResponsibleId.value = 0
+  if (hadSearch) void load()
+}
+
 function resetForm() {
   editing.value = null
   Object.assign(form, {
@@ -153,7 +249,7 @@ function resetForm() {
     vendor: '',
     license_key: '',
     purchase_date: '',
-    duration_months: 12,
+    expiry_date: '',
     seats_total: 1,
     seats_used: 0,
     cost: 0,
@@ -175,7 +271,7 @@ function openEdit(row: License) {
     vendor: row.vendor ?? '',
     license_key: row.license_key ?? '',
     purchase_date: row.purchase_date?.slice(0, 10) ?? '',
-    duration_months: row.duration_months ?? 12,
+    expiry_date: row.expiry_date?.slice(0, 10) ?? '',
     seats_total: row.seats_total ?? 1,
     seats_used: row.seats_used ?? 0,
     cost: Number(row.cost) || 0,
@@ -201,11 +297,20 @@ function cancelForm() {
 }
 
 async function save() {
+  if (form.purchase_date && form.expiry_date) {
+    const days = daysBetween(form.purchase_date, form.expiry_date)
+    if (days != null && days < 0) {
+      notifyError('End date must be on or after the start date.')
+      return
+    }
+  }
   busy.value = true
   try {
     const payload = {
       ...form,
       purchase_date: form.purchase_date || null,
+      expiry_date: form.expiry_date || null,
+      duration_months: computedDurationMonths.value,
       responsible_staff_id: form.responsible_staff_id || null,
     }
     if (editing.value) {
@@ -233,6 +338,35 @@ async function remove(row: License) {
     await load()
   } catch (e) {
     notifyError(apiErrorMessage(e, 'Delete failed.'))
+  }
+}
+
+async function exportExcel() {
+  exportBusy.value = true
+  try {
+    const res = await api.get('/api/v1/tools/licenses/export', {
+      params: listParams(true),
+      responseType: 'blob',
+    })
+    const contentType = String(res.headers['content-type'] || '')
+    if (contentType.includes('application/json')) {
+      const text = await (res.data as Blob).text()
+      throw new Error(text || 'Export failed')
+    }
+    const blob = new Blob([res.data], {
+      type: contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `licenses-${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+    notifySuccess('Licenses exported.')
+  } catch (e) {
+    notifyError(apiErrorMessage(e, 'Export failed.'))
+  } finally {
+    exportBusy.value = false
   }
 }
 
@@ -303,6 +437,12 @@ onMounted(() => void load())
         </div>
 
         <div class="filters">
+          <UFormField label="Vendor" class="filter-sm">
+            <USelect v-model="filterVendor" :items="vendorFilterItems" class="w-full" />
+          </UFormField>
+          <UFormField label="Responsible person" class="filter-md">
+            <USelect v-model="filterResponsibleId" :items="responsibleFilterItems" class="w-full" />
+          </UFormField>
           <UFormField label="Search" class="filter-grow">
             <UInput
               v-model="search"
@@ -315,6 +455,25 @@ onMounted(() => void load())
             />
           </UFormField>
           <UButton color="neutral" variant="outline" class="filter-btn" @click="load()">Search</UButton>
+          <UButton
+            v-if="filterVendor || filterResponsibleId || search.trim()"
+            color="neutral"
+            variant="ghost"
+            class="filter-btn"
+            @click="clearFilters"
+          >
+            Clear
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            class="filter-btn"
+            icon="mdi-file-excel"
+            :loading="exportBusy"
+            @click="exportExcel"
+          >
+            Export Excel
+          </UButton>
           <UButton color="primary" class="filter-btn" @click="openCreate">+ Add license</UButton>
         </div>
 
@@ -323,12 +482,13 @@ onMounted(() => void load())
           <table v-else class="data-table">
             <thead>
               <tr>
+                <th class="num-col">#</th>
                 <th>Name</th>
                 <th>Vendor</th>
                 <th>Responsible</th>
-                <th>Purchased</th>
+                <th>Start</th>
                 <th>Duration</th>
-                <th>Expiry</th>
+                <th>End</th>
                 <th>Status</th>
                 <th class="num">Cost</th>
                 <th>Seats</th>
@@ -336,7 +496,8 @@ onMounted(() => void load())
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in filteredLicenses" :key="row.id">
+              <tr v-for="(row, index) in filteredLicenses" :key="row.id">
+                <td class="num-col">{{ index + 1 }}</td>
                 <td><strong>{{ row.name }}</strong></td>
                 <td>{{ row.vendor || '—' }}</td>
                 <td>
@@ -347,7 +508,7 @@ onMounted(() => void load())
                   <template v-else>—</template>
                 </td>
                 <td>{{ row.purchase_date?.slice(0, 10) ?? '—' }}</td>
-                <td>{{ row.duration_months ? `${row.duration_months} mo` : '—' }}</td>
+                <td>{{ durationLabel(row) }}</td>
                 <td>{{ row.expiry_date?.slice(0, 10) ?? '—' }}</td>
                 <td><span class="status-pill" :class="statusClass(row)">{{ statusLabel(row) }}</span></td>
                 <td class="num">{{ fmtMoney(row.cost) }}</td>
@@ -368,15 +529,23 @@ onMounted(() => void load())
           <template #header>
             <div class="form-header">
               <h3>{{ formTitle }}</h3>
-              <p class="form-intro">Expiry is derived from purchase date and duration. Set warning days for renewal alerts.</p>
+              <p class="form-intro">Enter start and end dates; duration in days is calculated automatically. Set warning days for renewal alerts.</p>
             </div>
           </template>
           <div class="hd-form hd-form--grid">
             <UFormField label="License name" required class="span-3"><UInput v-model="form.name" class="w-full" /></UFormField>
             <UFormField label="Vendor"><UInput v-model="form.vendor" class="w-full" /></UFormField>
             <UFormField label="License key"><UInput v-model="form.license_key" class="w-full" /></UFormField>
-            <UFormField label="Purchase date"><UDateInput v-model="form.purchase_date" class="w-full" /></UFormField>
-            <UFormField label="Duration (months)"><UInput v-model.number="form.duration_months" type="number" class="w-full" /></UFormField>
+            <UFormField label="Start date"><UDateInput v-model="form.purchase_date" class="w-full" /></UFormField>
+            <UFormField label="End date"><UDateInput v-model="form.expiry_date" class="w-full" /></UFormField>
+            <UFormField label="Duration (days)">
+              <UInput
+                :model-value="computedDurationDays == null ? '—' : String(computedDurationDays)"
+                readonly
+                class="w-full"
+                :class="{ 'text-danger': computedDurationDays != null && computedDurationDays < 0 }"
+              />
+            </UFormField>
             <UFormField label="Warn days before expiry"><UInput v-model.number="form.warning_days_before" type="number" min="1" max="365" class="w-full" /></UFormField>
             <UFormField label="Seats total"><UInput v-model.number="form.seats_total" type="number" class="w-full" /></UFormField>
             <UFormField label="Seats used"><UInput v-model.number="form.seats_used" type="number" class="w-full" /></UFormField>
@@ -426,7 +595,9 @@ onMounted(() => void load())
 .warn-list { margin: 0; padding-left: 1.15rem; }
 .warn-list li { margin-bottom: 0.35rem; font-size: 0.88rem; }
 .filters { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: flex-end; }
-.filter-grow { flex: 1; min-width: 14rem; }
+.filter-grow { flex: 1; min-width: 12rem; }
+.filter-sm { min-width: 10rem; max-width: 14rem; }
+.filter-md { min-width: 12rem; max-width: 18rem; }
 .filter-btn { margin-bottom: 0.15rem; }
 .form-panel { border-style: solid; }
 .form-header h3 { margin: 0; font-size: 1rem; }
@@ -441,6 +612,7 @@ onMounted(() => void load())
 }
 .data-table tbody tr:hover { background: #f8fafc; }
 .data-table th.num, .data-table td.num { text-align: right; }
+.data-table th.num-col, .data-table td.num-col { width: 3rem; text-align: right; color: #64748b; font-variant-numeric: tabular-nums; }
 .status-pill { padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; }
 .status-active { background: #ecfdf5; color: #047857; }
 .status-warning { background: #fffbeb; color: #b45309; }
