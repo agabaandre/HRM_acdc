@@ -9,12 +9,16 @@ import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { api } from '@/lib/api'
 import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
 import {
+  fetchPerformanceApprovalHistory,
   fetchPerformanceHub,
+  type PerformanceApprovalHistoryItem,
+  type PerformanceApprovalHistoryMeta,
   type PerformanceHubData,
   type PerformanceTab,
 } from '@/lib/performanceApi'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 import { useLocaleStore } from '@/stores/locale'
+import { usePerformancePendingStore } from '@/stores/performancePending'
 
 type HubTab = PerformanceTab | 'analytics'
 type AnalyticsPhase = 'ppa' | 'midterm' | 'endterm'
@@ -51,6 +55,7 @@ type AnalyticsPayload = {
 const route = useRoute()
 const router = useRouter()
 const locale = useLocaleStore()
+const performancePending = usePerformancePendingStore()
 
 const tab = ref<HubTab>('dashboard')
 const analyticsPhase = ref<AnalyticsPhase>('ppa')
@@ -66,7 +71,26 @@ const page = ref(1)
 const perPage = ref(25)
 const pendingPage = ref(1)
 const pendingPerPage = ref(25)
+const historyPage = ref(1)
+const historyPerPage = ref(25)
+const historyRows = ref<PerformanceApprovalHistoryItem[]>([])
+const historyMeta = ref<PerformanceApprovalHistoryMeta>({
+  current_page: 1,
+  per_page: 25,
+  total: 0,
+  last_page: 1,
+})
 const exporting = ref(false)
+
+async function loadApprovalHistory() {
+  const res = await fetchPerformanceApprovalHistory({
+    page: historyPage.value,
+    per_page: historyPerPage.value,
+    period: period.value || undefined,
+  })
+  historyRows.value = res.data
+  historyMeta.value = res.meta
+}
 
 async function load() {
   loading.value = true
@@ -127,19 +151,33 @@ async function load() {
         midterm_submission_open: hub.midterm_submission_open,
         endterm_submission_open: hub.endterm_submission_open,
         submission_windows: hub.submission_windows,
+        pending_count: hub.pending_count,
         periods: hub.periods?.length ? hub.periods : data.value?.periods || [],
       }
-    } else {
-    data.value = await fetchPerformanceHub({
-        tab: tab.value === 'my' ? 'my' : tab.value === 'pending' ? 'pending' : 'dashboard',
-      period: period.value || undefined,
-      division_id: divisionId.value,
-      page: page.value,
-        per_page: perPage.value,
-    })
-    if (!period.value && data.value.period) {
-      period.value = data.value.period
+      performancePending.setCount(hub.pending_count)
+    } else if (tab.value === 'approval-history') {
+      data.value = await fetchPerformanceHub({
+        tab: 'dashboard',
+        period: period.value || undefined,
+        division_id: divisionId.value,
+      })
+      if (!period.value && data.value.period) {
+        period.value = data.value.period
       }
+      performancePending.setCount(data.value.pending_count)
+      await loadApprovalHistory()
+    } else {
+      data.value = await fetchPerformanceHub({
+        tab: tab.value === 'my' ? 'my' : tab.value === 'pending' ? 'pending' : 'dashboard',
+        period: period.value || undefined,
+        division_id: divisionId.value,
+        page: page.value,
+        per_page: perPage.value,
+      })
+      if (!period.value && data.value.period) {
+        period.value = data.value.period
+      }
+      performancePending.setCount(data.value.pending_count)
     }
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load performance')
@@ -152,9 +190,20 @@ function setTab(next: HubTab) {
   tab.value = next
   page.value = 1
   pendingPage.value = 1
+  historyPage.value = 1
   const query: Record<string, string> = { tab: next }
   if (next === 'analytics') query.phase = analyticsPhase.value
   void router.replace({ query })
+}
+
+function isHubTab(value: string): value is HubTab {
+  return (
+    value === 'my' ||
+    value === 'pending' ||
+    value === 'dashboard' ||
+    value === 'analytics' ||
+    value === 'approval-history'
+  )
 }
 
 const hubTabItems = computed<PortalPillNavItem[]>(() => [
@@ -165,17 +214,23 @@ const hubTabItems = computed<PortalPillNavItem[]>(() => [
     active: tab.value === 'dashboard',
   },
   {
-    key: 'my',
-    label: locale.t('subnav.perf_history', 'History'),
-    icon: 'fa-solid fa-clock-rotate-left',
-    active: tab.value === 'my',
-  },
-  {
     key: 'pending',
     label: locale.t('subnav.perf_pending', 'Pending reviews'),
     icon: 'fa-solid fa-clipboard-check',
     active: tab.value === 'pending',
-    badge: data.value?.pending_count || null,
+    badge: data.value?.pending_count ?? (performancePending.count || null),
+  },
+  {
+    key: 'approval-history',
+    label: locale.t('subnav.perf_approval_history', 'Approval history'),
+    icon: 'fa-solid fa-stamp',
+    active: tab.value === 'approval-history',
+  },
+  {
+    key: 'my',
+    label: locale.t('subnav.perf_my_submissions', 'My submissions'),
+    icon: 'fa-solid fa-clock-rotate-left',
+    active: tab.value === 'my',
   },
   {
     key: 'analytics',
@@ -223,6 +278,17 @@ function onMyPerPage(v: number) {
 function onPendingPerPage(v: number) {
   pendingPerPage.value = v
   pendingPage.value = 1
+}
+
+function onHistoryPerPage(v: number) {
+  historyPerPage.value = v
+  historyPage.value = 1
+  void loadApprovalHistory()
+}
+
+function onHistoryPage(v: number) {
+  historyPage.value = v
+  void loadApprovalHistory()
 }
 
 function exportMyCsv() {
@@ -482,10 +548,21 @@ watch([tab, analyticsPhase, period, divisionId, funderId, page, perPage], () => 
   void load()
 })
 
+watch(
+  () => String(route.query.tab || 'dashboard'),
+  (q) => {
+    if (!isHubTab(q) || tab.value === q) return
+    tab.value = q
+    page.value = 1
+    pendingPage.value = 1
+    historyPage.value = 1
+  },
+)
+
 onMounted(() => {
   const q = String(route.query.tab || 'dashboard')
-  if (q === 'my' || q === 'pending' || q === 'dashboard' || q === 'analytics') {
-    tab.value = q as HubTab
+  if (isHubTab(q)) {
+    tab.value = q
   }
   const p = String(route.query.phase || 'ppa')
   if (p === 'ppa' || p === 'midterm' || p === 'endterm') {
@@ -990,6 +1067,76 @@ onMounted(() => {
               @update:page="(v) => (page = v)"
             />
         </div>
+        </v-card>
+      </template>
+
+      <template v-else-if="tab === 'approval-history'">
+        <v-card class="portal-data-table-card mb-3" variant="outlined">
+          <div class="px-3 pt-1">
+            <PortalTableToolbar
+              placement="header"
+              :page="historyPage"
+              :last-page="historyMeta.last_page"
+              :total="historyMeta.total"
+              :per-page="historyPerPage"
+              total-label="Total actions"
+              :show-csv="false"
+              :show-pdf="false"
+              @update:per-page="onHistoryPerPage"
+            />
+          </div>
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th style="width: 3rem">#</th>
+                <th>Staff</th>
+                <th>Phase</th>
+                <th>Period</th>
+                <th>Action</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in historyRows" :key="`${row.entry_id}-${row.acted_at}-${i}`">
+                <td>
+                  <span class="portal-dt-row-num">{{ (historyPage - 1) * historyPerPage + i + 1 }}</span>
+                </td>
+                <td>{{ row.staff_name || row.staff_id || '—' }}</td>
+                <td>{{ row.phase_label || row.phase || '—' }}</td>
+                <td>{{ row.performance_period || '—' }}</td>
+                <td>{{ row.action || '—' }}</td>
+                <td>{{ row.acted_at || '—' }}</td>
+                <td class="text-end">
+                  <v-btn
+                    v-if="row.form_url"
+                    size="x-small"
+                    color="primary"
+                    variant="tonal"
+                    @click="openForm(row.form_url)"
+                  >
+                    Open
+                  </v-btn>
+                </td>
+              </tr>
+              <tr v-if="!historyRows.length">
+                <td colspan="7" class="text-medium-emphasis text-center py-6">No approval actions yet.</td>
+              </tr>
+            </tbody>
+          </v-table>
+          <div class="px-3 pb-1">
+            <PortalTableToolbar
+              placement="footer"
+              :page="historyPage"
+              :last-page="historyMeta.last_page"
+              :total="historyMeta.total"
+              :per-page="historyPerPage"
+              :show-csv="false"
+              :show-pdf="false"
+              :show-per-page="false"
+              @update:page="onHistoryPage"
+            />
+          </div>
         </v-card>
       </template>
 
