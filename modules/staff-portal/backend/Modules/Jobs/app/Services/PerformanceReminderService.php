@@ -3,8 +3,11 @@
 namespace Modules\Jobs\Services;
 
 use DateTimeImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Performance\Enums\PerformancePhase;
+use Modules\Performance\Services\PerformanceApprovalService;
+use Modules\Performance\Services\PerformanceService;
 use Modules\Performance\Services\PpaSettingsService;
 
 class PerformanceReminderService
@@ -18,6 +21,8 @@ class PerformanceReminderService
     public function __construct(
         private EmailNotificationService $mail,
         private PpaSettingsService $ppaSettings,
+        private PerformanceApprovalService $approval,
+        private PerformanceService $performance,
     ) {}
 
     /**
@@ -36,44 +41,47 @@ class PerformanceReminderService
 
     public function notifySupervisorsPendingPpas(): int
     {
-        $period = $this->previousPeriodKey();
+        $periods = $this->reminderPeriods();
         $deadline = $this->deadlineLabel(PerformancePhase::Ppa);
         $queued = 0;
 
-        $supervisors = DB::select("
-            SELECT DISTINCT s.staff_id AS supervisor_id, s.title, s.fname, s.lname, s.work_email
-            FROM staff s
-            JOIN ppa_entries p ON s.staff_id = p.supervisor_id OR s.staff_id = p.supervisor2_id
-            WHERE p.performance_period = ?
-              AND p.draft_status = 0
-              AND p.entry_id NOT IN (SELECT entry_id FROM ppa_approval_trail WHERE action = 'Approved')
-            ORDER BY s.fname ASC
-        ", [$period]);
+        foreach ($this->candidateSupervisorIdsForPhase(PerformancePhase::Ppa, $periods) as $supervisorId) {
+            if (! $this->staffHasAllowedContract($supervisorId)) {
+                continue;
+            }
 
-        foreach ($supervisors as $supervisor) {
-            if (! $this->staffHasAllowedContract((int) $supervisor->supervisor_id)) {
+            $pending = $this->performance->pendingApprovals($supervisorId)
+                ->filter(fn ($row) => in_array((string) ($row->performance_period ?? ''), $periods, true))
+                ->filter(fn ($row) => $this->staffHasAllowedContract((int) $row->staff_id, (string) $row->performance_period))
+                ->values();
+
+            if ($pending->isEmpty()) {
                 continue;
             }
-            $pending = $this->pendingPpasForSupervisor((int) $supervisor->supervisor_id);
-            $pending = $this->filterPendingByContract($pending, $period);
-            if ($pending === []) {
+
+            $supervisor = $this->staffRow($supervisorId);
+            if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
                 continue;
             }
-            $name = trim(($supervisor->title ?? '').' '.($supervisor->fname ?? '').' '.($supervisor->lname ?? ''));
+
+            $name = $this->displayName($supervisor);
+            $periodLabel = $pending->pluck('performance_period')->unique()->implode(', ');
             $body = $this->mail->render('supervisor_reminder', [
                 'supervisor_name' => $name,
-                'period' => $period,
+                'period' => $periodLabel,
                 'deadline' => $deadline,
-                'pending_list' => $pending,
+                'pending_list' => $this->mapPendingList($pending),
             ]);
             $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
-            $entryId = md5($supervisor->supervisor_id.'-SUPPPAREM-'.date('Y-m-d'));
-            if ($this->mail->queue('Staff Portal System', $to, $body, "Reminder: Pending PPA Approvals for {$period}", (int) $supervisor->supervisor_id, date('Y-m-d'), date('Y-m-d'), $entryId)) {
+            $entryId = md5($supervisorId.'-SUPPPAREM-'.date('Y-m-d'));
+            if ($this->mail->queue('Staff Portal System', $to, $body, "Reminder: Pending PPA Approvals for {$periodLabel}", $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId)) {
                 $queued++;
             }
         }
 
-        $queued += $this->notifyUnsubmittedPpas($period, $deadline);
+        foreach ($periods as $period) {
+            $queued += $this->notifyUnsubmittedPpas($period, $deadline);
+        }
         $this->mail->purgeTestRecipients();
 
         return $queued;
@@ -81,48 +89,52 @@ class PerformanceReminderService
 
     public function notifySupervisorsPendingMidterms(): int
     {
-        $period = $this->previousPeriodKey();
+        $periods = $this->reminderPeriods();
         $deadline = $this->deadlineLabel(PerformancePhase::Midterm);
         $queued = 0;
 
-        $supervisors = DB::select("
-            SELECT DISTINCT s.staff_id AS supervisor_id, s.title, s.fname, s.lname, s.work_email
-            FROM staff s
-            JOIN ppa_entries p ON s.staff_id = p.midterm_supervisor_1 OR s.staff_id = p.midterm_supervisor_2
-            WHERE p.performance_period = ?
-              AND p.midterm_draft_status = 0
-              AND p.midterm_sign_off = 1
-              AND p.entry_id NOT IN (SELECT entry_id FROM ppa_approval_trail_midterm WHERE action = 'Approved')
-            ORDER BY s.fname ASC
-        ", [$period]);
+        foreach ($this->candidateSupervisorIdsForPhase(PerformancePhase::Midterm, $periods) as $supervisorId) {
+            if (! $this->staffHasAllowedContract($supervisorId)) {
+                continue;
+            }
 
-        foreach ($supervisors as $supervisor) {
-            if (! $this->staffHasAllowedContract((int) $supervisor->supervisor_id)) {
+            $pending = $this->approval->pendingActionsFor($supervisorId)
+                ->filter(fn ($row) => ($row->approval_type ?? '') === 'midterm')
+                ->filter(fn ($row) => in_array((string) ($row->performance_period ?? ''), $periods, true))
+                ->filter(fn ($row) => $this->staffHasAllowedContract((int) $row->staff_id, (string) $row->performance_period))
+                ->values();
+
+            if ($pending->isEmpty()) {
                 continue;
             }
-            $pending = $this->pendingMidtermsForSupervisor((int) $supervisor->supervisor_id);
-            $pending = $this->filterPendingByContract($pending, $period);
-            if ($pending === []) {
+
+            $supervisor = $this->staffRow($supervisorId);
+            if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
                 continue;
             }
-            $name = trim(($supervisor->title ?? '').' '.($supervisor->fname ?? '').' '.($supervisor->lname ?? ''));
-            $entryId = md5($supervisor->supervisor_id.'-SUPMIDREM-'.$period.'-'.date('Y-m-d'));
+
+            $entryId = md5($supervisorId.'-SUPMIDREM-'.date('Y-m-d'));
             if ($this->mail->entryExists($entryId)) {
                 continue;
             }
+
+            $name = $this->displayName($supervisor);
+            $periodLabel = $pending->pluck('performance_period')->unique()->implode(', ');
             $body = $this->mail->render('supervisor_reminder_midterm', [
                 'supervisor_name' => $name,
-                'period' => $period,
+                'period' => $periodLabel,
                 'deadline' => $deadline,
-                'pending_list' => $pending,
+                'pending_list' => $this->mapPendingList($pending),
             ]);
             $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
-            if ($this->mail->queue('Staff Portal System', $to, $body, "Reminder: Pending Midterm Approvals for {$period}", (int) $supervisor->supervisor_id, date('Y-m-d'), date('Y-m-d'), $entryId)) {
+            if ($this->mail->queue('Staff Portal System', $to, $body, "Reminder: Pending Midterm Approvals for {$periodLabel}", $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId)) {
                 $queued++;
             }
         }
 
-        $queued += $this->notifyUnsubmittedMidterms($period, $deadline);
+        foreach ($periods as $period) {
+            $queued += $this->notifyUnsubmittedMidterms($period, $deadline);
+        }
         $this->mail->purgeTestRecipients();
 
         return $queued;
@@ -133,9 +145,8 @@ class PerformanceReminderService
         $period = $this->endtermPeriodKey();
         $deadline = $this->deadlineLabel(PerformancePhase::Endterm);
         $queued = 0;
-        $queued += $this->notifyFirstSupervisorsPendingEndterms($period, $deadline);
+        $queued += $this->notifyEndtermSupervisorsForPeriod($period, $deadline);
         $queued += $this->notifyStaffConsentPendingEndterms($period, $deadline);
-        $queued += $this->notifySecondSupervisorsPendingEndterms($period, $deadline);
         $queued += $this->notifyUnsubmittedEndterms($period, $deadline);
 
         return $queued;
@@ -144,19 +155,13 @@ class PerformanceReminderService
     public function notifySupervisorsPendingPerformanceApproval(): int
     {
         $queued = 0;
-        $supervisors = DB::select("
-            SELECT DISTINCT s.staff_id AS supervisor_id, s.title, s.fname, s.lname, s.work_email
-            FROM staff s
-            JOIN ppa_entries p ON s.staff_id IN (
-                p.supervisor_id, p.supervisor2_id,
-                p.midterm_supervisor_1, p.midterm_supervisor_2,
-                p.endterm_supervisor_1, p.endterm_supervisor_2
-            )
-            WHERE TRIM(COALESCE(s.work_email, '')) != ''
-        ");
+        $supervisorIds = $this->candidateSupervisorIdsForPhase(PerformancePhase::Ppa, null)
+            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Midterm, null))
+            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Endterm, null))
+            ->unique()
+            ->values();
 
-        foreach ($supervisors as $supervisor) {
-            $supervisorId = (int) $supervisor->supervisor_id;
+        foreach ($supervisorIds as $supervisorId) {
             if (! $this->staffHasAllowedContract($supervisorId)) {
                 continue;
             }
@@ -168,6 +173,10 @@ class PerformanceReminderService
             if ($this->mail->entryExists($entryId)) {
                 continue;
             }
+            $supervisor = $this->staffRow($supervisorId);
+            if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
+                continue;
+            }
             $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
             foreach ($pending as $row) {
                 $key = strtolower((string) ($row['approval_type'] ?? 'ppa'));
@@ -175,14 +184,14 @@ class PerformanceReminderService
                     $typeCounts[$key]++;
                 }
             }
-            $name = trim(($supervisor->title ?? '').' '.($supervisor->fname ?? '').' '.($supervisor->lname ?? ''));
+            $name = $this->displayName($supervisor);
             $portal = (string) config('jobs.schedule.portal_base_url');
             $body = $this->mail->render('supervisor_reminder_performance_approval', [
                 'supervisor_name' => $name,
                 'generated_on' => date('d M Y H:i'),
                 'type_counts' => $typeCounts,
                 'pending_list' => $pending,
-                'pending_url' => $portal.'performance',
+                'pending_url' => $portal.'performance?tab=pending',
             ]);
             $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
             if ($this->mail->queue('Staff Portal System', $to, $body, 'Reminder: Pending performance approvals', $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId)) {
@@ -204,14 +213,14 @@ class PerformanceReminderService
             if (! $this->staffHasAllowedContract((int) $staff->staff_id, $period)) {
                 continue;
             }
-            $name = trim(($staff->title ?? '').' '.($staff->fname ?? '').' '.($staff->lname ?? ''));
+            $name = $this->displayName($staff);
             $body = $this->mail->render('staff_reminder', [
                 'name' => $name,
                 'period' => $period,
                 'deadline' => $deadline,
             ]);
             $to = $this->mail->appendSystemInbox((string) $staff->work_email);
-            $entryId = md5($staff->staff_id.'-PPAREM-'.date('Y-m-d'));
+            $entryId = md5($staff->staff_id.'-PPAREM-'.$period.'-'.date('Y-m-d'));
             if ($this->mail->queue('Staff Portal System', $to, $body, "Staff PPA Reminder: Submit your PPA ($period)", (int) $staff->staff_id, date('Y-m-d'), date('Y-m-d'), $entryId)) {
                 $queued++;
             }
@@ -231,11 +240,11 @@ class PerformanceReminderService
             if (! $this->staffHasAllowedContract((int) $staff->staff_id, $period)) {
                 continue;
             }
-            $entryId = md5($staff->staff_id.'-empMIDTERMREM-'.date('Y-m-d'));
+            $entryId = md5($staff->staff_id.'-empMIDTERMREM-'.$period.'-'.date('Y-m-d'));
             if ($this->mail->entryExists($entryId)) {
                 continue;
             }
-            $name = trim(($staff->title ?? '').' '.($staff->fname ?? '').' '.($staff->lname ?? ''));
+            $name = $this->displayName($staff);
             $body = $this->mail->render('staff_reminder_midterm', [
                 'name' => $name,
                 'period' => $period,
@@ -265,7 +274,7 @@ class PerformanceReminderService
             if ($this->mail->entryExists($entryId)) {
                 continue;
             }
-            $name = trim(($staff->title ?? '').' '.($staff->fname ?? '').' '.($staff->lname ?? ''));
+            $name = $this->displayName($staff);
             $body = $this->mail->render('staff_reminder_endterm', [
                 'name' => $name,
                 'period' => $period,
@@ -280,94 +289,46 @@ class PerformanceReminderService
         return $queued;
     }
 
-    protected function notifyFirstSupervisorsPendingEndterms(string $period, string $deadline): int
+    protected function notifyEndtermSupervisorsForPeriod(string $period, string $deadline): int
     {
-        $rows = DB::select("
-            SELECT p.endterm_supervisor_1 AS supervisor_id, s.title, s.fname, s.lname, s.work_email,
-                   p.entry_id, p.staff_id,
-                   CONCAT(st.title, ' ', st.fname, ' ', st.lname) AS staff_name
-            FROM ppa_entries p
-            JOIN staff s ON s.staff_id = p.endterm_supervisor_1
-            JOIN staff st ON st.staff_id = p.staff_id
-            WHERE p.performance_period = ?
-              AND p.endterm_draft_status = 0
-              AND p.endterm_sign_off = 1
-              AND p.endterm_supervisor_1 IS NOT NULL
-              AND NOT EXISTS (
-                SELECT 1 FROM ppa_approval_trail_end_term t
-                WHERE t.entry_id = p.entry_id AND t.staff_id = p.endterm_supervisor_1 AND t.action = 'Approved'
-              )
-        ", [$period]);
-
-        return $this->queueEndtermSupervisorBundles($rows, $period, $deadline, 'first', 'supervisor_reminder_endterm_first', 'SUP1ENDREM');
-    }
-
-    protected function notifySecondSupervisorsPendingEndterms(string $period, string $deadline): int
-    {
-        $rows = DB::select("
-            SELECT p.endterm_supervisor_2 AS supervisor_id, s.title, s.fname, s.lname, s.work_email,
-                   p.entry_id, p.staff_id,
-                   CONCAT(st.title, ' ', st.fname, ' ', st.lname) AS staff_name
-            FROM ppa_entries p
-            JOIN staff s ON s.staff_id = p.endterm_supervisor_2
-            JOIN staff st ON st.staff_id = p.staff_id
-            WHERE p.performance_period = ?
-              AND p.endterm_draft_status = 0
-              AND p.endterm_sign_off = 1
-              AND p.endterm_staff_consent_at IS NOT NULL
-              AND p.endterm_supervisor_2 IS NOT NULL
-              AND EXISTS (
-                SELECT 1 FROM ppa_approval_trail_end_term t
-                WHERE t.entry_id = p.entry_id AND t.staff_id = p.endterm_supervisor_1 AND t.action = 'Approved'
-              )
-              AND NOT EXISTS (
-                SELECT 1 FROM ppa_approval_trail_end_term t2
-                WHERE t2.entry_id = p.entry_id AND t2.staff_id = p.endterm_supervisor_2 AND t2.action = 'Approved'
-              )
-        ", [$period]);
-
-        return $this->queueEndtermSupervisorBundles($rows, $period, $deadline, 'second', 'supervisor_reminder_endterm_second', 'SUP2ENDREM');
-    }
-
-    protected function notifyStaffConsentPendingEndterms(string $period, string $deadline): int
-    {
-        if (! $this->ppaSettings->endtermRequiresEmployeeConsent()) {
-            return 0;
-        }
-        $rows = DB::select("
-            SELECT p.entry_id, p.staff_id, s.title, s.fname, s.lname, s.work_email
-            FROM ppa_entries p
-            JOIN staff s ON s.staff_id = p.staff_id
-            WHERE p.performance_period = ?
-              AND p.endterm_draft_status = 0
-              AND p.endterm_sign_off = 1
-              AND p.endterm_staff_consent_at IS NULL
-              AND EXISTS (
-                SELECT 1 FROM ppa_approval_trail_end_term t
-                WHERE t.entry_id = p.entry_id AND t.staff_id = p.endterm_supervisor_1 AND t.action = 'Approved'
-              )
-        ", [$period]);
-
         $queued = 0;
-        foreach ($rows as $row) {
-            if (! $this->staffHasAllowedContract((int) $row->staff_id, $period)) {
+        $candidates = $this->candidateSupervisorIdsForPhase(PerformancePhase::Endterm, [$period]);
+
+        foreach ($candidates as $supervisorId) {
+            if (! $this->staffHasAllowedContract($supervisorId)) {
                 continue;
             }
-            $entryId = md5($row->staff_id.'-STAFFCONSENTENDREM-'.$row->entry_id.'-'.date('Y-m-d'));
-            if ($this->mail->entryExists($entryId)) {
+
+            $pending = $this->approval->pendingActionsFor($supervisorId)
+                ->filter(fn ($row) => ($row->approval_type ?? '') === 'endterm')
+                ->filter(fn ($row) => (string) ($row->performance_period ?? '') === $period)
+                ->filter(fn ($row) => $this->staffHasAllowedContract((int) $row->staff_id, $period))
+                ->values();
+
+            if ($pending->isEmpty()) {
                 continue;
             }
-            $name = trim(($row->title ?? '').' '.($row->fname ?? '').' '.($row->lname ?? ''));
-            $body = $this->mail->render('staff_consent_reminder_endterm', [
-                'name' => $name,
-                'period' => $period,
-                'deadline' => $deadline,
-                'entry_id' => $row->entry_id,
-                'staff_id' => $row->staff_id,
-            ]);
-            $to = $this->mail->appendSystemInbox((string) $row->work_email);
-            if ($this->mail->queue('Staff Portal System', $to, $body, "Endterm Consent Reminder ($period)", (int) $row->staff_id, date('Y-m-d'), date('Y-m-d'), $entryId)) {
-                $queued++;
+
+            $supervisor = $this->staffRow($supervisorId);
+            if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
+                continue;
+            }
+
+            $firstStep = $pending->filter(fn ($row) => str_contains(strtolower((string) ($row->overall_status ?? '')), 'first'));
+            $secondStep = $pending->filter(fn ($row) => str_contains(strtolower((string) ($row->overall_status ?? '')), 'second'));
+            $firstIds = $firstStep->pluck('entry_id')->all();
+            $secondIds = $secondStep->pluck('entry_id')->all();
+
+            if ($firstStep->isNotEmpty()) {
+                $queued += $this->queueEndtermBundle($supervisorId, $supervisor, $firstStep, $period, $deadline, 'first', 'supervisor_reminder_endterm_first', 'SUP1ENDREM');
+            }
+            if ($secondStep->isNotEmpty()) {
+                $queued += $this->queueEndtermBundle($supervisorId, $supervisor, $secondStep, $period, $deadline, 'second', 'supervisor_reminder_endterm_second', 'SUP2ENDREM');
+            }
+            // Any other endterm pending step for this supervisor (fallback template).
+            $other = $pending->reject(fn ($row) => in_array($row->entry_id, $firstIds, true) || in_array($row->entry_id, $secondIds, true));
+            if ($other->isNotEmpty()) {
+                $queued += $this->queueEndtermBundle($supervisorId, $supervisor, $other, $period, $deadline, 'first', 'supervisor_reminder_endterm_first', 'SUPENDREM');
             }
         }
 
@@ -375,83 +336,87 @@ class PerformanceReminderService
     }
 
     /**
-     * @param  list<object>  $rows
+     * @param  Collection<int, object>  $pending
      */
-    protected function queueEndtermSupervisorBundles(array $rows, string $period, string $deadline, string $which, string $view, string $keyPrefix): int
+    protected function queueEndtermBundle(
+        int $supervisorId,
+        object $supervisor,
+        Collection $pending,
+        string $period,
+        string $deadline,
+        string $which,
+        string $view,
+        string $keyPrefix,
+    ): int {
+        $entryId = md5($supervisorId.'-'.$keyPrefix.'-'.$period.'-'.date('Y-m-d'));
+        if ($this->mail->entryExists($entryId)) {
+            return 0;
+        }
+
+        $body = $this->mail->render($view, [
+            'supervisor_name' => $this->displayName($supervisor),
+            'period' => $period,
+            'deadline' => $deadline,
+            'pending_list' => $this->mapPendingList($pending),
+        ]);
+        $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
+        $subject = $which === 'second'
+            ? "Reminder: Pending Endterm Second Approvals for {$period}"
+            : "Reminder: Pending Endterm Approvals for {$period}";
+
+        return $this->mail->queue('Staff Portal System', $to, $body, $subject, $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId) ? 1 : 0;
+    }
+
+    protected function notifyStaffConsentPendingEndterms(string $period, string $deadline): int
     {
-        $bySupervisor = [];
-        foreach ($rows as $row) {
-            if (! $this->staffHasAllowedContract((int) $row->staff_id, $period)) {
-                continue;
-            }
-            if (! $this->staffHasAllowedContract((int) $row->supervisor_id)) {
-                continue;
-            }
-            $bySupervisor[(int) $row->supervisor_id][] = $row;
+        if (! $this->ppaSettings->endtermRequiresEmployeeConsent()) {
+            return 0;
         }
 
         $queued = 0;
-        foreach ($bySupervisor as $supervisorId => $list) {
-            $entryId = md5($supervisorId.'-'.$keyPrefix.'-'.$period.'-'.date('Y-m-d'));
-            if ($this->mail->entryExists($entryId)) {
+        $staffIds = DB::table('ppa_entries')
+            ->where('performance_period', $period)
+            ->where('endterm_draft_status', 0)
+            ->whereNotNull('endterm_created_at')
+            ->pluck('staff_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        foreach ($staffIds as $staffId) {
+            if (! $this->staffHasAllowedContract($staffId, $period)) {
                 continue;
             }
-            $first = $list[0];
-            $name = trim(($first->title ?? '').' '.($first->fname ?? '').' '.($first->lname ?? ''));
-            $pending = array_map(fn ($r) => [
-                'entry_id' => $r->entry_id,
-                'staff_id' => $r->staff_id,
-                'staff_name' => $r->staff_name,
-            ], $list);
-            $body = $this->mail->render($view, [
-                'supervisor_name' => $name,
-                'period' => $period,
-                'deadline' => $deadline,
-                'pending_list' => $pending,
-            ]);
-            $to = $this->mail->appendSystemInbox((string) $first->work_email);
-            $subject = $which === 'second'
-                ? "Reminder: Pending Endterm Second Approvals for {$period}"
-                : "Reminder: Pending Endterm Approvals for {$period}";
-            if ($this->mail->queue('Staff Portal System', $to, $body, $subject, $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId)) {
-                $queued++;
+            $pending = $this->approval->pendingActionsFor($staffId)
+                ->filter(fn ($row) => ($row->approval_type ?? '') === 'endterm')
+                ->filter(fn ($row) => (string) ($row->performance_period ?? '') === $period)
+                ->filter(fn ($row) => str_contains(strtolower((string) ($row->overall_status ?? '')), 'consent'))
+                ->values();
+
+            foreach ($pending as $row) {
+                $entryKey = md5($staffId.'-STAFFCONSENTENDREM-'.$row->entry_id.'-'.date('Y-m-d'));
+                if ($this->mail->entryExists($entryKey)) {
+                    continue;
+                }
+                $staff = $this->staffRow($staffId);
+                if (! $staff || trim((string) ($staff->work_email ?? '')) === '') {
+                    continue;
+                }
+                $body = $this->mail->render('staff_consent_reminder_endterm', [
+                    'name' => $this->displayName($staff),
+                    'period' => $period,
+                    'deadline' => $deadline,
+                    'entry_id' => $row->entry_id,
+                    'staff_id' => $staffId,
+                ]);
+                $to = $this->mail->appendSystemInbox((string) $staff->work_email);
+                if ($this->mail->queue('Staff Portal System', $to, $body, "Endterm Consent Reminder ($period)", $staffId, date('Y-m-d'), date('Y-m-d'), $entryKey)) {
+                    $queued++;
+                }
             }
         }
 
         return $queued;
-    }
-
-    /** @return list<object> */
-    protected function pendingPpasForSupervisor(int $supervisorId): array
-    {
-        return DB::select("
-            SELECT p.entry_id, p.staff_id,
-                   CONCAT(s.title, ' ', s.fname, ' ', s.lname) AS staff_name,
-                   p.performance_period, p.created_at
-            FROM ppa_entries p
-            LEFT JOIN staff s ON s.staff_id = p.staff_id
-            WHERE (p.supervisor_id = ? OR p.supervisor2_id = ?)
-              AND p.draft_status = 0
-              AND p.entry_id NOT IN (SELECT entry_id FROM ppa_approval_trail WHERE action = 'Approved')
-            ORDER BY p.created_at DESC
-        ", [$supervisorId, $supervisorId]);
-    }
-
-    /** @return list<object> */
-    protected function pendingMidtermsForSupervisor(int $supervisorId): array
-    {
-        return DB::select("
-            SELECT p.entry_id, p.staff_id,
-                   CONCAT(s.title, ' ', s.fname, ' ', s.lname) AS staff_name,
-                   p.performance_period, p.midterm_updated_at AS created_at
-            FROM ppa_entries p
-            LEFT JOIN staff s ON s.staff_id = p.staff_id
-            WHERE (p.midterm_supervisor_1 = ? OR p.midterm_supervisor_2 = ?)
-              AND p.midterm_draft_status = 0
-              AND p.midterm_sign_off = 1
-              AND p.entry_id NOT IN (SELECT entry_id FROM ppa_approval_trail_midterm WHERE action = 'Approved')
-            ORDER BY p.midterm_updated_at DESC
-        ", [$supervisorId, $supervisorId]);
     }
 
     /**
@@ -462,34 +427,72 @@ class PerformanceReminderService
         $portal = (string) config('jobs.schedule.portal_base_url');
         $out = [];
 
-        foreach ($this->pendingPpasForSupervisor($supervisorId) as $row) {
-            if (! $this->staffHasAllowedContract((int) $row->staff_id, (string) $row->performance_period)) {
+        foreach ($this->approval->pendingActionsFor($supervisorId) as $row) {
+            $type = (string) ($row->approval_type ?? 'ppa');
+            if (! in_array($type, ['ppa', 'midterm', 'endterm'], true)) {
+                continue;
+            }
+            // Consent items are for the employee, not supervisors.
+            if (str_contains(strtolower((string) ($row->overall_status ?? '')), 'consent')) {
+                continue;
+            }
+            if (! $this->staffHasAllowedContract((int) $row->staff_id, (string) ($row->performance_period ?? ''))) {
                 continue;
             }
             $out[] = [
-                'staff_name' => $row->staff_name,
-                'approval_type' => 'ppa',
-                'period' => $row->performance_period,
-                'status' => 'Pending First Supervisor',
-                'submitted_at' => $row->created_at,
-                'review_url' => $portal.'performance/form/ppa/'.$row->entry_id.'/'.$row->staff_id,
-            ];
-        }
-        foreach ($this->pendingMidtermsForSupervisor($supervisorId) as $row) {
-            if (! $this->staffHasAllowedContract((int) $row->staff_id, (string) $row->performance_period)) {
-                continue;
-            }
-            $out[] = [
-                'staff_name' => $row->staff_name,
-                'approval_type' => 'midterm',
-                'period' => $row->performance_period,
-                'status' => 'Pending First Supervisor',
-                'submitted_at' => $row->created_at,
-                'review_url' => $portal.'performance/form/midterm/'.$row->entry_id.'/'.$row->staff_id,
+                'staff_name' => $row->staff_name ?? ('#'.$row->staff_id),
+                'approval_type' => $type,
+                'period' => $row->performance_period ?? '',
+                'status' => (string) ($row->overall_status ?? 'Pending approval'),
+                'submitted_at' => $row->updated_at ?? $row->created_at ?? $row->midterm_updated_at ?? $row->endterm_updated_at ?? null,
+                'review_url' => $portal.'performance/form/'.$type.'/'.$row->entry_id.'/'.$row->staff_id,
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * @param  Collection<int, object>  $pending
+     * @return list<object|array<string, mixed>>
+     */
+    protected function mapPendingList(Collection $pending): array
+    {
+        return $pending->map(fn ($row) => (object) [
+            'entry_id' => $row->entry_id,
+            'staff_id' => $row->staff_id,
+            'staff_name' => $row->staff_name ?? ('#'.$row->staff_id),
+            'performance_period' => $row->performance_period ?? '',
+            'created_at' => $row->updated_at ?? $row->created_at ?? $row->midterm_updated_at ?? $row->endterm_updated_at ?? null,
+        ])->all();
+    }
+
+    /**
+     * @param  list<string>|null  $periods
+     * @return Collection<int, int>
+     */
+    protected function candidateSupervisorIdsForPhase(PerformancePhase $phase, ?array $periods): Collection
+    {
+        $q = DB::table('ppa_entries');
+        if ($periods !== null && $periods !== []) {
+            $q->whereIn('performance_period', $periods);
+        }
+
+        $ids = match ($phase) {
+            PerformancePhase::Ppa => $q->where('draft_status', 0)
+                ->get(['supervisor_id', 'supervisor2_id'])
+                ->flatMap(fn ($r) => [(int) ($r->supervisor_id ?? 0), (int) ($r->supervisor2_id ?? 0)]),
+            PerformancePhase::Midterm => $q->where('midterm_draft_status', 0)
+                ->whereNotNull('midterm_created_at')
+                ->get(['midterm_supervisor_1', 'midterm_supervisor_2'])
+                ->flatMap(fn ($r) => [(int) ($r->midterm_supervisor_1 ?? 0), (int) ($r->midterm_supervisor_2 ?? 0)]),
+            PerformancePhase::Endterm => $q->where('endterm_draft_status', 0)
+                ->whereNotNull('endterm_created_at')
+                ->get(['endterm_supervisor_1', 'endterm_supervisor_2'])
+                ->flatMap(fn ($r) => [(int) ($r->endterm_supervisor_1 ?? 0), (int) ($r->endterm_supervisor_2 ?? 0)]),
+        };
+
+        return $ids->filter(fn ($id) => $id > 0)->unique()->values();
     }
 
     /**
@@ -529,12 +532,18 @@ class PerformanceReminderService
     }
 
     /**
-     * @param  list<object>  $pending
-     * @return list<object>
+     * Current + previous calendar periods (covers in-cycle and close-out reminders).
+     *
+     * @return list<string>
      */
-    protected function filterPendingByContract(array $pending, string $period): array
+    public function reminderPeriods(): array
     {
-        return array_values(array_filter($pending, fn ($row) => $this->staffHasAllowedContract((int) $row->staff_id, $period)));
+        $y = (int) date('Y');
+
+        return [
+            "January-{$y}-to-December-{$y}",
+            'January-'.($y - 1).'-to-December-'.($y - 1),
+        ];
     }
 
     public function previousPeriodKey(): string
@@ -572,6 +581,16 @@ class PerformanceReminderService
         $today = new DateTimeImmutable('today');
 
         return (int) $today->diff($end)->format('%r%a');
+    }
+
+    protected function staffRow(int $staffId): ?object
+    {
+        return DB::table('staff')->where('staff_id', $staffId)->first();
+    }
+
+    protected function displayName(object $staff): string
+    {
+        return trim(($staff->title ?? '').' '.($staff->fname ?? '').' '.($staff->lname ?? ''));
     }
 
     public function staffHasAllowedContract(int $staffId, ?string $period = null): bool
