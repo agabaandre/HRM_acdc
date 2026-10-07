@@ -5,9 +5,7 @@ namespace Modules\Share\Http\Middleware;
 use App\Support\SsoJwt;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Modules\Auth\Models\PortalUser;
+use Modules\Share\Services\ShareAuthService;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -97,37 +95,7 @@ class AuthenticateShareApi
             return false;
         }
 
-        if (! Schema::hasTable('user') || ! Schema::hasTable('staff')) {
-            return false;
-        }
-
-        $user = PortalUser::query()
-            ->where('status', 1)
-            ->whereHas('staff', fn ($q) => $q->where('work_email', $email))
-            ->first();
-
-        if (! $user && Schema::hasColumn('user', 'email')) {
-            $user = PortalUser::query()->where('status', 1)->where('email', $email)->first();
-        }
-
-        // CI auth_mdl::login often matched on staff.work_email via join — also try raw email column variants.
-        if (! $user) {
-            $row = DB::table('user as u')
-                ->join('staff as s', 's.staff_id', '=', 'u.auth_staff_id')
-                ->where('u.status', 1)
-                ->where('s.work_email', $email)
-                ->select('u.user_id')
-                ->first();
-            if ($row) {
-                $user = PortalUser::query()->find($row->user_id);
-            }
-        }
-
-        if (! $user || ! $user->password) {
-            return false;
-        }
-
-        return password_verify($password, $user->password);
+        return app(ShareAuthService::class)->credentialsValid($email, $password) !== null;
     }
 
     protected function bearerToken(Request $request): ?string

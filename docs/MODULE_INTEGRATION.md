@@ -125,7 +125,8 @@ Copy the bridge pattern from Helpdesk / Finance / Risk Register auth middleware.
 
 | Method | Path | Use |
 |--------|------|-----|
-| `POST` | `/share/token` | Issue JWT (HTTP Basic = portal login) |
+| `POST` | `/share/login` | Issue JWT (JSON username + password — preferred) |
+| `POST` | `/share/token` | Issue JWT (HTTP Basic — legacy alternative) |
 | `POST` | `/share/refresh_token` | Refresh JWT |
 | `GET` | `/share/get_current_staff` | Staff + contracts (+ `associated_divisions`) |
 | `GET` | `/share/divisions` | Divisions |
@@ -143,9 +144,10 @@ Full consumer notes: [modules/staff-portal/backend/Modules/Share/README.md](../m
 
 ### Auth (any one)
 
-1. **Username + password** → `POST /share/token` → `Authorization: Bearer <jwt>` (preferred)
-2. **Static token** → `Authorization: Bearer {STAFF_API_TOKEN}` (and optional path segment)
-3. **HTTP Basic** on some endpoints (parity with portal login)
+1. **Username + password** → `POST /share/login` → `Authorization: Bearer <jwt>` (preferred; KnowledgeHub-style)
+2. **Legacy Basic token** → `POST /share/token` with HTTP Basic → JWT
+3. **Static token** → `Authorization: Bearer {STAFF_API_TOKEN}` (and optional path segment)
+4. **HTTP Basic** on protected routes (parity with portal login)
 
 ### Env keys (every consumer module)
 

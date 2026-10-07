@@ -15,6 +15,9 @@ Route::prefix('share')->group(function (): void {
     Route::get('docs', [ShareReferenceApiController::class, 'docs']);
     Route::get('openapi.yaml', [ShareReferenceApiController::class, 'openapi']);
     Route::get('openapi', [ShareReferenceApiController::class, 'openapi']);
+    // Preferred (KnowledgeHub-style): JSON username + password
+    Route::post('login', [ShareReferenceApiController::class, 'login']);
+    // Legacy alternative: HTTP Basic → JWT (kept for existing STAFF_API_* clients)
     Route::post('token', [ShareReferenceApiController::class, 'issueToken']);
 
     Route::get('validate_session', [ShareApiController::class, 'validateSession']);

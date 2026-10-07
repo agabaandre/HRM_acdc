@@ -6,15 +6,22 @@ info:
 
     **Payload shapes match** `/staff/share/*` from CodeIgniter.
 
-    ### Authentication (any one)
-    1. **HTTP Basic** — portal user `work_email` + password (same as CI `api_login`)
-    2. **Bearer JWT** — from `POST /share/token`, or a valid Staff SSO JWT (`JWT_SECRET`)
-    3. **Static API token** — `Authorization: Bearer {STAFF_API_TOKEN}` or path `/{STAFF_API_TOKEN}`
-  version: 2.0.0
+    ### Authentication
+    1. **Preferred — login** — `POST /share/login` with JSON `username` + `password`
+       (portal `work_email` + password), then `Authorization: Bearer {access_token}`
+       (same pattern as KnowledgeHub UserLogin).
+    2. **Legacy — Basic token** — `POST /share/token` with HTTP Basic Auth → JWT
+       (kept for existing clients).
+    3. **HTTP Basic on each request** — portal `work_email` + password on protected routes.
+    4. **Static API token** — `Authorization: Bearer {STAFF_API_TOKEN}` or path `/{STAFF_API_TOKEN}`
+    5. **Staff SSO JWT** — valid `JWT_SECRET` Bearer token with `staff_id`.
+  version: 2.1.0
   contact:
     name: Africa CDC CBP
 
 servers:
+  - url: /staff/backend
+    description: Production / Host Apache (cbp.africacdc.org)
   - url: /staff/staff-portal/backend
     description: Local staff-portal Laravel
   - url: /staff
@@ -26,11 +33,55 @@ tags:
   - name: Docs
 
 paths:
+  /share/login:
+    post:
+      tags: [Auth]
+      summary: Login (username + password → JWT)
+      description: |
+        Exchange portal login credentials for a Bearer JWT (`aud=share-api`).
+
+        Same idea as KnowledgeHub **UserLogin**: send `username` and `password` in the
+        JSON body (no HTTP Basic header required). Use `access_token` or `token` on
+        subsequent requests as `Authorization: Bearer …`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              username: user@africacdc.org
+              password: '********'
+      responses:
+        '200':
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+        '422':
+          description: Missing username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+
   /share/token:
     post:
       tags: [Auth]
-      summary: Issue Share API JWT
-      description: Exchange HTTP Basic credentials for a Bearer JWT (aud=share-api).
+      summary: Issue Share API JWT (HTTP Basic — legacy)
+      description: |
+        **Backward-compatible alternative** to `POST /share/login`.
+
+        Exchange HTTP Basic credentials (`work_email` + password) for a Bearer JWT
+        (`aud=share-api`). Prefer `/share/login` for new integrations.
       security:
         - basicAuth: []
       responses:
@@ -39,22 +90,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  access_token:
-                    type: string
-                  token_type:
-                    type: string
-                    example: Bearer
-                  expires_in:
-                    type: integer
-                    example: 3600
-                  aud:
-                    type: string
-                    example: share-api
+                $ref: '#/components/schemas/TokenResponse'
         '401':
           description: Invalid or missing Basic Auth
           content:
@@ -245,12 +281,12 @@ components:
     basicAuth:
       type: http
       scheme: basic
-      description: Portal user work_email + password
+      description: Portal user work_email + password (legacy token + protected routes)
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT from POST /share/token or Staff SSO JWT
+      description: JWT from POST /share/login (preferred) or POST /share/token, or Staff SSO JWT
     apiToken:
       type: http
       scheme: bearer
@@ -295,6 +331,57 @@ components:
         error:
           type: string
           example: Authentication Failed! Invalid Request
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: Portal staff work_email (or user.email when present)
+          example: user@africacdc.org
+        email:
+          type: string
+          description: Alias for username
+          example: user@africacdc.org
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        access_token:
+          type: string
+          description: JWT — use as Authorization Bearer
+        token:
+          type: string
+          description: Same value as access_token (KnowledgeHub-style alias)
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          example: 3600
+        aud:
+          type: string
+          example: share-api
+        user:
+          type: object
+          properties:
+            user_id:
+              type: integer
+            staff_id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+            role:
+              type: integer
 
     StaffRow:
       type: object

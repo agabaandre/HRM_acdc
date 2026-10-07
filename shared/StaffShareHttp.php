@@ -131,8 +131,8 @@ final class StaffShareHttp
     }
 
     /**
-     * Obtain a Bearer JWT via POST /share/token (Basic Auth). Cached until near expiry.
-     * Returns null when credentials are missing or the Share API rejects them
+     * Obtain a Bearer JWT via POST /share/login (JSON) or legacy POST /share/token (Basic).
+     * Cached until near expiry. Returns null when credentials are missing or rejected
      * (callers then use STAFF_API_TOKEN).
      */
     public function accessToken(): ?string
@@ -145,10 +145,22 @@ final class StaffShareHttp
         }
 
         try {
-            $response = Http::withBasicAuth($this->username, $this->password)
-                ->timeout(30)
+            // Preferred: KnowledgeHub-style JSON login
+            $response = Http::timeout(30)
                 ->acceptJson()
-                ->post($this->baseUrl.'/share/token');
+                ->asJson()
+                ->post($this->baseUrl.'/share/login', [
+                    'username' => $this->username,
+                    'password' => $this->password,
+                ]);
+
+            // Legacy fallback for older Share deployments that only expose Basic /share/token
+            if (! $response->successful()) {
+                $response = Http::withBasicAuth($this->username, $this->password)
+                    ->timeout(30)
+                    ->acceptJson()
+                    ->post($this->baseUrl.'/share/token');
+            }
         } catch (\Throwable) {
             // Unreachable host / TLS errors — callers fall back to STAFF_API_TOKEN.
             return null;
@@ -158,7 +170,7 @@ final class StaffShareHttp
             return null;
         }
 
-        $token = $response->json('access_token');
+        $token = $response->json('access_token') ?? $response->json('token');
         if (! is_string($token) || $token === '') {
             return null;
         }

@@ -3,12 +3,11 @@
 namespace Modules\Share\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Support\SsoJwt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
-use Modules\Auth\Models\PortalUser;
+use Modules\Share\Services\ShareAuthService;
 use Modules\Share\Services\ShareReferenceDataService;
 
 /**
@@ -18,6 +17,7 @@ class ShareReferenceApiController extends Controller
 {
     public function __construct(
         protected ShareReferenceDataService $data,
+        protected ShareAuthService $auth,
     ) {}
 
     public function getCurrentStaff(Request $request): JsonResponse
@@ -184,7 +184,36 @@ class ShareReferenceApiController extends Controller
     }
 
     /**
-     * Issue a Share API JWT using HTTP Basic Auth (same credentials as CI share).
+     * KnowledgeHub-style login: JSON username + password → Bearer JWT.
+     *
+     * Body: { "username": "work_email", "password": "…" }
+     * (`email` is accepted as an alias for `username`.)
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $username = trim((string) ($request->input('username') ?? $request->input('email') ?? ''));
+        $password = (string) ($request->input('password') ?? '');
+
+        if ($username === '' || $password === '') {
+            return response()->json([
+                'success' => false,
+                'error' => 'username and password are required',
+            ], 422);
+        }
+
+        $user = $this->auth->credentialsValid($username, $password);
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Invalid credentials',
+            ], 401);
+        }
+
+        return response()->json($this->auth->issueTokenResponse($user));
+    }
+
+    /**
+     * Legacy token issue via HTTP Basic Auth (kept for APM / StaffShareHttp clients).
      */
     public function issueToken(Request $request): JsonResponse
     {
@@ -193,35 +222,19 @@ class ShareReferenceApiController extends Controller
         if (! is_string($email) || $email === '' || ! is_string($password) || $password === '') {
             return response()->json([
                 'success' => false,
-                'error' => 'HTTP Basic Authentication required',
+                'error' => 'HTTP Basic Authentication required. Prefer POST /share/login with JSON username and password.',
             ], 401, ['WWW-Authenticate' => 'Basic realm="Staff Share API"']);
         }
 
-        $user = PortalUser::query()
-            ->where('status', 1)
-            ->whereHas('staff', fn ($q) => $q->where('work_email', $email))
-            ->first();
-
-        if (! $user || ! $user->password || ! password_verify($password, $user->password)) {
+        $user = $this->auth->credentialsValid($email, $password);
+        if (! $user) {
             return response()->json([
                 'success' => false,
                 'error' => 'Invalid credentials',
             ], 401);
         }
 
-        $ttl = max(60, (int) config('share.jwt_ttl', 3600));
-        $session = $user->toSessionArray();
-        $session['aud'] = (string) config('share.jwt_audience', 'share-api');
-        $session['sub'] = (string) $user->user_id;
-        $token = SsoJwt::encode($session, $ttl);
-
-        return response()->json([
-            'success' => true,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'expires_in' => $ttl,
-            'aud' => $session['aud'],
-        ]);
+        return response()->json($this->auth->issueTokenResponse($user));
     }
 
     public function openapi(): Response

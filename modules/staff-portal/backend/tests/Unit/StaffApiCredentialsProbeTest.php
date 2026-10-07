@@ -10,6 +10,7 @@ class StaffApiCredentialsProbeTest extends TestCase
     public function test_probe_succeeds_via_static_token_when_jwt_rejected(): void
     {
         Http::fake([
+            '*/share/login' => Http::response(['success' => false, 'error' => 'Invalid credentials'], 401),
             '*/share/token' => Http::response(['success' => false, 'error' => 'Invalid credentials'], 401),
             '*/share/get_current_staff*' => Http::response([['SAPNO' => '1'], ['SAPNO' => '2']], 200),
             '*/share/divisions*' => Http::response([['id' => 1], ['id' => 2], ['id' => 3]], 200),

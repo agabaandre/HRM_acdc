@@ -226,7 +226,7 @@ final class StaffApiCredentials
                 $jwt = $client->accessToken();
                 if (is_string($jwt) && $jwt !== '') {
                     $jwtOk = true;
-                    $mode = 'JWT (POST /share/token)';
+                    $mode = 'JWT (POST /share/login)';
                     $details[] = 'credentials → token: OK';
                 } else {
                     $details[] = 'credentials → token: FAIL (rejected or empty — static token still tried)';
