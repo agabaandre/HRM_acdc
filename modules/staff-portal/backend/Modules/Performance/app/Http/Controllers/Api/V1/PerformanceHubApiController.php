@@ -87,26 +87,10 @@ class PerformanceHubApiController extends Controller
             $page = max(1, (int) $request->query('page', 1));
             $perPage = min(50, max(10, (int) $request->query('per_page', 20)));
             $paginator = $performance->paginateMyPpas($staffId, $period, $perPage, $page);
-            $items = collect($paginator->items())->map(function ($row) use ($performance) {
-                $arr = (array) $row;
-                $entryId = (string) ($arr['entry_id'] ?? '');
-                $sid = (int) ($arr['staff_id'] ?? 0);
-                if ($entryId !== '' && $sid > 0) {
-                    $arr['form_url'] = '/performance/form/ppa/'.$entryId.'/'.$sid;
-                    $arr['midterm_url'] = '/performance/form/midterm/'.$entryId.'/'.$sid;
-                    $arr['endterm_url'] = '/performance/form/endterm/'.$entryId.'/'.$sid;
-                    $arr['print_url'] = url('/api/v1/performance/entries/'.$entryId.'/print?phase=ppa');
-                }
-                $arr['draft_status_label'] = $performance->draftStatusLabel((int) ($arr['draft_status'] ?? 0));
-                $arr['midterm_status_label'] = $performance->midtermStatusLabel(
-                    isset($arr['midterm_draft_status']) ? (int) $arr['midterm_draft_status'] : null
-                );
-                $arr['endterm_status_label'] = $performance->endtermStatusLabel(
-                    isset($arr['endterm_draft_status']) ? (int) $arr['endterm_draft_status'] : null
-                );
-
-                return $arr;
-            })->values()->all();
+            $items = collect($paginator->items())
+                ->flatMap(fn ($row) => $performance->phaseRowsForMyEntry($row))
+                ->values()
+                ->all();
 
             $payload['my_ppas'] = [
                 'data' => $items,

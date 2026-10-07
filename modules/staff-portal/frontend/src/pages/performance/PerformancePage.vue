@@ -228,7 +228,7 @@ const hubTabItems = computed<PortalPillNavItem[]>(() => [
   },
   {
     key: 'my',
-    label: locale.t('subnav.perf_my_submissions', 'My submissions'),
+    label: locale.t('subnav.perf_history', 'History'),
     icon: 'fa-solid fa-clock-rotate-left',
     active: tab.value === 'my',
   },
@@ -296,13 +296,13 @@ function exportMyCsv() {
   try {
     downloadClientCsv(
       'performance-history.csv',
-      ['Period', 'PPA', 'Midterm', 'Endterm', 'Updated'],
+      ['Period', 'Phase', 'Status', 'Pending with', 'Updated'],
       myRows.value.map((row) => [
         row.performance_period || '',
-        row.draft_status_label || row.draft_status || '',
-        row.midterm_status_label || '',
-        row.endterm_status_label || '',
-        row.updated_at || row.created_at || '',
+        row.phase_label || row.phase || '',
+        row.status || '',
+        row.pending_with || '',
+        row.updated_at || '',
       ]),
     )
   } finally {
@@ -315,13 +315,13 @@ function exportMyPdf() {
   try {
     openClientPdfTable(
       'Performance history',
-      ['Period', 'PPA', 'Midterm', 'Endterm', 'Updated'],
+      ['Period', 'Phase', 'Status', 'Pending with', 'Updated'],
       myRows.value.map((row) => [
         row.performance_period || '',
-        row.draft_status_label || row.draft_status || '',
-        row.midterm_status_label || '',
-        row.endterm_status_label || '',
-        row.updated_at || row.created_at || '',
+        row.phase_label || row.phase || '',
+        row.status || '',
+        row.pending_with || '',
+        row.updated_at || '',
       ]),
     )
   } finally {
@@ -980,7 +980,7 @@ onMounted(() => {
               :last-page="myLastPage"
               :total="myTotal"
               :per-page="perPage"
-              total-label="Total forms"
+              total-label="Total periods"
               :exporting="exporting"
               @update:per-page="onMyPerPage"
               @export-csv="exportMyCsv"
@@ -992,23 +992,23 @@ onMounted(() => {
             <tr>
                 <th style="width: 3rem">#</th>
               <th>Period</th>
-                <th>PPA</th>
-                <th>Midterm</th>
-                <th>Endterm</th>
+                <th>Phase</th>
+                <th>Status</th>
+                <th>Pending with</th>
               <th>Updated</th>
                 <th></th>
             </tr>
           </thead>
           <tbody>
-              <tr v-for="(row, i) in myRows" :key="String(row.entry_id ?? i)">
+              <tr v-for="(row, i) in myRows" :key="`${row.entry_id}-${row.phase}-${i}`">
                 <td>
-                  <span class="portal-dt-row-num">{{ (page - 1) * perPage + i + 1 }}</span>
+                  <span class="portal-dt-row-num">{{ i + 1 }}</span>
                 </td>
               <td>{{ row.performance_period || '—' }}</td>
-                <td>{{ row.draft_status_label || row.draft_status || '—' }}</td>
-                <td>{{ row.midterm_status_label || '—' }}</td>
-                <td>{{ row.endterm_status_label || '—' }}</td>
-              <td>{{ row.updated_at || row.created_at || '—' }}</td>
+                <td>{{ row.phase_label || row.phase || '—' }}</td>
+                <td>{{ row.status || '—' }}</td>
+                <td>{{ row.pending_with || '—' }}</td>
+              <td>{{ row.updated_at || '—' }}</td>
                 <td class="text-end text-no-wrap">
                   <v-btn
                     v-if="row.form_url"
@@ -1017,31 +1017,13 @@ onMounted(() => {
                     class="me-1"
                     @click="openForm(row.form_url)"
                   >
-                    PPA
-                  </v-btn>
-                  <v-btn
-                    v-if="row.midterm_url"
-                    size="x-small"
-                    variant="text"
-                    class="me-1"
-                    @click="openForm(row.midterm_url)"
-                  >
-                    Midterm
-                  </v-btn>
-                  <v-btn
-                    v-if="row.endterm_url"
-                    size="x-small"
-                    variant="text"
-                    class="me-1"
-                    @click="openForm(row.endterm_url)"
-                  >
-                    Endterm
+                    Open
                   </v-btn>
                   <v-btn
                     v-if="row.entry_id"
                     size="x-small"
                     variant="text"
-                    @click="openApiPdf(`/api/v1/performance/entries/${row.entry_id}/print`, { phase: 'ppa' })"
+                    @click="openApiPdf(`/api/v1/performance/entries/${row.entry_id}/print`, { phase: String(row.phase || 'ppa') })"
                   >
                     PDF
                   </v-btn>

@@ -12,6 +12,7 @@ class PerformanceService
 {
     public function __construct(
         protected PerformanceWorkflowService $workflow,
+        protected SupervisorResolver $supervisors,
     ) {}
 
     public function currentPeriodSlug(): string
@@ -125,6 +126,76 @@ class PerformanceService
         }
 
         return PortalTable::paginateDistinct($q, 'p.entry_id', $perPage, $page);
+    }
+
+    /**
+     * One row per phase (PPA / midterm / endterm) for the owner's history list.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function phaseRowsForMyEntry(object $entry): array
+    {
+        $entryId = (string) ($entry->entry_id ?? '');
+        $staffId = (int) ($entry->staff_id ?? 0);
+        $period = (string) ($entry->performance_period ?? '');
+        $phases = [PerformancePhase::Ppa];
+
+        if (! empty($entry->midterm_created_at)) {
+            $phases[] = PerformancePhase::Midterm;
+        }
+        if (! empty($entry->endterm_created_at)) {
+            $phases[] = PerformancePhase::Endterm;
+        }
+
+        $rows = [];
+        foreach ($phases as $phase) {
+            $state = $this->workflow->resolveState($entry, $phase);
+            $statusKey = (string) ($state['status_key'] ?? '');
+            $pendingWith = null;
+            if (in_array($statusKey, ['pending_supervisor_1', 'pending_supervisor_2'], true)) {
+                $actorId = (int) ($state['actor_staff_id'] ?? 0);
+                if ($actorId > 0) {
+                    $pendingWith = $this->supervisors->staffName($actorId);
+                }
+            }
+
+            $draftCol = $phase->draftStatusColumn();
+            $draft = isset($entry->{$draftCol}) ? (int) $entry->{$draftCol} : null;
+            $statusLabel = match ($phase) {
+                PerformancePhase::Ppa => $this->draftStatusLabel((int) ($draft ?? 1)),
+                PerformancePhase::Midterm => $this->midtermStatusLabel($draft),
+                PerformancePhase::Endterm => $this->endtermStatusLabel($draft),
+            };
+            if (str_starts_with($statusKey, 'pending_')) {
+                $statusLabel = (string) ($state['label'] ?? $statusLabel);
+            }
+
+            $updatedAt = match ($phase) {
+                PerformancePhase::Ppa => $entry->updated_at ?? $entry->created_at ?? null,
+                PerformancePhase::Midterm => $entry->midterm_updated_at ?? $entry->midterm_created_at ?? null,
+                PerformancePhase::Endterm => $entry->endterm_updated_at ?? $entry->endterm_created_at ?? null,
+            };
+
+            $rows[] = [
+                'entry_id' => $entryId,
+                'staff_id' => $staffId,
+                'performance_period' => $period,
+                'phase' => $phase->value,
+                'phase_label' => $phase->label(),
+                'status' => $statusLabel,
+                'status_key' => $statusKey,
+                'pending_with' => $pendingWith,
+                'updated_at' => $updatedAt !== null ? (string) $updatedAt : null,
+                'form_url' => $entryId !== '' && $staffId > 0
+                    ? '/performance/form/'.$phase->value.'/'.$entryId.'/'.$staffId
+                    : '',
+                'print_url' => $entryId !== ''
+                    ? url('/api/v1/performance/entries/'.$entryId.'/print?phase='.$phase->value)
+                    : '',
+            ];
+        }
+
+        return $rows;
     }
 
     /**

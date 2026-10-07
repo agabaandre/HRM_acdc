@@ -162,6 +162,61 @@ class PerformanceApproverNavApiTest extends TestCase
         $this->assertSame('Current Staff', $payload['data'][0]['staff_name']);
     }
 
+    public function test_my_history_lists_each_phase_with_pending_supervisor(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-my-history',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+            'midterm_created_at' => '2026-06-01 10:00:00',
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+            'endterm_created_at' => '2026-11-01 10:00:00',
+            'endterm_draft_status' => 1,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+        ]);
+
+        session()->put($this->portalSession(100, permissions: [74]));
+
+        $response = app(PerformanceHubApiController::class)->hub(
+            Request::create('/api/v1/performance/hub', 'GET', [
+                'tab' => 'my',
+                'period' => 'January-2026-to-December-2026',
+            ]),
+            app(PerformanceService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaSettingsService::class),
+            app(PpaFormService::class),
+        );
+
+        $payload = $response->getData(true);
+        $rows = $payload['data']['my_ppas']['data'];
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertCount(3, $rows);
+        $this->assertSame(['ppa', 'midterm', 'endterm'], array_column($rows, 'phase'));
+
+        $ppa = $rows[0];
+        $this->assertSame('ppa', $ppa['phase']);
+        $this->assertNotEmpty($ppa['pending_with']);
+        $this->assertStringContainsString('Alice', (string) $ppa['pending_with']);
+        $this->assertStringContainsString('/performance/form/ppa/', (string) $ppa['form_url']);
+
+        $midterm = $rows[1];
+        $this->assertSame('midterm', $midterm['phase']);
+        $this->assertNotEmpty($midterm['pending_with']);
+
+        $endterm = $rows[2];
+        $this->assertSame('endterm', $endterm['phase']);
+        $this->assertNull($endterm['pending_with']);
+        $this->assertSame('Draft', $endterm['status']);
+    }
+
     public function test_approval_history_paginates(): void
     {
         for ($i = 1; $i <= 5; $i++) {

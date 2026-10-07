@@ -118,6 +118,12 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
         icon: 'fa-solid fa-stamp',
       },
       {
+        label: 'History',
+        i18nKey: 'perf_history',
+        to: '/performance?tab=my',
+        icon: 'fa-solid fa-clock-rotate-left',
+      },
+      {
         label: 'Analytics',
         i18nKey: 'perf_analytics',
         to: '/performance?tab=analytics',

@@ -518,13 +518,14 @@ class PerformanceFormApiTest extends TestCase
             'midterm' => ['open' => false],
             'endterm' => ['open' => false],
         ]);
-        $ppaSettings->shouldReceive('isSubmissionOpen')->once()->with(PerformancePhase::Ppa)->andReturn(true);
+        $ppaSettings->shouldReceive('isSubmissionOpen')->times(3)->andReturn(true, false, false);
 
         $response = app(PerformanceHubApiController::class)->hub(
             Request::create('/api/v1/performance/hub', 'GET'),
             $performance,
             $approval,
             $ppaSettings,
+            app(PpaFormService::class),
         );
 
         $payload = $response->getData(true);
