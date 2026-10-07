@@ -203,7 +203,7 @@ class PerformanceService
      *
      * @return Collection<int, object>
      */
-    public function pendingApprovals(int $supervisorStaffId): Collection
+    public function pendingApprovals(int $supervisorStaffId, bool $includeAssignedWaiting = false): Collection
     {
         $sid = (int) $supervisorStaffId;
         $items = collect();
@@ -241,14 +241,27 @@ class PerformanceService
             }
 
             $state = $this->workflow->resolveState($entry, PerformancePhase::Ppa);
-            if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
-                $entry->approval_type = 'ppa';
-                $entry->overall_status = $state['label'];
-                $items->push($entry);
+            $canAct = $state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid;
+            $named = $this->isNamedSupervisor($entry, PerformancePhase::Ppa, $sid);
+            if (! $canAct && ! ($includeAssignedWaiting && $named && ($state['status_key'] ?? '') !== 'approved')) {
+                continue;
             }
+
+            $entry->approval_type = 'ppa';
+            $entry->overall_status = $state['label'];
+            $entry->can_act = $canAct;
+            $items->push($entry);
         }
 
         return $items;
+    }
+
+    protected function isNamedSupervisor(object $entry, PerformancePhase $phase, int $staffId): bool
+    {
+        $sup = $this->workflow->supervisorIdsForPhase($entry, $phase);
+
+        return (int) ($sup['supervisor_1'] ?? 0) === $staffId
+            || (int) ($sup['supervisor_2'] ?? 0) === $staffId;
     }
 
     public function pendingCount(int $supervisorStaffId): int

@@ -35,12 +35,13 @@ class PerformanceHubApiController extends Controller
         $division = $request->filled('division_id') ? (int) $request->query('division_id') : null;
         $tab = (string) $request->query('tab', 'dashboard');
 
-        $pending = $staffId > 0 ? $approval->pendingActionsFor($staffId) : collect();
-        $pending = $pending->map(function ($row) {
+        $pendingRows = $staffId > 0 ? $approval->pendingQueueFor($staffId) : collect();
+        $pending = $pendingRows->map(function ($row) {
             $entryId = (string) ($row->entry_id ?? '');
             $sid = (int) ($row->staff_id ?? 0);
             $type = (string) ($row->approval_type ?? 'ppa');
             $phase = PerformancePhase::tryFrom($type) ?? PerformancePhase::Ppa;
+            $canAct = (bool) ($row->can_act ?? false);
 
             return [
                 'entry_id' => $entryId,
@@ -50,6 +51,7 @@ class PerformanceHubApiController extends Controller
                 'approval_type' => $phase->value,
                 'approval_type_label' => $phase->label(),
                 'overall_status' => (string) ($row->overall_status ?? ''),
+                'can_act' => $canAct,
                 'form_url' => $entryId !== '' && $sid > 0
                     ? '/performance/form/'.$phase->value.'/'.$entryId.'/'.$sid
                     : '',
@@ -74,7 +76,8 @@ class PerformanceHubApiController extends Controller
             'period' => $period,
             'divisions' => DB::table('divisions')->orderBy('division_name')->get(['division_id', 'division_name']),
             'pending' => $pending,
-            'pending_count' => count($pending),
+            // Badge / count = actionable only; list may also include waiting assigned forms.
+            'pending_count' => $staffId > 0 ? $approval->pendingCountFor($staffId) : 0,
             'workflow_summary' => [
                 'ppa' => $ppaSettings->workflowSummaryLine(PerformancePhase::Ppa),
                 'midterm' => $ppaSettings->workflowSummaryLine(PerformancePhase::Midterm),

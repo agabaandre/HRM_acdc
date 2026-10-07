@@ -1143,7 +1143,8 @@ onMounted(() => {
             />
           </div>
           <p class="text-caption text-medium-emphasis px-3 mb-1">
-            Actions waiting for you across all performance periods.
+            Forms assigned to you across all periods. Review is available when it is your turn; otherwise the
+            status shows who the workflow is waiting on.
           </p>
         <v-table density="compact">
           <thead>
@@ -1170,15 +1171,15 @@ onMounted(() => {
                     v-if="row.form_url"
                     size="x-small"
                     color="primary"
-                    variant="tonal"
+                    :variant="row.can_act === false ? 'text' : 'tonal'"
                     @click="openForm(row.form_url)"
                   >
-                    Review
+                    {{ row.can_act === false ? 'Open' : 'Review' }}
                   </v-btn>
                 </td>
             </tr>
               <tr v-if="!pendingRows.length">
-                <td colspan="6" class="text-medium-emphasis text-center py-6">No pending actions.</td>
+                <td colspan="6" class="text-medium-emphasis text-center py-6">No assigned performance forms.</td>
             </tr>
           </tbody>
         </v-table>

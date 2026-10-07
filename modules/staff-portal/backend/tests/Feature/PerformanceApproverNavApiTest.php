@@ -98,6 +98,57 @@ class PerformanceApproverNavApiTest extends TestCase
         $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-null-supervisor')->value('supervisor_id'));
     }
 
+    public function test_pending_queue_shows_named_second_supervisor_waiting_on_consent(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-endterm-waiting',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'staff_sign_off' => 1,
+            'endterm_created_at' => '2026-11-01 10:00:00',
+            'endterm_updated_at' => '2026-11-02 10:00:00',
+            'endterm_draft_status' => 0,
+            'endterm_sign_off' => 1,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+            'endterm_staff_consent_at' => null,
+        ]);
+        DB::table('ppa_approval_trail_end_term')->insert([
+            'entry_id' => 'ppa-entry-endterm-waiting',
+            'staff_id' => 50,
+            'comments' => 'First approved',
+            'action' => 'Approved',
+            'created_at' => '2026-11-02 09:00:00',
+            'type' => 'END-TERM REVIEW',
+        ]);
+
+        session()->put($this->portalSession(51, permissions: [74]));
+
+        $hubResponse = app(PerformanceHubApiController::class)->hub(
+            Request::create('/api/v1/performance/hub', 'GET', ['tab' => 'pending']),
+            app(PerformanceService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaSettingsService::class),
+            app(PpaFormService::class),
+        );
+        $countResponse = app(PerformanceHubApiController::class)->pendingCount(
+            app(PerformanceApprovalService::class),
+        );
+
+        $hub = $hubResponse->getData(true)['data'];
+        $pending = $hub['pending'];
+        $match = collect($pending)->firstWhere('entry_id', 'ppa-entry-endterm-waiting');
+
+        $this->assertNotNull($match);
+        $this->assertSame('endterm', $match['approval_type']);
+        $this->assertFalse($match['can_act']);
+        $this->assertStringContainsString('consent', strtolower((string) $match['overall_status']));
+        $this->assertSame(0, (int) $hub['pending_count']);
+        $this->assertSame(0, (int) $countResponse->getData(true)['data']['pending_count']);
+    }
+
     public function test_approval_history_returns_only_actor_approved_or_returned(): void
     {
         $this->insertPpaEntry([

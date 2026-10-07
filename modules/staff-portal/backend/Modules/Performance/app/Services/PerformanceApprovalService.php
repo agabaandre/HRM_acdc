@@ -22,21 +22,32 @@ class PerformanceApprovalService
     }
 
     /**
-     * All workflow actions awaiting this staff member (supervisor or employee consent).
+     * Actions this staff member can take now (supervisor approval or employee consent).
+     * Used by reminders and pending-count badges.
      *
      * @return Collection<int, object>
      */
     public function pendingActionsFor(int $staffId): Collection
     {
-        $ppa = $this->performance->pendingApprovals($staffId);
-        $midterm = $this->pendingMidterm($staffId);
-        $endterm = $this->pendingEndterm($staffId);
-        $consent = $this->pendingEmployeeConsent($staffId);
+        return $this->buildPendingQueue($staffId, includeAssignedWaiting: false);
+    }
 
-        return $ppa->map(fn ($r) => (object) array_merge((array) $r, ['approval_type' => 'ppa']))
-            ->concat($midterm->map(fn ($r) => (object) array_merge((array) $r, ['approval_type' => 'midterm'])))
-            ->concat($endterm->map(fn ($r) => (object) array_merge((array) $r, ['approval_type' => 'endterm'])))
-            ->concat($consent);
+    /**
+     * Hub Pending reviews queue: actionable items plus in-flight forms where this staff
+     * is a named supervisor but it is not their turn yet (status explains the wait).
+     *
+     * @return Collection<int, object>
+     */
+    public function pendingQueueFor(int $staffId): Collection
+    {
+        return $this->buildPendingQueue($staffId, includeAssignedWaiting: true)
+            ->sortByDesc(fn ($row) => sprintf(
+                '%d|%s|%s',
+                ! empty($row->can_act) ? 1 : 0,
+                (string) ($row->approval_type ?? ''),
+                (string) ($row->updated_at ?? $row->created_at ?? $row->midterm_created_at ?? $row->endterm_updated_at ?? ''),
+            ))
+            ->values();
     }
 
     public function pendingCountFor(int $staffId): int
@@ -46,6 +57,38 @@ class PerformanceApprovalService
         }
 
         return $this->pendingActionsFor($staffId)->count();
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    protected function buildPendingQueue(int $staffId, bool $includeAssignedWaiting): Collection
+    {
+        $sid = (int) $staffId;
+        if ($sid < 1) {
+            return collect();
+        }
+
+        $ppa = $this->performance->pendingApprovals($sid, $includeAssignedWaiting);
+        $midterm = $this->pendingMidterm($sid, $includeAssignedWaiting);
+        $endterm = $this->pendingEndterm($sid, $includeAssignedWaiting);
+        $consent = $this->pendingEmployeeConsent($sid);
+
+        return $ppa->map(fn ($r) => (object) array_merge((array) $r, [
+            'approval_type' => 'ppa',
+            'can_act' => (bool) ($r->can_act ?? true),
+        ]))
+            ->concat($midterm->map(fn ($r) => (object) array_merge((array) $r, [
+                'approval_type' => 'midterm',
+                'can_act' => (bool) ($r->can_act ?? true),
+            ])))
+            ->concat($endterm->map(fn ($r) => (object) array_merge((array) $r, [
+                'approval_type' => 'endterm',
+                'can_act' => (bool) ($r->can_act ?? true),
+            ])))
+            ->concat($consent->map(fn ($r) => (object) array_merge((array) $r, [
+                'can_act' => true,
+            ])));
     }
 
     /**
@@ -414,7 +457,7 @@ class PerformanceApprovalService
     /**
      * @return Collection<int, object>
      */
-    protected function pendingMidterm(int $supervisorStaffId): Collection
+    protected function pendingMidterm(int $supervisorStaffId, bool $includeAssignedWaiting = false): Collection
     {
         $sid = (int) $supervisorStaffId;
         $items = collect();
@@ -453,10 +496,15 @@ class PerformanceApprovalService
             }
 
             $state = $this->workflow->resolveState($entry, PerformancePhase::Midterm);
-            if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
-                $entry->overall_status = $state['label'];
-                $items->push($entry);
+            $canAct = $state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid;
+            $named = $this->isNamedSupervisor($entry, PerformancePhase::Midterm, $sid);
+            if (! $canAct && ! ($includeAssignedWaiting && $named && ($state['status_key'] ?? '') !== 'approved')) {
+                continue;
             }
+
+            $entry->overall_status = $state['label'];
+            $entry->can_act = $canAct;
+            $items->push($entry);
         }
 
         return $items;
@@ -465,7 +513,7 @@ class PerformanceApprovalService
     /**
      * @return Collection<int, object>
      */
-    protected function pendingEndterm(int $supervisorStaffId): Collection
+    protected function pendingEndterm(int $supervisorStaffId, bool $includeAssignedWaiting = false): Collection
     {
         $items = collect();
         $sid = (int) $supervisorStaffId;
@@ -504,13 +552,27 @@ class PerformanceApprovalService
             }
 
             $state = $this->workflow->resolveState($entry, PerformancePhase::Endterm);
-            if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
-                $entry->overall_status = $state['label'];
-                $items->push($entry);
+            $canAct = $state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid;
+            $named = $this->isNamedSupervisor($entry, PerformancePhase::Endterm, $sid);
+            // Named supervisors still track forms waiting on consent / the other supervisor.
+            if (! $canAct && ! ($includeAssignedWaiting && $named && ($state['status_key'] ?? '') !== 'approved')) {
+                continue;
             }
+
+            $entry->overall_status = $state['label'];
+            $entry->can_act = $canAct;
+            $items->push($entry);
         }
 
         return $items;
+    }
+
+    protected function isNamedSupervisor(object $entry, PerformancePhase $phase, int $staffId): bool
+    {
+        $sup = $this->workflow->supervisorIdsForPhase($entry, $phase);
+
+        return (int) ($sup['supervisor_1'] ?? 0) === $staffId
+            || (int) ($sup['supervisor_2'] ?? 0) === $staffId;
     }
 
     /**

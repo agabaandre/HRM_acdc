@@ -503,13 +503,15 @@ class PerformanceFormApiTest extends TestCase
         $performance->shouldReceive('periodOptions')->once()->andReturn(['January-2026-to-December-2026']);
 
         $approval = \Mockery::mock(PerformanceApprovalService::class);
-        $approval->shouldReceive('pendingActionsFor')->once()->with(100)->andReturn(collect([
+        $approval->shouldReceive('pendingQueueFor')->once()->with(100)->andReturn(collect([
             (object) [
                 'entry_id' => 'entry-1',
                 'staff_id' => 100,
                 'approval_type' => 'ppa',
+                'can_act' => true,
             ],
         ]));
+        $approval->shouldReceive('pendingCountFor')->once()->with(100)->andReturn(1);
 
         $ppaSettings = \Mockery::mock(PpaSettingsService::class);
         $ppaSettings->shouldReceive('workflowSummaryLine')->times(3)->andReturn('Configured');
