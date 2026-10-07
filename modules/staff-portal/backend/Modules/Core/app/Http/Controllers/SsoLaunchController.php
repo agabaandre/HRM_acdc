@@ -101,7 +101,7 @@ class SsoLaunchController extends Controller
     /**
      * Legacy: CI3 home/launch_module — auto-POST JWT to module accept URL.
      */
-    public function launchModule(Request $request): Response|\Illuminate\Http\RedirectResponse
+    public function launchModule(Request $request): Response|\Illuminate\Http\RedirectResponse|JsonResponse
     {
         $user = $request->user();
         if (! $user instanceof PortalUser) {
@@ -113,7 +113,22 @@ class SsoLaunchController extends Controller
         $moduleKey = trim((string) $request->input('module_key', ''));
         $result = StaffSsoLaunch::prepareLaunch($user, $moduleKey);
         if (! ($result['ok'] ?? false)) {
-            abort((int) ($result['status'] ?? 400), (string) ($result['message'] ?? 'Launch failed'));
+            $status = (int) ($result['status'] ?? 400);
+            $message = (string) ($result['message'] ?? 'Launch failed');
+            if ($status >= 500) {
+                report(new \RuntimeException('CBP launch_module failed: '.$message.' (module='.$moduleKey.')'));
+            }
+            $wantsJson = $request->expectsJson() || $request->ajax();
+            if ($wantsJson) {
+                return response()->json(['message' => $message], $status);
+            }
+            $safe = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+            $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Could not open module</title></head>'
+                .'<body style="font-family:system-ui;padding:2rem">'
+                .'<h1>Could not open module</h1><p>'.$safe.'</p>'
+                .'<p><a href="javascript:history.back()">Go back</a></p></body></html>';
+
+            return response($html, $status)->header('Content-Type', 'text/html; charset=utf-8');
         }
 
         if (! empty($result['redirect_url'])) {

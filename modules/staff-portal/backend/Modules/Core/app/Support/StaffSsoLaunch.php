@@ -20,7 +20,7 @@ final class StaffSsoLaunch
             'staff_id', 'auth_staff_id', 'user_id', 'permissions', 'base_url',
             'work_email', 'email', 'private_email', 'mail', 'userPrincipalName',
             'name', 'fname', 'lname', 'title', 'role', 'role_id',
-            'directorate_id', 'division_id', 'photo', 'helpdesk_role', 'helpdeskRole',
+            'directorate_id', 'division_id', 'helpdesk_role', 'helpdeskRole',
             'ci_token', 'SAPNO',
         ];
         $out = [];
@@ -32,7 +32,14 @@ final class StaffSsoLaunch
             if ($value === null || $value === '') {
                 continue;
             }
-            $out[$key] = $value;
+            // Keep JWT small/safe — skip binary/non-scalar blobs.
+            if (is_string($value) || is_int($value) || is_float($value) || is_bool($value) || is_array($value)) {
+                $out[$key] = $value;
+            }
+        }
+        // Optional photo path only (never raw binary).
+        if (! empty($session['photo']) && is_string($session['photo']) && strlen($session['photo']) < 512) {
+            $out['photo'] = $session['photo'];
         }
 
         if (isset($out['permissions']) && is_string($out['permissions'])) {
@@ -170,7 +177,10 @@ final class StaffSsoLaunch
         }
         $host = preg_replace('/:\d+$/', '', $host) ?? $host;
         $requestHost = preg_replace('/:\d+$/', '', $requestHost) ?? $requestHost;
-        if ($host !== $requestHost) {
+        // Same host, or localhost↔production rewrite already applied in legacyStaffBase().
+        if ($host !== $requestHost
+            && ! (str_contains($host, 'localhost') && str_contains($requestHost, 'localhost'))
+        ) {
             return false;
         }
         $path = (string) parse_url($url, PHP_URL_PATH);
@@ -211,16 +221,34 @@ final class StaffSsoLaunch
 
         $acceptUrl = self::acceptUrlForModule($row);
         if ($acceptUrl === null || $acceptUrl === '') {
-            return ['ok' => false, 'message' => 'SSO accept URL is not configured for this module.', 'status' => 500];
+            return ['ok' => false, 'message' => 'SSO accept URL is not configured for this module.', 'status' => 422];
         }
         if (! self::isAllowedAcceptUrl($acceptUrl)) {
-            return ['ok' => false, 'message' => 'SSO target is not allowed.', 'status' => 500];
+            return [
+                'ok' => false,
+                'message' => 'SSO target is not allowed for this host (check STAFF_LEGACY_BASE_URL).',
+                'status' => 422,
+            ];
         }
 
-        $jwt = SsoJwt::encode(
-            self::compactClaims($session),
-            (int) config('staff-portal.sso.token_ttl', 7200)
-        );
+        try {
+            $jwt = SsoJwt::encode(
+                self::compactClaims($session),
+                (int) config('staff-portal.sso.token_ttl', 7200)
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return [
+                'ok' => false,
+                'message' => 'Could not create the SSO token. Please try again or contact support.',
+                'status' => 500,
+            ];
+        }
+
+        if ($jwt === '') {
+            return ['ok' => false, 'message' => 'Could not create the SSO token.', 'status' => 500];
+        }
 
         return [
             'ok' => true,

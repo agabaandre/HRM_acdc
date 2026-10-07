@@ -66,15 +66,28 @@ export async function launchCbpModule(moduleKey: string, openInNewTab = false): 
     }
 
     postHiddenForm(acceptUrl, { staff_sso_jwt: jwt }, openInNewTab)
-  } catch {
-    // Fallback for environments that still expose the legacy CI-shaped routes.
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string }
+    const apiMessage = axiosErr.response?.data?.message?.trim()
+    const status = axiosErr.response?.status
+    // Do not fall back to cookie launch_module on auth/permission failures —
+    // SPA auth is Bearer-only (withCredentials: false), so the legacy POST usually 302/500s.
+    if (status === 401 || status === 403 || status === 422) {
+      window.alert(apiMessage || 'You do not have access to open this module.')
+      return
+    }
+    if (apiMessage) {
+      window.alert(apiMessage)
+      return
+    }
+    // Network / unexpected: one legacy fallback attempt for older hosts.
     const base = staffMountBaseUrl()
     try {
       const res = await fetch(`${base}/auth/refreshCSRF`, { credentials: 'same-origin' })
       const csrfPayload = (await res.json()) as { csrf_token?: string }
       const csrf = csrfPayload.csrf_token?.trim()
       if (!csrf) {
-        window.alert('Could not obtain a security token. Open CBP Home and try again.')
+        window.alert('Could not open module. Sign in again and retry.')
         return
       }
       postHiddenForm(
@@ -83,7 +96,7 @@ export async function launchCbpModule(moduleKey: string, openInNewTab = false): 
         openInNewTab,
       )
     } catch {
-      window.alert('Could not obtain a security token. Open CBP Home and try again.')
+      window.alert('Could not open module. Sign in again and retry.')
     }
   }
 }

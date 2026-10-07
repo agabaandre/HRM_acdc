@@ -10,8 +10,9 @@ final class SsoJwt
     public static function encode(array $payload, ?int $ttlSeconds = 7200): string
     {
         $secret = self::secret();
+        $flags = JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE;
         if ($secret === '') {
-            return base64_encode(json_encode($payload, JSON_THROW_ON_ERROR));
+            return base64_encode((string) json_encode($payload, $flags));
         }
 
         $now = time();
@@ -19,8 +20,8 @@ final class SsoJwt
         $payload['exp'] = $payload['exp'] ?? ($now + $ttlSeconds);
 
         $header = ['alg' => 'HS256', 'typ' => 'JWT'];
-        $h = self::base64UrlEncode(json_encode($header, JSON_THROW_ON_ERROR));
-        $p = self::base64UrlEncode(json_encode($payload, JSON_THROW_ON_ERROR));
+        $h = self::base64UrlEncode((string) json_encode($header, $flags));
+        $p = self::base64UrlEncode((string) json_encode($payload, $flags));
         $sig = hash_hmac('sha256', $h.'.'.$p, $secret, true);
 
         return $h.'.'.$p.'.'.self::base64UrlEncode($sig);
