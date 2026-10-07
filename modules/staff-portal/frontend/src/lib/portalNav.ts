@@ -1,6 +1,8 @@
 export interface PortalNavItem {
   label: string
   to: string
+  /** Optional query string for RouterLink (e.g. `{ tab: 'pending' }`). */
+  query?: Record<string, string>
   permission?: number | string
   /** Show if the user has any of these permissions (OR). */
   anyPermission?: Array<number | string>
@@ -101,32 +103,37 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
       {
         label: 'My forms',
         i18nKey: 'perf_my_forms',
-        to: '/performance?tab=dashboard',
+        to: '/performance',
+        query: { tab: 'dashboard' },
         icon: 'fa-solid fa-file-lines',
       },
       {
         label: 'Pending reviews',
         i18nKey: 'perf_pending',
-        to: '/performance?tab=pending',
+        to: '/performance',
+        query: { tab: 'pending' },
         icon: 'fa-solid fa-clipboard-check',
         badgeFrom: 'performancePending',
       },
       {
         label: 'Approval history',
         i18nKey: 'perf_approval_history',
-        to: '/performance?tab=approval-history',
+        to: '/performance',
+        query: { tab: 'approval-history' },
         icon: 'fa-solid fa-stamp',
       },
       {
         label: 'History',
         i18nKey: 'perf_history',
-        to: '/performance?tab=my',
+        to: '/performance',
+        query: { tab: 'my' },
         icon: 'fa-solid fa-clock-rotate-left',
       },
       {
         label: 'Analytics',
         i18nKey: 'perf_analytics',
-        to: '/performance?tab=analytics',
+        to: '/performance',
+        query: { tab: 'analytics' },
         icon: 'fa-solid fa-chart-line',
       },
     ],

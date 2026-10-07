@@ -207,15 +207,22 @@ class PerformanceService
     {
         $sid = (int) $supervisorStaffId;
         $items = collect();
+        $latestContract = DB::table('staff_contracts')
+            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
+            ->groupBy('staff_id');
 
-        // Only entries where this staff is a named supervisor — avoid scanning every submitted PPA
-        // (each resolveState hits approval trails and was making the hub endpoint multi-second).
+        // Include entry supervisors and latest-contract supervisors (many older
+        // submitted PPAs have null supervisor_id columns).
         $rows = DB::table('ppa_entries as p')
             ->join('staff as s', 's.staff_id', '=', 'p.staff_id')
+            ->leftJoinSub($latestContract, 'lc', 'lc.staff_id', '=', 'p.staff_id')
+            ->leftJoin('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->where('p.draft_status', 0)
             ->where(function ($q) use ($sid) {
                 $q->where('p.supervisor_id', $sid)
-                    ->orWhere('p.supervisor2_id', $sid);
+                    ->orWhere('p.supervisor2_id', $sid)
+                    ->orWhere('sc.first_supervisor', $sid)
+                    ->orWhere('sc.second_supervisor', $sid);
             })
             ->select('p.*', DB::raw("CONCAT(s.fname, ' ', s.lname) AS staff_name"))
             ->orderByDesc('p.created_at')
@@ -223,6 +230,16 @@ class PerformanceService
             ->get();
 
         foreach ($rows as $entry) {
+            if (empty($entry->supervisor_id) && empty($entry->supervisor2_id)) {
+                $this->workflow->syncSupervisorsFromContract($entry, PerformancePhase::Ppa);
+                $fresh = DB::table('ppa_entries')->where('entry_id', $entry->entry_id)->first();
+                if ($fresh) {
+                    foreach ((array) $fresh as $key => $value) {
+                        $entry->{$key} = $value;
+                    }
+                }
+            }
+
             $state = $this->workflow->resolveState($entry, PerformancePhase::Ppa);
             if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
                 $entry->approval_type = 'ppa';

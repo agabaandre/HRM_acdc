@@ -26,18 +26,21 @@ class PerformanceWorkflowService
      */
     public function supervisorIdsForPhase(object $entry, PerformancePhase $phase): array
     {
+        $ppa1 = ! empty($entry->supervisor_id) ? (int) $entry->supervisor_id : null;
+        $ppa2 = ! empty($entry->supervisor2_id) ? (int) $entry->supervisor2_id : null;
+
         return match ($phase) {
             PerformancePhase::Ppa => [
-                'supervisor_1' => $entry->supervisor_id ? (int) $entry->supervisor_id : null,
-                'supervisor_2' => $entry->supervisor2_id ? (int) $entry->supervisor2_id : null,
+                'supervisor_1' => $ppa1,
+                'supervisor_2' => $ppa2,
             ],
             PerformancePhase::Midterm => [
-                'supervisor_1' => $entry->midterm_supervisor_1 ? (int) $entry->midterm_supervisor_1 : null,
-                'supervisor_2' => $entry->midterm_supervisor_2 ? (int) $entry->midterm_supervisor_2 : null,
+                'supervisor_1' => ! empty($entry->midterm_supervisor_1) ? (int) $entry->midterm_supervisor_1 : $ppa1,
+                'supervisor_2' => ! empty($entry->midterm_supervisor_2) ? (int) $entry->midterm_supervisor_2 : $ppa2,
             ],
             PerformancePhase::Endterm => [
-                'supervisor_1' => $entry->endterm_supervisor_1 ? (int) $entry->endterm_supervisor_1 : null,
-                'supervisor_2' => $entry->endterm_supervisor_2 ? (int) $entry->endterm_supervisor_2 : null,
+                'supervisor_1' => ! empty($entry->endterm_supervisor_1) ? (int) $entry->endterm_supervisor_1 : $ppa1,
+                'supervisor_2' => ! empty($entry->endterm_supervisor_2) ? (int) $entry->endterm_supervisor_2 : $ppa2,
             ],
         };
     }

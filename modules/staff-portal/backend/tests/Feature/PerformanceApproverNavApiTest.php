@@ -66,6 +66,36 @@ class PerformanceApproverNavApiTest extends TestCase
             (int) $countPayload['data']['pending_count']
         );
         $this->assertGreaterThan(0, (int) $countPayload['data']['pending_count']);
+        $this->assertArrayHasKey('staff_name', $hubPayload['data']['pending'][0]);
+        $this->assertArrayNotHasKey('objectives', $hubPayload['data']['pending'][0]);
+    }
+
+    public function test_pending_includes_submitted_ppa_with_null_supervisor_via_contract(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-null-supervisor',
+            'staff_id' => 100,
+            'supervisor_id' => null,
+            'supervisor2_id' => null,
+            'draft_status' => 0,
+            'staff_sign_off' => 1,
+        ]);
+
+        session()->put($this->portalSession(50, permissions: [74]));
+
+        $hubResponse = app(PerformanceHubApiController::class)->hub(
+            Request::create('/api/v1/performance/hub', 'GET', ['tab' => 'pending']),
+            app(PerformanceService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaSettingsService::class),
+            app(PpaFormService::class),
+        );
+
+        $pending = $hubResponse->getData(true)['data']['pending'];
+        $entryIds = array_column($pending, 'entry_id');
+
+        $this->assertContains('ppa-entry-null-supervisor', $entryIds);
+        $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-null-supervisor')->value('supervisor_id'));
     }
 
     public function test_approval_history_returns_only_actor_approved_or_returned(): void

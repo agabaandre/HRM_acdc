@@ -418,14 +418,23 @@ class PerformanceApprovalService
     {
         $sid = (int) $supervisorStaffId;
         $items = collect();
+        $latestContract = DB::table('staff_contracts')
+            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
+            ->groupBy('staff_id');
 
         $rows = DB::table('ppa_entries as p')
             ->join('staff as s', 's.staff_id', '=', 'p.staff_id')
+            ->leftJoinSub($latestContract, 'lc', 'lc.staff_id', '=', 'p.staff_id')
+            ->leftJoin('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->whereNotNull('p.midterm_created_at')
             ->where('p.midterm_draft_status', 0)
             ->where(function ($q) use ($sid) {
                 $q->where('p.midterm_supervisor_1', $sid)
-                    ->orWhere('p.midterm_supervisor_2', $sid);
+                    ->orWhere('p.midterm_supervisor_2', $sid)
+                    ->orWhere('p.supervisor_id', $sid)
+                    ->orWhere('p.supervisor2_id', $sid)
+                    ->orWhere('sc.first_supervisor', $sid)
+                    ->orWhere('sc.second_supervisor', $sid);
             })
             ->select('p.*', DB::raw("CONCAT(s.fname, ' ', s.lname) AS staff_name"))
             ->orderByDesc('p.midterm_created_at')
@@ -433,6 +442,16 @@ class PerformanceApprovalService
             ->get();
 
         foreach ($rows as $entry) {
+            if (empty($entry->midterm_supervisor_1) && empty($entry->midterm_supervisor_2)) {
+                $this->workflow->syncSupervisorsFromContract($entry, PerformancePhase::Midterm);
+                $fresh = DB::table('ppa_entries')->where('entry_id', $entry->entry_id)->first();
+                if ($fresh) {
+                    foreach ((array) $fresh as $key => $value) {
+                        $entry->{$key} = $value;
+                    }
+                }
+            }
+
             $state = $this->workflow->resolveState($entry, PerformancePhase::Midterm);
             if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
                 $entry->overall_status = $state['label'];
@@ -450,14 +469,23 @@ class PerformanceApprovalService
     {
         $items = collect();
         $sid = (int) $supervisorStaffId;
+        $latestContract = DB::table('staff_contracts')
+            ->selectRaw('staff_id, MAX(staff_contract_id) as cid')
+            ->groupBy('staff_id');
 
         $entries = DB::table('ppa_entries as p')
             ->join('staff as s', 's.staff_id', '=', 'p.staff_id')
+            ->leftJoinSub($latestContract, 'lc', 'lc.staff_id', '=', 'p.staff_id')
+            ->leftJoin('staff_contracts as sc', 'sc.staff_contract_id', '=', 'lc.cid')
             ->whereNotNull('p.endterm_created_at')
             ->where('p.endterm_draft_status', 0)
             ->where(function ($q) use ($sid) {
                 $q->where('p.endterm_supervisor_1', $sid)
-                    ->orWhere('p.endterm_supervisor_2', $sid);
+                    ->orWhere('p.endterm_supervisor_2', $sid)
+                    ->orWhere('p.supervisor_id', $sid)
+                    ->orWhere('p.supervisor2_id', $sid)
+                    ->orWhere('sc.first_supervisor', $sid)
+                    ->orWhere('sc.second_supervisor', $sid);
             })
             ->select('p.*', DB::raw("CONCAT(s.fname, ' ', s.lname) AS staff_name"))
             ->orderByDesc('p.endterm_updated_at')
@@ -465,6 +493,16 @@ class PerformanceApprovalService
             ->get();
 
         foreach ($entries as $entry) {
+            if (empty($entry->endterm_supervisor_1) && empty($entry->endterm_supervisor_2)) {
+                $this->workflow->syncSupervisorsFromContract($entry, PerformancePhase::Endterm);
+                $fresh = DB::table('ppa_entries')->where('entry_id', $entry->entry_id)->first();
+                if ($fresh) {
+                    foreach ((array) $fresh as $key => $value) {
+                        $entry->{$key} = $value;
+                    }
+                }
+            }
+
             $state = $this->workflow->resolveState($entry, PerformancePhase::Endterm);
             if ($state['can_act'] && (int) ($state['actor_staff_id'] ?? 0) === $sid) {
                 $entry->overall_status = $state['label'];

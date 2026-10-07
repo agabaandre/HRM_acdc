@@ -39,6 +39,13 @@ function badgeCount(item: PortalNavItem): number {
 }
 
 function itemKey(item: PortalNavItem): string {
+  return item.query?.tab ? `${item.to}?tab=${item.query.tab}` : item.to
+}
+
+function linkTo(item: PortalNavItem): string | { path: string; query?: Record<string, string> } {
+  if (item.query && Object.keys(item.query).length > 0) {
+    return { path: item.to, query: item.query }
+  }
   return item.to
 }
 
@@ -46,7 +53,7 @@ function isChildActive(item: PortalNavItem): boolean {
   if (!item.children?.length) return false
   const tab = String(route.query.tab || 'dashboard')
   return item.children.some((child) => {
-    const childTab = new URL(child.to, 'https://nav.local').searchParams.get('tab') || 'dashboard'
+    const childTab = child.query?.tab || 'dashboard'
     return route.path.startsWith('/performance') && tab === childTab
   })
 }
@@ -133,8 +140,8 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
               <div class="cbp-nav-dd-menu" role="menu">
                 <RouterLink
                   v-for="child in item.children"
-                  :key="child.to"
-                  :to="child.to"
+                  :key="itemKey(child)"
+                  :to="linkTo(child)"
                   class="cbp-nav-dd-item"
                   role="menuitem"
                   @click="closeAll"

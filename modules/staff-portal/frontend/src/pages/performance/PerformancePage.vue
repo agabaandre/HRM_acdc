@@ -611,10 +611,14 @@ onMounted(() => {
         <v-col cols="12" sm="6" :md="tab === 'analytics' && isEndterm ? 3 : 4">
         <v-select
           v-model="period"
-          :items="(data?.periods || []).map((p) => ({ title: p, value: p }))"
+          :items="[
+            { title: 'All periods', value: '' },
+            ...(data?.periods || []).map((p) => ({ title: p, value: p })),
+          ]"
             label="Performance period"
           density="compact"
           hide-details
+          clearable
         />
       </v-col>
         <v-col v-if="tab === 'analytics'" cols="12" sm="6" :md="isEndterm ? 3 : 4">
@@ -1122,7 +1126,7 @@ onMounted(() => {
         </v-card>
       </template>
 
-      <template v-else>
+      <template v-else-if="tab === 'pending'">
         <v-card class="portal-data-table-card mb-3" variant="outlined">
           <div class="px-3 pt-1">
             <PortalTableToolbar
@@ -1138,6 +1142,9 @@ onMounted(() => {
               @export-pdf="exportPendingPdf"
             />
           </div>
+          <p class="text-caption text-medium-emphasis px-3 mb-1">
+            Actions waiting for you across all performance periods.
+          </p>
         <v-table density="compact">
           <thead>
             <tr>
@@ -1150,7 +1157,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody>
-              <tr v-for="(row, i) in pendingRows" :key="String(row.entry_id ?? i)">
+              <tr v-for="(row, i) in pendingRows" :key="`${row.entry_id}-${row.approval_type}-${i}`">
                 <td>
                   <span class="portal-dt-row-num">{{ (pendingPage - 1) * pendingPerPage + i + 1 }}</span>
                 </td>

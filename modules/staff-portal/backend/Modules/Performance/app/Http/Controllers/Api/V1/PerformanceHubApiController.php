@@ -36,18 +36,24 @@ class PerformanceHubApiController extends Controller
         $tab = (string) $request->query('tab', 'dashboard');
 
         $pending = $staffId > 0 ? $approval->pendingActionsFor($staffId) : collect();
-        $pending = $pending->map(function ($row) use ($performance) {
-            $arr = (array) $row;
-            $entryId = (string) ($arr['entry_id'] ?? '');
-            $sid = (int) ($arr['staff_id'] ?? 0);
-            $type = (string) ($arr['approval_type'] ?? 'ppa');
+        $pending = $pending->map(function ($row) {
+            $entryId = (string) ($row->entry_id ?? '');
+            $sid = (int) ($row->staff_id ?? 0);
+            $type = (string) ($row->approval_type ?? 'ppa');
             $phase = PerformancePhase::tryFrom($type) ?? PerformancePhase::Ppa;
-            if ($entryId !== '' && $sid > 0) {
-                $arr['form_url'] = '/performance/form/'.$phase->value.'/'.$entryId.'/'.$sid;
-            }
-            $arr['approval_type_label'] = $phase->label();
 
-            return $arr;
+            return [
+                'entry_id' => $entryId,
+                'staff_id' => $sid,
+                'staff_name' => (string) ($row->staff_name ?? ('#'.$sid)),
+                'performance_period' => (string) ($row->performance_period ?? ''),
+                'approval_type' => $phase->value,
+                'approval_type_label' => $phase->label(),
+                'overall_status' => (string) ($row->overall_status ?? ''),
+                'form_url' => $entryId !== '' && $sid > 0
+                    ? '/performance/form/'.$phase->value.'/'.$entryId.'/'.$sid
+                    : '',
+            ];
         })->values()->all();
 
         $ppaWindowOpen = $ppaSettings->isSubmissionOpen(PerformancePhase::Ppa);
