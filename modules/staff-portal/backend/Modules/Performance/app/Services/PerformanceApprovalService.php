@@ -5,6 +5,7 @@ namespace Modules\Performance\Services;
 use App\Support\StaffPhoto;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Performance\Enums\PerformancePhase;
 
 class PerformanceApprovalService
@@ -36,6 +37,124 @@ class PerformanceApprovalService
             ->concat($midterm->map(fn ($r) => (object) array_merge((array) $r, ['approval_type' => 'midterm'])))
             ->concat($endterm->map(fn ($r) => (object) array_merge((array) $r, ['approval_type' => 'endterm'])))
             ->concat($consent);
+    }
+
+    public function pendingCountFor(int $staffId): int
+    {
+        if ($staffId < 1) {
+            return 0;
+        }
+
+        return $this->pendingActionsFor($staffId)->count();
+    }
+
+    /**
+     * Forms this staff member approved or returned (newest first).
+     *
+     * @return array{data: list<array<string, mixed>>, meta: array{current_page: int, per_page: int, total: int, last_page: int}}
+     */
+    public function approvalHistoryFor(
+        int $actorStaffId,
+        ?string $period,
+        ?PerformancePhase $phase,
+        int $page,
+        int $perPage,
+    ): array {
+        $page = max(1, $page);
+        $perPage = max(1, min(100, $perPage));
+        if ($actorStaffId < 1) {
+            return [
+                'data' => [],
+                'meta' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => 0,
+                    'last_page' => 1,
+                ],
+            ];
+        }
+
+        $phases = $phase instanceof PerformancePhase
+            ? [$phase]
+            : [PerformancePhase::Ppa, PerformancePhase::Midterm, PerformancePhase::Endterm];
+
+        $rows = collect();
+        foreach ($phases as $phaseItem) {
+            $table = $phaseItem->trailTable();
+            if (! Schema::hasTable($table) || ! Schema::hasTable('ppa_entries')) {
+                continue;
+            }
+
+            $query = DB::table($table.' as t')
+                ->join('ppa_entries as p', 'p.entry_id', '=', 't.entry_id')
+                ->leftJoin('staff as s', 's.staff_id', '=', 'p.staff_id')
+                ->where('t.staff_id', $actorStaffId)
+                ->where(function ($q): void {
+                    $q->whereRaw('LOWER(t.action) = ?', ['approved'])
+                        ->orWhereRaw('LOWER(t.action) = ?', ['returned']);
+                })
+                ->when($period !== null && $period !== '', fn ($q) => $q->where('p.performance_period', $period))
+                ->orderByDesc('t.created_at')
+                ->orderByDesc('t.id')
+                ->select([
+                    't.id',
+                    't.entry_id',
+                    't.action',
+                    't.comments',
+                    't.created_at as acted_at',
+                    'p.staff_id',
+                    'p.performance_period',
+                    DB::raw("TRIM(CONCAT(COALESCE(s.fname, ''), ' ', COALESCE(s.lname, ''))) AS staff_name"),
+                ]);
+
+            foreach ($query->get() as $row) {
+                $rows->push((object) array_merge((array) $row, [
+                    'phase' => $phaseItem->value,
+                    'phase_label' => $phaseItem->label(),
+                ]));
+            }
+        }
+
+        $sorted = $rows
+            ->sortByDesc(fn ($row) => sprintf('%s|%010d', (string) ($row->acted_at ?? ''), (int) ($row->id ?? 0)))
+            ->values();
+
+        $total = $sorted->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $slice = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $data = $slice->map(function (object $row): array {
+            $entryId = (string) ($row->entry_id ?? '');
+            $subjectId = (int) ($row->staff_id ?? 0);
+            $phaseValue = (string) ($row->phase ?? 'ppa');
+            $phaseEnum = PerformancePhase::tryFrom($phaseValue) ?? PerformancePhase::Ppa;
+            $name = trim((string) ($row->staff_name ?? ''));
+
+            return [
+                'entry_id' => $entryId,
+                'staff_id' => $subjectId,
+                'staff_name' => $name !== '' ? $name : ('#'.$subjectId),
+                'phase' => $phaseEnum->value,
+                'phase_label' => $phaseEnum->label(),
+                'performance_period' => (string) ($row->performance_period ?? ''),
+                'action' => (string) ($row->action ?? ''),
+                'comments' => (string) ($row->comments ?? ''),
+                'acted_at' => (string) ($row->acted_at ?? ''),
+                'form_url' => $entryId !== '' && $subjectId > 0
+                    ? '/performance/form/'.$phaseEnum->value.'/'.$entryId.'/'.$subjectId
+                    : '',
+            ];
+        })->all();
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+            ],
+        ];
     }
 
     public function approve(

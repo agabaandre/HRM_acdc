@@ -121,6 +121,48 @@ class PerformanceHubApiController extends Controller
         return response()->json(['data' => $payload]);
     }
 
+    public function pendingCount(PerformanceApprovalService $approval): JsonResponse
+    {
+        PortalPermission::authorize(74);
+
+        return response()->json([
+            'data' => [
+                'pending_count' => $approval->pendingCountFor($this->sessionStaffId()),
+            ],
+        ]);
+    }
+
+    public function approvalHistory(Request $request, PerformanceApprovalService $approval): JsonResponse
+    {
+        PortalPermission::authorize(74);
+
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(100, max(1, (int) $request->query('per_page', 25)));
+        $period = $request->filled('period') ? (string) $request->query('period') : null;
+        $phase = PerformancePhase::tryFrom((string) $request->query('phase', ''));
+
+        $result = $approval->approvalHistoryFor(
+            $this->sessionStaffId(),
+            $period,
+            $phase,
+            $page,
+            $perPage,
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+        ]);
+    }
+
+    protected function sessionStaffId(): int
+    {
+        $user = auth()->user();
+        $session = $user instanceof PortalUser ? $user->toSessionArray() : (session('user') ?? []);
+
+        return (int) ($session['staff_id'] ?? ($user instanceof PortalUser ? $user->auth_staff_id : 0));
+    }
+
     /**
      * Personal create/open actions for the selected period (Livewire ppa-tabs parity).
      *

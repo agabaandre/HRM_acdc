@@ -6,6 +6,8 @@ use Modules\Performance\Http\Controllers\Api\V1\PerformanceHubApiController;
 
 Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     Route::get('performance/hub', [PerformanceHubApiController::class, 'hub']);
+    Route::get('performance/pending-count', [PerformanceHubApiController::class, 'pendingCount']);
+    Route::get('performance/approval-history', [PerformanceHubApiController::class, 'approvalHistory']);
     Route::get('performance/analytics', [PerformanceFormApiController::class, 'analytics']);
     Route::get('performance/analytics/export/csv', [PerformanceFormApiController::class, 'exportCsv']);
     Route::get('performance/analytics/export.csv', [PerformanceFormApiController::class, 'exportCsv']);
