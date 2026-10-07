@@ -38,7 +38,7 @@
                 },
             },
             defaults: {
-                VCard: { rounded: 'lg', elevation: 2 },
+                VCard: { rounded: 0, elevation: 2 },
                 VBtn: { rounded: 'lg' },
             },
         });

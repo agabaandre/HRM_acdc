@@ -57,7 +57,7 @@ body {
 
 .dashboard-card {
   height: 295px;
-  border-radius: 10px;
+  border-radius: 0;
   padding: 1.2rem;
   transition: var(--transition);
   font-size: 0.9rem;

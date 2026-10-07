@@ -28,10 +28,14 @@
         background: #dcfce7 !important;
         border: 1px solid #86efac !important;
     }
+    #home-dashboard-app .v-card {
+        border-radius: 0 !important;
+    }
     #home-dashboard-app .hd-module-card {
         background: #fff !important;
         border: 1px solid rgba(0, 0, 0, 0.08) !important;
         border-top: 4px solid #2ecc71 !important;
+        border-radius: 0 !important;
         height: 100%;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
