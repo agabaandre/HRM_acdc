@@ -13,6 +13,9 @@ export interface PortalNavItem {
   module?: string
   /** i18n key under the `nav` group, e.g. dashboard */
   i18nKey?: string
+  children?: PortalNavItem[]
+  /** When set, show badge from performance pending store */
+  badgeFrom?: 'performancePending'
 }
 
 /** Page heading icons (Font Awesome) keyed by route path prefix */
@@ -93,6 +96,34 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     group: 'primary',
     icon: 'fa-solid fa-chart-line',
     module: 'performance',
+    badgeFrom: 'performancePending',
+    children: [
+      {
+        label: 'My forms',
+        i18nKey: 'perf_my_forms',
+        to: '/performance?tab=dashboard',
+        icon: 'fa-solid fa-file-lines',
+      },
+      {
+        label: 'Pending reviews',
+        i18nKey: 'perf_pending',
+        to: '/performance?tab=pending',
+        icon: 'fa-solid fa-clipboard-check',
+        badgeFrom: 'performancePending',
+      },
+      {
+        label: 'Approval history',
+        i18nKey: 'perf_approval_history',
+        to: '/performance?tab=approval-history',
+        icon: 'fa-solid fa-stamp',
+      },
+      {
+        label: 'Analytics',
+        i18nKey: 'perf_analytics',
+        to: '/performance?tab=analytics',
+        icon: 'fa-solid fa-chart-line',
+      },
+    ],
   },
   {
     label: 'Tasks',

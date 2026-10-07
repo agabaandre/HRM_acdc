@@ -4,12 +4,15 @@ import { RouterLink, useRoute } from 'vue-router'
 import { PORTAL_NAV_ITEMS, isNavItemActive, type PortalNavItem } from '@/lib/portalNav'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
+import { usePerformancePendingStore } from '@/stores/performancePending'
 
 const auth = useAuthStore()
 const locale = useLocaleStore()
+const performancePending = usePerformancePendingStore()
 const route = useRoute()
 const navOpen = ref(false)
 const moreOpen = ref(false)
+const openDropdownKey = ref<string | null>(null)
 
 function navLabel(item: PortalNavItem): string {
   if (!item.i18nKey) return item.label
@@ -28,6 +31,26 @@ function canSee(item: PortalNavItem): boolean {
   return auth.hasPermission(item.permission)
 }
 
+function badgeCount(item: PortalNavItem): number {
+  if (item.badgeFrom === 'performancePending') {
+    return performancePending.count
+  }
+  return 0
+}
+
+function itemKey(item: PortalNavItem): string {
+  return item.to
+}
+
+function isChildActive(item: PortalNavItem): boolean {
+  if (!item.children?.length) return false
+  const tab = String(route.query.tab || 'dashboard')
+  return item.children.some((child) => {
+    const childTab = new URL(child.to, 'https://nav.local').searchParams.get('tab') || 'dashboard'
+    return route.path.startsWith('/performance') && tab === childTab
+  })
+}
+
 const primaryItems = computed(() =>
   PORTAL_NAV_ITEMS.filter((item) => (item.group ?? 'primary') === 'primary' && canSee(item)),
 )
@@ -41,15 +64,26 @@ const moreActive = computed(() => moreItems.value.some((item) => isNavItemActive
 function closeAll() {
   navOpen.value = false
   moreOpen.value = false
+  openDropdownKey.value = null
 }
 
 function toggleNav() {
   navOpen.value = !navOpen.value
-  if (navOpen.value) moreOpen.value = false
+  if (navOpen.value) {
+    moreOpen.value = false
+    openDropdownKey.value = null
+  }
 }
 
 function toggleMore() {
   moreOpen.value = !moreOpen.value
+  openDropdownKey.value = null
+}
+
+function toggleDropdown(item: PortalNavItem) {
+  const key = itemKey(item)
+  openDropdownKey.value = openDropdownKey.value === key ? null : key
+  moreOpen.value = false
 }
 
 watch(
@@ -76,17 +110,52 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       </button>
       <div class="cbp-nav-links" :class="{ 'is-open': navOpen }">
         <template v-if="auth.isAuthenticated">
-          <RouterLink
-            v-for="item in primaryItems"
-            :key="item.to"
-            :to="item.to"
-            class="cbp-nav-link"
-            :class="{ 'router-link-active': isNavItemActive(item, route.path) }"
-            @click="closeAll"
-          >
-            <i v-if="item.icon" :class="[item.icon, 'cbp-nav-link-icon']" aria-hidden="true" />
-            <span class="notranslate">{{ navLabel(item) }}</span>
-          </RouterLink>
+          <template v-for="item in primaryItems" :key="item.to">
+            <div
+              v-if="item.children?.length"
+              class="cbp-nav-item-dropdown"
+              :class="{ 'is-open': openDropdownKey === itemKey(item) }"
+            >
+              <button
+                type="button"
+                class="cbp-nav-link cbp-nav-dd-toggle"
+                :class="{ 'router-link-active': isNavItemActive(item, route.path) || isChildActive(item) }"
+                aria-haspopup="true"
+                :aria-expanded="openDropdownKey === itemKey(item)"
+                :aria-label="navLabel(item)"
+                @click.stop="toggleDropdown(item)"
+              >
+                <i v-if="item.icon" :class="[item.icon, 'cbp-nav-link-icon']" aria-hidden="true" />
+                <span class="notranslate">{{ navLabel(item) }}</span>
+                <span v-if="badgeCount(item) > 0" class="cbp-nav-badge">{{ badgeCount(item) }}</span>
+                <span class="cbp-nav-dd-caret" aria-hidden="true">▼</span>
+              </button>
+              <div class="cbp-nav-dd-menu" role="menu">
+                <RouterLink
+                  v-for="child in item.children"
+                  :key="child.to"
+                  :to="child.to"
+                  class="cbp-nav-dd-item"
+                  role="menuitem"
+                  @click="closeAll"
+                >
+                  <i v-if="child.icon" :class="[child.icon, 'cbp-nav-dd-item-icon']" aria-hidden="true" />
+                  <span class="notranslate">{{ navLabel(child) }}</span>
+                  <span v-if="badgeCount(child) > 0" class="cbp-nav-badge">{{ badgeCount(child) }}</span>
+                </RouterLink>
+              </div>
+            </div>
+            <RouterLink
+              v-else
+              :to="item.to"
+              class="cbp-nav-link"
+              :class="{ 'router-link-active': isNavItemActive(item, route.path) }"
+              @click="closeAll"
+            >
+              <i v-if="item.icon" :class="[item.icon, 'cbp-nav-link-icon']" aria-hidden="true" />
+              <span class="notranslate">{{ navLabel(item) }}</span>
+            </RouterLink>
+          </template>
 
           <div
             v-if="moreItems.length"

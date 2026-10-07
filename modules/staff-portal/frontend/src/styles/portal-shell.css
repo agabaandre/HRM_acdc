@@ -62,6 +62,32 @@ html.helpdesk-theme-dark {
   outline-offset: -2px;
 }
 
+.cbp-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #9f1239;
+  background: #ffe4e6;
+}
+
+.cbp-nav-dd-item .cbp-nav-badge {
+  margin-left: auto;
+}
+
+.cbp-nav-link.router-link-active .cbp-nav-badge,
+.cbp-nav-dd-toggle.router-link-active .cbp-nav-badge {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.22);
+}
+
 @media (max-width: 1199px) {
   .cbp-nav-link,
   .cbp-nav-dd-toggle,
