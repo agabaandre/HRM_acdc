@@ -65,6 +65,7 @@ class StaffApiController extends Controller
             $this->validatedStorePayload($request),
             $this->optionalContractPdf($request),
             $this->optionalPassportFile($request),
+            $this->optionalPhotoFile($request),
         );
         PortalReferenceCache::bustFormLookups();
         PortalReadCache::bust('staff');
@@ -1067,6 +1068,17 @@ class StaffApiController extends Controller
         ]);
 
         $file = $request->file('passport');
+
+        return $file instanceof UploadedFile ? $file : null;
+    }
+
+    protected function optionalPhotoFile(Request $request): ?UploadedFile
+    {
+        $request->validate([
+            'photo' => ['nullable', 'file', 'max:2048', 'mimes:jpg,jpeg,png,gif,webp'],
+        ]);
+
+        $file = $request->file('photo');
 
         return $file instanceof UploadedFile ? $file : null;
     }

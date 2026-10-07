@@ -10,16 +10,18 @@ const props = withDefaults(
     disabled?: boolean
     placeholder?: string
     clearable?: boolean
+    required?: boolean
   }>(),
   {
     clearable: true,
+    required: false,
   },
 )
 
 const injectedLabel = inject(fieldLabelKey, undefined)
 const injectedRequired = inject(fieldRequiredKey, undefined)
 const fieldLabel = computed(() => props.label ?? injectedLabel?.value)
-const fieldRequired = computed(() => injectedRequired?.value ?? false)
+const fieldRequired = computed(() => props.required || injectedRequired?.value || false)
 const persistFloatLabel = computed(() => Boolean(props.placeholder?.trim()))
 
 function toIso(d: Date | null | undefined): string {
@@ -49,7 +51,7 @@ const dateModel = computed<Date | null>({
 <template>
   <v-date-input
     v-model="dateModel"
-    :label="fieldLabel"
+    :label="fieldRequired ? undefined : fieldLabel"
     :disabled="disabled"
     :placeholder="placeholder"
     :clearable="clearable"
@@ -61,11 +63,18 @@ const dateModel = computed<Date | null>({
     class="hd-v-date-input w-full"
     :class="{ 'hd-v-input--persist-label': persistFloatLabel }"
     v-bind="$attrs"
-  />
+  >
+    <template v-if="fieldRequired && fieldLabel" #label>
+      {{ fieldLabel }} <span class="hd-req-asterisk">*</span>
+    </template>
+  </v-date-input>
 </template>
 
 <style scoped>
 .w-full {
   width: 100%;
+}
+.hd-req-asterisk {
+  color: rgb(var(--v-theme-error));
 }
 </style>

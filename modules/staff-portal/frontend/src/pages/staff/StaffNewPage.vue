@@ -42,6 +42,19 @@ const serverErrors = ref<FieldErrors>({})
 const clientErrors = ref<FieldErrors>({})
 const contractFile = ref<File | File[] | null>(null)
 const passportFile = ref<File | File[] | null>(null)
+const photoFile = ref<File | File[] | null>(null)
+const photoPreviewUrl = ref<string | null>(null)
+
+watch(photoFile, (value) => {
+  if (photoPreviewUrl.value) {
+    URL.revokeObjectURL(photoPreviewUrl.value)
+    photoPreviewUrl.value = null
+  }
+  const file = Array.isArray(value) ? value[0] : value
+  if (file instanceof File && file.type.startsWith('image/')) {
+    photoPreviewUrl.value = URL.createObjectURL(file)
+  }
+})
 const nextOfKin = ref<StaffNextOfKinInput[]>([
   { name: '', relationship_id: '', phone: '', email: '' },
   { name: '', relationship_id: '', phone: '', email: '' },
@@ -107,8 +120,8 @@ const form = reactive<StaffCreatePayload>({
   grade_id: '',
   contracting_institution_id: '',
   funder_id: '',
-  first_supervisor: '',
-  second_supervisor: '',
+  first_supervisor: null,
+  second_supervisor: null,
   contract_type_id: '',
   duty_station_id: '',
   division_id: '',
@@ -139,18 +152,53 @@ watch(
   },
 )
 
-function supervisorLabel(item: StaffSupervisorOption): string {
-  const lname = item.lname?.trim()
-  const fname = item.fname?.trim()
+function formatSupervisor(item: StaffSupervisorOption | null | undefined): string {
+  if (!item || typeof item !== 'object') return ''
+  const lname = String(item.lname ?? '').trim()
+  const fname = String(item.fname ?? '').trim()
   if (lname && fname) return `${lname}, ${fname}`
   if (lname) return lname
   if (fname) return fname
-  return `#${item.staff_id}`
+  const id = Number(item.staff_id)
+  return Number.isFinite(id) && id > 0 ? `#${id}` : ''
 }
+
+const supervisorItems = computed(() =>
+  (lookups.value?.supervisors || [])
+    .map((row) => {
+      const staffId = Number(row?.staff_id)
+      if (!Number.isFinite(staffId) || staffId < 1) return null
+      const title = formatSupervisor(row)
+      if (!title) return null
+      return {
+        staff_id: staffId,
+        fname: row.fname ?? '',
+        lname: row.lname ?? '',
+        title,
+      }
+    })
+    .filter((row): row is { staff_id: number; fname: string; lname: string; title: string } => row != null),
+)
 
 function fieldErrors(name: string): string[] {
   return [...(clientErrors.value[name] ?? []), ...(serverErrors.value[name] ?? [])]
 }
+
+const allFieldErrors = computed(() => {
+  const messages: string[] = []
+  const seen = new Set<string>()
+  for (const bag of [clientErrors.value, serverErrors.value]) {
+    for (const list of Object.values(bag)) {
+      for (const msg of list) {
+        const text = String(msg || '').trim()
+        if (!text || seen.has(text)) continue
+        seen.add(text)
+        messages.push(text)
+      }
+    }
+  }
+  return messages
+})
 
 function errorStatus(cause: unknown): number | null {
   const status = (cause as ApiFailure)?.response?.status
@@ -173,6 +221,16 @@ function addError(target: FieldErrors, field: string, message: string) {
   target[field].push(message)
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function scrollToValidation() {
+  requestAnimationFrame(() => {
+    document.getElementById('staff-new-validation')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+
 function validate(): boolean {
   const errors: FieldErrors = {}
 
@@ -192,8 +250,14 @@ function validate(): boolean {
   requireText('initiation_date', form.initiation_date, 'Initiation date')
   requireText('tel_1', form.tel_1, 'Telephone 1')
   requireText('work_email', form.work_email, 'Work email')
+  if (form.work_email.trim() && !isValidEmail(form.work_email.trim())) {
+    addError(errors, 'work_email', 'Work email must be a valid email address.')
+  }
+  if (form.private_email?.trim() && !isValidEmail(form.private_email.trim())) {
+    addError(errors, 'private_email', 'Personal email must be a valid email address.')
+  }
   requireChoice('job_id', form.job_id, 'Job')
-  requireText('grade_id', form.grade_id, 'Grade')
+  requireText('grade_id', String(form.grade_id ?? ''), 'Grade')
   requireChoice('contracting_institution_id', form.contracting_institution_id, 'Contracting institution')
   requireChoice('funder_id', form.funder_id, 'Funder')
   requireChoice('first_supervisor', form.first_supervisor, 'First supervisor')
@@ -272,7 +336,8 @@ async function onSubmit() {
   serverErrors.value = {}
 
   if (!validate()) {
-    validationMessage.value = 'Please fix the highlighted fields.'
+    validationMessage.value = 'Please fix the highlighted fields below.'
+    scrollToValidation()
     return
   }
 
@@ -280,6 +345,7 @@ async function onSubmit() {
   try {
     const pdf = Array.isArray(contractFile.value) ? contractFile.value[0] : contractFile.value
     const passport = Array.isArray(passportFile.value) ? passportFile.value[0] : passportFile.value
+    const photo = Array.isArray(photoFile.value) ? photoFile.value[0] : photoFile.value
     const created = await createStaff(
       {
         SAPNO: form.SAPNO?.trim(),
@@ -328,7 +394,7 @@ async function onSubmit() {
             }
           : {}),
       },
-      { contractFile: pdf ?? null, passportFile: passport ?? null },
+      { contractFile: pdf ?? null, passportFile: passport ?? null, photoFile: photo ?? null },
     )
     await router.push(`/staff/${created.staff_id}`)
   } catch (cause) {
@@ -339,7 +405,8 @@ async function onSubmit() {
     }
     if (status === 422) {
       serverErrors.value = validationErrors(cause)
-      validationMessage.value = 'Please fix the highlighted fields.'
+      validationMessage.value = 'Please fix the highlighted fields below.'
+      scrollToValidation()
       return
     }
     error.value = apiErrorMessage(cause, 'Could not create staff')
@@ -365,14 +432,58 @@ onMounted(() => void loadLookups())
     <v-alert v-else-if="error" type="error" variant="tonal" class="mb-3">
       {{ error }}
     </v-alert>
-    <v-alert v-if="validationMessage" type="warning" variant="tonal" class="mb-3">
-      {{ validationMessage }}
+    <v-alert
+      v-if="validationMessage"
+      id="staff-new-validation"
+      type="warning"
+      variant="tonal"
+      class="mb-3"
+    >
+      <div class="font-weight-medium mb-1">{{ validationMessage }}</div>
+      <ul v-if="allFieldErrors.length" class="pl-4 mb-0">
+        <li v-for="(msg, idx) in allFieldErrors" :key="idx">{{ msg }}</li>
+      </ul>
     </v-alert>
     <PortalPageSkeleton v-if="loading" variant="form" />
 
     <form v-else-if="lookups && !forbidden" @submit.prevent="onSubmit">
       <v-row>
         <v-col cols="12" md="6">
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>Staff photo (optional)</v-card-title>
+            <v-card-text>
+              <div class="d-flex flex-wrap align-start ga-4">
+                <div class="staff-photo-preview">
+                  <v-img
+                    v-if="photoPreviewUrl"
+                    :src="photoPreviewUrl"
+                    alt="Staff photo preview"
+                    cover
+                    class="staff-photo-preview__img"
+                  />
+                  <div v-else class="staff-photo-preview__empty text-medium-emphasis text-caption">
+                    No photo
+                  </div>
+                </div>
+                <div class="flex-grow-1" style="min-width: 220px">
+                  <v-file-input
+                    v-model="photoFile"
+                    label="Passport photo"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                    prepend-icon="mdi-camera-outline"
+                    show-size
+                    clearable
+                    density="comfortable"
+                    hint="Optional image, max 2MB"
+                    persistent-hint
+                    :error-messages="fieldErrors('photo')"
+                    hide-details="auto"
+                  />
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
           <v-card variant="outlined" class="mb-4">
             <v-card-title>Personal information</v-card-title>
             <v-card-text>
@@ -384,29 +495,32 @@ onMounted(() => void loadLookups())
                   <v-autocomplete
                     v-model="form.title"
                     :items="titles"
-                    label="Title"
                     density="comfortable"
                     :error-messages="fieldErrors('title')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Title <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field
                     v-model="form.fname"
-                    label="First name"
                     density="comfortable"
                     :error-messages="fieldErrors('fname')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>First name <span class="staff-req">*</span></template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field
                     v-model="form.lname"
-                    label="Last name / surname"
                     density="comfortable"
                     :error-messages="fieldErrors('lname')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Last name / surname <span class="staff-req">*</span></template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field v-model="form.oname" label="Other name" density="comfortable" hide-details="auto" />
@@ -415,16 +529,18 @@ onMounted(() => void loadLookups())
                   <v-autocomplete
                     v-model="form.gender"
                     :items="genders"
-                    label="Gender"
                     density="comfortable"
                     :error-messages="fieldErrors('gender')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Gender <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <UDateInput
                     v-model="form.date_of_birth"
                     label="Date of birth"
+                    required
                     placeholder="Select date of birth"
                     density="comfortable"
                     :error-messages="fieldErrors('date_of_birth')"
@@ -437,16 +553,18 @@ onMounted(() => void loadLookups())
                     :items="lookups.nationalities"
                     item-title="nationality"
                     item-value="nationality_id"
-                    label="Nationality"
                     density="comfortable"
                     :error-messages="fieldErrors('nationality_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Nationality <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12">
                   <UDateInput
                     v-model="form.initiation_date"
                     label="Initiation date"
+                    required
                     placeholder="Select initiation date"
                     density="comfortable"
                     :error-messages="fieldErrors('initiation_date')"
@@ -464,11 +582,12 @@ onMounted(() => void loadLookups())
                 <v-col cols="12" sm="6">
                   <v-text-field
                     v-model="form.tel_1"
-                    label="Telephone 1"
                     density="comfortable"
                     :error-messages="fieldErrors('tel_1')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Telephone 1 <span class="staff-req">*</span></template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field v-model="form.tel_2" label="Telephone 2" density="comfortable" hide-details="auto" />
@@ -479,12 +598,13 @@ onMounted(() => void loadLookups())
                 <v-col cols="12" sm="6">
                   <v-text-field
                     v-model="form.work_email"
-                    label="Work email"
                     type="email"
                     density="comfortable"
                     :error-messages="fieldErrors('work_email')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Work email <span class="staff-req">*</span></template>
+                  </v-text-field>
                 </v-col>
                 <v-col cols="12">
                   <v-text-field
@@ -607,12 +727,13 @@ onMounted(() => void loadLookups())
                   <v-col cols="12" sm="6">
                     <v-text-field
                       v-model.number="payForm.basic_salary"
-                      label="Basic salary"
                       type="number"
                       density="comfortable"
                       :error-messages="fieldErrors('pay.basic_salary')"
                       hide-details="auto"
-                    />
+                    >
+                      <template #label>Basic salary <span class="staff-req">*</span></template>
+                    </v-text-field>
                   </v-col>
                   <v-col cols="12" sm="6">
                     <v-autocomplete
@@ -681,11 +802,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.jobs"
                     :item-title="(item) => String(item.label || item.job_name || '')"
                     item-value="job_id"
-                    label="Job"
                     density="comfortable"
                     :error-messages="fieldErrors('job_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Job <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -705,11 +827,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.grades"
                     item-title="grade"
                     item-value="grade_id"
-                    label="Grade"
                     density="comfortable"
                     :error-messages="fieldErrors('grade_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Grade <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -717,11 +840,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.institutions"
                     item-title="contracting_institution"
                     item-value="contracting_institution_id"
-                    label="Contracting institution"
                     density="comfortable"
                     :error-messages="fieldErrors('contracting_institution_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Contracting institution <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -729,11 +853,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.funders"
                     item-title="funder"
                     item-value="funder_id"
-                    label="Funder"
                     density="comfortable"
                     :error-messages="fieldErrors('funder_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Funder <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -741,16 +866,18 @@ onMounted(() => void loadLookups())
                     :items="lookups.contractTypes"
                     :item-title="(item) => String(item.label || item.contract_type || '')"
                     item-value="contract_type_id"
-                    label="Contract type"
                     density="comfortable"
                     :error-messages="fieldErrors('contract_type_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Contract type <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <UDateInput
                     v-model="form.start_date"
                     label="Start date"
+                    required
                     placeholder="Select start date"
                     density="comfortable"
                     :error-messages="fieldErrors('start_date')"
@@ -762,6 +889,7 @@ onMounted(() => void loadLookups())
                   <UDateInput
                     v-model="form.end_date"
                     label="End date"
+                    required
                     placeholder="Select end date"
                     density="comfortable"
                     :error-messages="fieldErrors('end_date')"
@@ -811,11 +939,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.dutyStations"
                     item-title="duty_station_name"
                     item-value="duty_station_id"
-                    label="Duty station"
                     density="comfortable"
                     :error-messages="fieldErrors('duty_station_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Duty station <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -823,11 +952,12 @@ onMounted(() => void loadLookups())
                     :items="lookups.divisions"
                     item-title="division_name"
                     item-value="division_id"
-                    label="Division"
                     density="comfortable"
                     :error-messages="fieldErrors('division_id')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>Division <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
@@ -859,20 +989,22 @@ onMounted(() => void loadLookups())
                 <v-col cols="12" sm="6">
                   <v-autocomplete
                     v-model="form.first_supervisor"
-                    :items="lookups.supervisors"
-                    :item-title="supervisorLabel"
+                    :items="supervisorItems"
+                    item-title="title"
                     item-value="staff_id"
-                    label="First supervisor"
                     density="comfortable"
+                    clearable
                     :error-messages="fieldErrors('first_supervisor')"
                     hide-details="auto"
-                  />
+                  >
+                    <template #label>First supervisor <span class="staff-req">*</span></template>
+                  </v-autocomplete>
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-autocomplete
                     v-model="form.second_supervisor"
-                    :items="lookups.supervisors"
-                    :item-title="supervisorLabel"
+                    :items="supervisorItems"
+                    item-title="title"
                     item-value="staff_id"
                     label="Second supervisor"
                     density="comfortable"
@@ -895,3 +1027,29 @@ onMounted(() => void loadLookups())
     </form>
   </div>
 </template>
+
+<style scoped>
+.staff-req {
+  color: rgb(var(--v-theme-error));
+}
+.staff-photo-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  flex-shrink: 0;
+}
+.staff-photo-preview__img {
+  width: 100%;
+  height: 100%;
+}
+.staff-photo-preview__empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>

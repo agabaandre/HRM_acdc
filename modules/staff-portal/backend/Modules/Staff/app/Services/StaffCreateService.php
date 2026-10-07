@@ -18,9 +18,13 @@ class StaffCreateService
      * @param  array<string, mixed>  $data
      * @return array{staff_id: int, contract_id: int}
      */
-    public function create(array $data, ?UploadedFile $contractPdf = null, ?UploadedFile $passport = null): array
-    {
-        return DB::transaction(function () use ($data, $contractPdf, $passport): array {
+    public function create(
+        array $data,
+        ?UploadedFile $contractPdf = null,
+        ?UploadedFile $passport = null,
+        ?UploadedFile $photo = null,
+    ): array {
+        return DB::transaction(function () use ($data, $contractPdf, $passport, $photo): array {
             $staffPayload = $this->staffPayload($data);
             $staffId = (int) DB::table('staff')->insertGetId($staffPayload);
             if ($staffId < 1) {
@@ -29,6 +33,10 @@ class StaffCreateService
 
             $audit = app(StaffAuditTrailService::class);
             $audit->logChange('staff_create', 'staff', $staffId, $staffId, [], $staffPayload);
+
+            if ($photo !== null) {
+                app(StaffProfileService::class)->storePhoto($staffId, $photo);
+            }
 
             if ($passport !== null) {
                 app(StaffProfileService::class)->storePassport($staffId, $passport);
@@ -71,9 +79,11 @@ class StaffCreateService
      */
     private function staffPayload(array $data): array
     {
-        // Legacy `staff` columns are NOT NULL — store blanks as empty strings (CI3 parity).
+        // Legacy `staff` columns are NOT NULL without defaults — store blanks as empty strings (CI3 parity).
         $payload = [
             'SAPNO' => $this->blankToEmpty($data['SAPNO'] ?? null),
+            'photo' => '',
+            'signature' => '',
             'title' => trim((string) $data['title']),
             'fname' => trim((string) $data['fname']),
             'lname' => trim((string) $data['lname']),
@@ -93,6 +103,13 @@ class StaffCreateService
             'email_status' => 0,
             'email_disabled_at' => null,
         ];
+
+        if (! Schema::hasColumn('staff', 'photo')) {
+            unset($payload['photo']);
+        }
+        if (! Schema::hasColumn('staff', 'signature')) {
+            unset($payload['signature']);
+        }
 
         if (Schema::hasColumn('staff', 'next_of_kin_json') && array_key_exists('next_of_kin', $data)) {
             $nok = app(StaffProfileService::class)->normalizeOptionalNextOfKin((array) ($data['next_of_kin'] ?? []));

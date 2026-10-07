@@ -61,6 +61,8 @@ class StaffCreateApiTest extends TestCase
         $this->assertGreaterThan(0, $staffId);
         $this->assertSame('new.staff@example.test', DB::table('staff')->where('staff_id', $staffId)->value('work_email'));
         $this->assertSame('SN-100', DB::table('staff')->where('staff_id', $staffId)->value('SAPNO'));
+        $this->assertSame('', (string) DB::table('staff')->where('staff_id', $staffId)->value('photo'));
+        $this->assertSame('', (string) DB::table('staff')->where('staff_id', $staffId)->value('signature'));
         $this->assertSame(1, (int) DB::table('staff_contracts')->where('staff_id', $staffId)->value('status_id'));
         $this->assertSame('[2]', DB::table('staff_contracts')->where('staff_id', $staffId)->value('other_associated_divisions'));
         $this->assertSame(1, (int) DB::table('user')->where('auth_staff_id', $staffId)->value('status'));
@@ -163,6 +165,8 @@ class StaffCreateApiTest extends TestCase
         Schema::create('staff', function (Blueprint $table): void {
             $table->increments('staff_id');
             $table->string('SAPNO')->nullable();
+            $table->string('photo');
+            $table->string('signature');
             $table->string('title')->nullable();
             $table->string('fname')->nullable();
             $table->string('lname')->nullable();
@@ -334,18 +338,24 @@ class StaffCreateApiTest extends TestCase
                 'fname' => 'Alice',
                 'lname' => 'Supervisor',
                 'work_email' => 'alice.supervisor@example.test',
+                'photo' => '',
+                'signature' => '',
             ],
             [
                 'staff_id' => 51,
                 'fname' => 'Bob',
                 'lname' => 'Supervisor',
                 'work_email' => 'bob.supervisor@example.test',
+                'photo' => '',
+                'signature' => '',
             ],
             [
                 'staff_id' => 99,
                 'fname' => 'Existing',
                 'lname' => 'Person',
                 'work_email' => 'existing@example.test',
+                'photo' => '',
+                'signature' => '',
             ],
         ]);
     }

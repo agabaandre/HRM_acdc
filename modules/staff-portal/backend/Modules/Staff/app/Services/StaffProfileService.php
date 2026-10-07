@@ -77,6 +77,49 @@ class StaffProfileService
     }
 
     /**
+     * Store staff profile photo (image) for a staff record.
+     *
+     * @return array{filename: string}
+     */
+    public function storePhoto(int $staffId, UploadedFile $file): array
+    {
+        if ($staffId < 1 || ! DB::table('staff')->where('staff_id', $staffId)->exists()) {
+            throw ValidationException::withMessages(['photo' => ['Staff not found.']]);
+        }
+        if (! Schema::hasColumn('staff', 'photo')) {
+            throw ValidationException::withMessages([
+                'photo' => ['Staff photo is not available on this installation.'],
+            ]);
+        }
+
+        $mime = strtolower((string) ($file->getMimeType() ?: ''));
+        $ext = strtolower($file->getClientOriginalExtension() ?: '');
+        $ok = str_starts_with($mime, 'image/')
+            || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true);
+        if (! $ok || $file->getSize() > 2048 * 1024) {
+            throw ValidationException::withMessages([
+                'photo' => ['Staff photo must be an image up to 2MB.'],
+            ]);
+        }
+        if ($ext === '' || $ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+
+        $staff = DB::table('staff')->where('staff_id', $staffId)->first(['fname', 'lname']);
+        $base = preg_replace(
+            '/[^a-zA-Z0-9_\-.]/',
+            '',
+            str_replace(' ', '_', trim(($staff->lname ?? '').'_'.($staff->fname ?? '')))
+        ) ?: 'staff';
+        $filename = substr((string) $base, 0, 40).'_'.time().'.'.$ext;
+        $dir = StaffStorage::ciPath('staff');
+        $this->storeUploadedFile($file, $dir, $filename, 'photo');
+        DB::table('staff')->where('staff_id', $staffId)->update(['photo' => $filename]);
+
+        return ['filename' => $filename];
+    }
+
+    /**
      * Store passport biodata page (image or PDF) for a staff record.
      *
      * @return array{filename: string, passport_url: string|null, passport_is_pdf: bool}
@@ -114,7 +157,7 @@ class StaffProfileService
         ) ?: 'staff';
         $filename = substr((string) $base, 0, 40).'_passport_'.time().'.'.$ext;
         $dir = StaffStorage::ciPath('staff/passport_biodata');
-        $this->storeUploadedFile($file, $dir, $filename);
+        $this->storeUploadedFile($file, $dir, $filename, 'passport');
         DB::table('staff')->where('staff_id', $staffId)->update(['passport_biodata_page' => $filename]);
 
         return [
@@ -222,21 +265,25 @@ class StaffProfileService
         return trim((string) $value);
     }
 
-    protected function storeUploadedFile(UploadedFile $file, string $dir, string $filename): void
-    {
+    protected function storeUploadedFile(
+        UploadedFile $file,
+        string $dir,
+        string $filename,
+        string $errorField = 'passport',
+    ): void {
         if (! is_dir($dir)) {
             @mkdir($dir, 0755, true);
         }
         if (! is_dir($dir) || ! is_writable($dir)) {
             throw ValidationException::withMessages([
-                'passport' => ['Upload directory is not writable. Contact an administrator.'],
+                $errorField => ['Upload directory is not writable. Contact an administrator.'],
             ]);
         }
         $target = rtrim($dir, '/\\').DIRECTORY_SEPARATOR.$filename;
         $source = $file->getRealPath();
         if (! is_string($source) || $source === '') {
             throw ValidationException::withMessages([
-                'passport' => ['Could not read the uploaded file.'],
+                $errorField => ['Could not read the uploaded file.'],
             ]);
         }
         if (@copy($source, $target)) {
@@ -249,7 +296,7 @@ class StaffProfileService
             @chmod($target, 0644);
         } catch (\Throwable) {
             throw ValidationException::withMessages([
-                'passport' => ['Could not save the uploaded file. Please try again.'],
+                $errorField => ['Could not save the uploaded file. Please try again.'],
             ]);
         }
     }

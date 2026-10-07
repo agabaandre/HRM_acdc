@@ -199,13 +199,16 @@ const unitOptions = computed<StaffUnitOption[]>(() => {
   return forDivision
 })
 
-function supervisorLabel(item: StaffSupervisorOption): string {
-  const lname = item.lname?.trim()
-  const fname = item.fname?.trim()
+function supervisorLabel(item: StaffSupervisorOption | string | number | null | undefined): string {
+  if (item == null || item === '') return ''
+  if (typeof item !== 'object') return ''
+  const lname = String(item.lname ?? '').trim()
+  const fname = String(item.fname ?? '').trim()
   if (lname && fname) return `${lname}, ${fname}`
   if (lname) return lname
   if (fname) return fname
-  return `#${item.staff_id}`
+  const id = Number(item.staff_id)
+  return Number.isFinite(id) && id > 0 ? `#${id}` : ''
 }
 
 function statusTone(statusId: unknown): string {

@@ -465,4 +465,20 @@ router.beforeEach(async (to) => {
   return true
 })
 
+// After a deploy, open tabs may still reference old hashed chunks. Reload once.
+router.onError((error, to) => {
+  const message = String((error as Error)?.message || error || '')
+  const isChunkError =
+    message.includes('Failed to fetch dynamically imported module') ||
+    message.includes('Importing a module script failed') ||
+    message.includes('error loading dynamically imported module')
+  if (!isChunkError) return
+
+  const key = 'staff-portal-chunk-reload'
+  const last = sessionStorage.getItem(key)
+  if (last && Date.now() - Number(last) < 10_000) return
+  sessionStorage.setItem(key, String(Date.now()))
+  window.location.assign(router.resolve(to).href)
+})
+
 export default router

@@ -207,7 +207,7 @@ export interface StaffCreatePayload {
   grade_id: string
   contracting_institution_id: number | ''
   funder_id: number | ''
-  first_supervisor: number | ''
+  first_supervisor: number | '' | null
   second_supervisor?: number | '' | null
   contract_type_id: number | ''
   duty_station_id: number | ''
@@ -529,17 +529,19 @@ function appendContractFields(form: FormData, payload: StaffContractPayload | St
 
 export async function createStaff(
   payload: StaffCreatePayload,
-  files: { contractFile?: File | null; passportFile?: File | null } = {},
+  files: { contractFile?: File | null; passportFile?: File | null; photoFile?: File | null } = {},
 ): Promise<{ staff_id: number; contract_id: number }> {
   const contractFile = files.contractFile ?? null
   const passportFile = files.passportFile ?? null
+  const photoFile = files.photoFile ?? null
   const hasNok = Array.isArray(payload.next_of_kin) && payload.next_of_kin.length > 0
   const hasPay = !!payload.pay && payload.pay.basic_salary != null
-  if (contractFile || passportFile || hasNok || hasPay) {
+  if (contractFile || passportFile || photoFile || hasNok || hasPay) {
     const form = new FormData()
     appendContractFields(form, payload)
     if (contractFile) form.append('contract_file', contractFile)
     if (passportFile) form.append('passport', passportFile)
+    if (photoFile) form.append('photo', photoFile)
     const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', form)
     return data.data
   }
