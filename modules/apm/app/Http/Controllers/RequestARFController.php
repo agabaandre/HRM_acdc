@@ -1255,8 +1255,20 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                         ->orderBy('created_at')
                         ->get();
                 } else {
-                    // For matrix activities, load activity approval trails (activities use ActivityApprovalTrail table)
-                    $sourceModel->load(['matrix.division.divisionHead', 'matrix.matrixApprovalTrails.staff', 'matrix.matrixApprovalTrails.approverRole', 'staff', 'activity_budget', 'activityApprovalTrails.staff', 'activityApprovalTrails.approverRole']);
+                    // For matrix activities, load matrix polymorphic trails (approved) and
+                    // activity trails (passed) so Reviewed By / Grants Officer can resolve.
+                    $sourceModel->load([
+                        'matrix.division.divisionHead',
+                        'matrix.approvalTrails.staff',
+                        'matrix.approvalTrails.oicStaff',
+                        'matrix.approvalTrails.approverRole',
+                        'matrix.matrixApprovalTrails.staff',
+                        'matrix.matrixApprovalTrails.approverRole',
+                        'staff',
+                        'activity_budget',
+                        'activityApprovalTrails.staff',
+                        'activityApprovalTrails.approverRole',
+                    ]);
                     $approvalTrails = $sourceModel->activityApprovalTrails;
                 }
                 
@@ -1296,7 +1308,8 @@ private function getBudgetBreakdown($sourceData, $modelType = null)
                     'matrix' => $sourceModel->matrix ?? null, // Include the matrix object with approval trails
                     'approval_trails' => $approvalTrails,
                     'is_single_memo' => $isSingleMemo,
-                    'forward_workflow_id' => $sourceModel->forward_workflow_id ?? 1,
+                    // General workflow (id=1) owns Grants / CoS / DG levels for ARF print.
+                    'forward_workflow_id' => $sourceModel->forward_workflow_id ?: 1,
                     'created_at' => $sourceModel->created_at,
                     'updated_at' => $sourceModel->updated_at,
                 ];

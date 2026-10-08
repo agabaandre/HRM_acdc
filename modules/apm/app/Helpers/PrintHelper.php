@@ -935,30 +935,120 @@ class PrintHelper
     }
 
     /**
-     * Get latest approval for a specific order
+     * Get latest approval for a specific order.
+     *
+     * @param  \Illuminate\Support\Collection|array  $approvalTrails
+     * @param  int  $order
+     * @param  list<string>|null  $acceptedActions  Defaults to approved only. ARF also uses "passed" on activity trails.
      */
-    public static function getLatestApprovalForOrder($approvalTrails, $order)
+    public static function getLatestApprovalForOrder($approvalTrails, $order, ?array $acceptedActions = null)
     {
         // Ensure order is an integer for type-safe comparison
-        $order = (int)$order;
+        $order = (int) $order;
+        $acceptedActions = array_map('strtolower', $acceptedActions ?? ['approved']);
 
         if (is_array($approvalTrails)) {
             $approvalTrails = collect($approvalTrails);
         }
 
-        // Latest *signature* at this level: only approved rows (HOD can change mid-workflow;
+        // Latest *signature* at this level (HOD can change mid-workflow;
         // "returned" or other actions must not win over a later approved signature).
-        $approvals = $approvalTrails->filter(function ($trail) use ($order) {
+        $approvals = $approvalTrails->filter(function ($trail) use ($order, $acceptedActions) {
             if (isset($trail->is_archived) && (int) $trail->is_archived === 1) {
                 return false;
             }
             $trailOrder = (int) ($trail->approval_order ?? 0);
             $action = strtolower((string) ($trail->action ?? ''));
 
-            return $trailOrder === $order && $action === 'approved';
+            return $trailOrder === $order && in_array($action, $acceptedActions, true);
         });
 
         return $approvals->sortByDesc('created_at')->first();
+    }
+
+    /**
+     * Workflow approval_order for Grants Officer (Reviewed By on ARF print).
+     */
+    public static function grantsOfficerApprovalOrder(int $workflowId = 1): int
+    {
+        $def = \App\Models\WorkflowDefinition::query()
+            ->where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->where(function ($q): void {
+                $q->where('role', 'like', '%Grants%')
+                    ->orWhere('role', 'like', '%Grant Officer%');
+            })
+            ->orderBy('approval_order')
+            ->first();
+
+        return $def ? (int) $def->approval_order : 3;
+    }
+
+    /**
+     * Assigned Grants Officer (or OIC) from the general workflow approvers table.
+     * Used when Reviewed By has no trail so the ARF print never shows N/A.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function assignedGrantsOfficerApprover(int $workflowId = 1): ?array
+    {
+        $def = \App\Models\WorkflowDefinition::query()
+            ->where('workflow_id', $workflowId)
+            ->where('is_enabled', 1)
+            ->where(function ($q): void {
+                $q->where('role', 'like', '%Grants%')
+                    ->orWhere('role', 'like', '%Grant Officer%');
+            })
+            ->orderBy('approval_order')
+            ->first();
+
+        if (! $def) {
+            return null;
+        }
+
+        $approver = \App\Models\Approver::query()
+            ->where('workflow_dfn_id', $def->id)
+            ->with(['staff', 'oicStaff'])
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $approver) {
+            return null;
+        }
+
+        $isOic = ! empty($approver->oic_staff_id) && $approver->oicStaff;
+        $staffModel = $isOic ? $approver->oicStaff : $approver->staff;
+        if (! $staffModel) {
+            return null;
+        }
+
+        return [
+            'staff' => [
+                'id' => $staffModel->id ?? null,
+                'staff_id' => $staffModel->staff_id ?? ($staffModel->id ?? null),
+                'fname' => $staffModel->fname ?? '',
+                'lname' => $staffModel->lname ?? '',
+                'oname' => $staffModel->oname ?? '',
+                'title' => $staffModel->title ?? '',
+                'signature' => $staffModel->signature ?? null,
+                'work_email' => $staffModel->work_email ?? null,
+            ],
+            'oic_staff' => $isOic && $approver->oicStaff ? [
+                'id' => $approver->oicStaff->id ?? null,
+                'staff_id' => $approver->oicStaff->staff_id ?? ($approver->oicStaff->id ?? null),
+                'fname' => $approver->oicStaff->fname ?? '',
+                'lname' => $approver->oicStaff->lname ?? '',
+                'oname' => $approver->oicStaff->oname ?? '',
+                'title' => $approver->oicStaff->title ?? '',
+                'signature' => $approver->oicStaff->signature ?? null,
+                'work_email' => $approver->oicStaff->work_email ?? null,
+            ] : null,
+            'role' => $def->role ?? 'Grants Officer',
+            'order' => (int) $def->approval_order,
+            'is_oic' => (bool) $isOic,
+            'created_at' => null,
+            'from_assignment' => true,
+        ];
     }
 
     /**
@@ -1006,7 +1096,7 @@ class PrintHelper
                 }
                 if ($allowsDivision) {
                     $order = (int) $def->approval_order;
-                    $approval = self::getLatestApprovalForOrder($approvalTrails, $order);
+                    $approval = self::getLatestApprovalForOrder($approvalTrails, $order, ['approved', 'passed']);
                     if ($approval) {
                         return $order;
                     }
@@ -1015,11 +1105,11 @@ class PrintHelper
         }
 
         // Backward compatibility: try order 10 first (old memos), then 11
-        $approval10 = self::getLatestApprovalForOrder($approvalTrails, 10);
+        $approval10 = self::getLatestApprovalForOrder($approvalTrails, 10, ['approved', 'passed']);
         if ($approval10) {
             return 10;
         }
-        $approval11 = self::getLatestApprovalForOrder($approvalTrails, 11);
+        $approval11 = self::getLatestApprovalForOrder($approvalTrails, 11, ['approved', 'passed']);
         if ($approval11) {
             return 11;
         }
@@ -1481,19 +1571,22 @@ class PrintHelper
     public static function getARFApprovers($activityApprovalTrails, $workflowId = 1, $divisionContext = null)
     {
         $ARFApprovers = [];
+        $workflowId = (int) ($workflowId ?: 1);
         
         // Ensure it's a collection
         if (is_array($activityApprovalTrails)) {
             $activityApprovalTrails = collect($activityApprovalTrails);
         }
         
-        // Define the financial approver roles and their expected approval orders.
-        // Chief of Staff can be at 10 or 11 depending on allowed divisions; resolved below.
+        // Define the ARF print roles and their expected approval orders.
+        // Reviewed By = Grants Officer (general workflow). CoS may be 10 or 11.
         $ARFRoles = [
-            'Grants' => 3,             // Endorsed by (SFO)
+            'Grants' => self::grantsOfficerApprovalOrder($workflowId),
             'Chief of Staff' => null,   // Resolved via getChiefOfStaffApprovalOrder (10 or 11)
             'Director General' => 12,  // Approved by
         ];
+        // Activity trails often use "passed"; polymorphic matrix trails use "approved".
+        $arfAcceptedActions = ['approved', 'passed'];
         
         foreach ($ARFRoles as $role => $expectedOrder) {
             if ($role === 'Chief of Staff') {
@@ -1503,7 +1596,7 @@ class PrintHelper
                 }
                 $expectedOrder = $resolvedOrder;
             }
-            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder);
+            $approval = self::getLatestApprovalForOrder($activityApprovalTrails, $expectedOrder, $arfAcceptedActions);
             if ($approval) {
                 // If it's an ApprovalTrail model, convert to structured array format
                 if (is_object($approval) && method_exists($approval, 'getAttribute')) {
@@ -1567,6 +1660,15 @@ class PrintHelper
                     // Already in array format or other format
                     $ARFApprovers[$role] = $approval;
                 }
+            }
+        }
+
+        // Reviewed By must never be blank: fall back to the assigned Grants Officer
+        // (e.g. Venessa Nguedia / anyone at that approval level) when no trail exists.
+        if (empty($ARFApprovers['Grants'])) {
+            $assigned = self::assignedGrantsOfficerApprover($workflowId);
+            if ($assigned) {
+                $ARFApprovers['Grants'] = $assigned;
             }
         }
         

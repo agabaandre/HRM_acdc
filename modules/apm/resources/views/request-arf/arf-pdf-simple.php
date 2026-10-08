@@ -1141,14 +1141,23 @@
                 }
             }
         } else {
-            // For matrix activities, use matrix approval trails
-            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
-                $sourceApprovalTrails = $sourceData['matrix']->approvalTrails;
-            } elseif (isset($sourceData['approval_trails'])) {
-                $sourceApprovalTrails = is_array($sourceData['approval_trails']) 
-                    ? collect($sourceData['approval_trails']) 
-                    : $sourceData['approval_trails'];
+            // Prefer matrix polymorphic trails (action=approved). Also merge activity
+            // trails (action=passed) so Grants Officer is never missed.
+            $matrixTrails = collect();
+            if (isset($sourceData['matrix'])) {
+                $matrix = $sourceData['matrix'];
+                if (isset($matrix->approvalTrails) && $matrix->approvalTrails) {
+                    $matrixTrails = collect($matrix->approvalTrails);
+                } elseif (isset($matrix->matrixApprovalTrails) && $matrix->matrixApprovalTrails) {
+                    $matrixTrails = collect($matrix->matrixApprovalTrails);
+                }
             }
+            $activityTrails = isset($sourceData['approval_trails'])
+                ? (is_array($sourceData['approval_trails']) ? collect($sourceData['approval_trails']) : collect($sourceData['approval_trails']))
+                : collect();
+            $sourceApprovalTrails = $matrixTrails->isNotEmpty()
+                ? $matrixTrails->concat($activityTrails)->values()
+                : $activityTrails;
         }
     } elseif ($sourceModelType === 'App\\Models\\SpecialMemo' || 
               $sourceModelType === 'App\\Models\\NonTravelMemo' || 
@@ -1174,8 +1183,10 @@
     
     // Division context for Chief of Staff resolution (level 10 vs 11 by allowed divisions)
     $divisionContext = isset($sourceData['division']) ? $sourceData['division'] : null;
-    // All approvers (Grants, Chief of Staff, Director General) come from the same source
-    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $sourceData['forward_workflow_id'] ?? 1, $divisionContext);
+    // ARF Reviewed/Endorsed/Approved always map to general workflow (id=1) Grants / CoS / DG,
+    // even when the ARF document itself uses another forward_workflow_id (e.g. Partnerships).
+    $arfGeneralWorkflowId = 1;
+    $memo_approvers = PrintHelper::getARFApprovers($sourceApprovalTrails, $arfGeneralWorkflowId, $divisionContext);
 
     //dd($memo_approvers);
     // Extract specific approvers for easier access
@@ -1183,33 +1194,32 @@
     $chief_of_staff = $memo_approvers['Chief of Staff'] ?? null;
     $directorGeneralApproval = $memo_approvers['Director General'] ?? null;
     
-    // Fallback for single memo: If Grants (Reviewed By) doesn't exist in single memo trails, use matrix trails
-    if ($sourceModelType === 'App\\Models\\Activity') {
-        $isSingleMemo = isset($sourceData['is_single_memo']) ? $sourceData['is_single_memo'] : false;
-        
-        if ($isSingleMemo && empty($grants)) {
-            // Try to get Grants approver from matrix approval trails
-            $matrixApprovalTrails = null;
-            
-            if (isset($sourceData['matrix']) && isset($sourceData['matrix']->approvalTrails)) {
-                $matrixApprovalTrails = $sourceData['matrix']->approvalTrails;
-            } elseif (isset($sourceModel) && $sourceModel->matrix_id && $sourceModel->matrix) {
-                // Load matrix approval trails if not already loaded
-                $sourceModel->matrix->load(['approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole']);
-                $matrixApprovalTrails = $sourceModel->matrix->approvalTrails ?? collect();
-            }
-            
-            if ($matrixApprovalTrails && $matrixApprovalTrails->count() > 0) {
-                // Get Grants approver from matrix trails
-                $matrixApprovers = PrintHelper::getARFApprovers($matrixApprovalTrails, $sourceData['forward_workflow_id'] ?? 1);
-                $matrixGrants = $matrixApprovers['Grants'] ?? null;
-                
-                if ($matrixGrants) {
-                    // Use matrix Grants approver as fallback
-                    $grants = $matrixGrants;
-                }
+    // Fallback: If Grants (Reviewed By) missing, try matrix trails then assigned Grants Officer.
+    if (empty($grants) && $sourceModelType === 'App\\Models\\Activity') {
+        $matrixApprovalTrails = null;
+
+        if (isset($sourceData['matrix'])) {
+            $matrix = $sourceData['matrix'];
+            if (isset($matrix->approvalTrails) && $matrix->approvalTrails) {
+                $matrixApprovalTrails = $matrix->approvalTrails;
+            } elseif (isset($matrix->matrixApprovalTrails) && $matrix->matrixApprovalTrails) {
+                $matrixApprovalTrails = $matrix->matrixApprovalTrails;
             }
         }
+
+        if ((! $matrixApprovalTrails || collect($matrixApprovalTrails)->isEmpty()) && isset($sourceModel) && $sourceModel->matrix_id && $sourceModel->matrix) {
+            $sourceModel->matrix->load(['approvalTrails.staff', 'approvalTrails.oicStaff', 'approvalTrails.approverRole', 'matrixApprovalTrails.staff', 'matrixApprovalTrails.approverRole']);
+            $matrixApprovalTrails = $sourceModel->matrix->approvalTrails ?? $sourceModel->matrix->matrixApprovalTrails ?? collect();
+        }
+
+        if ($matrixApprovalTrails && collect($matrixApprovalTrails)->count() > 0) {
+            $matrixApprovers = PrintHelper::getARFApprovers($matrixApprovalTrails, 1, $divisionContext);
+            $grants = $matrixApprovers['Grants'] ?? $grants;
+        }
+    }
+
+    if (empty($grants)) {
+        $grants = PrintHelper::assignedGrantsOfficerApprover(1);
     }
 ?>
     <!-- Budget / Certification (table-only, borderless unless specified inline) -->
@@ -1412,12 +1422,14 @@
                                 $workEmail = is_array($staff) ? ($staff['work_email'] ?? 'Email not available') : ($staff->work_email ?? 'Email not available');
                                 echo '<small style="color: #666; font-style: normal;">' . htmlspecialchars($workEmail) . '</small>';
                             }
-                            // Use created_at from approval trail if available, otherwise use current date
-                            $approvalDate = isset($grants['created_at']) ? $grants['created_at'] : date('Y-m-d H:i:s');
-                            $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime($approvalDate));
-                            echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
-                            $staffId = is_array($staff) ? ($staff['staff_id'] ?? $staff['id'] ?? '') : ($staff->staff_id ?? $staff->id ?? '');
-                            echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
+                            $fromAssignment = ! empty($grants['from_assignment']);
+                            $approvalDate = $grants['created_at'] ?? null;
+                            if (! $fromAssignment && $approvalDate) {
+                                $formattedDate = is_object($approvalDate) ? $approvalDate->format('j F Y H:i') : date('j F Y H:i', strtotime((string) $approvalDate));
+                                echo '<div class="signature-date">' . htmlspecialchars($formattedDate) . '</div>';
+                                $staffId = is_array($staff) ? ($staff['staff_id'] ?? $staff['id'] ?? '') : ($staff->staff_id ?? $staff->id ?? '');
+                                echo '<div class="signature-hash">Hash: ' . htmlspecialchars(generateVerificationHash($sourceModel->id, $staffId, $approvalDate)) . '</div>';
+                            }
                             echo '</div>';
                         } else {
                             renderBudgetSignature(null, $sourceModel);
