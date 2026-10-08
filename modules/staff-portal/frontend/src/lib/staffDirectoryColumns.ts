@@ -39,8 +39,8 @@ export interface StaffDirectoryColumnDefinition {
 /** Column catalog — CI3 all_staff order first, then optional extras. */
 export const staffDirectoryColumns: StaffDirectoryColumnDefinition[] = [
   { key: 'sap_number', label: 'SAPNO' },
-  { key: 'title', label: 'Title' },
   { key: 'photo', label: 'Passport Photo' },
+  { key: 'title', label: 'Title' },
   { key: 'firstname', label: 'Firstname' },
   { key: 'surname', label: 'Surname' },
   { key: 'othernames', label: 'Othernames' },
@@ -72,8 +72,8 @@ export const staffDirectoryColumns: StaffDirectoryColumnDefinition[] = [
 /** Defaults match CI3 `/staff/all_staff` table columns (name split into parts). */
 export const defaultStaffDirectoryColumns: StaffDirectoryColumnKey[] = [
   'sap_number',
-  'title',
   'photo',
+  'title',
   'firstname',
   'surname',
   'othernames',

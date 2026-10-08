@@ -93,9 +93,13 @@ let skipWatch = false
 
 function exportParams() {
   // Same catalog order as the on-screen table (defaults + any user-added columns).
+  // Passport photo is view-only — exclude from CSV/PDF.
   const columns =
     visibleColumns.value.length > 0
-      ? visibleColumns.value.map((column) => column.key).join(',')
+      ? visibleColumns.value
+          .filter((column) => column.key !== 'photo')
+          .map((column) => column.key)
+          .join(',')
       : undefined
 
   return {

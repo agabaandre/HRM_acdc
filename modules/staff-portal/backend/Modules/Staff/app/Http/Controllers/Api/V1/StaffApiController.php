@@ -777,7 +777,6 @@ class StaffApiController extends Controller
         $defaults = [
             'sap_number',
             'title',
-            'photo',
             'firstname',
             'surname',
             'othernames',
@@ -814,6 +813,10 @@ class StaffApiController extends Controller
         $definitions = $this->csvColumnDefinitions();
         $selected = [];
         foreach ($requested as $column) {
+            // Passport photos stay on-screen only — omit from CSV/PDF exports.
+            if ($column === 'photo') {
+                continue;
+            }
             // Legacy combined "name" column expands to the three name parts.
             if ($column === 'name') {
                 foreach (['firstname', 'surname', 'othernames'] as $part) {
@@ -838,8 +841,8 @@ class StaffApiController extends Controller
     {
         return [
             'sap_number' => ['label' => 'SAPNO'],
-            'title' => ['label' => 'Title'],
             'photo' => ['label' => 'Passport Photo'],
+            'title' => ['label' => 'Title'],
             'firstname' => ['label' => 'Firstname'],
             'surname' => ['label' => 'Surname'],
             'othernames' => ['label' => 'Othernames'],

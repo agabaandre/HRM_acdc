@@ -84,9 +84,13 @@ let sapTimer: number | undefined
 let skipWatch = false
 
 function exportParams() {
+  // Passport photo is view-only — exclude from CSV/PDF.
   const columns =
     visibleColumns.value.length > 0
-      ? visibleColumns.value.map((column) => column.key).join(',')
+      ? visibleColumns.value
+          .filter((column) => column.key !== 'photo')
+          .map((column) => column.key)
+          .join(',')
       : undefined
 
   return {
