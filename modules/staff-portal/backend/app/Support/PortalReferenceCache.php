@@ -89,7 +89,7 @@ final class PortalReferenceCache
         Cache::forget(self::lookupListKey($table));
         if (in_array($table, self::FORM_LOOKUP_TABLES, true) || $table === 'staff' || $table === 'regions') {
             self::bustFormLookups();
-            Cache::forget('staff_portal:staff_filter_options_v1');
+            Cache::forget(PortalStaffCache::FILTER_OPTIONS_KEY);
         }
         if ($table === 'leave_types') {
             self::bustLeaveTypes();

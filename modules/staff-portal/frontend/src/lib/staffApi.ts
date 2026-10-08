@@ -1,5 +1,6 @@
 import { api } from './api'
 import { cachedGet, clearApiCache } from './apiCache'
+import { invalidateDashboardCaches } from './dashboardApi'
 
 export type StaffPreset = 'active' | 'due' | 'expired' | 'former' | 'renewal' | 'all'
 export type StaffCategory = 'main_staff' | 'other_staff' | 'all'
@@ -496,6 +497,13 @@ export function invalidateStaffFormLookupsCache(): void {
   clearApiCache('staff:form-lookups-v2')
 }
 
+/** Clear SPA caches that mirror Redis staff/dashboard report payloads. */
+export function invalidateStaffReportCaches(): void {
+  invalidateStaffFormLookupsCache()
+  clearApiCache('staff:filter-options')
+  invalidateDashboardCaches()
+}
+
 function appendContractFields(form: FormData, payload: StaffContractPayload | StaffCreatePayload): void {
   for (const [key, value] of Object.entries(payload)) {
     if (key === 'other_associated_divisions') {
@@ -543,9 +551,11 @@ export async function createStaff(
     if (passportFile) form.append('passport', passportFile)
     if (photoFile) form.append('photo', photoFile)
     const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', form)
+    invalidateStaffReportCaches()
     return data.data
   }
   const { data } = await api.post<{ data: { staff_id: number; contract_id: number } }>('/api/v1/staff', payload)
+  invalidateStaffReportCaches()
   return data.data
 }
 
@@ -562,9 +572,11 @@ export async function createContract(
       `/api/v1/staff/${staffId}/contracts`,
       form,
     )
+    invalidateStaffReportCaches()
     return data.data
   }
   const { data } = await api.post<{ data: { contract_id: number } }>(`/api/v1/staff/${staffId}/contracts`, payload)
+  invalidateStaffReportCaches()
   return data.data
 }
 
@@ -583,12 +595,14 @@ export async function updateContract(
       `/api/v1/staff/${staffId}/contracts/${contractId}`,
       form,
     )
+    invalidateStaffReportCaches()
     return data.data
   }
   const { data } = await api.put<{ data: { contract_id: number } }>(
     `/api/v1/staff/${staffId}/contracts/${contractId}`,
     payload,
   )
+  invalidateStaffReportCaches()
   return data.data
 }
 
@@ -619,6 +633,7 @@ export async function updateStaffBiodata(
     `/api/v1/staff/${staffId}`,
     payload,
   )
+  invalidateStaffReportCaches()
   return data.data.staff
 }
 
@@ -631,6 +646,7 @@ export async function uploadStaffPassport(
   const { data } = await api.post<{
     data: { filename: string; passport_url: string | null; passport_is_pdf: boolean }
   }>(`/api/v1/staff/${staffId}/passport`, form)
+  invalidateStaffReportCaches()
   return data.data
 }
 

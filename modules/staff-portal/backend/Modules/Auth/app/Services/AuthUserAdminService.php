@@ -4,6 +4,7 @@ namespace Modules\Auth\Services;
 
 use App\Support\LegacySchema;
 use App\Support\PortalReadCache;
+use App\Support\PortalStaffCache;
 use App\Support\StaffPhoto;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -164,7 +165,8 @@ class AuthUserAdminService
 
         $this->audit->logRecordChange('updated', 'user', $userId, $before, $after);
 
-        PortalReadCache::bust(['permissions', 'staff']);
+        PortalStaffCache::bust();
+        PortalReadCache::bust('permissions');
 
         return $this->presentRow($afterRow);
     }
@@ -193,7 +195,8 @@ class AuthUserAdminService
         $before = ['allow_email_login' => (int) ($existing['allow_email_login'] ?? 0)];
         DB::table('user')->where('user_id', $userId)->update(['allow_email_login' => $value]);
         $this->audit->logRecordChange('updated', 'user', $userId, $before, ['allow_email_login' => $value]);
-        PortalReadCache::bust(['permissions', 'staff']);
+        PortalStaffCache::bust();
+        PortalReadCache::bust('permissions');
 
         return $allow
             ? 'Email/password sign-in enabled for this user.'
@@ -246,7 +249,8 @@ class AuthUserAdminService
         $after = DB::table('user')->whereIn('auth_staff_id', $staffIds)->count();
         $created = max(0, $after - $before);
         if ($created > 0) {
-            PortalReadCache::bust(['permissions', 'staff']);
+            PortalStaffCache::bust();
+            PortalReadCache::bust('permissions');
         }
 
         return [
@@ -341,7 +345,8 @@ class AuthUserAdminService
         $before = ['status' => (int) ($existing['status'] ?? 0)];
         DB::table('user')->where('user_id', $userId)->update(['status' => $status]);
         $this->audit->logRecordChange('updated', 'user', $userId, $before, ['status' => $status]);
-        PortalReadCache::bust(['permissions', 'staff']);
+        PortalStaffCache::bust();
+        PortalReadCache::bust('permissions');
 
         return $message;
     }

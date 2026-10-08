@@ -2,6 +2,8 @@
 
 namespace Modules\Staff\Services;
 
+use App\Support\PortalReadCache;
+use App\Support\PortalStaffCache;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -116,7 +118,9 @@ class StaffDirectoryService
     {
         $category = $this->normalizeCategory($category);
         $filters = $this->normalizeFilters($filters);
-        $cacheKey = 'staff_directory_filter_counts:'.md5($search.'|'.$category.'|'.json_encode($filters));
+        // Include staff read-cache version so PortalStaffCache::bust() invalidates counts immediately.
+        $ver = PortalReadCache::version('staff');
+        $cacheKey = 'staff_directory_filter_counts:v'.$ver.':'.md5($search.'|'.$category.'|'.json_encode($filters));
 
         return Cache::remember($cacheKey, 60, function () use ($search, $category, $filters): array {
             $row = $this->lightQuery($search, null, $category, $filters)
@@ -148,7 +152,7 @@ class StaffDirectoryService
      */
     public function filterOptions(): array
     {
-        return Cache::remember('staff_portal:staff_filter_options_v1', 300, function (): array {
+        return Cache::remember(PortalStaffCache::FILTER_OPTIONS_KEY, 300, function (): array {
             $regions = DB::table('regions')->orderBy('region_name')->get(['id', 'region_name'])
                 ->map(fn ($r) => ['id' => (int) $r->id, 'name' => (string) $r->region_name])
                 ->all();

@@ -1,10 +1,12 @@
-export const STAFF_DIRECTORY_COLUMNS_STORAGE_KEY = 'staff-portal.staff-directory.columns.v2'
+export const STAFF_DIRECTORY_COLUMNS_STORAGE_KEY = 'staff-portal.staff-directory.columns.v3'
 
 export type StaffDirectoryColumnKey =
   | 'sap_number'
   | 'title'
   | 'photo'
-  | 'name'
+  | 'firstname'
+  | 'surname'
+  | 'othernames'
   | 'gender'
   | 'date_of_birth'
   | 'age'
@@ -39,7 +41,9 @@ export const staffDirectoryColumns: StaffDirectoryColumnDefinition[] = [
   { key: 'sap_number', label: 'SAPNO' },
   { key: 'title', label: 'Title' },
   { key: 'photo', label: 'Passport Photo' },
-  { key: 'name', label: 'Name' },
+  { key: 'firstname', label: 'Firstname' },
+  { key: 'surname', label: 'Surname' },
+  { key: 'othernames', label: 'Othernames' },
   { key: 'gender', label: 'Gender' },
   { key: 'date_of_birth', label: 'Date of Birth' },
   { key: 'age', label: 'Age' },
@@ -65,12 +69,14 @@ export const staffDirectoryColumns: StaffDirectoryColumnDefinition[] = [
   { key: 'status', label: 'Status' },
 ]
 
-/** Defaults match CI3 `/staff/all_staff` table columns. */
+/** Defaults match CI3 `/staff/all_staff` table columns (name split into parts). */
 export const defaultStaffDirectoryColumns: StaffDirectoryColumnKey[] = [
   'sap_number',
   'title',
   'photo',
-  'name',
+  'firstname',
+  'surname',
+  'othernames',
   'gender',
   'date_of_birth',
   'age',
@@ -95,19 +101,45 @@ export const defaultStaffDirectoryColumns: StaffDirectoryColumnKey[] = [
 
 const validColumnKeys = new Set<StaffDirectoryColumnKey>(staffDirectoryColumns.map((column) => column.key))
 
+const namePartKeys: StaffDirectoryColumnKey[] = ['firstname', 'surname', 'othernames']
+
 export function normalizeStaffDirectoryColumns(value: unknown): StaffDirectoryColumnKey[] {
   if (!Array.isArray(value)) {
     return [...defaultStaffDirectoryColumns]
   }
 
-  const unique = value.filter((key): key is StaffDirectoryColumnKey => validColumnKeys.has(key as StaffDirectoryColumnKey))
-  return unique.length > 0 ? Array.from(new Set(unique)) : [...defaultStaffDirectoryColumns]
+  const expanded: StaffDirectoryColumnKey[] = []
+  for (const key of value) {
+    // Migrate legacy combined "name" column from v1/v2 storage.
+    if (key === 'name') {
+      for (const part of namePartKeys) {
+        if (!expanded.includes(part)) expanded.push(part)
+      }
+      continue
+    }
+    if (validColumnKeys.has(key as StaffDirectoryColumnKey)) {
+      const typed = key as StaffDirectoryColumnKey
+      if (!expanded.includes(typed)) expanded.push(typed)
+    }
+  }
+
+  return expanded.length > 0 ? expanded : [...defaultStaffDirectoryColumns]
 }
 
 export function loadStaffDirectoryColumns(): StaffDirectoryColumnKey[] {
   try {
     const raw = window.localStorage.getItem(STAFF_DIRECTORY_COLUMNS_STORAGE_KEY)
-    return normalizeStaffDirectoryColumns(raw ? JSON.parse(raw) : null)
+    if (raw) {
+      return normalizeStaffDirectoryColumns(JSON.parse(raw))
+    }
+    // One-time migrate from v2 key if present.
+    const legacy = window.localStorage.getItem('staff-portal.staff-directory.columns.v2')
+    if (legacy) {
+      const migrated = normalizeStaffDirectoryColumns(JSON.parse(legacy))
+      saveStaffDirectoryColumns(migrated)
+      return migrated
+    }
+    return [...defaultStaffDirectoryColumns]
   } catch {
     return [...defaultStaffDirectoryColumns]
   }

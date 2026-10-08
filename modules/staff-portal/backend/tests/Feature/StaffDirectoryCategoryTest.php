@@ -58,7 +58,9 @@ class StaffDirectoryCategoryTest extends TestCase
     public function test_export_csv_uses_contract_status_label(): void
     {
         $response = app(StaffApiController::class)->exportCsv(
-            Request::create('/api/v1/staff/export.csv', 'GET'),
+            Request::create('/api/v1/staff/export.csv', 'GET', [
+                'columns' => 'firstname,surname,job,division,status',
+            ]),
             app(StaffDirectoryService::class),
             app(CsvExportService::class)
         );
@@ -73,13 +75,15 @@ class StaffDirectoryCategoryTest extends TestCase
         $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
         $statusIndex = array_search('Status', $header, true);
         $this->assertNotFalse($statusIndex);
-        $staffIdIndex = array_search('Staff ID', $header, true);
-        $this->assertNotFalse($staffIdIndex);
+        $firstnameIndex = array_search('Firstname', $header, true);
+        $this->assertNotFalse($firstnameIndex);
+        $surnameIndex = array_search('Surname', $header, true);
+        $this->assertNotFalse($surnameIndex);
 
         $alice = null;
         foreach (array_slice($lines, 1) as $line) {
             $cols = str_getcsv($line);
-            if (($cols[$staffIdIndex] ?? '') === '100') {
+            if (($cols[$firstnameIndex] ?? '') === 'Alice' && ($cols[$surnameIndex] ?? '') === 'Main') {
                 $alice = $cols;
                 break;
             }
@@ -139,7 +143,7 @@ class StaffDirectoryCategoryTest extends TestCase
     public function test_export_csv_honors_selected_columns(): void
     {
         $response = app(StaffApiController::class)->exportCsv(
-            Request::create('/api/v1/staff/export.csv', 'GET', ['columns' => 'name,status']),
+            Request::create('/api/v1/staff/export.csv', 'GET', ['columns' => 'firstname,surname,othernames,status']),
             app(StaffDirectoryService::class),
             app(CsvExportService::class)
         );
@@ -152,12 +156,14 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertGreaterThan(1, count($lines));
 
         $header = str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"));
-        $this->assertSame(['Staff ID', 'Name', 'Status'], $header);
+        $this->assertSame(['#', 'Firstname', 'Surname', 'Othernames', 'Status'], $header);
 
         $alice = str_getcsv($lines[1]);
-        $this->assertSame('100', $alice[0] ?? null);
-        $this->assertSame('Main, Alice', $alice[1] ?? null);
-        $this->assertSame('Active', $alice[2] ?? null);
+        $this->assertSame('1', $alice[0] ?? null);
+        $this->assertSame('Alice', $alice[1] ?? null);
+        $this->assertSame('Main', $alice[2] ?? null);
+        $this->assertSame('', $alice[3] ?? null);
+        $this->assertSame('Active', $alice[4] ?? null);
     }
 
     public function test_export_csv_is_not_clamped_to_list_page_size(): void

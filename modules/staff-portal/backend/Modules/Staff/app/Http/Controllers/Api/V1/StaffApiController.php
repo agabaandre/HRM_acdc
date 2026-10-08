@@ -4,7 +4,7 @@ namespace Modules\Staff\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\PortalReadCache;
-use App\Support\PortalReferenceCache;
+use App\Support\PortalStaffCache;
 use App\Support\StaffContractFile;
 use App\Support\StaffPhoto;
 use Illuminate\Http\JsonResponse;
@@ -67,8 +67,7 @@ class StaffApiController extends Controller
             $this->optionalPassportFile($request),
             $this->optionalPhotoFile($request),
         );
-        PortalReferenceCache::bustFormLookups();
-        PortalReadCache::bust('staff');
+        PortalStaffCache::bust();
 
         return response()->json([
             'data' => $created,
@@ -354,7 +353,7 @@ class StaffApiController extends Controller
             return response()->json(['message' => 'Could not update biodata.'], 500);
         }
 
-        PortalReadCache::bust('staff');
+        PortalStaffCache::bust();
 
         $row = $profiles->find($staff);
         $staffPayload = (array) $row;
@@ -385,7 +384,7 @@ class StaffApiController extends Controller
         ]);
 
         $media = $profiles->storePassport($staff, $request->file('passport'));
-        PortalReadCache::bust('staff');
+        PortalStaffCache::bust();
 
         return response()->json([
             'data' => $media,
@@ -413,7 +412,7 @@ class StaffApiController extends Controller
             return $this->validationErrorResponse($e);
         }
 
-        PortalReadCache::bust('staff');
+        PortalStaffCache::bust();
 
         return response()->json([
             'data' => [
@@ -448,7 +447,7 @@ class StaffApiController extends Controller
             return response()->json(['message' => 'Contract not found.'], 404);
         }
 
-        PortalReadCache::bust('staff');
+        PortalStaffCache::bust();
 
         return response()->json([
             'data' => [
@@ -779,7 +778,9 @@ class StaffApiController extends Controller
             'sap_number',
             'title',
             'photo',
-            'name',
+            'firstname',
+            'surname',
+            'othernames',
             'gender',
             'date_of_birth',
             'age',
@@ -813,6 +814,15 @@ class StaffApiController extends Controller
         $definitions = $this->csvColumnDefinitions();
         $selected = [];
         foreach ($requested as $column) {
+            // Legacy combined "name" column expands to the three name parts.
+            if ($column === 'name') {
+                foreach (['firstname', 'surname', 'othernames'] as $part) {
+                    if (! in_array($part, $selected, true)) {
+                        $selected[] = $part;
+                    }
+                }
+                continue;
+            }
             if (array_key_exists($column, $definitions) && ! in_array($column, $selected, true)) {
                 $selected[] = $column;
             }
@@ -830,7 +840,9 @@ class StaffApiController extends Controller
             'sap_number' => ['label' => 'SAPNO'],
             'title' => ['label' => 'Title'],
             'photo' => ['label' => 'Passport Photo'],
-            'name' => ['label' => 'Name'],
+            'firstname' => ['label' => 'Firstname'],
+            'surname' => ['label' => 'Surname'],
+            'othernames' => ['label' => 'Othernames'],
             'gender' => ['label' => 'Gender'],
             'date_of_birth' => ['label' => 'Date of Birth'],
             'age' => ['label' => 'Age'],
@@ -866,7 +878,9 @@ class StaffApiController extends Controller
             'sap_number' => (string) ($row['SAPNO'] ?? ''),
             'title' => (string) ($row['title'] ?? ''),
             'photo' => (string) ($row['photo'] ?? ''),
-            'name' => $this->csvPersonName($row),
+            'firstname' => trim((string) ($row['fname'] ?? '')),
+            'surname' => trim((string) ($row['lname'] ?? '')),
+            'othernames' => trim((string) ($row['oname'] ?? '')),
             'gender' => (string) ($row['gender'] ?? ''),
             'date_of_birth' => (string) ($row['date_of_birth'] ?? ''),
             'age' => $this->yearsFromDate($row['date_of_birth'] ?? null),
@@ -892,20 +906,6 @@ class StaffApiController extends Controller
             'status' => (string) ($row['contract_status'] ?? ''),
             default => '',
         };
-    }
-
-    /**
-     * @param  array<string, mixed>  $row
-     */
-    protected function csvPersonName(array $row): string
-    {
-        $parts = array_filter([
-            trim((string) ($row['lname'] ?? '')),
-            trim((string) ($row['fname'] ?? '')),
-            trim((string) ($row['oname'] ?? '')),
-        ], static fn (string $part): bool => $part !== '');
-
-        return implode(' ', $parts);
     }
 
     protected function yearsFromDate(mixed $value): string

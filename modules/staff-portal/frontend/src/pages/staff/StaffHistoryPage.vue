@@ -189,12 +189,23 @@ function categoryLabel(value: StaffListRow['category']): string {
   return '—'
 }
 
+function namePart(value: string | null | undefined): string {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text || '—'
+}
+
 function columnText(row: StaffListRow, key: StaffDirectoryColumnKey): string {
   switch (key) {
     case 'sap_number':
       return row.SAPNO || '—'
     case 'title':
       return row.title || '—'
+    case 'firstname':
+      return namePart(row.fname)
+    case 'surname':
+      return namePart(row.lname)
+    case 'othernames':
+      return namePart(row.oname)
     case 'gender':
       return row.gender || '—'
     case 'date_of_birth':
@@ -522,9 +533,9 @@ onMounted(() => {
                   <CbpAvatar size="sm" :name="avatarName(row)" :image-url="personPhotoUrl(row)" />
                 </div>
               </template>
-              <template v-else-if="column.key === 'name'">
+              <template v-else-if="column.key === 'firstname'">
                 <RouterLink :to="`/staff/${row.staff_id}`">
-                  {{ personName(row) }}
+                  {{ namePart(row.fname) }}
                 </RouterLink>
               </template>
               <template v-else>

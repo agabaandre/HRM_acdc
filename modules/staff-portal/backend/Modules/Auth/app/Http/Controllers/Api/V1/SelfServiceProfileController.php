@@ -3,6 +3,7 @@
 namespace Modules\Auth\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\PortalStaffCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Auth\Models\PortalUser;
@@ -22,6 +23,7 @@ class SelfServiceProfileController extends Controller
     public function update(Request $request): JsonResponse
     {
         $payload = $this->profiles->update($this->user($request), $request->all());
+        PortalStaffCache::bust();
 
         return response()->json(['data' => $payload, 'message' => 'Profile updated successfully.']);
     }
@@ -32,6 +34,7 @@ class SelfServiceProfileController extends Controller
             'photo' => ['required', 'file', 'max:2048', 'mimes:jpg,jpeg,png,gif,webp'],
         ]);
         $payload = $this->profiles->storePhoto($this->user($request), $request->file('photo'));
+        PortalStaffCache::bust();
 
         return response()->json(['data' => $payload, 'message' => 'Photo updated.']);
     }
@@ -42,6 +45,7 @@ class SelfServiceProfileController extends Controller
             'passport' => ['required', 'file', 'max:4096', 'mimes:jpg,jpeg,png,gif,webp,pdf'],
         ]);
         $payload = $this->profiles->storePassport($this->user($request), $request->file('passport'));
+        PortalStaffCache::bust();
 
         return response()->json(['data' => $payload, 'message' => 'Passport biodata updated.']);
     }
@@ -57,6 +61,7 @@ class SelfServiceProfileController extends Controller
             $validated = $request->validate(['data_url' => ['required', 'string']]);
             $payload = $this->profiles->storeSignatureDataUrl($this->user($request), $validated['data_url']);
         }
+        PortalStaffCache::bust();
 
         return response()->json(['data' => $payload, 'message' => 'Signature updated.']);
     }

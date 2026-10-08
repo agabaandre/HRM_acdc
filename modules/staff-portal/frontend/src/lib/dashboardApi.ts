@@ -1,6 +1,16 @@
-import { cachedGet } from './apiCache'
+import { cachedGet, clearApiCache } from './apiCache'
 
 const SESSION_KEY = 'staff-portal:dashboard:last'
+
+/** Clear SPA dashboard caches after staff/contract mutations. */
+export function invalidateDashboardCaches(): void {
+  clearApiCache('dashboard:')
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {
+    /* private mode */
+  }
+}
 
 export interface DashboardFilterOption {
   division_id?: number

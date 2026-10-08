@@ -17,9 +17,22 @@ final class PortalReadCache
         return "staff_portal:read_cache_ver:{$scope}";
     }
 
+    /**
+     * Prefer the configured read-cache store so version keys and payloads stay in sync (Redis).
+     */
+    private static function store(): \Illuminate\Contracts\Cache\Repository
+    {
+        $store = config('staff-portal.read_cache_store');
+        if (is_string($store) && $store !== '') {
+            return Cache::store($store);
+        }
+
+        return Cache::store();
+    }
+
     public static function version(string $scope): string
     {
-        return (string) Cache::get(self::versionKey($scope), '1');
+        return (string) self::store()->get(self::versionKey($scope), '1');
     }
 
     /**
@@ -36,7 +49,7 @@ final class PortalReadCache
         }
 
         foreach ((array) $scopes as $scope) {
-            Cache::put(self::versionKey($scope), (string) microtime(true), 86400 * 7);
+            self::store()->put(self::versionKey($scope), (string) microtime(true), 86400 * 7);
         }
     }
 
@@ -65,12 +78,7 @@ final class PortalReadCache
         }
 
         $ttl = max(15, (int) config('staff-portal.read_cache_ttl', 60));
-        $store = config('staff-portal.read_cache_store');
 
-        if (is_string($store) && $store !== '') {
-            return Cache::store($store)->remember($key, $ttl, $callback);
-        }
-
-        return Cache::remember($key, $ttl, $callback);
+        return self::store()->remember($key, $ttl, $callback);
     }
 }
