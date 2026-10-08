@@ -45,6 +45,40 @@
   font-size: 0.8125rem;
 }
 
+.portal-th-sortable {
+  padding: 0 !important;
+}
+
+.portal-th-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.portal-th-sort-btn:hover {
+  color: #0d7a3a;
+}
+
+.portal-th-sort-btn .fa-solid {
+  font-size: 0.7rem;
+  color: #9aabba;
+}
+
+.portal-th-sort-btn .fa-solid.is-active {
+  color: #0d7a3a;
+}
+
 .portal-staff-filters {
   background: #ffffff;
   border: 1px solid #dfe5ef;

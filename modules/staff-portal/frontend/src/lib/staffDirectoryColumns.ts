@@ -103,6 +103,17 @@ const validColumnKeys = new Set<StaffDirectoryColumnKey>(staffDirectoryColumns.m
 
 const namePartKeys: StaffDirectoryColumnKey[] = ['firstname', 'surname', 'othernames']
 
+/** Columns that support server-side header sorting (photo is view-only). */
+export const staffDirectorySortableColumns = new Set<StaffDirectoryColumnKey>(
+  staffDirectoryColumns.map((column) => column.key).filter((key) => key !== 'photo'),
+)
+
+export type StaffDirectorySortDir = 'asc' | 'desc'
+
+export function isStaffDirectorySortable(key: StaffDirectoryColumnKey): boolean {
+  return staffDirectorySortableColumns.has(key)
+}
+
 export function normalizeStaffDirectoryColumns(value: unknown): StaffDirectoryColumnKey[] {
   if (!Array.isArray(value)) {
     return [...defaultStaffDirectoryColumns]

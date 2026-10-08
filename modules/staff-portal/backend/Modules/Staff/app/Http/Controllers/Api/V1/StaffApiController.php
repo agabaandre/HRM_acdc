@@ -96,6 +96,7 @@ class StaffApiController extends Controller
         $perPage = min(100, max(10, (int) $request->query('per_page', 20)));
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
         $filters = $directory->normalizeFilters($this->staffFilterInput($request));
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
 
         $user = auth()->user();
         $userId = $user instanceof PortalUser ? (int) $user->getAuthIdentifier() : 0;
@@ -106,6 +107,8 @@ class StaffApiController extends Controller
             'per_page' => $perPage,
             'category' => $category,
             'filters' => $filters,
+            'sort_by' => $sort['by'],
+            'sort_dir' => $sort['dir'],
         ]);
 
         $payload = PortalReadCache::remember($cacheKey, function () use (
@@ -117,8 +120,9 @@ class StaffApiController extends Controller
             $category,
             $preset,
             $filters,
+            $sort,
         ): array {
-            $paginator = $directory->paginate($search, $statusId, $page, $perPage, $category, $filters);
+            $paginator = $directory->paginate($search, $statusId, $page, $perPage, $category, $filters, $sort);
 
             return [
                 'data' => $paginator->items(),
@@ -131,6 +135,8 @@ class StaffApiController extends Controller
                     'preset' => $preset,
                     'category' => $category,
                     'filters' => $filters,
+                    'sort_by' => $sort['by'],
+                    'sort_dir' => $sort['dir'],
                 ],
             ];
         });
@@ -630,7 +636,8 @@ class StaffApiController extends Controller
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
         $filters = $directory->normalizeFilters($this->staffFilterInput($request));
-        $exported = $directory->exportRows($search, $statusId, $category, 5000, $filters);
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
+        $exported = $directory->exportRows($search, $statusId, $category, 5000, $filters, $sort);
         $selectedColumns = $this->selectedExportColumns($request);
         $definitions = $this->csvColumnDefinitions();
         $rows = [[
@@ -675,7 +682,8 @@ class StaffApiController extends Controller
         $search = (string) $request->query('q', '');
         $category = $this->normalizeCategory((string) $request->query('category', 'main_staff'));
         $filters = $directory->normalizeFilters($this->staffFilterInput($request));
-        $exported = $directory->exportRows($search, $statusId, $category, 2000, $filters);
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
+        $exported = $directory->exportRows($search, $statusId, $category, 2000, $filters, $sort);
         $selectedColumns = $this->selectedExportColumns($request);
         $definitions = $this->csvColumnDefinitions();
         $colCount = count($selectedColumns) + 1;

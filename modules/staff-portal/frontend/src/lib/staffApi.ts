@@ -299,6 +299,8 @@ export async function fetchStaffList(params: {
   category?: StaffCategory
   page?: number
   per_page?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
 } & StaffListFilters = {}): Promise<StaffListResponse> {
   const { data } = await api.get<StaffListResponse>('/api/v1/staff', {
     params,

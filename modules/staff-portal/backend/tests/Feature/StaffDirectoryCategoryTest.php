@@ -37,6 +37,51 @@ class StaffDirectoryCategoryTest extends TestCase
         $this->assertSame('alice.jpg', $payload['data'][0]['photo']);
         $this->assertSame('Permanent', $payload['data'][0]['contract_type']);
         $this->assertSame('main_staff', $payload['data'][0]['category']);
+        $this->assertSame('firstname', $payload['meta']['sort_by']);
+        $this->assertSame('asc', $payload['meta']['sort_dir']);
+    }
+
+    public function test_directory_and_export_respect_sort_by_firstname(): void
+    {
+        $asc = app(StaffApiController::class)->index(
+            Request::create('/api/v1/staff', 'GET', [
+                'category' => 'all',
+                'sort_by' => 'firstname',
+                'sort_dir' => 'asc',
+            ]),
+            app(StaffDirectoryService::class)
+        )->getData(true);
+
+        $this->assertSame(['Alice', 'Bob'], array_column($asc['data'], 'fname'));
+
+        $desc = app(StaffApiController::class)->index(
+            Request::create('/api/v1/staff', 'GET', [
+                'category' => 'all',
+                'sort_by' => 'firstname',
+                'sort_dir' => 'desc',
+            ]),
+            app(StaffDirectoryService::class)
+        )->getData(true);
+
+        $this->assertSame(['Bob', 'Alice'], array_column($desc['data'], 'fname'));
+
+        $csv = app(StaffApiController::class)->exportCsv(
+            Request::create('/api/v1/staff/export.csv', 'GET', [
+                'category' => 'all',
+                'columns' => 'firstname,surname',
+                'sort_by' => 'firstname',
+                'sort_dir' => 'desc',
+            ]),
+            app(StaffDirectoryService::class),
+            app(CsvExportService::class)
+        );
+
+        ob_start();
+        $csv->sendContent();
+        $body = (string) ob_get_clean();
+        $lines = array_values(array_filter(explode("\n", trim($body))));
+        $this->assertSame(['1', 'Bob', 'Other'], str_getcsv($lines[1]));
+        $this->assertSame(['2', 'Alice', 'Main'], str_getcsv($lines[2]));
     }
 
     public function test_export_csv_uses_category_filter(): void

@@ -12,10 +12,12 @@ import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 import { personAvatarName, toAbsoluteMediaUrl } from '@/lib/personAvatar'
 import {
+  isStaffDirectorySortable,
   loadStaffDirectoryColumns,
   saveStaffDirectoryColumns,
   staffDirectoryColumns,
   type StaffDirectoryColumnKey,
+  type StaffDirectorySortDir,
 } from '@/lib/staffDirectoryColumns'
 import {
   fetchStaffFilterOptions,
@@ -39,6 +41,8 @@ const total = ref(0)
 const filterCounts = ref<Record<string, number>>({})
 const selectedColumns = ref<StaffDirectoryColumnKey[]>(loadStaffDirectoryColumns())
 const filterOptions = ref<StaffFilterOptions | null>(null)
+const sortBy = ref<StaffDirectoryColumnKey>('firstname')
+const sortDir = ref<StaffDirectorySortDir>('asc')
 
 const filters = reactive({
   name: '',
@@ -116,7 +120,26 @@ function exportParams() {
     job_id: filters.job_id,
     grade_id: filters.grade_id,
     columns,
+    sort_by: sortBy.value,
+    sort_dir: sortDir.value,
   }
+}
+
+function toggleSort(column: StaffDirectoryColumnKey) {
+  if (!isStaffDirectorySortable(column)) return
+  if (sortBy.value === column) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = column
+    sortDir.value = 'asc'
+  }
+  page.value = 1
+}
+
+function sortIcon(column: StaffDirectoryColumnKey): string {
+  if (!isStaffDirectorySortable(column)) return ''
+  if (sortBy.value !== column) return 'fa-sort'
+  return sortDir.value === 'asc' ? 'fa-sort-up' : 'fa-sort-down'
 }
 
 function textFilterReady(value: string): boolean {
@@ -370,7 +393,7 @@ watch(
 )
 
 watch(selectedColumns, (next) => saveStaffDirectoryColumns(next))
-watch([preset, category, page, perPage], () => void load())
+watch([preset, category, page, perPage, sortBy, sortDir], () => void load())
 
 onMounted(() => {
   void Promise.all([
@@ -546,7 +569,29 @@ onMounted(() => {
         <thead>
           <tr>
             <th style="width: 3rem">#</th>
-            <th v-for="column in visibleColumns" :key="column.key">{{ column.label }}</th>
+            <th
+              v-for="column in visibleColumns"
+              :key="column.key"
+              :class="{ 'portal-th-sortable': isStaffDirectorySortable(column.key) }"
+              :aria-sort="
+                sortBy === column.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined
+              "
+            >
+              <button
+                v-if="isStaffDirectorySortable(column.key)"
+                type="button"
+                class="portal-th-sort-btn"
+                @click="toggleSort(column.key)"
+              >
+                <span>{{ column.label }}</span>
+                <i
+                  class="fa-solid"
+                  :class="[sortIcon(column.key), { 'is-active': sortBy === column.key }]"
+                  aria-hidden="true"
+                />
+              </button>
+              <template v-else>{{ column.label }}</template>
+            </th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>

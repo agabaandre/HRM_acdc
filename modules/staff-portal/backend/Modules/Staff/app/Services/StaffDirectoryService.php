@@ -16,6 +16,7 @@ class StaffDirectoryService
     /**
      * @param  int|list<int>|null  $statusId
      * @param  array<string, mixed>  $filters
+     * @param  array{by?: string, dir?: string}  $sort
      */
     public function paginate(
         string $search = '',
@@ -24,11 +25,13 @@ class StaffDirectoryService
         int $perPage = 20,
         string $category = 'main_staff',
         array $filters = [],
+        array $sort = [],
     ): LengthAwarePaginator {
         $perPage = min(100, max(10, $perPage));
         $page = max(1, $page);
         $category = $this->normalizeCategory($category);
         $filters = $this->normalizeFilters($filters);
+        $sort = $this->normalizeSort($sort['by'] ?? null, $sort['dir'] ?? null);
 
         $light = $this->lightQuery($search, $statusId, $category, $filters);
         $total = (int) (clone $light)->count(DB::raw('DISTINCT s.staff_id'));
@@ -43,13 +46,9 @@ class StaffDirectoryService
             );
         }
 
-        $ids = (clone $light)
-            ->select('s.staff_id', 's.lname', 's.fname')
-            ->groupBy('s.staff_id', 's.lname', 's.fname')
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
+        $ids = $this->sortedStaffIds($light, $sort)
             ->forPage($page, $perPage)
-            ->pluck('s.staff_id');
+            ->pluck('staff_id');
 
         if ($ids->isEmpty()) {
             return new LengthAwarePaginator(
@@ -61,11 +60,7 @@ class StaffDirectoryService
             );
         }
 
-        $items = $this->detailQuery($category)
-            ->whereIn('s.staff_id', $ids->all())
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
-            ->get();
+        $items = $this->detailRowsInIdOrder($ids, $category);
 
         return new LengthAwarePaginator(
             $items,
@@ -79,6 +74,7 @@ class StaffDirectoryService
     /**
      * @param  int|list<int>|null  $statusId
      * @param  array<string, mixed>  $filters
+     * @param  array{by?: string, dir?: string}  $sort
      */
     public function exportRows(
         string $search = '',
@@ -86,28 +82,40 @@ class StaffDirectoryService
         string $category = 'main_staff',
         int $limit = 5000,
         array $filters = [],
+        array $sort = [],
     ): Collection {
         $limit = min(5000, max(1, $limit));
         $category = $this->normalizeCategory($category);
         $filters = $this->normalizeFilters($filters);
+        $sort = $this->normalizeSort($sort['by'] ?? null, $sort['dir'] ?? null);
 
-        $ids = $this->lightQuery($search, $statusId, $category, $filters)
-            ->select('s.staff_id', 's.lname', 's.fname')
-            ->groupBy('s.staff_id', 's.lname', 's.fname')
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
+        $ids = $this->sortedStaffIds(
+            $this->lightQuery($search, $statusId, $category, $filters),
+            $sort
+        )
             ->limit($limit)
-            ->pluck('s.staff_id');
+            ->pluck('staff_id');
 
         if ($ids->isEmpty()) {
             return collect();
         }
 
-        return $this->detailQuery($category)
-            ->whereIn('s.staff_id', $ids->all())
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
-            ->get();
+        return $this->detailRowsInIdOrder($ids, $category);
+    }
+
+    /**
+     * @return array{by: string, dir: 'asc'|'desc'}
+     */
+    public function normalizeSort(mixed $sortBy, mixed $sortDir): array
+    {
+        $by = is_string($sortBy) ? trim($sortBy) : '';
+        if (! array_key_exists($by, $this->sortableColumns())) {
+            $by = 'firstname';
+        }
+
+        $dir = strtolower(trim((string) $sortDir)) === 'desc' ? 'desc' : 'asc';
+
+        return ['by' => $by, 'dir' => $dir];
     }
 
     /**
@@ -185,6 +193,126 @@ class StaffDirectoryService
                 ],
             ];
         });
+    }
+
+    /**
+     * @return array<string, array{expr: string, joins?: list<array{0: string, 1: string, 2: string}>, invert?: bool}>
+     */
+    protected function sortableColumns(): array
+    {
+        return [
+            'sap_number' => ['expr' => 's.SAPNO'],
+            'title' => ['expr' => 's.title'],
+            'firstname' => ['expr' => 's.fname'],
+            'surname' => ['expr' => 's.lname'],
+            'othernames' => ['expr' => 's.oname'],
+            'gender' => ['expr' => 's.gender'],
+            'date_of_birth' => ['expr' => 's.date_of_birth'],
+            // Age asc = youngest first ⇒ later DOB first.
+            'age' => ['expr' => 's.date_of_birth', 'invert' => true],
+            'nationality' => [
+                'expr' => 'n_sort.nationality',
+                'joins' => [['nationalities as n_sort', 'n_sort.nationality_id', 's.nationality_id']],
+            ],
+            'region' => [
+                'expr' => 'reg_sort.region_name',
+                'joins' => [
+                    ['nationalities as n_sort', 'n_sort.nationality_id', 's.nationality_id'],
+                    ['regions as reg_sort', 'reg_sort.id', 'n_sort.region_id'],
+                ],
+            ],
+            'duty_station' => [
+                'expr' => 'ds_sort.duty_station_name',
+                'joins' => [['duty_stations as ds_sort', 'ds_sort.duty_station_id', 'sc.duty_station_id']],
+            ],
+            'division' => [
+                'expr' => 'd_sort.division_name',
+                'joins' => [['divisions as d_sort', 'd_sort.division_id', 'sc.division_id']],
+            ],
+            'grade' => [
+                'expr' => 'g_sort.grade',
+                'joins' => [['grades as g_sort', 'g_sort.grade_id', 'sc.grade_id']],
+            ],
+            'job' => [
+                'expr' => 'j_sort.job_name',
+                'joins' => [['jobs as j_sort', 'j_sort.job_id', 'sc.job_id']],
+            ],
+            'initiation_date' => ['expr' => 's.initiation_date'],
+            'start_date' => ['expr' => 'sc.start_date'],
+            'end_date' => ['expr' => 'sc.end_date'],
+            // Tenure asc = shortest first ⇒ later initiation first.
+            'years_of_tenure' => ['expr' => 's.initiation_date', 'invert' => true],
+            'job_acting' => [
+                'expr' => 'ja_sort.job_acting',
+                'joins' => [['jobs_acting as ja_sort', 'ja_sort.job_acting_id', 'sc.job_acting_id']],
+            ],
+            'first_supervisor' => [
+                'expr' => "TRIM(CONCAT(COALESCE(sup1_sort.fname,''), ' ', COALESCE(sup1_sort.lname,'')))",
+                'joins' => [['staff as sup1_sort', 'sup1_sort.staff_id', 'sc.first_supervisor']],
+            ],
+            'second_supervisor' => [
+                'expr' => "TRIM(CONCAT(COALESCE(sup2_sort.fname,''), ' ', COALESCE(sup2_sort.lname,'')))",
+                'joins' => [['staff as sup2_sort', 'sup2_sort.staff_id', 'sc.second_supervisor']],
+            ],
+            'funder' => [
+                'expr' => 'f_sort.funder',
+                'joins' => [['funders as f_sort', 'f_sort.funder_id', 'sc.funder_id']],
+            ],
+            'work_email' => ['expr' => 's.work_email'],
+            'telephone' => ['expr' => 's.tel_1'],
+            'whatsapp' => ['expr' => 's.whatsapp'],
+            'contract_type' => ['expr' => 'ct.contract_type'],
+            'category' => ['expr' => 'ct.category'],
+            'status' => [
+                'expr' => 'st_sort.status',
+                'joins' => [['status as st_sort', 'st_sort.status_id', 'sc.status_id']],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{by: string, dir: 'asc'|'desc'}  $sort
+     */
+    protected function sortedStaffIds(Builder $light, array $sort): Builder
+    {
+        $meta = $this->sortableColumns()[$sort['by']];
+        $dir = $sort['dir'];
+        if (! empty($meta['invert'])) {
+            $dir = $dir === 'asc' ? 'desc' : 'asc';
+        }
+
+        $q = clone $light;
+        foreach ($meta['joins'] ?? [] as $join) {
+            $q->leftJoin($join[0], $join[1], '=', $join[2]);
+        }
+
+        return $q
+            ->select('s.staff_id')
+            ->selectRaw('MIN('.$meta['expr'].') as sort_value')
+            ->groupBy('s.staff_id')
+            ->orderBy('sort_value', $dir)
+            ->orderBy('s.staff_id');
+    }
+
+    /**
+     * @param  Collection<int, mixed>  $ids
+     * @return Collection<int, object>
+     */
+    protected function detailRowsInIdOrder(Collection $ids, string $category): Collection
+    {
+        $idList = $ids->map(static fn ($id): int => (int) $id)->filter(static fn (int $id): bool => $id > 0)->values();
+        if ($idList->isEmpty()) {
+            return collect();
+        }
+
+        $order = array_flip($idList->all());
+        $items = $this->detailQuery($category)
+            ->whereIn('s.staff_id', $idList->all())
+            ->get();
+
+        return $items
+            ->sortBy(static fn ($row): int => $order[(int) $row->staff_id] ?? PHP_INT_MAX)
+            ->values();
     }
 
     /**
