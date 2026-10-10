@@ -57,7 +57,7 @@
         window.ApmVuetifyPage.destroy(MOUNT_ID);
         mountEl.innerHTML = '';
 
-        const { createApp, ref, computed, watch } = Vue;
+        const { createApp, ref, computed, watch, onMounted, onBeforeUnmount } = Vue;
         const vuetify = memoList.createVuetify ? memoList.createVuetify() : Vuetify.createVuetify();
         const statusColor = memoList.statusColor || (() => 'secondary');
         const submitHiddenForm = memoList.submitHiddenForm || (() => {});
@@ -89,6 +89,18 @@
                 const loading = ref(false);
                 const snackbar = ref({ show: false, text: '', color: 'error' });
                 const csrf = cfg.csrf || '';
+                const praPicker = ref({
+                    open: false,
+                    loading: false,
+                    refreshing: false,
+                    search: '',
+                    quarterFilter: '',
+                    year: String(cfg.praFiscalYear || filters.value.year || cfg.currentYear || ''),
+                    activities: [],
+                    selectedId: null,
+                    meta: null,
+                    allowExisting: false,
+                });
 
                 const showStaffColumn = computed(() => activeTab.value !== 'mySubmitted');
 
@@ -127,6 +139,119 @@
 
                 function notify(text, color = 'error') {
                     snackbar.value = { show: true, text, color };
+                }
+
+                function matchesPraQuarterClient(row, year, quarter) {
+                    const q = String(quarter || '').toUpperCase();
+                    if (!q) return true;
+                    const startMonth = { Q1: 1, Q2: 4, Q3: 7, Q4: 10 }[q] || 1;
+                    const start = new Date(year, startMonth - 1, 1);
+                    const end = new Date(year, startMonth + 2, 0, 23, 59, 59);
+                    const s = row.start_date ? new Date(row.start_date) : null;
+                    const e = row.end_date ? new Date(row.end_date) : null;
+                    if (s || e) {
+                        const actStart = s || new Date(year, 0, 1);
+                        const actEnd = e || new Date(year, 11, 31);
+                        return actStart <= end && actEnd >= start;
+                    }
+                    const budget = Number(row[`${q.toLowerCase()}_budget`] ?? 0) || 0;
+                    if (budget > 0) return true;
+                    const any = ['q1', 'q2', 'q3', 'q4'].reduce((sum, k) => sum + (Number(row[`${k}_budget`] ?? 0) || 0), 0);
+                    return any <= 0;
+                }
+
+                const praFiltered = computed(() => {
+                    const q = String(praPicker.value.search || '').trim().toLowerCase();
+                    const qf = String(praPicker.value.quarterFilter || '').toUpperCase();
+                    let rows = praPicker.value.activities || [];
+                    if (qf) {
+                        rows = rows.filter((r) => matchesPraQuarterClient(r, Number(praPicker.value.year), qf));
+                    }
+                    if (q) {
+                        rows = rows.filter((r) =>
+                            String(r.code || '').toLowerCase().includes(q)
+                            || String(r.title || '').toLowerCase().includes(q)
+                            || String(r.outcome_area || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return rows;
+                });
+
+                const praSelected = computed(() => {
+                    const id = Number(praPicker.value.selectedId);
+                    return (praPicker.value.activities || []).find((r) => Number(r.pra_activity_id) === id) || null;
+                });
+
+                async function openPraPicker() {
+                    praPicker.value.open = true;
+                    praPicker.value.selectedId = null;
+                    praPicker.value.search = '';
+                    praPicker.value.quarterFilter = '';
+                    praPicker.value.allowExisting = false;
+                    praPicker.value.year = String(cfg.praFiscalYear || filters.value.year || cfg.currentYear || '');
+                    await loadPraActivities(false);
+                }
+
+                async function loadPraActivities(refresh) {
+                    if (!cfg.routes?.praActivities) {
+                        notify('PRA activities route is not configured.');
+                        return;
+                    }
+                    praPicker.value.loading = true;
+                    praPicker.value.refreshing = !!refresh;
+                    try {
+                        const params = new URLSearchParams({
+                            year: String(praPicker.value.year || cfg.currentYear || ''),
+                        });
+                        if (cfg.userDivisionId) params.set('division_id', String(cfg.userDivisionId));
+                        if (refresh) params.set('refresh', '1');
+                        const res = await fetch(`${cfg.routes.praActivities}?${params}`, {
+                            headers: { Accept: 'application/json' },
+                        });
+                        const json = await res.json();
+                        if (!res.ok || !json.success) {
+                            throw new Error(json.message || 'Could not load PRA activities.');
+                        }
+                        praPicker.value.activities = json.data?.activities || [];
+                        praPicker.value.meta = json.data?.meta || null;
+                    } catch (e) {
+                        praPicker.value.activities = [];
+                        notify(e.message || 'Could not load PRA activities.');
+                    } finally {
+                        praPicker.value.loading = false;
+                        praPicker.value.refreshing = false;
+                    }
+                }
+
+                function proceedPraPicker() {
+                    const id = Number(praPicker.value.selectedId);
+                    if (!id) {
+                        notify('Select one PRA activity.', 'warning');
+                        return;
+                    }
+                    if (praSelected.value?.already_exists && !praPicker.value.allowExisting) {
+                        notify('This PRA activity already exists in APM. Confirm the warning to continue.', 'warning');
+                        return;
+                    }
+                    const base = cfg.routes?.create;
+                    if (!base) {
+                        notify('Create route missing.');
+                        return;
+                    }
+                    const url = new URL(base, window.location.origin);
+                    url.searchParams.set('pra_activity_id', String(id));
+                    url.searchParams.set('year', String(praPicker.value.year || ''));
+                    if (praPicker.value.quarterFilter) {
+                        url.searchParams.set('quarter', praPicker.value.quarterFilter);
+                    }
+                    window.location.href = url.toString();
+                }
+
+                function onHeaderPraClick(e) {
+                    const btn = e.target.closest('#nt-create-from-pra-btn');
+                    if (!btn) return;
+                    e.preventDefault();
+                    openPraPicker();
                 }
 
                 async function loadItems() {
@@ -223,7 +348,13 @@
                 });
                 watch(page, () => loadItems());
 
-                loadItems();
+                onMounted(() => {
+                    document.addEventListener('click', onHeaderPraClick);
+                    loadItems();
+                });
+                onBeforeUnmount(() => {
+                    document.removeEventListener('click', onHeaderPraClick);
+                });
 
                 return {
                     cfg,
@@ -243,15 +374,24 @@
                     applyFilters,
                     resetFilters,
                     confirmDelete,
+                    praPicker,
+                    praFiltered,
+                    praSelected,
+                    openPraPicker,
+                    loadPraActivities,
+                    proceedPraPicker,
                 };
             },
             template: `
 <v-app class="nt-vuetify-app" theme="apmLight">
   <v-container fluid class="pa-0">
     <v-card class="mb-4">
-      <v-card-title class="d-flex align-center gap-2 py-4">
-        <v-icon icon="mdi-file-document-outline" color="primary" />
-        <span class="text-h6 font-weight-bold">Non-travel memo management</span>
+      <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2 py-4">
+        <span class="d-flex align-center gap-2">
+          <v-icon icon="mdi-file-document-outline" color="primary" />
+          <span class="text-h6 font-weight-bold">Non-travel memo management</span>
+        </span>
+        <v-btn v-if="cfg.praCreateEnabled !== false" color="success" variant="flat" prepend-icon="mdi-cloud-download" @click="openPraPicker">Create from PRA</v-btn>
       </v-card-title>
       <v-card-text>
         <v-row>
@@ -384,6 +524,89 @@
         </v-data-table>
       </v-card-text>
     </v-card>
+
+    <v-dialog v-model="praPicker.open" max-width="960" content-class="modal-lg" scrollable persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon icon="mdi-cloud-download" color="primary" />
+          Select PRA activity for non-travel memo
+        </v-card-title>
+        <v-progress-linear v-if="praPicker.refreshing || praPicker.loading" indeterminate color="primary" height="3" />
+        <v-divider v-else />
+        <v-card-text>
+          <div class="d-flex flex-wrap align-center gap-2 mb-3">
+            <v-select
+              v-model="praPicker.quarterFilter"
+              :items="[{ title: 'All quarters', value: '' }, { title: 'Q1', value: 'Q1' }, { title: 'Q2', value: 'Q2' }, { title: 'Q3', value: 'Q3' }, { title: 'Q4', value: 'Q4' }]"
+              item-title="title"
+              item-value="value"
+              label="Filter by quarter"
+              density="compact"
+              hide-details
+              variant="outlined"
+              style="min-width: 150px; max-width: 170px;"
+            />
+            <v-text-field
+              v-model="praPicker.search"
+              placeholder="Search…"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              density="compact"
+              hide-details
+              variant="outlined"
+              style="min-width: 200px; max-width: 260px;"
+            />
+            <v-btn variant="outlined" height="40" :loading="praPicker.refreshing" prepend-icon="mdi-refresh" @click="loadPraActivities(true)">Refresh</v-btn>
+          </div>
+          <div class="text-caption text-medium-emphasis mb-2">
+            {{ praFiltered.length }} shown
+            <span v-if="praPicker.meta?.count != null"> / {{ praPicker.meta.count }} loaded</span>
+            <span v-if="praPicker.meta?.existing_count"> · {{ praPicker.meta.existing_count }} already in APM</span>
+          </div>
+          <v-radio-group v-model="praPicker.selectedId" :disabled="praPicker.loading">
+            <v-list class="border rounded" lines="three" max-height="420" style="overflow:auto">
+              <v-list-item v-for="row in praFiltered" :key="row.pra_activity_id" @click="praPicker.selectedId = row.pra_activity_id">
+                <template #prepend>
+                  <v-radio :value="row.pra_activity_id" />
+                </template>
+                <v-list-item-title class="text-wrap">{{ row.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-wrap">
+                  {{ row.code }} · {{ row.outcome_area || 'No outcome' }}
+                  <template v-if="row.already_exists">
+                    · <span class="text-warning">already in APM</span>
+                    <template v-for="ex in (row.existing || []).slice(0, 2)" :key="ex.type + '-' + ex.id">
+                      · <a :href="ex.url" target="_blank" @click.stop>{{ ex.label }}</a>
+                    </template>
+                  </template>
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="!praFiltered.length && !praPicker.loading">
+                <v-list-item-title class="text-medium-emphasis">No PRA activities match this filter.</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-radio-group>
+          <v-alert v-if="praSelected?.already_exists" type="warning" variant="tonal" density="compact" class="mt-3">
+            This PRA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
+          </v-alert>
+          <v-checkbox
+            v-if="praSelected?.already_exists"
+            v-model="praPicker.allowExisting"
+            density="compact"
+            hide-details
+            class="mt-2"
+            label="Continue with already-linked PRA activity"
+          />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-btn variant="text" @click="praPicker.open = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="primary" :disabled="!praPicker.selectedId" prepend-icon="mdi-arrow-right" @click="proceedPraPicker">
+            Continue to form
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" location="top">
       {{ snackbar.text }}

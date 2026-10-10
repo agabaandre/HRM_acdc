@@ -405,8 +405,13 @@
 
         @if($canDivisionAddSingleMemo && $matrixIsCurrentQuarter && in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
-            <i class="bx bx-plus-circle me-1"></i> Add Single Memo 
+            <i class="bx bx-plus-circle me-1"></i> Add Single Memo
         </a>
+        @if(function_exists('pra_create_enabled') ? pra_create_enabled() : true)
+        <button type="button" class="btn btn-success btn-sm shadow-sm" id="btn-pra-single-memo" data-open-pra-single-memo="1">
+            <i class="bx bx-cloud-download me-1"></i> Create from PRA
+        </button>
+        @endif
         @endif
 
         @if($canEnvelopeOnHold)

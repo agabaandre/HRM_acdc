@@ -217,6 +217,18 @@
             setup() {
                 const snackbar = ref({ show: false, text: '', color: 'error' });
 
+                const praSingle = ref({
+                    open: false,
+                    loading: false,
+                    refreshing: false,
+                    search: '',
+                    quarterFilter: String(cfg.quarter || ''),
+                    activities: [],
+                    selectedId: null,
+                    meta: null,
+                    allowExisting: false,
+                });
+
                 const activitySearch = ref(defaults.activitiesSearch || '');
                 const activityDocument = ref(defaults.activitiesDocumentNumber || '');
                 const activityPage = ref(1);
@@ -750,6 +762,124 @@
                     loadParticipants();
                 });
 
+                function matchesPraQuarterClient(row, year, quarter) {
+                    const q = String(quarter || '').toUpperCase();
+                    if (!q) return true;
+                    const startMonth = { Q1: 1, Q2: 4, Q3: 7, Q4: 10 }[q] || 1;
+                    const start = new Date(year, startMonth - 1, 1);
+                    const end = new Date(year, startMonth + 2, 0, 23, 59, 59);
+                    const s = row.start_date ? new Date(row.start_date) : null;
+                    const e = row.end_date ? new Date(row.end_date) : null;
+                    if (s || e) {
+                        const actStart = s || new Date(year, 0, 1);
+                        const actEnd = e || new Date(year, 11, 31);
+                        return actStart <= end && actEnd >= start;
+                    }
+                    const budget = Number(row[`${q.toLowerCase()}_budget`] ?? 0) || 0;
+                    if (budget > 0) return true;
+                    const any = ['q1', 'q2', 'q3', 'q4'].reduce((sum, k) => sum + (Number(row[`${k}_budget`] ?? 0) || 0), 0);
+                    return any <= 0;
+                }
+
+                const praSingleFiltered = computed(() => {
+                    const q = String(praSingle.value.search || '').trim().toLowerCase();
+                    const qf = String(praSingle.value.quarterFilter || '').toUpperCase();
+                    let rows = praSingle.value.activities || [];
+                    if (qf) {
+                        rows = rows.filter((r) => {
+                            if (Object.prototype.hasOwnProperty.call(r, 'matches_quarter')
+                                && String(r.filter_quarter || '').toUpperCase() === qf) {
+                                return !!r.matches_quarter;
+                            }
+                            return matchesPraQuarterClient(r, Number(cfg.year), qf);
+                        });
+                    }
+                    if (q) {
+                        rows = rows.filter((r) =>
+                            String(r.code || '').toLowerCase().includes(q)
+                            || String(r.title || '').toLowerCase().includes(q)
+                            || String(r.outcome_area || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return rows;
+                });
+
+                const praSingleSelected = computed(() => {
+                    const id = Number(praSingle.value.selectedId);
+                    return (praSingle.value.activities || []).find((r) => Number(r.pra_activity_id) === id) || null;
+                });
+
+                async function openPraSingleMemo() {
+                    praSingle.value.open = true;
+                    praSingle.value.selectedId = null;
+                    praSingle.value.search = '';
+                    praSingle.value.quarterFilter = String(cfg.quarter || '');
+                    praSingle.value.allowExisting = false;
+                    await loadPraSingleActivities(false);
+                }
+
+                async function loadPraSingleActivities(refresh) {
+                    if (!cfg.routes?.praActivities) {
+                        notify('PRA activities route missing.', 'error');
+                        return;
+                    }
+                    praSingle.value.loading = true;
+                    praSingle.value.refreshing = !!refresh;
+                    try {
+                        const params = new URLSearchParams({
+                            year: String(cfg.year || ''),
+                            quarter: String(cfg.quarter || ''),
+                            matrix_id: String(cfg.matrixId || ''),
+                            division_id: String(cfg.divisionId || ''),
+                        });
+                        if (refresh) params.set('refresh', '1');
+                        const res = await fetch(`${cfg.routes.praActivities}?${params}`, {
+                            headers: { Accept: 'application/json' },
+                        });
+                        const json = await res.json();
+                        if (!res.ok || !json.success) {
+                            throw new Error(json.message || 'Could not load PRA activities.');
+                        }
+                        praSingle.value.activities = json.data?.activities || [];
+                        praSingle.value.meta = json.data?.meta || null;
+                    } catch (e) {
+                        praSingle.value.activities = [];
+                        notify(e.message || 'Could not load PRA activities.', 'error');
+                    } finally {
+                        praSingle.value.loading = false;
+                        praSingle.value.refreshing = false;
+                    }
+                }
+
+                function proceedPraSingleMemo() {
+                    const id = Number(praSingle.value.selectedId);
+                    if (!id) {
+                        notify('Select one PRA activity.', 'warning');
+                        return;
+                    }
+                    const row = praSingleSelected.value;
+                    if (row?.already_exists && !praSingle.value.allowExisting) {
+                        notify('This PRA activity already exists in APM. Confirm the warning to continue.', 'warning');
+                        return;
+                    }
+                    const base = cfg.routes?.activityCreate;
+                    if (!base) {
+                        notify('Create route missing.', 'error');
+                        return;
+                    }
+                    const url = new URL(base, window.location.origin);
+                    url.searchParams.set('pra_activity_id', String(id));
+                    window.location.href = url.toString();
+                }
+
+                function onPraSingleMemoClick(e) {
+                    if (cfg.praCreateEnabled === false) return;
+                    const btn = e.target.closest('[data-open-pra-single-memo]');
+                    if (!btn) return;
+                    e.preventDefault();
+                    openPraSingleMemo();
+                }
+
                 onMounted(() => {
                     participantsMountReady.value = !!document.getElementById('matrix-show-participants-mount');
                     loadActivities();
@@ -759,9 +889,11 @@
                         setTimeout(setupSingleMemosLazyLoad, 100);
                     }
                     setTimeout(setupParticipantsLazyLoad, 50);
+                    document.addEventListener('click', onPraSingleMemoClick);
                 });
 
                 onBeforeUnmount(() => {
+                    document.removeEventListener('click', onPraSingleMemoClick);
                     if (singleMemosObserver) {
                         singleMemosObserver.disconnect();
                         singleMemosObserver = null;
@@ -777,6 +909,12 @@
                     permissions,
                     summary,
                     snackbar,
+                    praSingle,
+                    praSingleFiltered,
+                    praSingleSelected,
+                    openPraSingleMemo,
+                    loadPraSingleActivities,
+                    proceedPraSingleMemo,
                     activitySearch,
                     activityDocument,
                     activityPage,
@@ -1316,6 +1454,95 @@
         </v-card-actions>
       </v-card>
     </Teleport>
+
+    <v-dialog v-model="praSingle.open" max-width="960" content-class="modal-lg" scrollable persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon icon="mdi-cloud-download" color="primary" />
+          Select PRA activity for single memo
+        </v-card-title>
+        <v-progress-linear v-if="praSingle.refreshing || praSingle.loading" indeterminate color="primary" height="3" />
+        <v-divider v-else />
+        <v-card-text>
+          <div class="d-flex flex-wrap align-center gap-2 mb-3">
+            <v-select
+              v-model="praSingle.quarterFilter"
+              :items="[{ title: 'All quarters', value: '' }, { title: 'Q1', value: 'Q1' }, { title: 'Q2', value: 'Q2' }, { title: 'Q3', value: 'Q3' }, { title: 'Q4', value: 'Q4' }]"
+              item-title="title"
+              item-value="value"
+              label="Filter by quarter"
+              density="compact"
+              hide-details
+              variant="outlined"
+              style="min-width: 150px; max-width: 170px;"
+            />
+            <v-text-field
+              v-model="praSingle.search"
+              placeholder="Search…"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              density="compact"
+              hide-details
+              variant="outlined"
+              style="min-width: 200px; max-width: 260px;"
+            />
+            <v-btn variant="outlined" height="40" :loading="praSingle.refreshing" prepend-icon="mdi-refresh" @click="loadPraSingleActivities(true)">Refresh</v-btn>
+          </div>
+          <div class="text-caption text-medium-emphasis mb-2">
+            {{ praSingleFiltered.length }} shown
+            <span v-if="praSingle.meta?.count != null"> / {{ praSingle.meta.count }} loaded</span>
+            <span v-if="praSingle.meta?.existing_count"> · {{ praSingle.meta.existing_count }} already in APM</span>
+          </div>
+          <v-radio-group v-model="praSingle.selectedId" :disabled="praSingle.loading">
+            <v-list class="border rounded" lines="three" max-height="420" style="overflow:auto">
+              <v-list-item v-for="row in praSingleFiltered" :key="row.pra_activity_id" @click="praSingle.selectedId = row.pra_activity_id">
+                <template #prepend>
+                  <v-radio :value="row.pra_activity_id" />
+                </template>
+                <v-list-item-title class="text-wrap">{{ row.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-wrap">
+                  {{ row.code }} · {{ row.outcome_area || 'No outcome' }}
+                  <template v-if="row.already_exists">
+                    · <span class="text-warning">already in APM</span>
+                    <template v-for="ex in (row.existing || []).slice(0, 2)" :key="ex.type + '-' + ex.id">
+                      · <a :href="ex.url" target="_blank" @click.stop>{{ ex.label }}</a>
+                    </template>
+                  </template>
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="!praSingleFiltered.length && !praSingle.loading">
+                <v-list-item-title class="text-medium-emphasis">No PRA activities match this filter.</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-radio-group>
+          <v-alert
+            v-if="praSingleSelected?.already_exists"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            This PRA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
+          </v-alert>
+          <v-checkbox
+            v-if="praSingleSelected?.already_exists"
+            v-model="praSingle.allowExisting"
+            density="compact"
+            hide-details
+            class="mt-2"
+            label="Continue with already-linked PRA activity"
+          />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-btn variant="text" @click="praSingle.open = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="primary" :disabled="!praSingle.selectedId" prepend-icon="mdi-arrow-right" @click="proceedPraSingleMemo">
+            Continue to form
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="5000" location="top">
       {{ snackbar.text }}

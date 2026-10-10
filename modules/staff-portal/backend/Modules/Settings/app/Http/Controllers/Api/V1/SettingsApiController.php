@@ -66,7 +66,9 @@ class SettingsApiController extends Controller
             ));
         }
 
-        return response()->json(['data' => $cards]);
+        usort($cards, fn (array $a, array $b): int => strcasecmp((string) $a['label'], (string) $b['label']));
+
+        return response()->json(['data' => array_values($cards)]);
     }
 
     public function showPortalModules(): JsonResponse

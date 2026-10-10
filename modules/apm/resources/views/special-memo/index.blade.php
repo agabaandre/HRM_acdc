@@ -11,6 +11,11 @@
             <span class="badge bg-danger ms-1">{{ $pageConfig['pendingApprovalCount'] }}</span>
         @endif
     </a>
+    @if(($pageConfig['praCreateEnabled'] ?? true))
+    <button type="button" class="btn btn-success shadow-sm" id="sm-create-from-pra-btn">
+        <i class="bx bx-cloud-download me-1"></i> Create from PRA
+    </button>
+    @endif
     <a href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>

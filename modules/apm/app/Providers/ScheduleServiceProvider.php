@@ -62,6 +62,24 @@ class ScheduleServiceProvider extends ServiceProvider
             ->onFailure(function () {
                 Log::error('Staff sync failed at scheduled time');
             });
+
+        // PRA division/directorate mapping — preserve matches, add new codes, alert support_email
+        $schedule->command('pra:sync-org-units --notify')
+            ->dailyAt('06:20')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('PRA org-units sync failed at scheduled time');
+            });
+
+        // PRA specific activities → Redis (matrix / single-memo pickers)
+        $schedule->command('pra:cache-activities')
+            ->hourly()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('PRA activities cache refresh failed at scheduled time');
+            });
         
         // Late night sync - 11:00 PM GMT+3
         $schedule->command('directorates:sync')

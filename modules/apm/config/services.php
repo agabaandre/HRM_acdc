@@ -79,5 +79,23 @@ return [
         'redirect_uri' => env('MICROSOFT_REDIRECT_URI', env('EXCHANGE_REDIRECT_URI')),
     ],
 
+    /*
+    | Africa CDC PRA public workplan API — used by Divisions → PRA integration tab.
+    | APM-local (system_settings group `pra`); does not touch staff-portal Workplan / PRA.
+    */
+    'pra' => [
+        'base_url' => rtrim((string) env(
+            'PRA_API_URL',
+            env('PRA_WORKPLAN_API_URL', 'https://pra.africacdc.org/api/public/workplan')
+        ), '/'),
+        'api_key' => (string) env('PRA_API_KEY', env('PRA_WORKPLAN_API_KEY', '')),
+        'tiers' => (string) env('PRA_TIERS', env('PRA_WORKPLAN_TIERS', '3,4')),
+        'fiscal_year' => env('PRA_FISCAL_YEAR'),
+        'timeout' => (int) env('PRA_TIMEOUT', env('PRA_WORKPLAN_TIMEOUT', 60)),
+        'division_aliases' => (string) env(
+            'PRA_DIVISION_ALIASES',
+            env('PRA_WORKPLAN_DIVISION_ALIASES', 'MIS:DHIS,CT:RD&CT,DIGITAL:DHIS,CARCC:CRCC,EARCC:ERCC,NARCC:NRCC,SARCC:SRCC,WARCC:WRCC,DIO:OIO,NPHI:PHIR,HEP:HEF,PHC:CPH,CHSISD:CHSHP,CLDS:LAB,HR:HRM,LEGAL:LADS,YOUTH:YD,ADMIN:DA,CPI:DCPI,FMG:DFIN')
+        ),
+    ],
 
 ];

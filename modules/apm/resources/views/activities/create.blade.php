@@ -35,6 +35,14 @@
                 @includeIf('activities.form', ['title' => $title])
 
                 <input type="hidden" name="is_single_memo" value="{{ $is_single_memo }}">
+                <input type="hidden" name="pra_activity_id" id="pra_activity_id" value="{{ old('pra_activity_id', $praPrefill['pra_activity_id'] ?? $activity->pra_activity_id ?? '') }}">
+                @if(!empty($praPrefill))
+                <div class="alert alert-success border-0 shadow-sm mb-4">
+                    <i class="bx bx-cloud-download me-1"></i>
+                    Prefilled from PRA activity <strong>{{ $praPrefill['activity_code'] ?? $praPrefill['pra_activity_id'] }}</strong>.
+                    Review and edit any field before saving.
+                </div>
+                @endif
 
                 <div class="card border-0 shadow-sm mb-5">
                     <div class="card-body">
@@ -68,7 +76,7 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> <span class="activity-code-label">Activity Code *</span>
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" placeholder="e.g. code1, code2" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" placeholder="e.g. code1, code2" value="{{ old('activity_code', $activity->workplan_activity_code ?? ($praPrefill['activity_code'] ?? '')) }}" />
                         <small class="text-muted">Applicable when funder requires it</small>
                         <small class="text-warning d-block mt-1" id="activity-code-multi-advisory" style="display: none;">
                             <i class="fas fa-exclamation-triangle me-1"></i> You have selected more than 2 budget codes. Please enter the 2 codes separated by commas in the Activity Code field above.

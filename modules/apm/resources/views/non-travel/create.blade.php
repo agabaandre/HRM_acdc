@@ -26,6 +26,14 @@
         </div>
         <div class="card-body p-4">
             <form action="{{ route('non-travel.store') }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
+                <input type="hidden" name="pra_activity_id" value="{{ old('pra_activity_id', $praPrefill['pra_activity_id'] ?? '') }}">
+                @if(!empty($praPrefill))
+                <div class="alert alert-success border-0 shadow-sm mb-4">
+                    <i class="bx bx-cloud-download me-1"></i>
+                    Prefilled from PRA activity <strong>{{ $praPrefill['activity_code'] ?? $praPrefill['pra_activity_id'] }}</strong>.
+                    Review and edit any field before saving.
+                </div>
+                @endif
                 @csrf
                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
 
@@ -54,7 +62,7 @@
                                 </label>
                                 <input type="text" name="date_required" id="date_required" 
                                        class="form-control datepicker @error('date_required') is-invalid @enderror" 
-                                       value="{{ old('date_required') }}" required>
+                                       value="{{ old('date_required', $praPrefill['memo_date'] ?? $praPrefill['date_from'] ?? '') }}" required>
                                 @error('date_required')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -123,7 +131,7 @@
                                           class="form-control @error('title') is-invalid @enderror" 
                                           rows="2" required maxlength="200" 
                                           data-max-length="200" 
-                                          placeholder="Maximum 200 characters">{{ old('title') }}</textarea>
+                                          placeholder="Maximum 200 characters">{{ old('title', $praPrefill['title'] ?? '') }}</textarea>
                                 <div class="mt-1">
                                     <div id="title-length-error" class="invalid-feedback d-block mb-0" style="display: none;">
                                         Title of Activity must not exceed 200 characters.
@@ -145,7 +153,7 @@
                                 <x-apm-rich-editor
                                     name="background"
                                     id="background"
-                                    :value="old('background')"
+                                    :value="old('background', $praPrefill['background'] ?? '')"
                                     required
                                     min-height="200px"
                                     :invalid="$errors->has('background')"
@@ -212,7 +220,7 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> <span class="activity-code-label">Activity Code *</span>
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $praPrefill['workplan_activity_code'] ?? '') }}" />
                         <small class="text-muted">Applicable to only World Bank Budget Codes</small>
                     </div>
                 </div>

@@ -5,6 +5,11 @@
 
 @section('header-actions')
 <div class="d-flex gap-2">
+    @if(($pageConfig['praCreateEnabled'] ?? true))
+    <button type="button" class="btn btn-success shadow-sm" id="nt-create-from-pra-btn">
+        <i class="bx bx-cloud-download me-1"></i> Create from PRA
+    </button>
+    @endif
     <a wire:navigate href="{{ route('non-travel.create') }}" class="btn btn-success shadow-sm">
         <i class="bx bx-plus-circle me-1"></i> Create New Memo
     </a>

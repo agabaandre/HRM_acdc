@@ -23,7 +23,13 @@ class DivisionController extends Controller
                     'ajax' => route('divisions.ajax'),
                     'show' => url('divisions'),
                     'exportExcel' => route('divisions.export.excel'),
+                    'praSettings' => route('divisions.pra.settings'),
+                    'praSettingsSave' => route('divisions.pra.settings.save'),
+                    'praMappings' => route('divisions.pra.mappings'),
+                    'praFetch' => route('divisions.pra.fetch'),
+                    'praMappingsSave' => route('divisions.pra.mappings.save'),
                 ],
+                'csrfToken' => csrf_token(),
                 'flash' => [
                     'success' => session('success'),
                     'error' => session('error'),

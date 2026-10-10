@@ -96,9 +96,13 @@ trait NonTravelMemoListIndexResponses
             'routes' => [
                 'ajax' => route('non-travel.ajax'),
                 'create' => route('non-travel.create'),
+                'praActivities' => route('matrices.pra.activities'),
                 'exportMySubmitted' => route('non-travel.export.my-submitted'),
                 'exportAll' => route('non-travel.export.all'),
             ],
+            'userDivisionId' => (string) (user_session('division_id') ?? ''),
+            'praFiscalYear' => app(\App\Services\Pra\PraSettingsService::class)->resolved()['fiscal_year'] ?? null,
+            'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
             'csrf' => csrf_token(),
         ];
     }

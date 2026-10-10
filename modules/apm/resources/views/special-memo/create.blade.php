@@ -25,6 +25,14 @@
         <div class="card-body p-4">
             <form action="{{ route('special-memo.store') }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" name="pra_activity_id" value="{{ old('pra_activity_id', $praPrefill['pra_activity_id'] ?? $specialMemo?->pra_activity_id ?? '') }}">
+                @if(!empty($praPrefill))
+                <div class="alert alert-success border-0 shadow-sm mb-4">
+                    <i class="bx bx-cloud-download me-1"></i>
+                    Prefilled from PRA activity <strong>{{ $praPrefill['activity_code'] ?? $praPrefill['pra_activity_id'] }}</strong>.
+                    Review and edit any field before saving.
+                </div>
+                @endif
 
                 @includeIf('special-memo.form')
 
@@ -54,7 +62,7 @@
                         <label for="activity_code" class="form-label fw-semibold">
                             <i class="fas fa-hand-holding-usd me-1 text-success"></i> <span class="activity-code-label">Activity Code *</span>
                         </label>
-                        <input name="activity_code" id="activity_code" class="form-control border-success" />
+                        <input name="activity_code" id="activity_code" class="form-control border-success" value="{{ old('activity_code', $praPrefill['workplan_activity_code'] ?? $specialMemo?->workplan_activity_code ?? '') }}" />
                         <small class="text-muted">Applicable when funder requires it</small>
                     </div>
 

@@ -158,6 +158,21 @@ if (! function_exists('user_session')) {
             return $id > 0 ? $id : null;
         }
 
+        /**
+         * Whether "Create from PRA" is enabled in App settings (default: on).
+         * System setting key: pra_create_enabled — 1/true = enabled, 0/false = disabled.
+         */
+        function pra_create_enabled(): bool
+        {
+            $raw = \App\Models\SystemSetting::get('pra_create_enabled', '1');
+            if ($raw === null || $raw === '') {
+                return true;
+            }
+            $v = strtolower(trim((string) $raw));
+
+            return ! in_array($v, ['0', 'false', 'no', 'off'], true);
+        }
+
         function current_apm_year(): int
         {
             return (int) now()->year;

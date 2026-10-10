@@ -18,6 +18,7 @@ use App\Models\Staff;
 use App\Models\FundCode;
 use App\Services\ApprovalService;
 use App\Services\FundCodeWorkingBalanceService;
+use App\Services\Pra\PraSettingsService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
@@ -221,6 +222,18 @@ class MatrixController extends Controller
     ): array {
         $currentYear = now()->year;
         $currentQuarter = 'Q'.now()->quarter;
+        $nextQuarter = match ($currentQuarter) {
+            'Q1' => 'Q2',
+            'Q2' => 'Q3',
+            'Q3' => 'Q4',
+            default => 'Q1',
+        };
+        $nextYear = $currentQuarter === 'Q4' ? $currentYear + 1 : $currentYear;
+        $praFiscalYear = app(PraSettingsService::class)->resolved()['fiscal_year'] ?? null;
+        $praFiscalYear = ($praFiscalYear !== null && (int) $praFiscalYear > 0)
+            ? (int) $praFiscalYear
+            : null;
+        $praDefaultYear = $praFiscalYear ?: $currentYear;
         $divisions = \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all());
         $focalPersons = \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get());
 
@@ -293,10 +306,60 @@ class MatrixController extends Controller
             'routes' => [
                 'ajax' => route('matrices.ajax'),
                 'create' => route('matrices.create'),
+                'praActivities' => route('matrices.pra.activities'),
+                'praCreate' => route('matrices.pra.create'),
                 'exportDivisionCsv' => route('matrices.export.division-csv'),
                 'exportCsv' => route('matrices.export.csv'),
             ],
+            'csrfToken' => csrf_token(),
+            'userDivisionId' => (string) (user_session('division_id') ?? ''),
+            'userStaffId' => (string) (user_session('staff_id') ?? ''),
+            'isAdmin' => (int) (user_session('user_role') ?? 0) === 10,
+            'praFiscalYear' => $praFiscalYear,
+            'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
+            'createQuarterOptions' => array_values(array_filter([
+                ['title' => $currentQuarter.' (current)', 'value' => $currentQuarter],
+                isset($nextQuarter) && $nextQuarter
+                    ? ['title' => $nextQuarter.($nextYear > $currentYear ? ' '.$nextYear : '').' (next)', 'value' => $nextQuarter, 'year' => (string) ($nextYear ?? $currentYear)]
+                    : null,
+            ])),
+            'createYearOptions' => $this->praCreateYearOptions($praDefaultYear, $praFiscalYear, $currentYear, $nextYear),
         ];
+    }
+
+    /**
+     * @return list<array{title: string, value: string}>
+     */
+    private function praCreateYearOptions(int $praDefaultYear, ?int $praFiscalYear, int $currentYear, int $nextYear): array
+    {
+        $candidates = [
+            [
+                'title' => (string) $praDefaultYear.($praFiscalYear === $praDefaultYear ? ' (PRA)' : ''),
+                'value' => (string) $praDefaultYear,
+            ],
+            ['title' => (string) $currentYear, 'value' => (string) $currentYear],
+        ];
+        if ($nextYear > $currentYear) {
+            $candidates[] = ['title' => (string) $nextYear, 'value' => (string) $nextYear];
+        }
+        if ($praFiscalYear && $praFiscalYear !== $currentYear && $praFiscalYear !== $nextYear) {
+            $candidates[] = [
+                'title' => (string) $praFiscalYear.' (PRA)',
+                'value' => (string) $praFiscalYear,
+            ];
+        }
+
+        $opts = [];
+        $seen = [];
+        foreach ($candidates as $opt) {
+            if (isset($seen[$opt['value']])) {
+                continue;
+            }
+            $seen[$opt['value']] = true;
+            $opts[] = $opt;
+        }
+
+        return $opts;
     }
 
     /**
@@ -804,11 +867,15 @@ class MatrixController extends Controller
                 'activityShowBase' => url('matrices/'.$matrix->id.'/activities'),
                 'activityCopyBase' => url('matrices/'.$matrix->id.'/activities'),
                 'activityDestroyBase' => url('matrices/'.$matrix->id.'/activities'),
+                'activityCreate' => route('matrices.activities.create', $matrix),
+                'praActivities' => route('matrices.pra.activities'),
                 'singleMemoShowBase' => url('single-memos'),
                 'staffShowBase' => url('staff'),
                 'staffMatrixActivitiesBase' => url('staff'),
             ],
+            'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
             'csrf' => csrf_token(),
+            'divisionId' => (int) $matrix->division_id,
             'defaults' => [
                 'activitiesPerPage' => 50,
                 'singleMemosPerPage' => 10,

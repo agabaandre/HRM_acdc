@@ -170,10 +170,38 @@ class ActivityController extends Controller
             }
         }
 
+        $praPrefill = null;
+        $praActivityId = (int) request()->query('pra_activity_id', 0);
+        if ($praActivityId > 0) {
+            try {
+                $cache = app(\App\Services\Pra\PraActivitiesCacheService::class);
+                $import = app(\App\Services\Pra\PraMatrixImportService::class);
+                $praRow = $cache->findActivity($praActivityId, (int) $matrix->year);
+                if ($praRow) {
+                    $praPrefill = $import->prefillForForm($praRow, $matrix);
+                }
+            } catch (\Throwable) {
+                $praPrefill = null;
+            }
+        }
+
+        $activityDefaults = (object) [];
+        if (is_array($praPrefill)) {
+            $activityDefaults = (object) [
+                'activity_title' => $praPrefill['activity_title'] ?? '',
+                'workplan_activity_code' => $praPrefill['activity_code'] ?? '',
+                'key_result_area' => $praPrefill['key_result_area'] ?? '',
+                'background' => $praPrefill['background'] ?? '',
+                'date_from' => $praPrefill['date_from'] ?? '',
+                'date_to' => $praPrefill['date_to'] ?? '',
+                'pra_activity_id' => $praPrefill['pra_activity_id'] ?? null,
+            ];
+        }
+
         return view('activities.create', [
             'matrix' => $matrix,
             'requestTypes' => $requestTypes,
-            'activity'=>(Object) [],
+            'activity' => $activityDefaults,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
             'allStaffGroupedByDivision' => $allStaff,
@@ -184,6 +212,7 @@ class ActivityController extends Controller
             'participantDaysInMatrix' => $participantDaysInMatrix,
             'title' => 'Create Activity',
             'editing' => false,
+            'praPrefill' => $praPrefill,
         ]);
     }
     // save activity
@@ -365,10 +394,14 @@ class ActivityController extends Controller
                     }
                 }
     
+                $praActivityId = $request->input('pra_activity_id');
+                $praActivityId = ($praActivityId === null || $praActivityId === '') ? null : (int) $praActivityId;
+
                 // Create the activity record
                 $activity = $matrix->activities()->create([
                     'staff_id' => $userStaffId, // Use staff_id directly
                     'workplan_activity_code'=> $request->input('activity_code'),
+                    'pra_activity_id' => $praActivityId,
                     'responsible_person_id' => $request->input('responsible_person_id'), // Use staff_id directly
                     'date_from' => $request->input('date_from', now()->toDateString()),
                     'date_to' => $request->input('date_to', now()->toDateString()),

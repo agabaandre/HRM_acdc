@@ -90,9 +90,47 @@ class SpecialMemoController extends Controller
         $fundTypes = FundType::all();
         $budgetCodes = FundCode::all();
         $costItems = CostItem::all();
+
+        $praPrefill = null;
+        $praActivityId = (int) request()->query('pra_activity_id', 0);
+        $praYear = (int) request()->query('year', now()->year);
+        $praQuarter = request()->query('quarter');
+        if ($praActivityId > 0) {
+            try {
+                $cache = app(\App\Services\Pra\PraActivitiesCacheService::class);
+                $import = app(\App\Services\Pra\PraMatrixImportService::class);
+                $praRow = $cache->findActivity($praActivityId, $praYear);
+                if ($praRow) {
+                    $praPrefill = $import->prefillForMemo(
+                        $praRow,
+                        $praYear,
+                        is_string($praQuarter) ? $praQuarter : null
+                    );
+                }
+            } catch (\Throwable) {
+                $praPrefill = null;
+            }
+        }
+
+        $specialMemo = null;
+        if (is_array($praPrefill)) {
+            $specialMemo = (object) [
+                'activity_title' => $praPrefill['activity_title'] ?? '',
+                'background' => $praPrefill['background'] ?? '',
+                'workplan_activity_code' => $praPrefill['workplan_activity_code'] ?? '',
+                'date_from' => ! empty($praPrefill['date_from'])
+                    ? \Carbon\Carbon::parse($praPrefill['date_from'])
+                    : null,
+                'date_to' => ! empty($praPrefill['date_to'])
+                    ? \Carbon\Carbon::parse($praPrefill['date_to'])
+                    : null,
+                'pra_activity_id' => $praPrefill['pra_activity_id'] ?? null,
+            ];
+        }
     
         return view('special-memo.create', [
-            'specialMemo' => null, // Pass null for new special memo
+            'specialMemo' => $specialMemo,
+            'praPrefill' => $praPrefill,
             'requestTypes' => $requestTypes,
             'staff' => $staff,
             'divisionStaff' => $divisionStaff,
@@ -323,6 +361,8 @@ class SpecialMemoController extends Controller
                 Log::warning('No workflow assignment found for SpecialMemo model, using default workflow ID: 1');
             }
 
+            $praActivityId = (int) $request->input('pra_activity_id', 0);
+
             $specialMemo = SpecialMemo::create([
                 'is_special_memo' => 1,
                 'is_draft' => $isDraft,
@@ -339,6 +379,7 @@ class SpecialMemoController extends Controller
                 'request_type_id' => (int) $request->input('request_type_id', 1),
                 'fund_type_id' => (int) $request->input('fund_type_id', 1),
                 'workplan_activity_code' => $request->input('activity_code', ''),
+                'pra_activity_id' => $praActivityId > 0 ? $praActivityId : null,
                 'forward_workflow_id' => $assignedWorkflowId, // Use assigned workflow ID
                 'reverse_workflow_id' => $isDraft ? null : $assignedWorkflowId,
                 'overall_status' => $overallStatus,

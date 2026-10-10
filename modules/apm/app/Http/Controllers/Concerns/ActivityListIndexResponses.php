@@ -210,7 +210,14 @@ trait ActivityListIndexResponses
                     'year' => $apmCurrentYear,
                     'quarter' => $apmCurrentQuarter,
                 ]),
+                'praActivities' => route('matrices.pra.activities'),
+                'activityCreate' => $currentQuarterMatrix
+                    ? route('matrices.activities.create', $currentQuarterMatrix)
+                    : null,
             ],
+            'userDivisionId' => (string) ($userDivisionId ?? ''),
+            'praFiscalYear' => app(\App\Services\Pra\PraSettingsService::class)->resolved()['fiscal_year'] ?? null,
+            'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
             'csrf' => csrf_token(),
         ];
     }

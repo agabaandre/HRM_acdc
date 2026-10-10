@@ -205,7 +205,18 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
     Route::resource('funders', App\Http\Controllers\FunderController::class)->except(['destroy']);
     Route::get('divisions/ajax', [App\Http\Controllers\DivisionController::class, 'getDivisionsAjax'])->name('divisions.ajax');
     Route::get('divisions/export/excel', [App\Http\Controllers\DivisionController::class, 'exportExcel'])->name('divisions.export.excel');
+    Route::get('divisions/pra/settings', [App\Http\Controllers\PraOrgUnitController::class, 'settings'])->name('divisions.pra.settings');
+    Route::put('divisions/pra/settings', [App\Http\Controllers\PraOrgUnitController::class, 'saveSettings'])->name('divisions.pra.settings.save');
+    Route::get('divisions/pra/mappings', [App\Http\Controllers\PraOrgUnitController::class, 'mappings'])->name('divisions.pra.mappings');
+    Route::post('divisions/pra/fetch', [App\Http\Controllers\PraOrgUnitController::class, 'fetch'])->name('divisions.pra.fetch');
+    Route::put('divisions/pra/mappings', [App\Http\Controllers\PraOrgUnitController::class, 'saveMappings'])->name('divisions.pra.mappings.save');
     Route::resource('divisions', App\Http\Controllers\DivisionController::class)->only(['index', 'show']);
+
+    Route::get('matrices/pra/activities', [App\Http\Controllers\PraMatrixController::class, 'activities'])->name('matrices.pra.activities');
+    Route::get('matrices/pra/activities/{praActivityId}', [App\Http\Controllers\PraMatrixController::class, 'showActivity'])
+        ->whereNumber('praActivityId')
+        ->name('matrices.pra.activities.show');
+    Route::post('matrices/pra/create', [App\Http\Controllers\PraMatrixController::class, 'createMatrix'])->name('matrices.pra.create');
     Route::get('directorates/ajax', [App\Http\Controllers\DirectorateController::class, 'getDirectoratesAjax'])->name('directorates.ajax');
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     

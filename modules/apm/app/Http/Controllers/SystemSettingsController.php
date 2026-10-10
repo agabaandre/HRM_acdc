@@ -24,6 +24,7 @@ class SystemSettingsController extends Controller
         'budget'     => 'Budget commitment',
         'service_requests' => 'Service requests',
         'whatsapp' => 'WhatsApp',
+        'pra'        => 'PRA integration',
         'general'    => 'Other settings',
     ];
 

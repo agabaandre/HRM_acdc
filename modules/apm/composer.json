@@ -17,6 +17,7 @@
         "masterminds/html5": "^2.10",
         "mpdf/mpdf": "^8.2.0",
         "phpmailer/phpmailer": "^6.10",
+        "predis/predis": "^2.0",
         "smalot/pdfparser": "^2.12",
         "staudenmeir/eloquent-json-relations": "^1.1",
         "tymon/jwt-auth": "^2.2",

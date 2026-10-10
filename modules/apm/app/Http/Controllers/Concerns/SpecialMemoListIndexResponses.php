@@ -100,11 +100,15 @@ trait SpecialMemoListIndexResponses
             'routes' => [
                 'ajax' => route('special-memo.ajax'),
                 'create' => route('special-memo.create'),
+                'praActivities' => route('matrices.pra.activities'),
                 'pendingApprovals' => route('special-memo.pending-approvals'),
                 'exportMySubmitted' => route('special-memo.export.my-submitted'),
                 'exportAll' => route('special-memo.export.all'),
                 'exportShared' => route('special-memo.export.shared'),
             ],
+            'userDivisionId' => (string) (user_session('division_id') ?? ''),
+            'praFiscalYear' => app(\App\Services\Pra\PraSettingsService::class)->resolved()['fiscal_year'] ?? null,
+            'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
             'pendingApprovalCount' => function_exists('get_staff_pending_action_count')
                 ? get_staff_pending_action_count('special-memo')
                 : 0,

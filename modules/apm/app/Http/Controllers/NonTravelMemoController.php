@@ -67,12 +67,34 @@ class NonTravelMemoController extends Controller
         });
         $fundTypes = FundType::all();
 
+        $praPrefill = null;
+        $praActivityId = (int) request()->query('pra_activity_id', 0);
+        $praYear = (int) request()->query('year', now()->year);
+        $praQuarter = request()->query('quarter');
+        if ($praActivityId > 0) {
+            try {
+                $cache = app(\App\Services\Pra\PraActivitiesCacheService::class);
+                $import = app(\App\Services\Pra\PraMatrixImportService::class);
+                $praRow = $cache->findActivity($praActivityId, $praYear);
+                if ($praRow) {
+                    $praPrefill = $import->prefillForMemo(
+                        $praRow,
+                        $praYear,
+                        is_string($praQuarter) ? $praQuarter : null
+                    );
+                }
+            } catch (\Throwable) {
+                $praPrefill = null;
+            }
+        }
+
         return view('non-travel.create', [
             'categories' => NonTravelMemoCategory::all(),
             'staffList'  => Staff::active()->get(),
             'locations'  => $locations,
             'budgets'    => FundCode::all(),
-            'fundTypes' => $fundTypes
+            'fundTypes' => $fundTypes,
+            'praPrefill' => $praPrefill,
         ]);
     }
 
@@ -175,9 +197,12 @@ class NonTravelMemoController extends Controller
         }
 
         // Save to DB
+        $praActivityId = (int) $request->input('pra_activity_id', 0);
+
         $memo = NonTravelMemo::create([
             'reverse_workflow_id' => (int)($request->input('reverse_workflow_id', 1)),
             'workplan_activity_code' => $request->input('activity_code', ''),
+            'pra_activity_id' => $praActivityId > 0 ? $praActivityId : null,
             'staff_id' => (int)$data['staff_id'],
             'division_id' => (int)$data['division_id'],
             'fund_type_id' => (int)($data['fund_type_id'] ?? 1),
