@@ -39,6 +39,20 @@ it('blocks edit when report is submitted but allows draft even if not executed',
     expect($svc->canEdit($report, 10))->toBeTrue();
 });
 
+it('allows privileged editors to edit draft reports without being participants', function () {
+    $svc = new ActivityReportAccessService;
+    $report = new ActivityReport([
+        'staff_id' => 10,
+        'overall_status' => 'draft',
+    ]);
+
+    expect($svc->canEdit($report, 99))->toBeFalse()
+        ->and($svc->canEdit($report, 99, true))->toBeTrue();
+
+    $report->overall_status = 'pending';
+    expect($svc->canEdit($report, 99, true))->toBeFalse();
+});
+
 it('flattens array-of-objects participant formats', function () {
     $svc = new ActivityReportAccessService;
     $source = (object) [

@@ -21,7 +21,7 @@
                             <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
                                 <i class="bx bx-file text-success"></i>
                             </div>
-                            <h5 class="mb-0 fw-bold text-success">Activity Reports</h5>
+                            <h5 class="mb-0 fw-bold text-success">RBM activity Reporting</h5>
                         </div>
                         <p class="text-muted small mb-2">Current-quarter activities and memos: mark started/processed, open shared activity reports, and preview submissions.</p>
                         <a href="{{ route('reporting-registry.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> Open registry</a>

@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Activity;
 use App\Models\ActivityReport;
+use App\Models\NonTravelMemo;
 use App\Services\ActivityReport\ActivityReportAutofillService;
 use App\Services\ActivityReport\ActivityReportService;
 use Illuminate\Database\Eloquent\Model;
@@ -54,6 +56,44 @@ it('autofills dates duration and title from source', function () {
         ->and($attrs['duration_days'])->toBe(3)
         ->and($attrs['activity_name_code'])->toContain('AWP-1')
         ->and($attrs['objectives'])->toBe('Objectives text');
+});
+
+it('fills empty report fields from parent source without overwriting', function () {
+    $source = new class extends Model
+    {
+        protected $table = 'activity_report_test_sources';
+
+        protected $guarded = [];
+    };
+    $source->forceFill([
+        'staff_id' => 5,
+        'activity_title' => 'Parent',
+        'date_from' => '2026-10-01',
+        'date_to' => '2026-10-02',
+        'background' => 'From parent',
+    ])->save();
+
+    $report = new ActivityReport([
+        'objectives' => 'Keep mine',
+        'location_venue' => null,
+    ]);
+
+    $changed = (new ActivityReportAutofillService)->fillEmptyFromSource($report, $source->fresh());
+
+    expect($changed)->toBeTrue()
+        ->and($report->objectives)->toBe('Keep mine')
+        ->and(optional($report->start_date)->toDateString())->toBe('2026-10-01')
+        ->and($report->activity_name_code)->toContain('Parent');
+});
+
+it('marks non-travel as without participants and external funded without budget', function () {
+    $autofill = new ActivityReportAutofillService;
+    $nt = new NonTravelMemo(['fund_type_id' => 1]);
+    $external = new Activity(['fund_type_id' => 3]);
+
+    expect($autofill->supportsParticipants($nt))->toBeFalse()
+        ->and($autofill->supportsBudget($external))->toBeFalse()
+        ->and($autofill->isExternalFunded($external))->toBeTrue();
 });
 
 it('find or create returns the same report twice', function () {

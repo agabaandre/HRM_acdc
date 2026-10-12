@@ -213,11 +213,11 @@
         });
 
         app.use(vuetify);
+        window.ApmVuetifyPage.register(MOUNT_ID, app);
         app.mount(mountEl);
-        window.ApmVuetifyPage.register(MOUNT_ID, () => {
-            try { app.unmount(); } catch (e) {}
-        });
     }
 
-    window.ApmVuetifyPage.registerBooter('reporting-registry', boot);
+    if (window.ApmVuetifyPage) {
+        window.ApmVuetifyPage.bind(MOUNT_ID, boot);
+    }
 })();

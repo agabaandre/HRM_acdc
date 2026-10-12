@@ -50,19 +50,34 @@ class ActivityReportAccessService
         return in_array($staffId, $this->participantStaffIds($sourceOrReport), true);
     }
 
-    public function canEdit(object $sourceOrReport, int $staffId): bool
+    public function isEditableStatus(object $sourceOrReport): bool
     {
-        if (! $this->canView($sourceOrReport, $staffId)) {
+        if (! $sourceOrReport instanceof ActivityReport) {
+            return true;
+        }
+
+        $status = strtolower(trim((string) ($sourceOrReport->overall_status ?? 'draft')));
+        if ($status === '') {
+            $status = 'draft';
+        }
+
+        return in_array($status, self::EDITABLE_STATUSES, true);
+    }
+
+    /**
+     * @param  bool  $privileged  Admin / registry processor — may edit without being a memo participant
+     */
+    public function canEdit(object $sourceOrReport, int $staffId, bool $privileged = false): bool
+    {
+        if (! $this->isEditableStatus($sourceOrReport)) {
             return false;
         }
 
-        if ($sourceOrReport instanceof ActivityReport) {
-            $status = (string) ($sourceOrReport->overall_status ?? 'draft');
-
-            return in_array($status, self::EDITABLE_STATUSES, true);
+        if ($privileged) {
+            return true;
         }
 
-        return true;
+        return $this->canView($sourceOrReport, $staffId);
     }
 
     /**
