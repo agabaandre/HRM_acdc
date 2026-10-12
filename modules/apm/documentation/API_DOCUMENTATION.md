@@ -34,7 +34,8 @@ All endpoints below are relative to this base unless noted.
 3. [Protected endpoints (JWT required)](#protected-endpoints-jwt-required)
 4. [Web app URLs (attachments and print)](#web-app-urls-attachments-and-print)
 5. [Request/response conventions](#requestresponse-conventions)
-6. [Full specification](#full-specification)
+6. [Activity reports (RBA / RBM share)](#activity-reports-rba--rbm-share)
+7. [Full specification](#full-specification)
 
 ---
 
@@ -636,6 +637,29 @@ curl -X POST 'http://localhost/staff/apm/api/apm/v1/actions' \
   -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
   -d '{"type":"special_memo","id":19,"action":"approved","comment":"Approved as requested."}'
 ```
+
+---
+
+## Activity reports (RBA / RBM share)
+
+Share submitted/approved activity reports with **RBA** (formerly labelled PRA in APM) and/or **RBM**.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/activity-reports/shareable` | List shareable reports (`division_id`, `per_page` query optional) |
+| `GET` | `/activity-reports/{id}/export` | Full export payload for one report |
+| `POST` | `/activity-reports/{id}/share` | Share to `rba` and/or `rbm` |
+
+**Share body example:**
+
+```bash
+curl -X POST 'http://localhost/staff/apm/api/apm/v1/activity-reports/12/share' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -d '{"targets":["rba","rbm"],"note":"Q4 sync"}'
+```
+
+Interactive schemas: [Swagger UI](https://cbp.africacdc.org/staff/apm/docs/) → **Activity reports**.
 
 ---
 

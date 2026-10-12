@@ -42,6 +42,10 @@ tags:
     description: Memo print PDF endpoints (web app; session or JWT)
   - name: Notifications
     description: In-app notifications for the authenticated staff member
+  - name: Activity reports
+    description: |
+      Activity reporting (Africa CDC template). Export and share approved/submitted reports
+      with **RBA** (formerly PRA) and **RBM** platforms.
 
 paths:
   /api/documents/verify:
@@ -2111,6 +2115,133 @@ paths:
         '422':
           description: Validation error
 
+  /activity-reports/shareable:
+    get:
+      tags: [Activity reports]
+      summary: List activity reports available to share with RBA/RBM
+      description: |
+        Returns submitted/approved activity reports (not marked not-executed) for pull by
+        **RBA** (Results-Based / former PRA integration) or **RBM** platforms.
+      operationId: activityReportsShareable
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: division_id
+          in: query
+          schema: { type: integer }
+          description: Optional division filter
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Paginated shareable reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/ActivityReportShareableItem' }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      per_page: { type: integer }
+                      total: { type: integer }
+        '401':
+          description: Unauthenticated
+
+  /activity-reports/{id}/export:
+    get:
+      tags: [Activity reports]
+      summary: Export one activity report payload for RBA/RBM
+      description: |
+        Full structured payload for a single activity report, including source linkage
+        (`source_id`, `source_type`, `pra_activity_id` when present) for RBA/RBM sync.
+      operationId: activityReportsExport
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Export payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/ActivityReportExport' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+
+  /activity-reports/{id}/share:
+    post:
+      tags: [Activity reports]
+      summary: Share an activity report to RBA and/or RBM
+      description: |
+        Push (or queue) an activity report to one or both platforms:
+        - **rba** — RBA platform (renamed from PRA in APM UI)
+        - **rbm** — RBM platform
+        Records a share receipt and returns the export payload.
+      operationId: activityReportsShare
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targets]
+              properties:
+                targets:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum: [rba, rbm]
+                  example: [rba, rbm]
+                note:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+      responses:
+        '200':
+          description: Share recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      shares:
+                        type: array
+                        items: { $ref: '#/components/schemas/ActivityReportShareReceipt' }
+                      export: { $ref: '#/components/schemas/ActivityReportExport' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2322,6 +2453,79 @@ components:
         model_id: { type: integer, nullable: true }
         model_type: { type: string, nullable: true }
         created_at: { type: string, format: date-time, nullable: true }
+
+    ActivityReportShareableItem:
+      type: object
+      properties:
+        id: { type: integer }
+        document_number: { type: string, nullable: true }
+        activity_name_code: { type: string, nullable: true }
+        overall_status: { type: string }
+        division_id: { type: integer, nullable: true }
+        start_date: { type: string, format: date, nullable: true }
+        end_date: { type: string, format: date, nullable: true }
+        export_url: { type: string, format: uri }
+        share_url: { type: string, format: uri }
+
+    ActivityReportExport:
+      type: object
+      description: Structured activity report payload for RBA/RBM.
+      properties:
+        id: { type: integer }
+        document_number: { type: string, nullable: true }
+        mission_type: { type: string, nullable: true }
+        overall_status: { type: string }
+        not_executed: { type: boolean }
+        activity_name_code: { type: string, nullable: true }
+        tier2: { type: string, nullable: true }
+        tier4: { type: string, nullable: true }
+        broad_activity_amert: { type: string, nullable: true }
+        start_date: { type: string, format: date, nullable: true }
+        end_date: { type: string, format: date, nullable: true }
+        duration_days: { type: integer, nullable: true }
+        location_venue: { type: string, nullable: true }
+        objectives: { type: string, nullable: true }
+        participants_count: { type: integer, nullable: true }
+        member_states_covered: { type: string, nullable: true }
+        key_strategic_needs: { type: string, nullable: true }
+        narrative_achievements: { type: string, nullable: true }
+        challenges_recommendations: { type: string, nullable: true }
+        means_of_verification: { type: string, nullable: true }
+        budget_code: { type: string, nullable: true }
+        total_cost_usd: { type: number, nullable: true }
+        logistics_planned: { type: string, nullable: true }
+        logistics_actuals: { type: string, nullable: true }
+        mission_extras: { type: object, nullable: true, additionalProperties: true }
+        related:
+          type: array
+          items:
+            type: object
+            properties:
+              related_source_id: { type: integer }
+              related_source_type: { type: string }
+        source_id: { type: integer }
+        source_type: { type: string }
+        division_id: { type: integer, nullable: true }
+        staff_id: { type: integer, nullable: true }
+        responsible_person_id: { type: integer, nullable: true }
+        pra_activity_id:
+          type: integer
+          nullable: true
+          description: Linked RBA/PRA specific activity id when the source memo was created from RBA
+        has_been_submitted: { type: boolean }
+        submitted_at: { type: string, format: date-time, nullable: true }
+        shared_for:
+          type: array
+          items: { type: string, enum: [rba, rbm] }
+
+    ActivityReportShareReceipt:
+      type: object
+      properties:
+        id: { type: integer }
+        activity_report_id: { type: integer }
+        target: { type: string, enum: [rba, rbm] }
+        status: { type: string, example: sent }
+        shared_at: { type: string, format: date-time }
 
 security:
   - bearerAuth: []

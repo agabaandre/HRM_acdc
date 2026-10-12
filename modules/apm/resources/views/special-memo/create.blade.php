@@ -29,7 +29,7 @@
                 @if(!empty($praPrefill))
                 <div class="alert alert-success border-0 shadow-sm mb-4">
                     <i class="bx bx-cloud-download me-1"></i>
-                    Prefilled from PRA activity <strong>{{ $praPrefill['activity_code'] ?? $praPrefill['pra_activity_id'] }}</strong>.
+                    Prefilled from RBA activity <strong>{{ $praPrefill['activity_code'] ?? $praPrefill['pra_activity_id'] }}</strong>.
                     Review and edit any field before saving.
                 </div>
                 @endif

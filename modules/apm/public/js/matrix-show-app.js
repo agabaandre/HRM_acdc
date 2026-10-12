@@ -820,7 +820,7 @@
 
                 async function loadPraSingleActivities(refresh) {
                     if (!cfg.routes?.praActivities) {
-                        notify('PRA activities route missing.', 'error');
+                        notify('RBA activities route missing.', 'error');
                         return;
                     }
                     praSingle.value.loading = true;
@@ -838,13 +838,13 @@
                         });
                         const json = await res.json();
                         if (!res.ok || !json.success) {
-                            throw new Error(json.message || 'Could not load PRA activities.');
+                            throw new Error(json.message || 'Could not load RBA activities.');
                         }
                         praSingle.value.activities = json.data?.activities || [];
                         praSingle.value.meta = json.data?.meta || null;
                     } catch (e) {
                         praSingle.value.activities = [];
-                        notify(e.message || 'Could not load PRA activities.', 'error');
+                        notify(e.message || 'Could not load RBA activities.', 'error');
                     } finally {
                         praSingle.value.loading = false;
                         praSingle.value.refreshing = false;
@@ -854,12 +854,12 @@
                 function proceedPraSingleMemo() {
                     const id = Number(praSingle.value.selectedId);
                     if (!id) {
-                        notify('Select one PRA activity.', 'warning');
+                        notify('Select one RBA activity.', 'warning');
                         return;
                     }
                     const row = praSingleSelected.value;
                     if (row?.already_exists && !praSingle.value.allowExisting) {
-                        notify('This PRA activity already exists in APM. Confirm the warning to continue.', 'warning');
+                        notify('This RBA activity already exists in APM. Confirm the warning to continue.', 'warning');
                         return;
                     }
                     const base = cfg.routes?.activityCreate;
@@ -1459,7 +1459,7 @@
       <v-card>
         <v-card-title class="d-flex align-center gap-2">
           <v-icon icon="mdi-cloud-download" color="primary" />
-          Select PRA activity for single memo
+          Select RBA activity for single memo
         </v-card-title>
         <v-progress-linear v-if="praSingle.refreshing || praSingle.loading" indeterminate color="primary" height="3" />
         <v-divider v-else />
@@ -1511,7 +1511,7 @@
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-if="!praSingleFiltered.length && !praSingle.loading">
-                <v-list-item-title class="text-medium-emphasis">No PRA activities match this filter.</v-list-item-title>
+                <v-list-item-title class="text-medium-emphasis">No RBA activities match this filter.</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-radio-group>
@@ -1522,7 +1522,7 @@
             density="compact"
             class="mt-3"
           >
-            This PRA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
+            This RBA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
           </v-alert>
           <v-checkbox
             v-if="praSingleSelected?.already_exists"
@@ -1530,7 +1530,7 @@
             density="compact"
             hide-details
             class="mt-2"
-            label="Continue with already-linked PRA activity"
+            label="Continue with already-linked RBA activity"
           />
         </v-card-text>
         <v-divider />

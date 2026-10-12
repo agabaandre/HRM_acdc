@@ -261,7 +261,7 @@
                 async function openPraPicker() {
                     if (!cfg.routes?.activityCreate || !matrixAcceptsMemos.value) {
                         createDialog.value = true;
-                        notify('Open your current-quarter matrix to create a single memo from PRA.', 'warning');
+                        notify('Open your current-quarter matrix to create a single memo from RBA.', 'warning');
                         return;
                     }
                     praPicker.value.open = true;
@@ -275,7 +275,7 @@
 
                 async function loadPraActivities(refresh) {
                     if (!cfg.routes?.praActivities) {
-                        notify('PRA activities route is not configured.');
+                        notify('RBA activities route is not configured.');
                         return;
                     }
                     praPicker.value.loading = true;
@@ -293,13 +293,13 @@
                         });
                         const json = await res.json();
                         if (!res.ok || !json.success) {
-                            throw new Error(json.message || 'Could not load PRA activities.');
+                            throw new Error(json.message || 'Could not load RBA activities.');
                         }
                         praPicker.value.activities = json.data?.activities || [];
                         praPicker.value.meta = json.data?.meta || null;
                     } catch (e) {
                         praPicker.value.activities = [];
-                        notify(e.message || 'Could not load PRA activities.');
+                        notify(e.message || 'Could not load RBA activities.');
                     } finally {
                         praPicker.value.loading = false;
                         praPicker.value.refreshing = false;
@@ -309,11 +309,11 @@
                 function proceedPraPicker() {
                     const id = Number(praPicker.value.selectedId);
                     if (!id) {
-                        notify('Select one PRA activity.', 'warning');
+                        notify('Select one RBA activity.', 'warning');
                         return;
                     }
                     if (praSelected.value?.already_exists && !praPicker.value.allowExisting) {
-                        notify('This PRA activity already exists in APM. Confirm the warning to continue.', 'warning');
+                        notify('This RBA activity already exists in APM. Confirm the warning to continue.', 'warning');
                         return;
                     }
                     const base = cfg.routes?.activityCreate;
@@ -469,7 +469,7 @@
             prepend-icon="mdi-cloud-download"
             @click="openPraPicker"
           >
-            Create from PRA
+            Create from RBA
           </v-btn>
           <v-btn
             v-if="cfg.showCreateInstructions"
@@ -735,7 +735,7 @@
       <v-card>
         <v-card-title class="d-flex align-center gap-2">
           <v-icon icon="mdi-cloud-download" color="success" />
-          Select PRA activity for single memo
+          Select RBA activity for single memo
         </v-card-title>
         <v-progress-linear v-if="praPicker.refreshing || praPicker.loading" indeterminate color="success" height="3" />
         <v-divider v-else />
@@ -787,12 +787,12 @@
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-if="!praFiltered.length && !praPicker.loading">
-                <v-list-item-title class="text-medium-emphasis">No PRA activities match this filter.</v-list-item-title>
+                <v-list-item-title class="text-medium-emphasis">No RBA activities match this filter.</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-radio-group>
           <v-alert v-if="praSelected?.already_exists" type="warning" variant="tonal" density="compact" class="mt-3">
-            This PRA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
+            This RBA activity is already linked in APM (may not be approved or implemented yet). You can still continue.
           </v-alert>
           <v-checkbox
             v-if="praSelected?.already_exists"
@@ -800,7 +800,7 @@
             density="compact"
             hide-details
             class="mt-2"
-            label="Continue with already-linked PRA activity"
+            label="Continue with already-linked RBA activity"
           />
         </v-card-text>
         <v-divider />

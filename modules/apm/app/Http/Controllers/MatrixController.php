@@ -334,7 +334,7 @@ class MatrixController extends Controller
     {
         $candidates = [
             [
-                'title' => (string) $praDefaultYear.($praFiscalYear === $praDefaultYear ? ' (PRA)' : ''),
+                'title' => (string) $praDefaultYear.($praFiscalYear === $praDefaultYear ? ' (RBA)' : ''),
                 'value' => (string) $praDefaultYear,
             ],
             ['title' => (string) $currentYear, 'value' => (string) $currentYear],
@@ -344,7 +344,7 @@ class MatrixController extends Controller
         }
         if ($praFiscalYear && $praFiscalYear !== $currentYear && $praFiscalYear !== $nextYear) {
             $candidates[] = [
-                'title' => (string) $praFiscalYear.' (PRA)',
+                'title' => (string) $praFiscalYear.' (RBA)',
                 'value' => (string) $praFiscalYear,
             ];
         }

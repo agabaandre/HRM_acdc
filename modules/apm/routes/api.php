@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\ApmNotificationController;
 use App\Http\Controllers\Api\ApmFundCodeController;
 use App\Http\Controllers\Api\ApmDirectorateController;
 use App\Http\Controllers\Api\ApmDivisionController;
+use App\Http\Controllers\Api\ApmActivityReportController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SignatureVerificationController;
 use Illuminate\Http\Request;
@@ -126,5 +127,12 @@ Route::prefix('apm/v1')->group(function () {
         Route::post('divisions', [ApmDivisionController::class, 'store']);
         Route::put('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
         Route::patch('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
+
+        // Activity reports — share / export to RBA or RBM
+        Route::get('activity-reports/shareable', [ApmActivityReportController::class, 'shareable']);
+        Route::get('activity-reports/{activityReport}/export', [ApmActivityReportController::class, 'export'])
+            ->whereNumber('activityReport');
+        Route::post('activity-reports/{activityReport}/share', [ApmActivityReportController::class, 'share'])
+            ->whereNumber('activityReport');
     });
 });

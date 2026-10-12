@@ -13,7 +13,7 @@
     </a>
     @if(($pageConfig['praCreateEnabled'] ?? true))
     <button type="button" class="btn btn-success shadow-sm" id="sm-create-from-pra-btn">
-        <i class="bx bx-cloud-download me-1"></i> Create from PRA
+        <i class="bx bx-cloud-download me-1"></i> Create from RBA
     </button>
     @endif
     <a href="{{ route('special-memo.create') }}" class="btn btn-success shadow-sm">
