@@ -760,6 +760,15 @@
             }
         @endphp
 
+        @include('partials.rbm-map-modal', [
+            'rbmMapDocumentType' => 'special_memo',
+            'rbmMapDocumentId' => $specialMemo->id,
+            'rbmMapPraActivityId' => $specialMemo->pra_activity_id,
+            'rbmMapYear' => optional($specialMemo->date_from)->year ?? now()->year,
+            'rbmMapQuarter' => null,
+            'rbmMapDivisionId' => $specialMemo->division_id ?? null,
+        ])
+
         <!-- Summary Table -->
         <div class="summary-table mb-4">
             <div class="card-header bg-light border-0 py-3">

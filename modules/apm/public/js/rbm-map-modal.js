@@ -17,8 +17,6 @@
         var metaEl = document.getElementById('rbm-map-meta');
         var progress = document.getElementById('rbm-map-progress');
         var alertEl = document.getElementById('rbm-map-alert');
-        var allowWrap = document.getElementById('rbm-map-allow-wrap');
-        var allowExisting = document.getElementById('rbm-map-allow-existing');
         var saveBtn = document.getElementById('rbm-map-save-btn');
         var yearInput = document.getElementById('rbm-map-year');
         var quarterFilter = document.getElementById('rbm-map-quarter-filter');
@@ -79,12 +77,34 @@
             });
         }
 
+        function selfTypes() {
+            if (cfg.documentType === 'activity') return ['matrix_activity', 'single_memo'];
+            if (cfg.documentType === 'non_travel') return ['non_travel'];
+            if (cfg.documentType === 'special_memo') return ['special_memo'];
+            return [];
+        }
+
+        function otherUsages(row) {
+            var types = selfTypes();
+            var docId = Number(cfg.documentId);
+            return (row.existing || []).filter(function (ex) {
+                var id = Number(ex.id || 0);
+                var type = String(ex.type || '');
+                if (id === docId && types.indexOf(type) !== -1) return false;
+                return true;
+            });
+        }
+
+        function isLocked(row) {
+            return otherUsages(row).length > 0;
+        }
+
         function updateAllowVisibility() {
             var row = rows.find(function (r) { return Number(r.pra_activity_id) === Number(selectedId); });
-            var needs = !!(row && row.already_exists);
-            if (allowWrap) allowWrap.classList.toggle('d-none', !needs);
-            if (!needs && allowExisting) allowExisting.checked = false;
-            if (saveBtn) saveBtn.disabled = !selectedId;
+            if (row && isLocked(row)) {
+                selectedId = cfg.praActivityId ? Number(cfg.praActivityId) : null;
+            }
+            if (saveBtn) saveBtn.disabled = !selectedId || (row && isLocked(row));
         }
 
         function render() {
@@ -96,22 +116,36 @@
             }
             tbody.innerHTML = list.map(function (r) {
                 var id = Number(r.pra_activity_id);
-                var checked = selectedId && Number(selectedId) === id ? ' checked' : '';
-                var existingHtml = '—';
-                if (r.already_exists) {
-                    var links = (r.existing || []).slice(0, 3).map(function (ex) {
-                        return '<a href="' + (ex.url || '#') + '" target="_blank" class="d-block small">' +
+                var locked = isLocked(r);
+                var isCurrent = cfg.praActivityId && Number(cfg.praActivityId) === id;
+                var checked = selectedId && Number(selectedId) === id && !locked ? ' checked' : '';
+                var others = otherUsages(r);
+                var selectHtml;
+                if (locked) {
+                    selectHtml = '<span class="badge text-bg-secondary">Already mapped</span>';
+                } else if (isCurrent) {
+                    selectHtml = '<input type="radio" name="rbm_map_pick" value="' + id + '"' + checked + '>' +
+                        '<div class="small text-success mt-1">Current</div>';
+                } else {
+                    selectHtml = '<input type="radio" name="rbm_map_pick" value="' + id + '"' + checked + '>';
+                }
+                var statusHtml = '—';
+                if (locked) {
+                    var links = others.slice(0, 3).map(function (ex) {
+                        return '<a href="' + (ex.url || '#') + '" target="_blank" class="d-block small" onclick="event.stopPropagation()">' +
                             (ex.label || ('#' + ex.id)) + ' (' + (ex.status || '') + ')</a>';
                     }).join('');
-                    existingHtml = '<span class="badge text-bg-warning">Already exists</span>' + links;
+                    statusHtml = '<span class="badge text-bg-warning mb-1">Already mapped</span>' + links;
+                } else if (isCurrent) {
+                    statusHtml = '<span class="badge text-bg-success">Mapped here</span>';
                 }
-                return '<tr data-pra-id="' + id + '" style="cursor:pointer">' +
-                    '<td><input type="radio" name="rbm_map_pick" value="' + id + '"' + checked + '></td>' +
+                return '<tr data-pra-id="' + id + '" data-locked="' + (locked ? '1' : '0') + '" class="' + (locked ? 'rbm-map-locked' : '') + '" style="cursor:' + (locked ? 'not-allowed' : 'pointer') + '">' +
+                    '<td>' + selectHtml + '</td>' +
                     '<td><span class="badge text-bg-primary-subtle text-primary">' +
-                    (r.code || id) + '</span></td>' +
-                    '<td><div>' + escapeHtml(r.title || '') + '</div></td>' +
-                    '<td class="small text-muted">' + escapeHtml(r.outcome_area || '—') + '</td>' +
-                    '<td>' + existingHtml + '</td>' +
+                    escapeHtml(String(r.code || id)) + '</span></td>' +
+                    '<td><div class="rbm-map-title">' + escapeHtml(r.title || '') + '</div></td>' +
+                    '<td class="small text-muted"><div class="rbm-map-outcome">' + escapeHtml(r.outcome_area || '—') + '</div></td>' +
+                    '<td>' + statusHtml + '</td>' +
                     '</tr>';
             }).join('');
         }
@@ -177,9 +211,8 @@
                 return;
             }
             var row = rows.find(function (r) { return Number(r.pra_activity_id) === Number(praId); });
-            if (!clear && row && row.already_exists && !(allowExisting && allowExisting.checked)) {
-                showAlert('This RBM activity is already linked in APM. Confirm the checkbox to continue.', true);
-                if (allowWrap) allowWrap.classList.remove('d-none');
+            if (!clear && row && isLocked(row)) {
+                showAlert('This RBM activity is already mapped and cannot be linked again.', true);
                 return;
             }
 
@@ -201,18 +234,12 @@
                     document_id: cfg.documentId,
                     pra_activity_id: praId,
                     clear: clear,
-                    allow_existing: !!(allowExisting && allowExisting.checked),
                 }),
             })
                 .then(function (res) { return res.json().then(function (json) { return { res: res, json: json }; }); })
                 .then(function (_ref) {
                     var res = _ref.res;
                     var json = _ref.json;
-                    if (res.status === 409 && json.data && json.data.requires_confirmation) {
-                        showAlert(json.message || 'Confirm to continue with an already-linked RBM activity.', false);
-                        if (allowWrap) allowWrap.classList.remove('d-none');
-                        return;
-                    }
                     if (!res.ok || !json.success) {
                         throw new Error(json.message || 'Could not save mapping.');
                     }
@@ -249,10 +276,15 @@
             tbody.addEventListener('click', function (e) {
                 var tr = e.target.closest('tr[data-pra-id]');
                 if (!tr) return;
+                if (tr.getAttribute('data-locked') === '1') {
+                    showAlert('This RBM activity is already mapped and cannot be selected.', true);
+                    return;
+                }
                 selectedId = Number(tr.getAttribute('data-pra-id'));
                 var radio = tr.querySelector('input[type="radio"]');
                 if (radio) radio.checked = true;
                 updateAllowVisibility();
+                showAlert('');
             });
         }
 
@@ -266,6 +298,30 @@
             if (!window.confirm('Clear the RBM mapping on this document?')) return;
             saveMapping({ clear: true });
         });
+
+        function ensureModalOnBody() {
+            if (modalEl && modalEl.parentElement !== document.body) {
+                document.body.appendChild(modalEl);
+            }
+        }
+
+        ensureModalOnBody();
+
+        if (openBtn) {
+            openBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                ensureModalOnBody();
+                if (window.bootstrap && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                } else if (modalEl) {
+                    // Fallback if Bootstrap JS API is unavailable
+                    modalEl.classList.add('show');
+                    modalEl.style.display = 'flex';
+                    modalEl.removeAttribute('aria-hidden');
+                    document.body.classList.add('modal-open');
+                }
+            });
+        }
 
         if (modalEl) {
             modalEl.addEventListener('shown.bs.modal', function () {

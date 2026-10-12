@@ -42,15 +42,71 @@
                 Clear mapping
             </button>
         @endif
-        <button type="button" class="btn btn-success btn-sm" id="rbm-map-open-btn" data-bs-toggle="modal" data-bs-target="#rbmMapModal">
+        <button type="button" class="btn btn-success btn-sm" id="rbm-map-open-btn">
             <i class="bx bx-link-alt me-1"></i>
             {{ $rbmMapPraActivityId > 0 ? 'Change RBM mapping' : 'Map to RBM' }}
         </button>
     </div>
 </div>
 
+<style>
+    /* Force viewport centering; page wrappers often break Bootstrap fixed modals. */
+    #rbmMapModal.modal {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 1rem !important;
+        z-index: 1065 !important;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    #rbmMapModal.modal.show {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    #rbmMapModal .modal-dialog {
+        position: relative !important;
+        margin: 0 auto !important;
+        max-width: min(1140px, 96vw) !important;
+        width: 100%;
+        transform: none !important;
+        pointer-events: auto;
+    }
+    #rbmMapModal table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    #rbmMapModal th:nth-child(1),
+    #rbmMapModal td:nth-child(1) { width: 120px; }
+    #rbmMapModal th:nth-child(2),
+    #rbmMapModal td:nth-child(2) { width: 120px; }
+    #rbmMapModal th:nth-child(3),
+    #rbmMapModal td:nth-child(3) { width: 42%; }
+    #rbmMapModal th:nth-child(4),
+    #rbmMapModal td:nth-child(4) { width: 22%; }
+    #rbmMapModal th:nth-child(5),
+    #rbmMapModal td:nth-child(5) { width: 18%; }
+    #rbmMapModal .rbm-map-title,
+    #rbmMapModal .rbm-map-outcome {
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        line-height: 1.35;
+    }
+    #rbmMapModal tr.rbm-map-locked {
+        opacity: 0.85;
+        cursor: not-allowed !important;
+        background: #fafafa;
+    }
+</style>
 <div class="modal fade" id="rbmMapModal" tabindex="-1" aria-labelledby="rbmMapModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title d-flex align-items-center gap-2" id="rbmMapModalLabel">
@@ -95,11 +151,11 @@
                     <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th style="width: 40px;"></th>
-                                <th style="width: 110px;">Code</th>
+                                <th>Select</th>
+                                <th>Code</th>
                                 <th>Title</th>
                                 <th>Outcome</th>
-                                <th style="width: 200px;">Already in APM</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="rbm-map-tbody">
@@ -108,12 +164,6 @@
                     </table>
                 </div>
 
-                <div class="form-check mt-3 d-none" id="rbm-map-allow-wrap">
-                    <input class="form-check-input" type="checkbox" id="rbm-map-allow-existing">
-                    <label class="form-check-label" for="rbm-map-allow-existing">
-                        Continue with an RBM activity that is already linked elsewhere in APM
-                    </label>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -138,5 +188,5 @@ window.ApmRbmMapConfig = {
     csrf: @json(csrf_token()),
 };
 </script>
-<script src="{{ asset('js/rbm-map-modal.js') }}?v={{ @filemtime(public_path('js/rbm-map-modal.js')) ?: time() }}" defer></script>
+<script src="{{ asset('js/rbm-map-modal.js') }}?v={{ (@filemtime(public_path('js/rbm-map-modal.js')) ?: time()) + 2 }}" defer></script>
 @endif

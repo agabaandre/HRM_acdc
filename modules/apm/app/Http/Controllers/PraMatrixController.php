@@ -252,7 +252,6 @@ class PraMatrixController extends Controller
             'document_id' => ['required', 'integer', 'min:1'],
             'pra_activity_id' => ['nullable', 'integer', 'min:1'],
             'clear' => ['nullable', 'boolean'],
-            'allow_existing' => ['nullable', 'boolean'],
         ]);
 
         $clear = ! empty($validated['clear']) || empty($validated['pra_activity_id']);
@@ -272,39 +271,43 @@ class PraMatrixController extends Controller
 
         if ($praActivityId !== null) {
             $usageMap = $this->usages->usagesByPraIds([$praActivityId]);
+            $selfTypes = match ((string) $validated['document_type']) {
+                'activity' => ['matrix_activity', 'single_memo'],
+                'non_travel' => ['non_travel'],
+                'special_memo' => ['special_memo'],
+                default => [],
+            };
             $others = array_values(array_filter(
                 $usageMap[$praActivityId] ?? [],
-                function (array $u) use ($validated, $model) {
+                function (array $u) use ($selfTypes, $model) {
                     $type = (string) ($u['type'] ?? '');
                     $id = (int) ($u['id'] ?? 0);
-                    if ($id !== (int) $model->id) {
-                        return true;
+                    if ($id === (int) $model->id && in_array($type, $selfTypes, true)) {
+                        return false;
                     }
-                    // Same row under a different usage label still counts as self.
-                    $selfTypes = match ((string) $validated['document_type']) {
-                        'activity' => ['matrix_activity', 'single_memo'],
-                        'non_travel' => ['non_travel'],
-                        'special_memo' => ['special_memo'],
-                        default => [],
-                    };
 
-                    return ! in_array($type, $selfTypes, true);
+                    return true;
                 }
             ));
 
-            if ($others !== [] && empty($validated['allow_existing'])) {
+            if ($others !== []) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'This RBM activity is already linked in APM. Confirm to continue anyway.',
+                    'message' => 'This RBM activity is already mapped in APM and cannot be linked again.',
                     'data' => [
                         'existing' => $others,
-                        'requires_confirmation' => true,
+                        'already_mapped' => true,
                     ],
-                ], 409);
+                ], 422);
             }
         }
 
-        $model->forceFill(['pra_activity_id' => $praActivityId])->save();
+        // Column-only update — never rewrite title, budget, codes, or other memo fields.
+        // Avoid model save()/observers (e.g. HTML trimmers) that could mutate existing data.
+        $model->newQuery()
+            ->whereKey($model->getKey())
+            ->limit(1)
+            ->update(['pra_activity_id' => $praActivityId]);
 
         return response()->json([
             'success' => true,
