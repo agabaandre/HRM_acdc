@@ -730,10 +730,9 @@ Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'acti
 // General single memo route - must come last to avoid conflicts
 Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show')->where('activity', '[0-9]+');
 
-// API documentation (Swagger / OpenAPI). Trailing slash supported (avoids DirectorySlash 404s).
-$serveApiDocs = static fn () => view('api-docs');
-Route::get('docs', $serveApiDocs)->name('api.docs');
-Route::get('docs/', $serveApiDocs);
+// API documentation (Swagger / OpenAPI).
+// Do not also register docs/ — Laravel treats it as the same URI and drops the route name.
+Route::get('docs', static fn () => view('api-docs'))->name('api.docs');
 Route::get('docs/spec', function () {
     $path = base_path('documentation/APM_API_OPENAPI.yaml');
     if (! file_exists($path)) {

@@ -10,7 +10,7 @@
 <!--End Back To Top Button-->
 <footer class="page-footer" style="padding-left: 4px;">
     <p class="mb-0">
-        <a href="{{ route('api.docs') }}" class="text-decoration-none me-3" target="_blank" rel="noopener noreferrer">API</a>
+        <a href="{{ \Illuminate\Support\Facades\Route::has('api.docs') ? route('api.docs') : url('/docs') }}" class="text-decoration-none me-3" target="_blank" rel="noopener noreferrer">API</a>
         <a href="{{ route('faq.index') }}" wire:navigate class="text-decoration-none me-3">FAQs</a>
         <a href="{{ route('help.index') }}" wire:navigate class="text-decoration-none me-3">Help</a>
         <span class="text-muted">Copyright © Africa CDC {{ date('Y') }}. All right reserved.</span>
