@@ -8,7 +8,7 @@
 
 **Tech Stack:** Laravel (APM module), Blade, Vue 3 + Vuetify 3 (CDN), PHPUnit/Pest, staff-portal permissions + `portal_ai_providers`
 
-**Spec:** `modules/apm/docs/superpowers/specs/2026-10-12-activity-reports-design.md`
+**Spec:** `modules/apm/documentation/superpowers/specs/2026-10-12-activity-reports-design.md`
 
 ## Global Constraints
 
@@ -770,7 +770,7 @@ EOF
 ### Task 11: Smoke polish + docs touch
 
 **Files:**
-- Modify: `modules/apm/docs/superpowers/specs/2026-10-12-activity-reports-design.md` (Status → Implemented) only if all tasks done
+- Modify: `modules/apm/documentation/superpowers/specs/2026-10-12-activity-reports-design.md` (Status → Implemented) only if all tasks done
 - Manual smoke checklist in commit message body optional
 
 - [ ] **Step 1: Manual smoke**

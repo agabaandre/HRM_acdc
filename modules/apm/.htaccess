@@ -9,6 +9,9 @@
     RewriteCond %{QUERY_STRING} (^|&)token=
     RewriteRule ^$ /staff/apm/sso [R=302,L,QSA]
 
+    # API Swagger UI — never treat as a filesystem folder (conflicts with legacy docs/ dirs).
+    RewriteRule ^docs(?:/spec)?/?$ server.php [L]
+
     RewriteCond %{REQUEST_FILENAME} -d [OR]
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-dcv/[0-9a-zA-Z_-]+$

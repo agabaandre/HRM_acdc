@@ -730,21 +730,22 @@ Route::get('/activities', [App\Http\Controllers\ActivityController::class, 'acti
 // General single memo route - must come last to avoid conflicts
 Route::get('/single-memos/{activity}', [ActivityController::class, 'show'])->name('activities.single-memos.show')->where('activity', '[0-9]+');
 
-// API documentation (Swagger / OpenAPI)
-Route::get('docs', function () {
-    return view('api-docs');
-})->name('api.docs');
+// API documentation (Swagger / OpenAPI). Trailing slash supported (avoids DirectorySlash 404s).
+$serveApiDocs = static fn () => view('api-docs');
+Route::get('docs', $serveApiDocs)->name('api.docs');
+Route::get('docs/', $serveApiDocs);
 Route::get('docs/spec', function () {
     $path = base_path('documentation/APM_API_OPENAPI.yaml');
-    if (!file_exists($path)) {
-        abort(404);
+    if (! file_exists($path)) {
+        abort(404, 'OpenAPI spec file missing.');
     }
     // Use the same origin/path as this request so docs work on any install (e.g. /staff/apm or root)
     $base = rtrim(url('/'), '/');
-    $apiBaseUrl = $base . '/api/apm/v1';
+    $apiBaseUrl = $base.'/api/apm/v1';
     $yaml = file_get_contents($path);
     $yaml = str_replace('{{API_BASE_URL}}', $apiBaseUrl, $yaml);
     $yaml = str_replace('{{APP_BASE_URL}}', $base, $yaml);
+
     return response($yaml, 200, [
         'Content-Type' => 'application/x-yaml',
         'Content-Disposition' => 'inline; filename="APM_API_OPENAPI.yaml"',
