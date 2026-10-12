@@ -122,6 +122,7 @@ class DocumentNumberService
             'ChangeRequest' => DocumentCounter::TYPE_CHANGE_REQUEST,
             'ServiceRequest' => DocumentCounter::TYPE_SERVICE_REQUEST,
             'RequestARF' => DocumentCounter::TYPE_ARF,
+            'ActivityReport' => DocumentCounter::TYPE_ACTIVITY_REPORT,
             default => 'UNKNOWN'
         };
     }
@@ -160,7 +161,7 @@ class DocumentNumberService
      */
     public static function validateDocumentNumber(string $documentNumber): bool
     {
-        $pattern = '/^AU\/CDC\/[A-Z0-9]+\/IM\/(QM|NT|SPM|SM|CR|SR|ARF)\/\d{3}$/';
+        $pattern = '/^AU\/CDC\/[A-Z0-9]+\/IM\/(QM|NT|SPM|SM|CR|SR|ARF|AR)\/\d{3}$/';
         return preg_match($pattern, $documentNumber) === 1;
     }
 
@@ -203,6 +204,7 @@ class DocumentNumberService
             DocumentCounter::TYPE_CHANGE_REQUEST  => ['table' => 'change_request', 'model' => \App\Models\ChangeRequest::class],
             DocumentCounter::TYPE_SERVICE_REQUEST => ['table' => 'service_requests', 'model' => \App\Models\ServiceRequest::class],
             DocumentCounter::TYPE_ARF             => ['table' => 'request_arfs', 'model' => \App\Models\RequestARF::class],
+            DocumentCounter::TYPE_ACTIVITY_REPORT => ['table' => 'activity_reports', 'model' => \App\Models\ActivityReport::class],
         ];
 
         return $map[$documentType] ?? null;

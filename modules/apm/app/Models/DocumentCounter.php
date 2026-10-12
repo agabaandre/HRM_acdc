@@ -32,6 +32,7 @@ class DocumentCounter extends Model
     const TYPE_CHANGE_REQUEST = 'CR';
     const TYPE_SERVICE_REQUEST = 'SR';
     const TYPE_ARF = 'ARF';
+    const TYPE_ACTIVITY_REPORT = 'AR';
 
     /**
      * Get the next counter value for a division and document type
@@ -87,6 +88,7 @@ class DocumentCounter extends Model
             self::TYPE_CHANGE_REQUEST => 'Change Request',
             self::TYPE_SERVICE_REQUEST => 'Service Request',
             self::TYPE_ARF => 'ARF',
+            self::TYPE_ACTIVITY_REPORT => 'Activity Report',
         ];
     }
 
