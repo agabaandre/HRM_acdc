@@ -78,6 +78,17 @@
             </h5>
         </div>
 <?php ///dd($specialMemo)?>
+        <div class="card-body pb-0 px-4 pt-4">
+            @include('partials.rbm-map-modal', [
+                'rbmMapDocumentType' => 'special_memo',
+                'rbmMapDocumentId' => $specialMemo->id,
+                'rbmMapPraActivityId' => $specialMemo->pra_activity_id,
+                'rbmMapYear' => optional($specialMemo->date_from)->year ?? now()->year,
+                'rbmMapQuarter' => null,
+                'rbmMapDivisionId' => $specialMemo->division_id ?? null,
+            ])
+        </div>
+
         <div class="card-body p-4">
             <form action="{{ request('change_request') ? route('change-requests.store') : route('special-memo.update', $specialMemo) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf

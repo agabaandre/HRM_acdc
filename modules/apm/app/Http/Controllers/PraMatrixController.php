@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Activity;
 use App\Models\Matrix;
+use App\Models\NonTravelMemo;
+use App\Models\SpecialMemo;
 use App\Models\Staff;
 use App\Services\Pra\PraActivitiesCacheService;
 use App\Services\Pra\PraActivityUsageService;
 use App\Services\Pra\PraMatrixImportService;
 use App\Services\Pra\PraSettingsService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -231,5 +235,118 @@ class PraMatrixController extends Controller
                 'key_result_areas' => $result['key_result_areas'],
             ],
         ]);
+    }
+
+    /**
+     * Link (or clear) an RBM activity id on an existing APM document.
+     * Only updates pra_activity_id — does not create or rewrite other fields.
+     */
+    public function linkDocument(Request $request): JsonResponse
+    {
+        if (function_exists('pra_create_enabled') && ! pra_create_enabled()) {
+            return response()->json(['success' => false, 'message' => 'RBM mapping is disabled.'], 403);
+        }
+
+        $validated = $request->validate([
+            'document_type' => ['required', 'in:activity,non_travel,special_memo'],
+            'document_id' => ['required', 'integer', 'min:1'],
+            'pra_activity_id' => ['nullable', 'integer', 'min:1'],
+            'clear' => ['nullable', 'boolean'],
+            'allow_existing' => ['nullable', 'boolean'],
+        ]);
+
+        $clear = ! empty($validated['clear']) || empty($validated['pra_activity_id']);
+        $praActivityId = $clear ? null : (int) $validated['pra_activity_id'];
+
+        $model = $this->resolveLinkDocument(
+            (string) $validated['document_type'],
+            (int) $validated['document_id']
+        );
+        if (! $model) {
+            return response()->json(['success' => false, 'message' => 'Document not found.'], 404);
+        }
+
+        if (! $this->canLinkDocument($model)) {
+            return response()->json(['success' => false, 'message' => 'You are not allowed to map this document.'], 403);
+        }
+
+        if ($praActivityId !== null) {
+            $usageMap = $this->usages->usagesByPraIds([$praActivityId]);
+            $others = array_values(array_filter(
+                $usageMap[$praActivityId] ?? [],
+                function (array $u) use ($validated, $model) {
+                    $type = (string) ($u['type'] ?? '');
+                    $id = (int) ($u['id'] ?? 0);
+                    if ($id !== (int) $model->id) {
+                        return true;
+                    }
+                    // Same row under a different usage label still counts as self.
+                    $selfTypes = match ((string) $validated['document_type']) {
+                        'activity' => ['matrix_activity', 'single_memo'],
+                        'non_travel' => ['non_travel'],
+                        'special_memo' => ['special_memo'],
+                        default => [],
+                    };
+
+                    return ! in_array($type, $selfTypes, true);
+                }
+            ));
+
+            if ($others !== [] && empty($validated['allow_existing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This RBM activity is already linked in APM. Confirm to continue anyway.',
+                    'data' => [
+                        'existing' => $others,
+                        'requires_confirmation' => true,
+                    ],
+                ], 409);
+            }
+        }
+
+        $model->forceFill(['pra_activity_id' => $praActivityId])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $praActivityId === null
+                ? 'RBM mapping cleared.'
+                : 'Mapped to RBM activity '.$praActivityId.'.',
+            'data' => [
+                'document_type' => $validated['document_type'],
+                'document_id' => (int) $model->id,
+                'pra_activity_id' => $praActivityId,
+            ],
+        ]);
+    }
+
+    protected function resolveLinkDocument(string $type, int $id): ?Model
+    {
+        return match ($type) {
+            'activity' => Activity::query()->find($id),
+            'non_travel' => NonTravelMemo::query()->find($id),
+            'special_memo' => SpecialMemo::query()->find($id),
+            default => null,
+        };
+    }
+
+    protected function canLinkDocument(Model $model): bool
+    {
+        $role = (int) (user_session('user_role') ?? session('user.user_role') ?? 0);
+        if (in_array($role, [1, 10], true)) {
+            return true;
+        }
+
+        $staffId = (int) (function_exists('resolved_session_staff_id')
+            ? (resolved_session_staff_id() ?? 0)
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id') ?? 0));
+
+        if ($staffId < 1) {
+            return false;
+        }
+
+        $ownerId = (int) ($model->getAttribute('staff_id') ?? 0);
+        $responsibleId = (int) ($model->getAttribute('responsible_person_id') ?? 0);
+
+        return $ownerId === $staffId || $responsibleId === $staffId;
     }
 }

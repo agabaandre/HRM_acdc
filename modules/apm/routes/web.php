@@ -217,6 +217,7 @@ Route::resource('fund-types', App\Http\Controllers\FundTypeController::class)->e
         ->whereNumber('praActivityId')
         ->name('matrices.pra.activities.show');
     Route::post('matrices/pra/create', [App\Http\Controllers\PraMatrixController::class, 'createMatrix'])->name('matrices.pra.create');
+    Route::post('matrices/pra/link', [App\Http\Controllers\PraMatrixController::class, 'linkDocument'])->name('matrices.pra.link');
     Route::get('directorates/ajax', [App\Http\Controllers\DirectorateController::class, 'getDirectoratesAjax'])->name('directorates.ajax');
     Route::resource('directorates', App\Http\Controllers\DirectorateController::class);
     

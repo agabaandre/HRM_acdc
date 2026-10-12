@@ -27,6 +27,14 @@
         </div>
 
         <div class="card-body p-4">
+            @include('partials.rbm-map-modal', [
+                'rbmMapDocumentType' => 'activity',
+                'rbmMapDocumentId' => $activity->id,
+                'rbmMapPraActivityId' => $activity->pra_activity_id,
+                'rbmMapYear' => $matrix->year ?? now()->year,
+                'rbmMapQuarter' => $matrix->quarter ?? null,
+                'rbmMapDivisionId' => $activity->division_id ?? $matrix->division_id ?? null,
+            ])
             <form action="{{ request('change_request') ? route('change-requests.store') : ($activity->is_single_memo ? route('activities.single-memos.update', [$matrix, $activity]) : route('matrices.activities.update', [$matrix, $activity])) }}" method="POST" id="activityForm" enctype="multipart/form-data">
                 @csrf
                 @if(request('change_request'))

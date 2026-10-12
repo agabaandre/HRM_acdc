@@ -19,6 +19,14 @@
         <h5 class="mb-0"><i class="bx bx-edit me-2 text-primary"></i>Edit Memo Details</h5>
     </div>
     <div class="card-body p-4">
+        @include('partials.rbm-map-modal', [
+            'rbmMapDocumentType' => 'non_travel',
+            'rbmMapDocumentId' => $nonTravel->id,
+            'rbmMapPraActivityId' => $nonTravel->pra_activity_id,
+            'rbmMapYear' => optional($nonTravel->memo_date)->year ?? now()->year,
+            'rbmMapQuarter' => null,
+            'rbmMapDivisionId' => $nonTravel->division_id ?? null,
+        ])
         <form action="{{ request('change_request') ? route('change-requests.store') : route('non-travel.update', $nonTravel) }}" method="POST" enctype="multipart/form-data" id="nonTravelForm">
             @csrf
             @if(request('change_request'))
