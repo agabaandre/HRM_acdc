@@ -16,10 +16,10 @@ class PraMatrixImportService
     ) {}
 
     /**
-     * Create a draft matrix and draft activity stubs from selected PRA activities.
+     * Create a draft matrix (or append to an existing draft) with activity stubs from RBM activities.
      *
      * @param  list<int>  $praActivityIds
-     * @return array{matrix: Matrix, activities: list<Activity>, key_result_areas: list<array{description: string}>}
+     * @return array{matrix: Matrix, activities: list<Activity>, key_result_areas: list<array{description: string}>, appended: bool}
      */
     public function createMatrixWithActivities(
         int $divisionId,
@@ -34,13 +34,21 @@ class PraMatrixImportService
             throw new RuntimeException('Invalid quarter.');
         }
 
-        if (Matrix::existsForDivisionYearQuarter($divisionId, $year, $quarter)) {
-            throw new RuntimeException("A matrix already exists for this division in {$year} {$quarter}.");
+        $existingMatrix = Matrix::query()
+            ->where('division_id', $divisionId)
+            ->where('year', $year)
+            ->where('quarter', $quarter)
+            ->first();
+
+        if ($existingMatrix && strtolower((string) ($existingMatrix->overall_status ?? '')) !== 'draft') {
+            throw new RuntimeException(
+                "A matrix already exists for this division in {$year} {$quarter} and is not in draft."
+            );
         }
 
         $ids = array_values(array_unique(array_filter(array_map('intval', $praActivityIds))));
         if ($ids === []) {
-            throw new RuntimeException('Select at least one PRA activity.');
+            throw new RuntimeException('Select at least one RBM activity.');
         }
 
         $available = $this->cache->activitiesForDivision($divisionId, $year, null);
@@ -52,12 +60,12 @@ class PraMatrixImportService
         $selected = [];
         foreach ($ids as $id) {
             if (! isset($byId[$id])) {
-                throw new RuntimeException("PRA activity {$id} is not available for this division.");
+                throw new RuntimeException("RBM activity {$id} is not available for this division.");
             }
             $selected[] = $byId[$id];
         }
 
-        $kras = $this->buildKras($selected);
+        $newKras = $this->buildKras($selected);
         $bounds = $this->cache->quarterBounds($year, $quarter);
 
         return DB::transaction(function () use (
@@ -67,74 +75,151 @@ class PraMatrixImportService
             $year,
             $quarter,
             $selected,
-            $kras,
-            $bounds
+            $newKras,
+            $bounds,
+            $existingMatrix
         ) {
-            $matrix = Matrix::create([
-                'division_id' => $divisionId,
-                'focal_person_id' => $focalPersonId,
-                'year' => $year,
-                'quarter' => $quarter,
-                'key_result_area' => json_encode($kras),
-                'staff_id' => $staffId,
-                'forward_workflow_id' => null,
-                'overall_status' => 'draft',
-            ]);
+            $appended = $existingMatrix !== null;
 
-            $approvalService = new ApprovalService;
-            $approvalService->updateApprovalOrderMap($matrix);
-
-            $activities = [];
-            foreach ($selected as $row) {
-                $kraIndex = $this->kraIndexFor($kras, (string) ($row['outcome_area'] ?? ''));
-                $dateFrom = $this->clampDate($row['start_date'] ?? null, $bounds['start'], $bounds['end']);
-                $dateTo = $this->clampDate($row['end_date'] ?? null, $bounds['start'], $bounds['end'], true);
-                if ($dateTo->lt($dateFrom)) {
-                    $dateTo = $dateFrom->copy();
-                }
-
-                $background = trim((string) ($row['outcome_area'] ?? ''));
-                if ($background === '') {
-                    $background = (string) ($row['indicator_title'] ?? $row['title'] ?? 'Imported from PRA');
-                }
-
-                $activity = $matrix->activities()->create([
-                    'staff_id' => $staffId,
-                    'pra_activity_id' => (int) $row['pra_activity_id'],
-                    'workplan_activity_code' => (string) ($row['code'] ?? ''),
-                    'responsible_person_id' => $focalPersonId,
-                    'date_from' => $dateFrom->toDateString(),
-                    'date_to' => $dateTo->toDateString(),
-                    'total_participants' => 1,
-                    'total_external_participants' => 0,
-                    'key_result_area' => (string) $kraIndex,
-                    'request_type_id' => 1,
-                    'activity_title' => mb_substr((string) ($row['title'] ?? 'PRA activity'), 0, 200),
-                    'background' => $background,
-                    'activity_request_remarks' => 'Imported from PRA — complete participants, location and budget before submission.',
-                    'forward_workflow_id' => null,
-                    'reverse_workflow_id' => 1,
-                    'status' => Activity::STATUS_DRAFT,
-                    'fund_type_id' => 1,
-                    'location_id' => [],
-                    'internal_participants' => [],
-                    'budget_id' => [],
-                    'budget_breakdown' => [],
-                    'attachment' => [],
-                    'is_single_memo' => 0,
-                    'approval_level' => 0,
+            if ($appended) {
+                $matrix = $existingMatrix;
+                $kras = $this->mergeKras($this->matrixKras($matrix), $newKras);
+                $matrix->forceFill(['key_result_area' => json_encode($kras)])->save();
+            } else {
+                $kras = $newKras;
+                $matrix = Matrix::create([
                     'division_id' => $divisionId,
-                    'overall_status' => Activity::STATUS_DRAFT,
+                    'focal_person_id' => $focalPersonId,
+                    'year' => $year,
+                    'quarter' => $quarter,
+                    'key_result_area' => json_encode($kras),
+                    'staff_id' => $staffId,
+                    'forward_workflow_id' => null,
+                    'overall_status' => 'draft',
                 ]);
-                $activities[] = $activity;
+
+                $approvalService = new ApprovalService;
+                $approvalService->updateApprovalOrderMap($matrix);
             }
+
+            $activities = $this->createActivitiesFromRows(
+                $matrix,
+                $selected,
+                $kras,
+                $bounds,
+                $staffId,
+                $focalPersonId,
+                $divisionId
+            );
 
             return [
                 'matrix' => $matrix->fresh(),
                 'activities' => $activities,
                 'key_result_areas' => $kras,
+                'appended' => $appended,
             ];
         });
+    }
+
+    /**
+     * @return list<array{description: string}>
+     */
+    protected function matrixKras(Matrix $matrix): array
+    {
+        $raw = $matrix->key_result_area;
+        $decoded = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: []);
+
+        return array_values(array_map(
+            static fn ($k) => ['description' => (string) ($k['description'] ?? '')],
+            is_array($decoded) ? $decoded : []
+        ));
+    }
+
+    /**
+     * @param  list<array{description: string}>  $existing
+     * @param  list<array{description: string}>  $incoming
+     * @return list<array{description: string}>
+     */
+    protected function mergeKras(array $existing, array $incoming): array
+    {
+        $seen = [];
+        $merged = [];
+        foreach (array_merge($existing, $incoming) as $kra) {
+            $desc = trim((string) ($kra['description'] ?? ''));
+            if ($desc === '') {
+                continue;
+            }
+            $key = mb_strtolower($desc);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $merged[] = ['description' => $desc];
+        }
+
+        return $merged !== [] ? $merged : [['description' => 'Quarterly workplan outcomes']];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $selected
+     * @param  list<array{description: string}>  $kras
+     * @param  array{start: Carbon, end: Carbon}  $bounds
+     * @return list<Activity>
+     */
+    protected function createActivitiesFromRows(
+        Matrix $matrix,
+        array $selected,
+        array $kras,
+        array $bounds,
+        int $staffId,
+        int $focalPersonId,
+        int $divisionId,
+    ): array {
+        $activities = [];
+        foreach ($selected as $row) {
+            $kraIndex = $this->kraIndexFor($kras, (string) ($row['outcome_area'] ?? ''));
+            $dateFrom = $this->clampDate($row['start_date'] ?? null, $bounds['start'], $bounds['end']);
+            $dateTo = $this->clampDate($row['end_date'] ?? null, $bounds['start'], $bounds['end'], true);
+            if ($dateTo->lt($dateFrom)) {
+                $dateTo = $dateFrom->copy();
+            }
+
+            $background = trim((string) ($row['outcome_area'] ?? ''));
+            if ($background === '') {
+                $background = (string) ($row['indicator_title'] ?? $row['title'] ?? 'Imported from RBM');
+            }
+
+            $activities[] = $matrix->activities()->create([
+                'staff_id' => $staffId,
+                'pra_activity_id' => (int) $row['pra_activity_id'],
+                'workplan_activity_code' => (string) ($row['code'] ?? ''),
+                'responsible_person_id' => $focalPersonId,
+                'date_from' => $dateFrom->toDateString(),
+                'date_to' => $dateTo->toDateString(),
+                'total_participants' => 1,
+                'total_external_participants' => 0,
+                'key_result_area' => (string) $kraIndex,
+                'request_type_id' => 1,
+                'activity_title' => mb_substr((string) ($row['title'] ?? 'RBM activity'), 0, 200),
+                'background' => $background,
+                'activity_request_remarks' => 'Imported from RBM — complete participants, location and budget before submission.',
+                'forward_workflow_id' => null,
+                'reverse_workflow_id' => 1,
+                'status' => Activity::STATUS_DRAFT,
+                'fund_type_id' => 1,
+                'location_id' => [],
+                'internal_participants' => [],
+                'budget_id' => [],
+                'budget_breakdown' => [],
+                'attachment' => [],
+                'is_single_memo' => 0,
+                'approval_level' => 0,
+                'division_id' => $divisionId,
+                'overall_status' => Activity::STATUS_DRAFT,
+            ]);
+        }
+
+        return $activities;
     }
 
     /**

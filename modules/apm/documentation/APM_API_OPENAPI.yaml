@@ -45,7 +45,7 @@ tags:
   - name: Activity reports
     description: |
       Activity reporting (Africa CDC template). Export and share approved/submitted reports
-      with **RBA** (formerly PRA) and **RBM** platforms.
+      with the **RBM** platform (formerly labelled PRA in APM).
 
 paths:
   /api/documents/verify:
@@ -2118,10 +2118,10 @@ paths:
   /activity-reports/shareable:
     get:
       tags: [Activity reports]
-      summary: List activity reports available to share with RBA/RBM
+      summary: List activity reports available to share with RBM
       description: |
         Returns submitted/approved activity reports (not marked not-executed) for pull by
-        **RBA** (Results-Based / former PRA integration) or **RBM** platforms.
+        the **RBM** platform (formerly labelled PRA in APM).
       operationId: activityReportsShareable
       security: [{ bearerAuth: [] }]
       parameters:
@@ -2157,10 +2157,10 @@ paths:
   /activity-reports/{id}/export:
     get:
       tags: [Activity reports]
-      summary: Export one activity report payload for RBA/RBM
+      summary: Export one activity report payload for RBM
       description: |
         Full structured payload for a single activity report, including source linkage
-        (`source_id`, `source_type`, `pra_activity_id` when present) for RBA/RBM sync.
+        (`source_id`, `source_type`, `pra_activity_id` when present) for RBM sync.
       operationId: activityReportsExport
       security: [{ bearerAuth: [] }]
       parameters:
@@ -2186,11 +2186,11 @@ paths:
   /activity-reports/{id}/share:
     post:
       tags: [Activity reports]
-      summary: Share an activity report to RBA and/or RBM
+      summary: Share an activity report to RBM
       description: |
-        Push (or queue) an activity report to one or both platforms:
-        - **rba** — RBA platform (renamed from PRA in APM UI)
-        - **rbm** — RBM platform
+        Push (or queue) an activity report to the **RBM** platform (formerly PRA):
+        - **rbm** — canonical target
+        - **rba** / **pra** — accepted aliases (normalized to `rbm`)
         Records a share receipt and returns the export payload.
       operationId: activityReportsShare
       security: [{ bearerAuth: [] }]
@@ -2212,8 +2212,8 @@ paths:
                   minItems: 1
                   items:
                     type: string
-                    enum: [rba, rbm]
-                  example: [rba, rbm]
+                    enum: [rbm, rba, pra]
+                  example: [rbm]
                 note:
                   type: string
                   maxLength: 1000
@@ -2469,7 +2469,7 @@ components:
 
     ActivityReportExport:
       type: object
-      description: Structured activity report payload for RBA/RBM.
+      description: Structured activity report payload for RBM.
       properties:
         id: { type: integer }
         document_number: { type: string, nullable: true }
@@ -2511,7 +2511,7 @@ components:
         pra_activity_id:
           type: integer
           nullable: true
-          description: Linked RBA/PRA specific activity id when the source memo was created from RBA
+          description: Linked RBM activity id when the source memo was created from RBM
         has_been_submitted: { type: boolean }
         submitted_at: { type: string, format: date-time, nullable: true }
         shared_for:

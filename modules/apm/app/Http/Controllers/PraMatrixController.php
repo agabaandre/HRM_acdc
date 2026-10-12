@@ -46,7 +46,7 @@ class PraMatrixController extends Controller
         if (! $this->settings->isConfigured()) {
             return response()->json([
                 'success' => false,
-                'message' => 'PRA is not configured. Set it up under Divisions → PRA integration.',
+                'message' => 'RBM is not configured. Set it up under Divisions → RBM integration.',
             ], 422);
         }
 
@@ -109,7 +109,7 @@ class PraMatrixController extends Controller
 
         $row = $this->cache->findActivity($praActivityId, $year);
         if (! $row) {
-            return response()->json(['success' => false, 'message' => 'PRA activity not found in cache.'], 404);
+            return response()->json(['success' => false, 'message' => 'RBM activity not found in cache.'], 404);
         }
 
         $matrixId = (int) $request->query('matrix_id', 0);
@@ -169,7 +169,7 @@ class PraMatrixController extends Controller
         if ($existingIds !== [] && empty($validated['allow_existing'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Some selected PRA activities already exist in APM. Confirm to continue anyway.',
+                'message' => 'Some selected RBM activities already exist in APM. Confirm to continue anyway.',
                 'data' => [
                     'existing_pra_activity_ids' => $existingIds,
                     'existing' => $usageMap,
@@ -192,28 +192,40 @@ class PraMatrixController extends Controller
         }
 
         $matrix = $result['matrix'];
+        $appended = ! empty($result['appended']);
         $recipients = Staff::active()
             ->where('division_id', $divisionId)
             ->whereNotNull('work_email')
             ->get();
-        if (function_exists('send_matrix_notification')) {
+        if (! $appended && function_exists('send_matrix_notification')) {
             send_matrix_notification($matrix, 'created', $recipients);
         }
 
         $warning = $existingIds !== []
-            ? ' Note: some PRA activities were already linked elsewhere in APM.'
+            ? ' Note: some RBM activities were already linked elsewhere in APM.'
             : '';
+
+        $count = count($result['activities']);
+        $message = $appended
+            ? sprintf(
+                'Added %d RBM activit%s to the existing draft matrix.%s Review and complete details on the matrix page.',
+                $count,
+                $count === 1 ? 'y' : 'ies',
+                $warning
+            )
+            : sprintf(
+                'Matrix created with %d RBM activit%s.%s Review and complete details on the matrix page.',
+                $count,
+                $count === 1 ? 'y' : 'ies',
+                $warning
+            );
 
         return response()->json([
             'success' => true,
-            'message' => sprintf(
-                'Matrix created with %d PRA activit%s.%s Review and complete details on the matrix page.',
-                count($result['activities']),
-                count($result['activities']) === 1 ? 'y' : 'ies',
-                $warning
-            ),
+            'message' => $message,
             'data' => [
                 'matrix_id' => $matrix->id,
+                'appended' => $appended,
                 'redirect_url' => route('matrices.show', $matrix),
                 'activity_ids' => array_map(fn ($a) => $a->id, $result['activities']),
                 'key_result_areas' => $result['key_result_areas'],

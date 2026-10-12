@@ -7,7 +7,7 @@
 <div class="d-flex gap-2">
     @if(($pageConfig['praCreateEnabled'] ?? true))
     <button type="button" class="btn btn-success shadow-sm" id="nt-create-from-pra-btn">
-        <i class="bx bx-cloud-download me-1"></i> Create from RBA
+        <i class="bx bx-cloud-download me-1"></i> Create from RBM
     </button>
     @endif
     <a wire:navigate href="{{ route('non-travel.create') }}" class="btn btn-success shadow-sm">

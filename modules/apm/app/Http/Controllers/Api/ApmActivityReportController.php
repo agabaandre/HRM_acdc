@@ -16,7 +16,7 @@ class ApmActivityReportController extends Controller
     ) {}
 
     /**
-     * Export a single activity report payload for RBA / RBM consumption.
+     * Export a single activity report payload for RBM consumption.
      */
     public function export(ActivityReport $activityReport): JsonResponse
     {
@@ -27,13 +27,13 @@ class ApmActivityReportController extends Controller
     }
 
     /**
-     * Share an activity report to RBA and/or RBM platforms.
+     * Share an activity report to the RBM platform.
      */
     public function share(Request $request, ActivityReport $activityReport): JsonResponse
     {
         $validated = $request->validate([
             'targets' => 'required|array|min:1',
-            'targets.*' => 'required|string|in:rba,rbm',
+            'targets.*' => 'required|string|in:rbm,rba,pra',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -68,7 +68,7 @@ class ApmActivityReportController extends Controller
     }
 
     /**
-     * List approved/submitted reports available for RBA/RBM pull.
+     * List approved/submitted reports available for RBM pull.
      */
     public function shareable(Request $request): JsonResponse
     {

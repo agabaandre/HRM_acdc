@@ -9,15 +9,22 @@ use InvalidArgumentException;
 
 class ActivityReportShareService
 {
+    /** Canonical share target(s) for the RBM platform (formerly labelled PRA / RBA in APM). */
     /** @var list<string> */
-    public const TARGETS = ['rba', 'rbm'];
+    public const TARGETS = ['rbm'];
+
+    /** @var array<string, string> */
+    public const TARGET_ALIASES = [
+        'rba' => 'rbm',
+        'pra' => 'rbm',
+    ];
 
     public function __construct(
         private ActivityReportService $reports,
     ) {}
 
     /**
-     * Build the export payload consumed by RBA / RBM platforms.
+     * Build the export payload consumed by the RBM platform.
      *
      * @return array<string, mixed>
      */
@@ -51,26 +58,33 @@ class ActivityReportShareService
     }
 
     /**
-     * Record a share of an approved (or submitted) activity report to RBA and/or RBM.
+     * Record a share of an approved (or submitted) activity report to RBM.
      *
      * @param  list<string>  $targets
      * @return list<array<string, mixed>>
      */
     public function share(ActivityReport $report, array $targets, int $sharedBy, ?string $note = null): array
     {
-        $targets = array_values(array_unique(array_map(
-            static fn ($t) => strtolower(trim((string) $t)),
+        $targets = array_values(array_unique(array_filter(array_map(
+            function ($t) {
+                $key = strtolower(trim((string) $t));
+                if ($key === '') {
+                    return null;
+                }
+
+                return self::TARGET_ALIASES[$key] ?? $key;
+            },
             $targets
-        )));
+        ))));
 
         foreach ($targets as $target) {
             if (! in_array($target, self::TARGETS, true)) {
-                throw new InvalidArgumentException("Invalid share target [{$target}]. Allowed: rba, rbm.");
+                throw new InvalidArgumentException('Invalid share target ['.$target.']. Allowed: rbm (aliases: rba, pra).');
             }
         }
 
         if ($targets === []) {
-            throw new InvalidArgumentException('At least one share target is required (rba or rbm).');
+            throw new InvalidArgumentException('At least one share target is required (rbm).');
         }
 
         if (! Schema::hasTable('activity_report_shares')) {
@@ -94,7 +108,7 @@ class ActivityReportShareService
                     'updated_at' => now(),
                 ]);
 
-                // Delivery to external RBA/RBM systems is queued for integration jobs.
+                // Delivery to the external RBM system is queued for integration jobs.
                 DB::table('activity_report_shares')->where('id', $id)->update([
                     'status' => 'sent',
                     'updated_at' => now(),

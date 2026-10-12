@@ -117,7 +117,7 @@
                 const kraDialog = ref({ open: false, title: '', items: [] });
                 const activitiesDialog = ref({ open: false, title: '', items: [] });
 
-                // PRA create-matrix wizard
+                // RBM create-matrix wizard
                 const praWizard = ref({
                     open: false,
                     step: 1,
@@ -356,7 +356,7 @@
 
                 async function loadPraActivities(refresh = false) {
                     if (!cfg.routes?.praActivities) {
-                        notify('RBA activities route is not configured.');
+                        notify('RBM activities route is not configured.');
                         return;
                     }
                     praWizard.value.loading = true;
@@ -370,13 +370,13 @@
                             params.set('division_id', String(praWizard.value.division_id));
                         }
                         if (refresh) params.set('refresh', '1');
-                        // No AbortSignal — PRA full refresh must not be cancelled/timed out by the client.
+                        // No AbortSignal — RBM full refresh must not be cancelled/timed out by the client.
                         const res = await fetch(`${cfg.routes.praActivities}?${params}`, {
                             headers: { Accept: 'application/json' },
                         });
                         const json = await res.json();
                         if (!res.ok || !json.success) {
-                            throw new Error(json.message || 'Could not load RBA activities.');
+                            throw new Error(json.message || 'Could not load RBM activities.');
                         }
                         praWizard.value.activities = json.data?.activities || [];
                         praWizard.value.meta = json.data?.meta || null;
@@ -386,13 +386,13 @@
                             .map(Number)
                             .filter((id) => valid.has(id));
                         if (!praWizard.value.activities.length) {
-                            notify('No RBA activities found for this division/quarter. Check RBA division mapping.', 'warning');
+                            notify('No RBM activities found for this division/quarter. Check RBM division mapping.', 'warning');
                         } else if (refresh) {
-                            notify('RBA activities refreshed.', 'success');
+                            notify('RBM activities refreshed.', 'success');
                         }
                     } catch (e) {
                         praWizard.value.activities = [];
-                        notify(e.message || 'Could not load RBA activities.');
+                        notify(e.message || 'Could not load RBM activities.');
                     } finally {
                         praWizard.value.loading = false;
                         praWizard.value.refreshing = false;
@@ -416,7 +416,7 @@
 
                 function praGoReviewStep() {
                     if (!praWizard.value.selected.length) {
-                        notify('Select at least one RBA activity.');
+                        notify('Select at least one RBM activity.');
                         return;
                     }
                     if (praSelectedExistingCount.value > 0 && !praWizard.value.allowExisting) {
@@ -430,11 +430,11 @@
 
                 async function praCreateMatrix() {
                     if (!praWizard.value.selected.length) {
-                        notify('Select at least one RBA activity.');
+                        notify('Select at least one RBM activity.');
                         return;
                     }
                     if (praSelectedExistingCount.value > 0 && !praWizard.value.allowExisting) {
-                        notify('Some selected RBA activities already exist. Confirm the warning checkbox first.', 'warning');
+                        notify('Some selected RBM activities already exist. Confirm the warning checkbox first.', 'warning');
                         return;
                     }
                     praWizard.value.creating = true;
@@ -601,7 +601,7 @@
             prepend-icon="mdi-cloud-download"
             @click="openPraWizard"
           >
-            Create matrix from RBA
+            Create matrix from RBM
           </v-btn>
           <v-btn
             v-if="cfg.isFocalPerson"
@@ -807,7 +807,7 @@
         <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
           <span class="d-flex align-center gap-2">
             <v-icon icon="mdi-cloud-download" color="primary" />
-            Create matrix from RBA
+            Create matrix from RBM
           </span>
           <v-chip size="small" variant="tonal" color="primary">Step {{ praWizard.step }} of 3</v-chip>
         </v-card-title>
@@ -857,7 +857,7 @@
                 {{ praFiltered.length }} shown
                 <span v-if="praWizard.meta?.count != null"> / {{ praWizard.meta.count }} loaded</span>
                 <span v-if="praWizard.meta?.existing_count"> · {{ praWizard.meta.existing_count }} already in APM</span>
-                <span v-if="praWizard.meta?.pra_codes?.length"> · RBA codes: {{ praWizard.meta.pra_codes.join(', ') }}</span>
+                <span v-if="praWizard.meta?.pra_codes?.length"> · RBM codes: {{ praWizard.meta.pra_codes.join(', ') }}</span>
               </div>
               <div class="d-flex align-center flex-wrap gap-2">
                 <v-select
@@ -902,7 +902,7 @@
               density="compact"
               class="mb-3"
             >
-              Refreshing RBA activities — this can take a few minutes. Please wait…
+              Refreshing RBM activities — this can take a few minutes. Please wait…
             </v-alert>
             <v-data-table
               v-model="praWizard.selected"
@@ -948,7 +948,7 @@
               </template>
               <template #no-data>
                 <v-alert type="warning" variant="tonal" class="ma-4">
-                  No RBA activities match this filter. Try “All quarters” or refresh after mapping your division.
+                  No RBM activities match this filter. Try “All quarters” or refresh after mapping your division.
                 </v-alert>
               </template>
             </v-data-table>
@@ -992,7 +992,7 @@
               density="compact"
               class="mb-3"
             >
-              {{ praSelectedExistingCount }} selected RBA activit{{ praSelectedExistingCount === 1 ? 'y is' : 'ies are' }}
+              {{ praSelectedExistingCount }} selected RBM activit{{ praSelectedExistingCount === 1 ? 'y is' : 'ies are' }}
               already linked in APM (may be draft, pending, or not yet implemented). You can still import —
               confirm below.
             </v-alert>
@@ -1002,7 +1002,7 @@
               density="compact"
               hide-details
               class="mb-3"
-              label="Allow already-linked RBA activities (I understand they may duplicate work)"
+              label="Allow already-linked RBM activities (I understand they may duplicate work)"
             />
             <v-list lines="two" class="border rounded">
               <v-list-item v-for="row in praSelectedRows" :key="row.pra_activity_id">

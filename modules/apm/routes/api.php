@@ -128,7 +128,7 @@ Route::prefix('apm/v1')->group(function () {
         Route::put('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
         Route::patch('divisions/{id}', [ApmDivisionController::class, 'update'])->where('id', '[0-9]+');
 
-        // Activity reports — share / export to RBA or RBM
+        // Activity reports — share / export to RBM
         Route::get('activity-reports/shareable', [ApmActivityReportController::class, 'shareable']);
         Route::get('activity-reports/{activityReport}/export', [ApmActivityReportController::class, 'export'])
             ->whereNumber('activityReport');

@@ -25,10 +25,10 @@ it('rejects invalid share targets', function () {
         'overall_status' => 'draft',
     ]));
 
-    $svc->share($report, ['pra'], 1);
+    $svc->share($report, ['unknown'], 1);
 })->throws(InvalidArgumentException::class);
 
-it('records shares for rba and rbm', function () {
+it('records shares for rbm and normalizes aliases', function () {
     $svc = new ActivityReportShareService(new ActivityReportService(new ActivityReportAutofillService));
     $report = ActivityReport::withoutEvents(fn () => ActivityReport::query()->create([
         'source_id' => 2,
@@ -38,9 +38,9 @@ it('records shares for rba and rbm', function () {
         'activity_name_code' => 'AWP-9',
     ]));
 
-    $rows = $svc->share($report, ['rba', 'rbm'], 99, 'sync');
+    $rows = $svc->share($report, ['rba', 'pra', 'rbm'], 99, 'sync');
 
-    expect($rows)->toHaveCount(2)
-        ->and(collect($rows)->pluck('target')->sort()->values()->all())->toBe(['rba', 'rbm'])
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['target'])->toBe('rbm')
         ->and($rows[0]['status'])->toBe('sent');
 });
