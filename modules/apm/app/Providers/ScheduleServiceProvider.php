@@ -172,6 +172,15 @@ class ScheduleServiceProvider extends ServiceProvider
                 Log::error('Stale draft memos reminder failed');
             });
 
+        $schedule->command('activity-reports:remind')
+            ->dailyAt('09:45')
+            ->description('Remind staff about overdue Activity Reports (end date + 7 days)')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->onFailure(function () {
+                Log::error('Activity report reminders failed');
+            });
+
         $schedule->command('memos:archive-stale-drafts')
             ->weeklyOn(1, '06:00')
             ->description('Archive stale draft memos holding budget')

@@ -12,6 +12,9 @@ use Illuminate\Support\Collection;
 
 class ActivityReportRegistryService
 {
+    /** Extramural (2) and external (3) fund types — external source funded. */
+    public const EXTERNAL_FUND_TYPE_IDS = [2, 3];
+
     /**
      * @return array{start: Carbon, end: Carbon, year: int, quarter: int}
      */
@@ -83,7 +86,7 @@ class ActivityReportRegistryService
     {
         $q = Activity::query()
             ->select([
-                'id', 'activity_title', 'document_number', 'division_id',
+                'id', 'activity_title', 'document_number', 'division_id', 'fund_type_id',
                 'date_from', 'date_to', 'is_single_memo', 'staff_id', 'responsible_person_id',
             ])
             ->where(function ($w) use ($bounds) {
@@ -102,6 +105,8 @@ class ActivityReportRegistryService
             'title' => (string) ($a->activity_title ?? ''),
             'document_number' => $a->document_number,
             'division_id' => $a->division_id,
+            'fund_type_id' => $a->fund_type_id !== null ? (int) $a->fund_type_id : null,
+            'is_external_funded' => in_array((int) ($a->fund_type_id ?? 0), self::EXTERNAL_FUND_TYPE_IDS, true),
             'start_date' => optional($a->date_from)->toDateString(),
             'end_date' => optional($a->date_to)->toDateString(),
         ]);
@@ -115,7 +120,7 @@ class ActivityReportRegistryService
     {
         $q = SpecialMemo::query()
             ->select([
-                'id', 'activity_title', 'document_number', 'division_id',
+                'id', 'activity_title', 'document_number', 'division_id', 'fund_type_id',
                 'date_from', 'date_to', 'staff_id', 'responsible_person_id',
             ])
             ->where(function ($w) use ($bounds) {
@@ -134,6 +139,8 @@ class ActivityReportRegistryService
             'title' => (string) ($m->activity_title ?? ''),
             'document_number' => $m->document_number,
             'division_id' => $m->division_id,
+            'fund_type_id' => $m->fund_type_id !== null ? (int) $m->fund_type_id : null,
+            'is_external_funded' => in_array((int) ($m->fund_type_id ?? 0), self::EXTERNAL_FUND_TYPE_IDS, true),
             'start_date' => optional($m->date_from)->toDateString(),
             'end_date' => optional($m->date_to)->toDateString(),
         ]);
@@ -145,13 +152,18 @@ class ActivityReportRegistryService
      */
     private function nonTravelRows(array $bounds, ?int $divisionId): Collection
     {
+        $externalIds = self::EXTERNAL_FUND_TYPE_IDS;
+
         $q = NonTravelMemo::query()
             ->select([
-                'id', 'activity_title', 'document_number', 'division_id',
+                'id', 'activity_title', 'document_number', 'division_id', 'fund_type_id',
                 'memo_date', 'staff_id', 'pra_activity_id',
             ])
-            ->whereNotNull('pra_activity_id')
-            ->where('pra_activity_id', '>', 0)
+            ->where(function ($w) use ($externalIds) {
+                $w->where(function ($p) {
+                    $p->whereNotNull('pra_activity_id')->where('pra_activity_id', '>', 0);
+                })->orWhereIn('fund_type_id', $externalIds);
+            })
             ->whereDate('memo_date', '>=', $bounds['start']->toDateString())
             ->whereDate('memo_date', '<=', $bounds['end']->toDateString());
 
@@ -166,6 +178,8 @@ class ActivityReportRegistryService
             'title' => (string) ($m->activity_title ?? ''),
             'document_number' => $m->document_number,
             'division_id' => $m->division_id,
+            'fund_type_id' => $m->fund_type_id !== null ? (int) $m->fund_type_id : null,
+            'is_external_funded' => in_array((int) ($m->fund_type_id ?? 0), self::EXTERNAL_FUND_TYPE_IDS, true),
             'start_date' => optional($m->memo_date)->toDateString(),
             'end_date' => optional($m->memo_date)->toDateString(),
         ]);

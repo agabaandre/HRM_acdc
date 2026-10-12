@@ -20,7 +20,7 @@ it('allows responsible staff and participants to edit a source memo', function (
         ->and($svc->canEdit($source, 99))->toBeFalse();
 });
 
-it('blocks edit when report is submitted or not executed', function () {
+it('blocks edit when report is submitted but allows draft even if not executed', function () {
     $svc = new ActivityReportAccessService;
     $report = new ActivityReport([
         'staff_id' => 10,
@@ -36,7 +36,7 @@ it('blocks edit when report is submitted or not executed', function () {
 
     $report->overall_status = 'draft';
     $report->not_executed = true;
-    expect($svc->canEdit($report, 10))->toBeFalse();
+    expect($svc->canEdit($report, 10))->toBeTrue();
 });
 
 it('flattens array-of-objects participant formats', function () {

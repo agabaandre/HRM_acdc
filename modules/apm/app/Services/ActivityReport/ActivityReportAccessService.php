@@ -59,8 +59,7 @@ class ActivityReportAccessService
         if ($sourceOrReport instanceof ActivityReport) {
             $status = (string) ($sourceOrReport->overall_status ?? 'draft');
 
-            return in_array($status, self::EDITABLE_STATUSES, true)
-                && ! (bool) ($sourceOrReport->not_executed ?? false);
+            return in_array($status, self::EDITABLE_STATUSES, true);
         }
 
         return true;

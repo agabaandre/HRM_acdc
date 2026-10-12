@@ -50,6 +50,7 @@
                 const headers = [
                     { title: 'Ref', key: 'document_number', width: '140px' },
                     { title: 'Type', key: 'type_label', width: '120px' },
+                    { title: 'Funding', key: 'is_external_funded', width: '110px' },
                     { title: 'Title', key: 'title' },
                     { title: 'Dates', key: 'dates', width: '160px' },
                     { title: 'Process', key: 'process_status', width: '110px' },
@@ -160,6 +161,10 @@
                     </v-card-title>
                     <v-card-text>
                       <v-data-table :headers="headers" :items="items" :loading="loading" item-value="source_id" class="bg-transparent">
+                        <template #item.is_external_funded="{ item }">
+                          <v-chip v-if="item.is_external_funded" size="small" color="warning" variant="tonal">External</v-chip>
+                          <span v-else class="text-medium-emphasis">—</span>
+                        </template>
                         <template #item.process_status="{ item }">
                           <v-chip size="small" :color="item.process_status === 'processed' ? 'success' : (item.process_status === 'started' ? 'info' : 'secondary')" variant="tonal">
                             {{ item.process_status }}

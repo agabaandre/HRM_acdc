@@ -15,7 +15,7 @@ After memo approval and (for finance) registry processing, Africa CDC needs a st
 2. **Collaborative edit** by responsible person + memo staff on the same draft.
 3. **Related activities** tagger (Vuetify search + checkboxes) for context only; optional inclusion in AI synthesis.
 4. **Reporting & finance registry** on `/reports` with Started / Processed actions for holders of a new staff permission.
-5. **Reminders** (current quarter only): NT = processed + 7 days; others = end date + 7 days; daily until report is submitted; not-executed stops reminders.
+5. **Reminders** (current quarter only): **all types** = end date + 7 days (not gated on registry processed or ARF/SR); daily until report is submitted; not-executed stops reminders.
 6. **HOD workflow** via `HasApprovalWorkflow` + `PendingApprovalsService` (approve / return for edit).
 7. **AI assist** using staff-portal AI providers (OpenAI, Gemini, custom OpenAI-compatible / Copilot-style).
 8. **Preview** from the registry/report table without leaving the list.
@@ -35,13 +35,13 @@ After memo approval and (for finance) registry processing, Africa CDC needs a st
 
 | Topic | Choice |
 |-------|--------|
-| Scope | Activities, single memos, special memos, non-travel with `pra_activity_id` |
+| Scope | Activities & single memos (incl. extramural/external fund types), special memos, non-travel (`pra_activity_id` **or** extramural/external). Not gated on ARF/SR. |
+| Reminders | **All types:** end date + 7 days (NT uses `date_to` if set, else `memo_date`). Daily; not-executed / after first submit stops; current quarter |
 | Who can edit | Responsible primary + memo staff (shared draft) |
 | Multiple reports | No — one report; multi-contributor |
 | Related activities | Context links only (search + checkboxes); AI may include when checked |
 | Registry process | New permission at `/staff/permissions`; assignees can Started / Processed |
-| Reminders | NT: processed+7d; others: end+7d; daily; not-executed stops; current quarter |
-| Architecture | Approach 1 — mirror ARF + portal AI + PendingApprovalsService |
+| Architecture | Approach 1 — mirror ARF workflow patterns + portal AI + PendingApprovalsService (reports themselves are not tied to ARF/SR documents) |
 | AI providers | Staff-portal Settings → AI providers |
 
 ## Architecture
@@ -118,14 +118,21 @@ Scheduled daily command (APM `ScheduleServiceProvider`):
 
 | Memo type | Reminder start |
 |-----------|----------------|
-| Non-travel | `processed_at` + 7 days |
-| Activity / single / special | activity **end date** + 7 days (even if not processed) |
+| Activity / single / special / non-travel | **End date** + 7 days (even if registry not processed; independent of ARF/SR) |
+
+End date resolution: `date_to` / `end_date` when present; for non-travel fall back to `memo_date`.
+
+In-scope for registry + reminders:
+
+- Activities & single memos in current quarter (all fund types, including extramural `fund_type_id = 2` and external `fund_type_id = 3`)
+- Special memos in current quarter
+- Non-travel with `pra_activity_id` **or** extramural/external fund type
 
 Rules:
 
 - Current calendar quarter only.
 - Skip if `not_executed`.
-- Skip if report exists and status is submitted or beyond (draft does **not** stop reminders).
+- Skip if report `has_been_submitted` (draft does **not** stop reminders).
 - Notify responsible person + memo staff daily until condition clears.
 
 ### AI

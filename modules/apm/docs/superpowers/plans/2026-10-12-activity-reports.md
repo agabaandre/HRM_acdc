@@ -17,7 +17,8 @@
 - Editors: `responsible_person_id` + `staff_id` + `internal_participants` staff IDs
 - Related activities: context tags only; AI may include when checkbox on
 - Registry Start/Process: permission name `apm_reporting_finance_registry` only
-- Reminders: current quarter; NT = processed+7d; others = end+7d; draft does not stop; stop after first submit; `not_executed` stops
+- Reminders: current quarter; **all types = end date + 7d** (NT: `date_to` else `memo_date`); not gated on ARF/SR or registry processed; draft does not stop; stop after first submit; `not_executed` stops
+- Scope includes extramural/external funded (`fund_type_id` 2/3) activities/single/special/NT (NT also via `pra_activity_id`)
 - AI keys: never store in APM; use `portal_ai_providers`
 - No Conventional Commit prefixes in commit subjects (match repo style)
 

@@ -666,6 +666,9 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::get('activity-reports/open', [App\Http\Controllers\ActivityReportController::class, 'open'])->name('activity-reports.open');
     Route::get('activity-reports/{activityReport}/edit', [App\Http\Controllers\ActivityReportController::class, 'edit'])->name('activity-reports.edit');
     Route::put('activity-reports/{activityReport}', [App\Http\Controllers\ActivityReportController::class, 'update'])->name('activity-reports.update');
+    Route::get('activity-reports/{activityReport}/related/search', [App\Http\Controllers\ActivityReportController::class, 'searchRelated'])->name('activity-reports.related.search');
+    Route::put('activity-reports/{activityReport}/related', [App\Http\Controllers\ActivityReportController::class, 'syncRelated'])->name('activity-reports.related.sync');
+    Route::post('activity-reports/{activityReport}/not-executed', [App\Http\Controllers\ActivityReportController::class, 'setNotExecuted'])->name('activity-reports.not-executed');
 
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
