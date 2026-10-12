@@ -215,7 +215,7 @@ return new class extends Migration
         DB::table('permissions')->insert([
             'name' => $name,
             'definition' => 'APM Reporting & Finance Registry',
-            'category' => 'APM',
+            'module' => 'apm',
         ]);
     }
 
@@ -229,7 +229,7 @@ return new class extends Migration
 };
 ```
 
-If `permissions` columns differ in the live DB, adjust insert to match `PermissionsService::createPermission` columns only (`name`, `definition` — add `category` only if column exists).
+Match `PermissionsService::createPermission` columns: `name`, `definition`, `module`.
 
 - [ ] **Step 5: Migrate and re-run test**
 
