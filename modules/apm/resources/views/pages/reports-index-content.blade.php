@@ -98,6 +98,21 @@
             </div>
 
             <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm h-100 border-0 bg-white report-card">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
+                                <i class="bx bx-file text-success"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-success">Reporting &amp; finance registry</h5>
+                        </div>
+                        <p class="text-muted small mb-2">Current-quarter activities and memos: mark started/processed, open shared activity reports, and preview submissions.</p>
+                        <a href="{{ route('reporting-registry.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> Open registry</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white border-dashed report-card" style="border-style: dashed !important;">
                     <div class="card-body py-2 px-3">
                         <div class="d-flex align-items-center mb-2">

@@ -657,6 +657,16 @@ Route::post('special-memo/{specialMemo}/resubmit', [App\Http\Controllers\Special
     Route::post('service-requests/{serviceRequest}/email-pdf', [App\Http\Controllers\ServiceRequestController::class, 'emailPdf'])->name('service-requests.email-pdf');
     Route::post('request-arf/{requestARF}/email-pdf', [App\Http\Controllers\RequestARFController::class, 'emailPdf'])->name('request-arf.email-pdf');
 
+    // Reporting & Finance Registry + Activity Reports
+    Route::get('reporting-registry', [App\Http\Controllers\ReportingRegistryController::class, 'index'])->name('reporting-registry.index');
+    Route::get('reporting-registry/data', [App\Http\Controllers\ReportingRegistryController::class, 'data'])->name('reporting-registry.data');
+    Route::post('reporting-registry/start', [App\Http\Controllers\ReportingRegistryController::class, 'start'])->name('reporting-registry.start');
+    Route::post('reporting-registry/process', [App\Http\Controllers\ReportingRegistryController::class, 'process'])->name('reporting-registry.process');
+    Route::get('reporting-registry/preview', [App\Http\Controllers\ReportingRegistryController::class, 'preview'])->name('reporting-registry.preview');
+    Route::get('activity-reports/open', [App\Http\Controllers\ActivityReportController::class, 'open'])->name('activity-reports.open');
+    Route::get('activity-reports/{activityReport}/edit', [App\Http\Controllers\ActivityReportController::class, 'edit'])->name('activity-reports.edit');
+    Route::put('activity-reports/{activityReport}', [App\Http\Controllers\ActivityReportController::class, 'update'])->name('activity-reports.update');
+
     // Reports
     Route::get('reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
     Route::get('reports/division-counts', [App\Http\Controllers\ReportsController::class, 'divisionCounts'])->name('reports.division-counts');
