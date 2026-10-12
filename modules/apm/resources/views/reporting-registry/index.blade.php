@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Reporting & Finance Registry')
-@section('header', 'Reporting & Finance Registry')
+@section('title', 'Activity Reports')
+@section('header', 'Activity Reports')
 
 @section('content')
 <style>

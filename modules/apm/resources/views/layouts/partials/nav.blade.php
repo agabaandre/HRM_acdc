@@ -224,14 +224,6 @@
                 </a>
             </li>
 
-            <li class="nav-item">
-                <a href="{{ route('stale-drafts.index') }}" wire:navigate
-                    class="nav-link {{ Request::is('stale-drafts*') ? 'active' : '' }}">
-                    <div class="parent-icon"><i class="bx bx-archive-in"></i></div>
-                    <div class="menu-title">Stale drafts</div>
-                </a>
-            </li>
-
             <!-- Pending Approvals -->
             <li class="nav-item">
                 <a href="{{ route('pending-approvals.index') }}" wire:navigate
@@ -261,7 +253,9 @@
                     Request::is('service-requests*') ||
                     Request::is('request-arf*') ||
                     Request::is('other-memos*') ||
-                    Request::is('change-requests*');
+                    Request::is('change-requests*') ||
+                    Request::is('stale-drafts*') ||
+                    Request::is('signature-verify*');
             @endphp
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle {{ $isMemosActive ? 'active' : '' }}"
@@ -325,6 +319,12 @@
                             <i class="fas fa-fingerprint me-1"></i> Validate APM Document Signature Hashes
                         </a>
                     </li>
+                    <li>
+                        <a class="dropdown-item {{ Request::is('stale-drafts*') ? 'active' : '' }}"
+                            href="{{ route('stale-drafts.index') }}" wire:navigate>
+                            <i class="bx bx-archive-in me-1"></i> Stale drafts
+                        </a>
+                    </li>
                 </ul>
             </li>
 
@@ -337,12 +337,12 @@
                 </a>
             </li>
 
-            <!-- Reports -->
+            <!-- Reporting -->
             <li class="nav-item">
-                <a class="nav-link {{ Request::is('reports*') ? 'active' : '' }}"
+                <a class="nav-link {{ Request::is('reports*') || Request::is('reporting-registry*') || Request::is('activity-reports*') ? 'active' : '' }}"
                     href="{{ route('reports.index') }}" wire:navigate>
                     <div class="parent-icon"><i class="fas fa-chart-bar"></i></div>
-                    <div class="menu-title">Reports</div>
+                    <div class="menu-title">Reporting</div>
                 </a>
             </li>
 

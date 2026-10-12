@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Reports')
-@section('header', 'Reports')
+@section('title', 'Reporting')
+@section('header', 'Reporting')
 
 @section('content')
 @livewire('app-page', ['view' => 'pages.reports-index-content', 'data' => []])

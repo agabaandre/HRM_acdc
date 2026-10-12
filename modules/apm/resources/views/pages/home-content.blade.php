@@ -637,36 +637,26 @@ body {
       </div>
     </div>
 
-    {{-- Reports + Weekly brief (same card when user has weekly brief access) --}}
+    {{-- Reporting --}}
     <div class="col-lg-3 col-md-6">
       <div class="dashboard-card position-relative">
         <div class="d-flex align-items-center mb-2">
           <div class="dashboard-icon reports me-2"><i class="fas fa-chart-bar"></i></div>
-          <h6>Reports & Weekly brief</h6>
+          <h6>Reporting</h6>
         </div>
         <p class="text-muted" style="font-size: 0.9rem;">View and download performance reports.</p>
 
         <div class="menu-section">
           <h6>Quick Actions</h6>
           <div class="menu-links">
+            <a href="{{ route('reporting-registry.index') }}" wire:navigate class="btn btn-success btn-sm">
+              <i class="fas fa-file-alt"></i> Activity Reports
+            </a>
             <a href="{{ url('reports') }}" wire:navigate class="btn btn-outline-info btn-sm">
               <i class="fas fa-list"></i> All Reports
             </a>
-
-           @if (\App\Services\DivisionWeeklyBriefGate::canAccessModule())
-        <hr class="border-secondary opacity-25 my-3">
-         <div class="menu-section mb-0">
-          <div class="menu-links">
-            <a href="{{ route('weekly-briefing.index') }}" wire:navigate class="btn btn-success btn-sm">
-              <i class="fas fa-edit"></i> Open Weekly brief
-            </a>
           </div>
         </div>
-        @endif
-          </div>
-        </div>
-
-       
       </div>
     </div>
 

@@ -9,11 +9,26 @@
 <div class="card shadow-sm mb-4 border-0 reports-index">
     <div class="card-body py-3 px-4 bg-light rounded-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0 rounded-top py-2">
-            <h5 class="mb-0 text-success fw-bold"><i class="bx bx-chart-bar me-2 text-success"></i> Reports</h5>
+            <h5 class="mb-0 text-success fw-bold"><i class="bx bx-chart-bar me-2 text-success"></i> Reporting</h5>
         </div>
         <p class="text-muted mb-3 mt-2 small">Select a report to view.</p>
 
         <div class="row g-3">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm h-100 border-0 bg-white report-card">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
+                                <i class="bx bx-file text-success"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-success">Activity Reports</h5>
+                        </div>
+                        <p class="text-muted small mb-2">Current-quarter activities and memos: mark started/processed, open shared activity reports, and preview submissions.</p>
+                        <a href="{{ route('reporting-registry.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> Open registry</a>
+                    </div>
+                </div>
+            </div>
+
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white report-card">
                     <div class="card-body py-2 px-3">
@@ -101,13 +116,13 @@
                 <div class="card shadow-sm h-100 border-0 bg-white report-card">
                     <div class="card-body py-2 px-3">
                         <div class="d-flex align-items-center mb-2">
-                            <div class="rounded-circle bg-success bg-opacity-10 report-card-icon me-2">
-                                <i class="bx bx-file text-success"></i>
+                            <div class="rounded-circle bg-warning bg-opacity-10 report-card-icon me-2">
+                                <i class="bx bx-archive-in text-warning"></i>
                             </div>
-                            <h5 class="mb-0 fw-bold text-success">Reporting &amp; finance registry</h5>
+                            <h5 class="mb-0 fw-bold text-success">Stale drafts</h5>
                         </div>
-                        <p class="text-muted small mb-2">Current-quarter activities and memos: mark started/processed, open shared activity reports, and preview submissions.</p>
-                        <a href="{{ route('reporting-registry.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> Open registry</a>
+                        <p class="text-muted small mb-2">Draft memos holding budget past the age cutoff. Archive them to release funds, or follow up with owners.</p>
+                        <a href="{{ route('stale-drafts.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> Open stale drafts</a>
                     </div>
                 </div>
             </div>

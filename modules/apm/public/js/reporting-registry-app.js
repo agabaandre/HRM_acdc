@@ -1,5 +1,5 @@
 /**
- * Reporting & Finance Registry — Vue 3 + Vuetify 3
+ * Activity Reports — Vue 3 + Vuetify 3
  */
 (function () {
     'use strict';
@@ -154,7 +154,7 @@
                   <v-card>
                     <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
                       <div>
-                        <div class="text-h6">Reporting &amp; Finance Registry</div>
+                        <div class="text-h6">Activity Reports</div>
                         <div class="text-caption text-medium-emphasis">Q{{ cfg.quarter }} {{ cfg.year }}</div>
                       </div>
                       <v-btn color="primary" variant="tonal" :loading="loading" @click="load">Refresh</v-btn>
