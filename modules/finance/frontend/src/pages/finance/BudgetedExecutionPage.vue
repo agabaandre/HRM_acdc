@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
@@ -284,7 +284,24 @@ function applyFilter() {
   void load()
 }
 
-onMounted(load)
+const narrowFilters = ref(false)
+let narrowMq: MediaQueryList | null = null
+function syncNarrowFilters() {
+  narrowFilters.value = !!narrowMq?.matches
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    narrowMq = window.matchMedia('(max-width: 720px)')
+    syncNarrowFilters()
+    narrowMq.addEventListener('change', syncNarrowFilters)
+  }
+  void load()
+})
+
+onUnmounted(() => {
+  narrowMq?.removeEventListener('change', syncNarrowFilters)
+})
 </script>
 
 <template>
@@ -303,10 +320,10 @@ onMounted(load)
       </div>
     </header>
 
-    <div class="be__filters">
+    <div class="be__filters" :class="{ 'be__filters--narrow': narrowFilters }">
       <v-text-field
         v-model="filterText"
-        density="compact"
+        :density="narrowFilters ? 'compact' : 'comfortable'"
         variant="outlined"
         hide-details
         clearable
@@ -318,10 +335,11 @@ onMounted(load)
         v-if="data && (data.can_view_all || data.scope === 'directorate') && divisionSelectItems.length > 2"
         v-model="filterDivisionId"
         :items="divisionSelectItems"
-        density="compact"
+        :density="narrowFilters ? 'compact' : 'comfortable'"
         variant="outlined"
         hide-details
-        label="Division"
+        :label="narrowFilters ? undefined : 'Division'"
+        :placeholder="narrowFilters ? 'Division' : undefined"
         class="be__select"
       />
       <button type="button" class="be__apply" @click="applyFilter">Apply</button>
@@ -567,7 +585,38 @@ onMounted(load)
 .be__select :deep(.v-field) { border-radius: var(--be-radius) !important; }
 .be__apply {
   border: none; background: #119a48; color: #fff; font-weight: 700; border-radius: var(--be-radius);
-  padding: 0.55rem 1.1rem; cursor: pointer;
+  padding: 0.55rem 1.1rem; cursor: pointer; min-height: 40px;
+}
+.be__filters--narrow {
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+.be__filters--narrow .be__search :deep(.v-field),
+.be__filters--narrow .be__select :deep(.v-field) {
+  --v-input-control-height: 36px;
+  min-height: 36px !important;
+}
+.be__filters--narrow .be__search :deep(.v-field__input),
+.be__filters--narrow .be__select :deep(.v-field__input) {
+  min-height: 36px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.875rem;
+}
+.be__filters--narrow .be__search :deep(.v-field--variant-outlined),
+.be__filters--narrow .be__select :deep(.v-field--variant-outlined) {
+  --v-field-padding-top: 2px;
+  --v-field-padding-bottom: 2px;
+}
+.be__filters--narrow .be__search :deep(.v-icon),
+.be__filters--narrow .be__select :deep(.v-icon) {
+  font-size: 1.05rem;
+  opacity: 0.75;
+}
+.be__filters--narrow .be__apply {
+  min-height: 36px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.875rem;
 }
 .be__muted { color: #64748b; margin: 0; }
 .be__error { color: #b42318; }
@@ -667,5 +716,6 @@ onMounted(load)
 @media (max-width: 720px) {
   .be__filters { flex-direction: column; align-items: stretch; }
   .be__search, .be__select { max-width: none; width: 100%; }
+  .be__apply { width: 100%; }
 }
 </style>
