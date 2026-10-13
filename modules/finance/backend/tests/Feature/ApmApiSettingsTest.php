@@ -138,6 +138,66 @@ class ApmApiSettingsTest extends TestCase
         $probe = ApmApiCredentials::probe();
         $this->assertTrue($probe['success']);
         $this->assertStringContainsString('shared@africacdc.org', $probe['message']);
-        $this->assertContains('email source: staff_api', $probe['details']);
+        $this->assertTrue(collect($probe['details'])->contains(fn ($line) => str_contains((string) $line, 'staff_api')));
+    }
+
+    public function test_resolve_does_not_mix_apm_email_with_staff_password(): void
+    {
+        config([
+            'apm.email' => 'finance-sync@africacdc.org',
+            'apm.password' => null,
+            'apm.base_url' => 'http://apm.mix',
+        ]);
+        putenv('APM_API_PASSWORD');
+        unset($_ENV['APM_API_PASSWORD'], $_SERVER['APM_API_PASSWORD']);
+        putenv('STAFF_API_USERNAME=andrewa@africacdc.org');
+        putenv('STAFF_API_PASSWORD=staff-secret');
+        $_ENV['STAFF_API_USERNAME'] = 'andrewa@africacdc.org';
+        $_ENV['STAFF_API_PASSWORD'] = 'staff-secret';
+        $_SERVER['STAFF_API_USERNAME'] = 'andrewa@africacdc.org';
+        $_SERVER['STAFF_API_PASSWORD'] = 'staff-secret';
+
+        $resolved = ApmApiCredentials::resolve();
+        $this->assertSame('andrewa@africacdc.org', $resolved['email']);
+        $this->assertSame('staff-secret', $resolved['password']);
+        $this->assertSame('staff_api', $resolved['sources']['email']);
+        $this->assertSame('staff_api', $resolved['sources']['password']);
+    }
+
+    public function test_login_falls_back_to_staff_share_after_apm_422(): void
+    {
+        config([
+            'apm.email' => 'stale-sync@africacdc.org',
+            'apm.password' => 'wrong-secret',
+            'apm.base_url' => 'http://apm.retry',
+        ]);
+        putenv('STAFF_API_USERNAME=andrewa@africacdc.org');
+        putenv('STAFF_API_PASSWORD=staff-secret');
+        $_ENV['STAFF_API_USERNAME'] = 'andrewa@africacdc.org';
+        $_ENV['STAFF_API_PASSWORD'] = 'staff-secret';
+        $_SERVER['STAFF_API_USERNAME'] = 'andrewa@africacdc.org';
+        $_SERVER['STAFF_API_PASSWORD'] = 'staff-secret';
+
+        Http::fake([
+            'http://apm.retry/api/apm/v1/auth/login' => function ($request) {
+                $email = data_get($request->data(), 'email');
+                if ($email === 'stale-sync@africacdc.org') {
+                    return Http::response([
+                        'message' => 'The provided credentials are incorrect or the API user is inactive.',
+                        'errors' => ['email' => ['The provided credentials are incorrect or the API user is inactive.']],
+                    ], 422);
+                }
+
+                return Http::response([
+                    'success' => true,
+                    'data' => ['access_token' => 'tok-from-staff', 'token_type' => 'bearer', 'expires_in' => 3600],
+                ], 200);
+            },
+        ]);
+
+        $auth = ApmApiCredentials::login();
+        $this->assertSame('tok-from-staff', $auth['access_token']);
+        $this->assertSame('andrewa@africacdc.org', $auth['email']);
+        $this->assertSame('staff_api', $auth['label']);
     }
 }

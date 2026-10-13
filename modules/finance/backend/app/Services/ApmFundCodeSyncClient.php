@@ -48,30 +48,22 @@ final class ApmFundCodeSyncClient
 
     private function login(): string
     {
-        $creds = $this->credentials();
-        $email = $creds['email'];
-        $password = $creds['password'];
-        if ($email === '' || $password === '') {
-            throw new RuntimeException('APM API email and password must be configured (Settings → API credentials / Staff Share, or APM_API_* / STAFF_API_*).');
-        }
+        $auth = ApmApiCredentials::login();
+        // Keep sync URL/timeout resolution aligned with whatever candidate succeeded.
+        $resolved = ApmApiCredentials::resolve();
+        $this->creds = [
+            'base_url' => $resolved['base_url'],
+            'api_prefix' => $resolved['api_prefix'],
+            'email' => $auth['email'],
+            'password' => '',
+            'timeout' => $resolved['timeout'],
+        ];
+        Log::info('APM fund-code sync authenticated', [
+            'email' => $auth['email'],
+            'via' => $auth['label'],
+        ]);
 
-        $response = Http::timeout($creds['timeout'])
-            ->acceptJson()
-            ->post($this->url('auth/login'), [
-                'email' => $email,
-                'password' => $password,
-            ]);
-
-        if (! $response->successful()) {
-            throw new RuntimeException('APM login failed: HTTP '.$response->status());
-        }
-
-        $token = data_get($response->json(), 'data.access_token');
-        if (! is_string($token) || $token === '') {
-            throw new RuntimeException('APM login response missing access_token.');
-        }
-
-        return $token;
+        return $auth['access_token'];
     }
 
     /**

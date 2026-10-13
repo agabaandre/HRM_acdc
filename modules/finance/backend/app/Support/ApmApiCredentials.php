@@ -75,13 +75,12 @@ final class ApmApiCredentials
             $prefix = '/api/apm/v1';
         }
 
-        // Reuse Staff Share credentials when APM-specific email/password are unset.
+        // Never mix APM email with Staff password (or vice versa) — that causes HTTP 422.
+        // Fall back to Staff Share as a complete pair when either APM field is missing.
         if ($email['value'] === '' || $pass['value'] === '') {
             $staff = StaffApiCredentials::resolve($bag);
-            if ($email['value'] === '' && $staff['username'] !== '') {
+            if ($staff['username'] !== '' && $staff['password'] !== '') {
                 $email = ['value' => $staff['username'], 'source' => 'staff_api'];
-            }
-            if ($pass['value'] === '' && $staff['password'] !== '') {
                 $pass = ['value' => $staff['password'], 'source' => 'staff_api'];
             }
         }
@@ -98,6 +97,116 @@ final class ApmApiCredentials
                 'password' => (string) $pass['source'],
             ],
         ];
+    }
+
+    /**
+     * Ordered login attempts: primary APM pair, then Staff Share pair if different.
+     *
+     * @return list<array{
+     *   base_url: string,
+     *   api_prefix: string,
+     *   email: string,
+     *   password: string,
+     *   timeout: int,
+     *   label: string
+     * }>
+     */
+    public static function loginCandidates(?ModuleSettingsBag $bag = null): array
+    {
+        $bag ??= new RrSettingsBag;
+        $primary = self::resolve($bag);
+        $candidates = [];
+
+        if ($primary['email'] !== '' && $primary['password'] !== '') {
+            $candidates[] = [
+                'base_url' => $primary['base_url'],
+                'api_prefix' => $primary['api_prefix'],
+                'email' => $primary['email'],
+                'password' => $primary['password'],
+                'timeout' => $primary['timeout'],
+                'label' => $primary['sources']['email'] === 'staff_api' ? 'staff_api' : 'apm',
+            ];
+        }
+
+        $staff = StaffApiCredentials::resolve($bag);
+        if ($staff['username'] !== '' && $staff['password'] !== '') {
+            $sameEmail = strcasecmp($staff['username'], $primary['email']) === 0;
+            $samePass = hash_equals($primary['password'], $staff['password']);
+            if (! ($sameEmail && $samePass)) {
+                $candidates[] = [
+                    'base_url' => $primary['base_url'],
+                    'api_prefix' => $primary['api_prefix'],
+                    'email' => $staff['username'],
+                    'password' => $staff['password'],
+                    'timeout' => $primary['timeout'],
+                    'label' => 'staff_api',
+                ];
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return array{access_token: string, email: string, label: string}
+     */
+    public static function login(?ModuleSettingsBag $bag = null): array
+    {
+        $candidates = self::loginCandidates($bag);
+        if ($candidates === []) {
+            throw new \RuntimeException(
+                'APM API email and password must be configured (Settings → API credentials / Staff Share, or APM_API_* / STAFF_API_*).'
+            );
+        }
+
+        $errors = [];
+        foreach ($candidates as $creds) {
+            if ($creds['base_url'] === '') {
+                $errors[] = $creds['label'].': APM base URL is not configured';
+
+                continue;
+            }
+            $loginUrl = rtrim($creds['base_url'], '/').rtrim($creds['api_prefix'], '/').'/auth/login';
+            try {
+                $response = Http::timeout(max(10, (int) $creds['timeout']))
+                    ->acceptJson()
+                    ->post($loginUrl, [
+                        'email' => $creds['email'],
+                        'password' => $creds['password'],
+                    ]);
+            } catch (Throwable $e) {
+                $errors[] = $creds['label'].' ('.$creds['email'].'): '.$e->getMessage();
+
+                continue;
+            }
+
+            if (! $response->successful()) {
+                $hint = trim((string) data_get(
+                    $response->json(),
+                    'errors.email.0',
+                    data_get($response->json(), 'message', '')
+                ));
+                $errors[] = $creds['label'].' ('.$creds['email'].'): HTTP '.$response->status()
+                    .($hint !== '' ? ' — '.$hint : '');
+
+                continue;
+            }
+
+            $token = data_get($response->json(), 'data.access_token');
+            if (! is_string($token) || $token === '') {
+                $errors[] = $creds['label'].' ('.$creds['email'].'): missing access_token';
+
+                continue;
+            }
+
+            return [
+                'access_token' => $token,
+                'email' => $creds['email'],
+                'label' => $creds['label'],
+            ];
+        }
+
+        throw new \RuntimeException('APM login failed: '.implode('; ', $errors));
     }
 
     /**
@@ -160,39 +269,84 @@ final class ApmApiCredentials
      */
     public static function probe(?ModuleSettingsBag $bag = null, ?array $override = null): array
     {
-        $resolved = self::resolve($bag);
-        if (is_array($override)) {
+        $bag ??= new RrSettingsBag;
+
+        if (is_array($override) && (
+            (isset($override['email']) && trim((string) $override['email']) !== '')
+            || (isset($override['password']) && trim((string) $override['password']) !== '')
+            || (isset($override['base_url']) && trim((string) $override['base_url']) !== '')
+        )) {
+            $resolved = self::resolve($bag);
             foreach (['base_url', 'email', 'password'] as $k) {
                 if (isset($override[$k]) && trim((string) $override[$k]) !== '') {
                     $resolved[$k] = trim((string) $override[$k]);
                 }
             }
             $resolved['base_url'] = rtrim((string) $resolved['base_url'], '/');
+
+            return self::probeWithCreds($resolved, 'override');
         }
 
-        $details = [];
-        if ($resolved['base_url'] === '') {
-            return [
-                'success' => false,
-                'message' => 'FAILED — APM base URL is not configured.',
-                'details' => ['base_url: unset'],
-            ];
-        }
-        if ($resolved['email'] === '' || $resolved['password'] === '') {
+        $candidates = self::loginCandidates($bag);
+        if ($candidates === []) {
             return [
                 'success' => false,
                 'message' => 'FAILED — set APM API email/password, or Staff Share username/password (shared synced users).',
-                'details' => [
-                    'email: '.($resolved['email'] !== '' ? 'set ('.$resolved['sources']['email'].')' : 'empty'),
-                    'password: '.($resolved['password'] !== '' ? 'set ('.$resolved['sources']['password'].')' : 'empty'),
-                ],
+                'details' => ['no login candidates'],
             ];
         }
 
-        $details[] = 'email source: '.$resolved['sources']['email'];
-        $details[] = 'password source: '.$resolved['sources']['password'];
+        $details = [];
+        $lastFail = null;
+        foreach ($candidates as $creds) {
+            $result = self::probeWithCreds($creds, $creds['label']);
+            $details = array_merge($details, $result['details']);
+            if ($result['success']) {
+                return [
+                    'success' => true,
+                    'message' => $result['message'],
+                    'details' => $details,
+                ];
+            }
+            $lastFail = $result;
+        }
 
-        $loginUrl = $resolved['base_url'].$resolved['api_prefix'].'/auth/login';
+        return [
+            'success' => false,
+            'message' => $lastFail['message'] ?? 'FAILED — APM login rejected.',
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * @param  array{base_url: string, api_prefix?: string, email: string, password: string, timeout?: int}  $resolved
+     * @return array{success: bool, message: string, details: list<string>}
+     */
+    private static function probeWithCreds(array $resolved, string $label): array
+    {
+        $details = [
+            'trying: '.$label.' ('.$resolved['email'].')',
+        ];
+        if (($resolved['base_url'] ?? '') === '') {
+            return [
+                'success' => false,
+                'message' => 'FAILED — APM base URL is not configured.',
+                'details' => array_merge($details, ['base_url: unset']),
+            ];
+        }
+        if (($resolved['email'] ?? '') === '' || ($resolved['password'] ?? '') === '') {
+            return [
+                'success' => false,
+                'message' => 'FAILED — set APM API email/password, or Staff Share username/password.',
+                'details' => array_merge($details, ['email/password empty']),
+            ];
+        }
+
+        $prefix = rtrim((string) ($resolved['api_prefix'] ?? '/api/apm/v1'), '/');
+        if ($prefix === '') {
+            $prefix = '/api/apm/v1';
+        }
+        $loginUrl = rtrim($resolved['base_url'], '/').$prefix.'/auth/login';
         try {
             $response = Http::timeout(20)
                 ->acceptJson()
@@ -201,8 +355,8 @@ final class ApmApiCredentials
                     'password' => $resolved['password'],
                 ]);
             if (! $response->successful()) {
-                $details[] = 'login: FAIL HTTP '.$response->status();
                 $hint = trim((string) data_get($response->json(), 'errors.email.0', data_get($response->json(), 'message', '')));
+                $details[] = 'login: FAIL HTTP '.$response->status();
                 if ($hint !== '') {
                     $details[] = 'login detail: '.$hint;
                 }
@@ -223,9 +377,9 @@ final class ApmApiCredentials
                     'details' => $details,
                 ];
             }
-            $details[] = 'login: OK ('.$resolved['email'].')';
+            $details[] = 'login: OK ('.$resolved['email'].' via '.$label.')';
 
-            $codesUrl = $resolved['base_url'].$resolved['api_prefix'].'/fund-codes';
+            $codesUrl = rtrim($resolved['base_url'], '/').$prefix.'/fund-codes';
             $list = Http::timeout(20)
                 ->withToken($token)
                 ->acceptJson()
@@ -239,7 +393,7 @@ final class ApmApiCredentials
 
             return [
                 'success' => true,
-                'message' => 'CONNECTED to APM as '.$resolved['email'],
+                'message' => 'CONNECTED to APM as '.$resolved['email'].' ('.$label.')',
                 'details' => $details,
             ];
         } catch (Throwable $e) {
