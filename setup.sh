@@ -967,6 +967,12 @@ write_finance_env() {
     env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
     env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" || return 1
     env_set "$f" DB_DATABASE "$FN_DB" || return 1
+    # APM org DB for Finance mapping pages — same MySQL as modules/apm (never hard-code).
+    env_set "$f" APM_DB_DATABASE "${APM_DB_DATABASE:-}" || return 1
+    env_set "$f" APM_DB_HOST "${DB_HOST:-}" || return 1
+    env_set "$f" APM_DB_PORT "${DB_PORT:-3306}" || return 1
+    env_set "$f" APM_DB_USERNAME "${DB_USERNAME:-${DB_USER:-}}" || return 1
+    env_set "$f" APM_DB_PASSWORD "${DB_PASSWORD:-${DB_PASS:-}}" || return 1
     apply_storage_to_file "$f" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1

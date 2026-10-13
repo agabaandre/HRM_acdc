@@ -99,4 +99,45 @@ class ApmApiSettingsTest extends TestCase
         $probe->assertJsonPath('success', true);
         $this->assertStringContainsString('CONNECTED', (string) $probe->json('message'));
     }
+
+    public function test_resolve_falls_back_to_staff_share_credentials(): void
+    {
+        config([
+            'apm.email' => null,
+            'apm.password' => null,
+            'apm.base_url' => 'http://apm.staff-fallback',
+        ]);
+        putenv('APM_API_EMAIL');
+        putenv('APM_API_PASSWORD');
+        unset($_ENV['APM_API_EMAIL'], $_ENV['APM_API_PASSWORD'], $_SERVER['APM_API_EMAIL'], $_SERVER['APM_API_PASSWORD']);
+        putenv('STAFF_API_USERNAME=shared@africacdc.org');
+        putenv('STAFF_API_PASSWORD=shared-secret');
+        $_ENV['STAFF_API_USERNAME'] = 'shared@africacdc.org';
+        $_ENV['STAFF_API_PASSWORD'] = 'shared-secret';
+        $_SERVER['STAFF_API_USERNAME'] = 'shared@africacdc.org';
+        $_SERVER['STAFF_API_PASSWORD'] = 'shared-secret';
+
+        $resolved = ApmApiCredentials::resolve();
+        $this->assertSame('shared@africacdc.org', $resolved['email']);
+        $this->assertSame('shared-secret', $resolved['password']);
+        $this->assertSame('staff_api', $resolved['sources']['email']);
+        $this->assertSame('staff_api', $resolved['sources']['password']);
+
+        Http::fake([
+            'http://apm.staff-fallback/api/apm/v1/auth/login' => Http::response([
+                'success' => true,
+                'data' => ['access_token' => 'tok-staff', 'token_type' => 'bearer', 'expires_in' => 3600],
+            ], 200),
+            'http://apm.staff-fallback/api/apm/v1/fund-codes*' => Http::response([
+                'success' => true,
+                'data' => [],
+                'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 1, 'total' => 12],
+            ], 200),
+        ]);
+
+        $probe = ApmApiCredentials::probe();
+        $this->assertTrue($probe['success']);
+        $this->assertStringContainsString('shared@africacdc.org', $probe['message']);
+        $this->assertContains('email source: staff_api', $probe['details']);
+    }
 }

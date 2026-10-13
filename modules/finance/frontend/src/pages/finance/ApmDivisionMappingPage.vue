@@ -16,6 +16,7 @@ const remapping = ref(false)
 const error = ref<string | null>(null)
 const message = ref<string | null>(null)
 const apmReady = ref(false)
+const apmDatabase = ref('')
 const divisions = ref<Division[]>([])
 const divisionAliases = ref<DivAlias[]>([])
 const remapFrom = ref<number | null>(null)
@@ -72,6 +73,7 @@ function divisionLabel(id: number | null): string {
 
 async function applyPayload(data: any) {
   apmReady.value = !!data.apm_ready
+  apmDatabase.value = String(data.apm_database || '')
   divisions.value = data.divisions || []
   divisionAliases.value = (data.division_aliases || []).map((r: DivAlias) => ({
     ...r,
@@ -240,6 +242,7 @@ onMounted(load)
       <p class="map__status">
         Status:
         <strong>{{ apmReady ? 'APM database reachable' : 'APM database not configured' }}</strong>
+        <template v-if="apmDatabase"> · DB <code>{{ apmDatabase }}</code> (APM_DB_DATABASE)</template>
         · {{ divisions.length }} division(s)
         · {{ divisionMapped }}/{{ divisionAliases.length }} mapped
       </p>

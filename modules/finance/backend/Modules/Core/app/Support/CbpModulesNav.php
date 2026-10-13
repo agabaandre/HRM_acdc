@@ -2,6 +2,7 @@
 
 namespace Modules\Core\Support;
 
+use App\Support\StaffDivisionContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -40,7 +41,8 @@ class CbpModulesNav
 
         $modules = [];
 
-        if (! \App\Support\LegacySchema::has('cbp_modules')) {
+        $portalSchema = StaffDivisionContext::portalSchema();
+        if (! $portalSchema->hasTable('cbp_modules')) {
             return ['home' => $home, 'modules' => $modules];
         }
 
@@ -50,7 +52,7 @@ class CbpModulesNav
         $activeModuleKey = trim($activeModuleKey);
         $launchUrl = $legacyBase.'/home/launch_module';
 
-        $rows = DB::table('cbp_modules')
+        $rows = StaffDivisionContext::portalDb()->table('cbp_modules')
             ->where('is_enabled', 1)
             ->orderBy('sort_order')
             ->get();
@@ -64,10 +66,8 @@ class CbpModulesNav
                 continue;
             }
 
-            $code = (string) $row->permission_code;
-            if (! PortalNavigation::can($permissions, $code)) {
-                continue;
-            }
+            // Enabled modules are listed for every authenticated user (Staff Portal parity).
+            // permission_code remains for in-module feature RBAC.
             if ((int) $row->is_production === 0 && $roleId !== 10) {
                 continue;
             }

@@ -20,6 +20,7 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const message = ref<string | null>(null)
 const apmReady = ref(false)
+const apmDatabase = ref('')
 const funders = ref<Funder[]>([])
 const funderAliases = ref<FunderAlias[]>([])
 
@@ -27,6 +28,7 @@ const funderMapped = computed(() => funderAliases.value.filter((r) => r.funder_i
 
 async function applyPayload(data: any) {
   apmReady.value = !!data.apm_ready
+  apmDatabase.value = String(data.apm_database || '')
   funders.value = data.funders || []
   funderAliases.value = (data.funder_aliases || []).map((r: FunderAlias) => ({
     ...r,
@@ -127,6 +129,7 @@ onMounted(load)
       <p class="map__status">
         Status:
         <strong>{{ apmReady ? 'APM database reachable' : 'APM database not configured' }}</strong>
+        <template v-if="apmDatabase"> · DB <code>{{ apmDatabase }}</code> (APM_DB_DATABASE)</template>
         · {{ funders.length }} funder(s)
         · {{ funderMapped }}/{{ funderAliases.length }} mapped
       </p>

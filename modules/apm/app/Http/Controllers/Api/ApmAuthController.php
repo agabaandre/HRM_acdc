@@ -32,7 +32,11 @@ class ApmAuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = ApmApiUser::where('email', $request->email)->first();
+        // Case-insensitive match: Staff Share usernames and synced work_email casing often differ.
+        $email = strtolower(trim((string) $request->email));
+        $user = ApmApiUser::query()
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
 
         if (!$user || !$user->is_active || !$user->password || !password_verify($request->password, $user->password)) {
             throw ValidationException::withMessages([

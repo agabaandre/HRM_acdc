@@ -172,7 +172,8 @@ onMounted(() => {
       <div>
         <h1>API credentials</h1>
         <p class="fn-page__sub">
-          Staff Share API and APM API users. DB values override env; leave blank to use env defaults.
+          Staff Share and APM share the same synced users. Leave APM email/password blank to reuse
+          Staff Share credentials for SAP budget sync. DB values override env.
         </p>
       </div>
       <RouterLink class="fn-link" :to="{ name: 'dashboard' }">Back to portfolio</RouterLink>
@@ -234,8 +235,10 @@ onMounted(() => {
       <section class="fn-card">
         <h2>APM API — resolved (SAP sync)</h2>
         <p class="fn-muted">
-          Used by SAP budget import to update APM fund-code budgets. Must be an
-          <code>apm_api_users</code> account with email login enabled.
+          Used by SAP budget import to update APM fund-code budgets via
+          <code>POST /api/apm/v1/auth/login</code>. Prefer an
+          <code>apm_api_users</code> account with email login enabled — typically the same
+          Staff Share username/password (synced from staff).
         </p>
         <p class="fn-muted">
           Base: <code>{{ apmResolved.base_url || '—' }}</code> ({{ apmSources.base_url || 'unset' }})
@@ -254,11 +257,11 @@ onMounted(() => {
           <input v-model="apmForm.apm_api_base_url" type="url" placeholder="http://localhost/staff/apm" />
         </label>
         <label class="fn-field">
-          <span>APM API email</span>
-          <input v-model="apmForm.apm_api_email" type="email" autocomplete="username" placeholder="finance-sync@africacdc.org" />
+          <span>APM API email (blank = Staff Share username)</span>
+          <input v-model="apmForm.apm_api_email" type="email" autocomplete="username" placeholder="Same as Staff Share username" />
         </label>
         <label class="fn-field">
-          <span>APM API password (blank = keep)</span>
+          <span>APM API password (blank = keep / Staff Share)</span>
           <input v-model="apmForm.apm_api_password" type="password" autocomplete="new-password" />
         </label>
         <label class="fn-check">

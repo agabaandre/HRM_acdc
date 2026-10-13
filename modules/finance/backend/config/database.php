@@ -81,12 +81,13 @@ return [
             'engine' => null,
         ],
 
-        // APM fund_codes.division_id → staff divisions for intramural rollups
+        // APM org tables (divisions, funders, fund_codes). Name/credentials come from
+        // APM_DB_* in backend/.env — configure-env inherits them from modules/apm/.env.
         'apm' => [
             'driver' => 'mysql',
             'host' => env('APM_DB_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('APM_DB_PORT', env('DB_PORT', '3306')),
-            'database' => env('APM_DB_DATABASE', 'apm_new'),
+            'database' => env('APM_DB_DATABASE', ''),
             'username' => env('APM_DB_USERNAME', env('DB_USERNAME', 'root')),
             'password' => env('APM_DB_PASSWORD', env('DB_PASSWORD', '')),
             'unix_socket' => env('DB_SOCKET', ''),

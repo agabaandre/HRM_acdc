@@ -52,7 +52,7 @@ final class ApmFundCodeSyncClient
         $email = $creds['email'];
         $password = $creds['password'];
         if ($email === '' || $password === '') {
-            throw new RuntimeException('APM API email and password must be configured (Settings → Staff API, or APM_API_EMAIL / APM_API_PASSWORD).');
+            throw new RuntimeException('APM API email and password must be configured (Settings → API credentials / Staff Share, or APM_API_* / STAFF_API_*).');
         }
 
         $response = Http::timeout($creds['timeout'])

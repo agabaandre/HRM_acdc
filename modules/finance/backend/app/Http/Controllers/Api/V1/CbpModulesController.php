@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\StaffPortalOrgClient;
+use App\Support\StaffDivisionContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -13,12 +14,13 @@ use Modules\Core\Support\CbpModulesNav;
 use Modules\Settings\Services\CbpModulesAdminService;
 
 /**
- * CBP Modules top-nav for Risk Register SPA (SSO Bearer auth).
- * Prefer Staff Portal Share API (Helpdesk pattern); fall back to local cbp_modules.
+ * CBP Modules top-nav for Finance SPA (SSO Bearer auth).
+ * Prefer Staff Portal Share API; fall back to staff-DB cbp_modules (not finance DB).
  */
 class CbpModulesController extends Controller
 {
-    public const MODULE_KEY = 'finance';
+    /** Matches cbp_modules.module_key for this app. */
+    public const MODULE_KEY = 'finance_management';
 
     public function __construct(
         protected CbpModulesAdminService $cbpModulesAdmin,
@@ -37,19 +39,21 @@ class CbpModulesController extends Controller
                 $this->cbpModulesAdmin->ensureCoreModules();
             }
         } catch (\Throwable $e) {
-            Log::warning('Finance CBP modules: ensureCoreModules failed', [
+            $this->safeLog('Finance CBP modules: ensureCoreModules failed', [
                 'message' => $e->getMessage(),
             ]);
         }
 
         $path = trim((string) $request->query('path', ''), '/');
-        $exclude = trim((string) $request->query('exclude', self::MODULE_KEY));
+        // Empty exclude = show every module (including Finance).
+        $exclude = trim((string) $request->query('exclude', ''));
         $active = trim((string) $request->query('active', ''));
         if ($active === '') {
             $active = self::MODULE_KEY;
         }
 
         $permissionIds = array_map('strval', (array) $request->attributes->get('risk_permissions', []));
+        $shareError = null;
 
         try {
             if ($this->staffApi->isConfigured()) {
@@ -64,19 +68,38 @@ class CbpModulesController extends Controller
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::warning('Risk Register CBP modules: Staff Share API unavailable', [
+            $shareError = $e->getMessage();
+            $this->safeLog('Finance CBP modules: Staff Share API unavailable', [
+                'staff_id' => $staffId,
+                'message' => $shareError,
+            ]);
+        }
+
+        try {
+            $payload = $this->localPayload($staffId, $path, $exclude, $active, $permissionIds);
+            if (($payload['modules'] ?? []) !== []) {
+                return response()->json([
+                    'data' => $payload,
+                    'meta' => [
+                        'source' => 'staff_cbp_modules',
+                        'degraded' => $shareError !== null,
+                        'share_error' => $shareError,
+                    ],
+                ]);
+            }
+        } catch (\Throwable $e) {
+            $this->safeLog('Finance CBP modules: local staff-DB payload failed', [
                 'staff_id' => $staffId,
                 'message' => $e->getMessage(),
             ]);
         }
 
-        $payload = $this->localPayload($staffId, $path, $exclude, $active, $permissionIds);
-
         return response()->json([
-            'data' => $payload,
+            'data' => $this->staticFallbackPayload($active),
             'meta' => [
-                'source' => 'local_cbp_modules',
-                'degraded' => false,
+                'source' => 'static_fallback',
+                'degraded' => true,
+                'share_error' => $shareError,
             ],
         ]);
     }
@@ -92,7 +115,7 @@ class CbpModulesController extends Controller
         string $active,
         array $permissionIds,
     ): array {
-        $cacheKey = 'rr_cbp_modules_local_v1_'.$staffId.'_'.md5($exclude.'|'.$active.'|'.implode(',', $permissionIds));
+        $cacheKey = 'fin_cbp_modules_local_v2_'.$staffId.'_'.md5($exclude.'|'.$active.'|'.implode(',', $permissionIds));
         $build = function () use ($staffId, $path, $exclude, $active, $permissionIds) {
             $session = $this->sessionForStaff($staffId, $permissionIds);
 
@@ -112,20 +135,96 @@ class CbpModulesController extends Controller
      */
     private function sessionForStaff(int $staffId, array $permissionIds): array
     {
-        $user = PortalUser::query()
-            ->where('auth_staff_id', $staffId)
-            ->where('status', 1)
-            ->first();
-
-        if ($user instanceof PortalUser) {
-            return $user->toSessionArray();
-        }
-
-        return [
+        $fallback = [
             'staff_id' => $staffId,
             'auth_staff_id' => $staffId,
             'permissions' => $permissionIds,
             'role_id' => 0,
+        ];
+
+        try {
+            if (! StaffDivisionContext::portalSchema()->hasTable('user')) {
+                return $fallback;
+            }
+
+            $user = PortalUser::on(StaffDivisionContext::portalConnection())
+                ->where('auth_staff_id', $staffId)
+                ->where('status', 1)
+                ->first();
+
+            if ($user instanceof PortalUser) {
+                return $user->toSessionArray();
+            }
+        } catch (\Throwable $e) {
+            $this->safeLog('Finance CBP modules: portal user lookup skipped', [
+                'staff_id' => $staffId,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function safeLog(string $message, array $context = []): void
+    {
+        try {
+            Log::warning($message, $context);
+        } catch (\Throwable) {
+            // Logging must never break the CBP modules nav response.
+        }
+    }
+
+    /**
+     * Last-resort links when Share API and staff cbp_modules are unavailable.
+     *
+     * @return array{home: array<string, mixed>, modules: list<array<string, mixed>>}
+     */
+    private function staticFallbackPayload(string $activeModuleKey): array
+    {
+        $staffBase = rtrim((string) config('app.staff_portal_url', ''), '/');
+        if ($staffBase === '') {
+            $staffBase = rtrim((string) config('staff-portal.legacy_base_url', '/staff'), '/');
+        }
+        if ($staffBase === '' || $staffBase === '/') {
+            $staffBase = '/staff';
+        }
+
+        $modules = [
+            ['id' => 'staff_portal', 'label' => 'Human Resource', 'href' => $staffBase.'/', 'icon' => 'fa fa-users'],
+            ['id' => 'approvals_management', 'label' => 'Approvals Management', 'href' => $staffBase.'/apm', 'icon' => 'fa fa-sitemap'],
+            ['id' => 'finance_management', 'label' => 'Finance Management', 'href' => $staffBase.'/finance', 'icon' => 'fa fa-wallet'],
+            ['id' => 'helpdesk_itsm', 'label' => 'HelpDesk', 'href' => $staffBase.'/helpdesk', 'icon' => 'fa fa-headset'],
+            ['id' => 'risk_register', 'label' => 'Risk Register', 'href' => $staffBase.'/risk-register', 'icon' => 'fa fa-shield-halved'],
+        ];
+
+        $out = [];
+        foreach ($modules as $mod) {
+            $out[] = [
+                'id' => $mod['id'],
+                'label' => $mod['label'],
+                'description' => '',
+                'href' => $mod['href'],
+                'icon' => $mod['icon'],
+                'is_active' => $mod['id'] === $activeModuleKey,
+                'opens_in_new_tab' => false,
+                'module_key' => $mod['id'],
+                'sso_launch' => false,
+                'launch_url' => null,
+            ];
+        }
+
+        return [
+            'home' => [
+                'id' => 'cbp_home',
+                'label' => 'CBP Home',
+                'description' => '',
+                'href' => $staffBase.'/',
+                'is_active' => false,
+            ],
+            'modules' => $out,
         ];
     }
 }

@@ -42,6 +42,40 @@ final class StaffDivisionContext
         return $resolved = (string) config('database.default');
     }
 
+    /**
+     * Portal user + cbp_modules live on staff when Finance uses its own DB.
+     */
+    public static function portalConnection(): string
+    {
+        static $resolved = null;
+        if (is_string($resolved)) {
+            return $resolved;
+        }
+
+        if (Schema::hasTable('cbp_modules') && Schema::hasTable('user')) {
+            return $resolved = (string) config('database.default');
+        }
+
+        if (is_array(config('database.connections.staff'))
+            && Schema::connection('staff')->hasTable('cbp_modules')) {
+            return $resolved = 'staff';
+        }
+
+        return $resolved = self::orgConnection();
+    }
+
+    /** @return \Illuminate\Database\Connection */
+    public static function portalDb()
+    {
+        return DB::connection(self::portalConnection());
+    }
+
+    /** @return \Illuminate\Database\Schema\Builder */
+    public static function portalSchema()
+    {
+        return Schema::connection(self::portalConnection());
+    }
+
     /** @return \Illuminate\Database\Connection */
     public static function orgDb()
     {

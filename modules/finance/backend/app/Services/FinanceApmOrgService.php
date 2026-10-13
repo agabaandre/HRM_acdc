@@ -163,6 +163,7 @@ final class FinanceApmOrgService
 
         return [
             'apm_ready' => $this->apmReady(),
+            'apm_database' => $this->apmDatabaseName(),
             'divisions' => $divisions,
             'funders' => $funders,
             'division_aliases' => $divAliases,
@@ -498,8 +499,13 @@ final class FinanceApmOrgService
         }
     }
 
+    private function apmDatabaseName(): string
+    {
+        return trim((string) config('database.connections.apm.database', ''));
+    }
+
     private function apmReady(): bool
     {
-        return (string) config('database.connections.apm.database', '') !== '';
+        return $this->apmDatabaseName() !== '';
     }
 }

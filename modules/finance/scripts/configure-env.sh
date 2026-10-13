@@ -93,6 +93,32 @@ inherit_if_empty BASE_URL "$STAFF_ENV"
 inherit_if_empty BASE_URL "$APM_ENV"
 inherit_staff_key_as FINANCE_ASSETS_BASE_URL APM_BASE_URL "$STAFF_ENV"
 
+# APM org DB for division/funder mapping — never hard-code; inherit from APM module when blank.
+inherit_if_empty APM_DB_HOST "$SETUP_ENV"
+inherit_if_empty APM_DB_PORT "$SETUP_ENV"
+inherit_if_empty APM_DB_DATABASE "$SETUP_ENV"
+inherit_if_empty APM_DB_USERNAME "$SETUP_ENV"
+inherit_if_empty APM_DB_PASSWORD "$SETUP_ENV"
+inherit_staff_key_as APM_DB_HOST DB_HOST "$APM_ENV"
+inherit_staff_key_as APM_DB_PORT DB_PORT "$APM_ENV"
+inherit_staff_key_as APM_DB_DATABASE DB_DATABASE "$APM_ENV"
+inherit_staff_key_as APM_DB_USERNAME DB_USERNAME "$APM_ENV"
+inherit_staff_key_as APM_DB_PASSWORD DB_PASSWORD "$APM_ENV"
+# APM may still use legacy DB_USER / DB_PASS keys.
+inherit_staff_key_as APM_DB_USERNAME DB_USER "$APM_ENV"
+inherit_staff_key_as APM_DB_PASSWORD DB_PASS "$APM_ENV"
+# Fall back to Finance's own MySQL host/user when APM only set the database name.
+if [[ -n "${APM_DB_DATABASE:-}" ]]; then
+    inherit_if_empty APM_DB_HOST "$ENV_FILE"
+    [[ -z "${APM_DB_HOST:-}" ]] && APM_DB_HOST="${DB_HOST:-127.0.0.1}"
+    inherit_if_empty APM_DB_PORT "$ENV_FILE"
+    [[ -z "${APM_DB_PORT:-}" ]] && APM_DB_PORT="${DB_PORT:-3306}"
+    inherit_if_empty APM_DB_USERNAME "$ENV_FILE"
+    [[ -z "${APM_DB_USERNAME:-}" ]] && APM_DB_USERNAME="${DB_USERNAME:-root}"
+    inherit_if_empty APM_DB_PASSWORD "$ENV_FILE"
+    [[ -z "${APM_DB_PASSWORD:-}" ]] && APM_DB_PASSWORD="${DB_PASSWORD:-}"
+fi
+
 # Generate shared secrets on production/local setup when still blank (never ship credentials).
 if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
   # shellcheck source=/dev/null
@@ -110,6 +136,7 @@ fi
 for key in \
     APP_URL BASE_URL FINANCE_ASSETS_BASE_URL FINANCE_STAFF_PORTAL_URL VITE_APP_BASE_PATH \
     APP_ENV APP_DEBUG DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
+    APM_DB_HOST APM_DB_PORT APM_DB_DATABASE APM_DB_USERNAME APM_DB_PASSWORD \
     STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
     SESSION_PATH FINANCE_SSO_PERMISSION_ID; do
     apply_from_setup "$key"
@@ -135,6 +162,7 @@ if [[ -f "$FINANCE_ROOT/backend/.env.example" ]]; then
 fi
 if [[ -f "$BACKEND_ENV" ]]; then
     for key in DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
+               APM_DB_HOST APM_DB_PORT APM_DB_DATABASE APM_DB_USERNAME APM_DB_PASSWORD \
                APP_ENV APP_DEBUG APP_URL BASE_URL STAFF_API_TOKEN SESSION_PATH; do
         val="${!key:-}"
         [[ -z "$val" ]] && val="$(dotenv_get "$ENV_FILE" "$key" 2>/dev/null || true)"
@@ -147,6 +175,17 @@ if [[ -f "$BACKEND_ENV" ]]; then
     if [[ -n "$target_db" && "$target_db" != "staff" && "$target_db" != /* ]]; then
         dotenv_set "$BACKEND_ENV" DB_DATABASE "$target_db"
         dotenv_set "$BACKEND_ENV" DB_CONNECTION mysql
+    fi
+    # Keep APM_DB_DATABASE in sync with the resolved value (from setup.env / APM module).
+    if dotenv_value_present "${APM_DB_DATABASE:-}"; then
+        dotenv_set "$BACKEND_ENV" APM_DB_DATABASE "$APM_DB_DATABASE"
+        dotenv_value_present "${APM_DB_HOST:-}" && dotenv_set "$BACKEND_ENV" APM_DB_HOST "$APM_DB_HOST"
+        dotenv_value_present "${APM_DB_PORT:-}" && dotenv_set "$BACKEND_ENV" APM_DB_PORT "$APM_DB_PORT"
+        dotenv_value_present "${APM_DB_USERNAME:-}" && dotenv_set "$BACKEND_ENV" APM_DB_USERNAME "$APM_DB_USERNAME"
+        # Password may be empty on socket/auth_socket installs — still write when key was resolved.
+        if [[ -n "${APM_DB_PASSWORD+x}" ]]; then
+            dotenv_set "$BACKEND_ENV" APM_DB_PASSWORD "$APM_DB_PASSWORD"
+        fi
     fi
 fi
 
@@ -181,5 +220,5 @@ else
     echo "Configured $ENV_FILE from $SETUP_ENV"
 fi
 if [[ -f "$BACKEND_ENV" ]]; then
-    echo "Synced DB_* on $BACKEND_ENV (DB_DATABASE=$(dotenv_get "$BACKEND_ENV" DB_DATABASE 2>/dev/null || true))"
+    echo "Synced DB_* on $BACKEND_ENV (DB_DATABASE=$(dotenv_get "$BACKEND_ENV" DB_DATABASE 2>/dev/null || true) APM_DB_DATABASE=$(dotenv_get "$BACKEND_ENV" APM_DB_DATABASE 2>/dev/null || true))"
 fi

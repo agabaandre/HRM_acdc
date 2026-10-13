@@ -4,10 +4,14 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\Http;
 use Staff\Shared\ModuleSettingsBag;
+use Staff\Shared\StaffApiCredentials;
 use Throwable;
 
 /**
- * Resolve APM API credentials for SAP fund-code sync: DB → env.
+ * Resolve APM API credentials for SAP fund-code sync: DB → env → Staff Share API.
+ *
+ * Staff Share username/password are the same portal users synced into apm_api_users
+ * (users:sync), so they can authenticate against POST /api/apm/v1/auth/login.
  */
 final class ApmApiCredentials
 {
@@ -69,6 +73,17 @@ final class ApmApiCredentials
         $prefix = rtrim($env('APM_API_PREFIX', '/api/apm/v1'), '/');
         if ($prefix === '') {
             $prefix = '/api/apm/v1';
+        }
+
+        // Reuse Staff Share credentials when APM-specific email/password are unset.
+        if ($email['value'] === '' || $pass['value'] === '') {
+            $staff = StaffApiCredentials::resolve($bag);
+            if ($email['value'] === '' && $staff['username'] !== '') {
+                $email = ['value' => $staff['username'], 'source' => 'staff_api'];
+            }
+            if ($pass['value'] === '' && $staff['password'] !== '') {
+                $pass = ['value' => $staff['password'], 'source' => 'staff_api'];
+            }
         }
 
         return [
@@ -136,7 +151,7 @@ final class ApmApiCredentials
             }
         }
 
-        return 'APM API credentials saved. Non-empty DB values override env; clear a field to fall back to env.';
+        return 'APM API credentials saved. Non-empty DB values override env; clear email/password to reuse Staff Share credentials.';
     }
 
     /**
@@ -166,13 +181,16 @@ final class ApmApiCredentials
         if ($resolved['email'] === '' || $resolved['password'] === '') {
             return [
                 'success' => false,
-                'message' => 'FAILED — set APM API email and password (DB overrides env).',
+                'message' => 'FAILED — set APM API email/password, or Staff Share username/password (shared synced users).',
                 'details' => [
-                    'email: '.($resolved['email'] !== '' ? 'set' : 'empty'),
-                    'password: '.($resolved['password'] !== '' ? 'set' : 'empty'),
+                    'email: '.($resolved['email'] !== '' ? 'set ('.$resolved['sources']['email'].')' : 'empty'),
+                    'password: '.($resolved['password'] !== '' ? 'set ('.$resolved['sources']['password'].')' : 'empty'),
                 ],
             ];
         }
+
+        $details[] = 'email source: '.$resolved['sources']['email'];
+        $details[] = 'password source: '.$resolved['sources']['password'];
 
         $loginUrl = $resolved['base_url'].$resolved['api_prefix'].'/auth/login';
         try {
@@ -184,6 +202,10 @@ final class ApmApiCredentials
                 ]);
             if (! $response->successful()) {
                 $details[] = 'login: FAIL HTTP '.$response->status();
+                $hint = trim((string) data_get($response->json(), 'errors.email.0', data_get($response->json(), 'message', '')));
+                if ($hint !== '') {
+                    $details[] = 'login detail: '.$hint;
+                }
 
                 return [
                     'success' => false,
