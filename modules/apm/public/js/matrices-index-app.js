@@ -415,10 +415,6 @@
                 }
 
                 function praGoReviewStep() {
-                    if (!praWizard.value.selected.length) {
-                        notify('Select at least one RBM activity.');
-                        return;
-                    }
                     if (praSelectedExistingCount.value > 0 && !praWizard.value.allowExisting) {
                         notify(
                             `${praSelectedExistingCount.value} selected already exist in APM. Review links, then tick “Allow already-linked” to continue.`,
@@ -429,10 +425,6 @@
                 }
 
                 async function praCreateMatrix() {
-                    if (!praWizard.value.selected.length) {
-                        notify('Select at least one RBM activity.');
-                        return;
-                    }
                     if (praSelectedExistingCount.value > 0 && !praWizard.value.allowExisting) {
                         notify('Some selected RBM activities already exist. Confirm the warning checkbox first.', 'warning');
                         return;
@@ -852,6 +844,9 @@
           </div>
 
           <div v-else-if="praWizard.step === 2">
+            <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+              Activity selection is optional. You can skip and create an empty draft matrix, then add activities later.
+            </v-alert>
             <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-3">
               <div class="text-body-2 text-medium-emphasis">
                 {{ praFiltered.length }} shown
@@ -979,7 +974,16 @@
           </div>
 
           <div v-else>
-            <p class="mb-3">
+            <v-alert
+              v-if="!praSelectedRows.length"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              No RBM activities selected. An empty draft matrix will be created — you can add activities later from the matrix page.
+            </v-alert>
+            <p v-else class="mb-3">
               Review selected activities.
               <strong v-if="praSelectedBudget.count">
                 Combined budget: {{ praFormatSelectedBudget() }}
@@ -1004,7 +1008,7 @@
               class="mb-3"
               label="Allow already-linked RBM activities (I understand they may duplicate work)"
             />
-            <v-list lines="two" class="border rounded">
+            <v-list v-if="praSelectedRows.length" lines="two" class="border rounded">
               <v-list-item v-for="row in praSelectedRows" :key="row.pra_activity_id">
                 <v-list-item-title class="text-wrap">{{ row.title }}</v-list-item-title>
                 <v-list-item-subtitle class="text-wrap">
@@ -1017,9 +1021,6 @@
                   <v-btn icon="mdi-delete-outline" variant="text" color="error" size="small" @click="praRemoveSelected(row.pra_activity_id)" />
                 </template>
               </v-list-item>
-              <v-list-item v-if="!praSelectedRows.length">
-                <v-list-item-title class="text-medium-emphasis">No activities selected.</v-list-item-title>
-              </v-list-item>
             </v-list>
           </div>
         </v-card-text>
@@ -1029,9 +1030,11 @@
           <v-spacer />
           <v-btn v-if="praWizard.step > 1" variant="outlined" :disabled="praWizard.creating" @click="praWizard.step -= 1">Back</v-btn>
           <v-btn v-if="praWizard.step === 1" color="primary" @click="praGoSelectStep">Next: select activities</v-btn>
-          <v-btn v-if="praWizard.step === 2" color="primary" :disabled="!praWizard.selected.length" @click="praGoReviewStep">Next: review</v-btn>
-          <v-btn v-if="praWizard.step === 3" color="success" :loading="praWizard.creating" :disabled="!praWizard.selected.length" prepend-icon="mdi-check" @click="praCreateMatrix">
-            Create matrix
+          <v-btn v-if="praWizard.step === 2" color="primary" @click="praGoReviewStep">
+            {{ praWizard.selected.length ? 'Next: review' : 'Skip activities' }}
+          </v-btn>
+          <v-btn v-if="praWizard.step === 3" color="success" :loading="praWizard.creating" prepend-icon="mdi-check" @click="praCreateMatrix">
+            {{ praWizard.selected.length ? 'Create matrix' : 'Create empty matrix' }}
           </v-btn>
         </v-card-actions>
       </v-card>

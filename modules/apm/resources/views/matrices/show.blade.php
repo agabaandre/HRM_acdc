@@ -401,6 +401,11 @@
         <a href="{{ route('matrices.activities.create', $matrix) }}" class="btn btn-success btn-sm shadow-sm">
             <i class="bx bx-plus-circle me-1"></i> Add Activity
         </a>
+        @if(function_exists('pra_create_enabled') ? pra_create_enabled() : true)
+        <button type="button" class="btn btn-success btn-sm shadow-sm" id="btn-pra-add-activities" data-open-pra-multi-add="1">
+            <i class="bx bx-cloud-download me-1"></i> Add from RBM
+        </button>
+        @endif
         @endif
 
         @if($canDivisionAddSingleMemo && $matrixIsCurrentQuarter && in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true))

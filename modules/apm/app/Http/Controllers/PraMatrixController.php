@@ -152,7 +152,7 @@ class PraMatrixController extends Controller
             'quarter' => ['required', 'in:Q1,Q2,Q3,Q4'],
             'division_id' => ['nullable', 'integer'],
             'focal_person_id' => ['nullable', 'integer'],
-            'pra_activity_ids' => ['required', 'array', 'min:1'],
+            'pra_activity_ids' => ['nullable', 'array'],
             'pra_activity_ids.*' => ['integer'],
             'allow_existing' => ['nullable', 'boolean'],
         ]);
@@ -167,6 +167,119 @@ class PraMatrixController extends Controller
         if ($divisionId < 1 || $focalPersonId < 1 || $userStaffId < 1) {
             return response()->json(['success' => false, 'message' => 'Missing division or staff context.'], 422);
         }
+
+        $praActivityIds = array_values(array_filter(array_map('intval', $validated['pra_activity_ids'] ?? [])));
+        $existingIds = [];
+        if ($praActivityIds !== []) {
+            $usageMap = $this->usages->usagesByPraIds($praActivityIds);
+            $existingIds = array_keys(array_filter($usageMap, fn ($list) => $list !== []));
+            if ($existingIds !== [] && empty($validated['allow_existing'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Some selected RBM activities already exist in APM. Confirm to continue anyway.',
+                    'data' => [
+                        'existing_pra_activity_ids' => $existingIds,
+                        'existing' => $usageMap,
+                        'requires_confirmation' => true,
+                    ],
+                ], 409);
+            }
+        }
+
+        try {
+            $result = $this->import->createMatrixWithActivities(
+                $divisionId,
+                $focalPersonId,
+                $userStaffId,
+                (int) $validated['year'],
+                (string) $validated['quarter'],
+                $praActivityIds,
+            );
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        $matrix = $result['matrix'];
+        $appended = ! empty($result['appended']);
+        $empty = ! empty($result['empty']);
+        $recipients = Staff::active()
+            ->where('division_id', $divisionId)
+            ->whereNotNull('work_email')
+            ->get();
+        if (! $appended && function_exists('send_matrix_notification')) {
+            send_matrix_notification($matrix, 'created', $recipients);
+        }
+
+        $warning = $existingIds !== []
+            ? ' Note: some RBM activities were already linked elsewhere in APM.'
+            : '';
+
+        $count = count($result['activities']);
+        if ($empty && $appended) {
+            $message = 'Draft matrix already exists for this quarter. Opening it so you can add activities.';
+        } elseif ($empty) {
+            $message = 'Empty draft matrix created. Add activities from RBM or manually on the matrix page.';
+        } elseif ($appended) {
+            $message = sprintf(
+                'Added %d RBM activit%s to the existing draft matrix.%s Review and complete details on the matrix page.',
+                $count,
+                $count === 1 ? 'y' : 'ies',
+                $warning
+            );
+        } else {
+            $message = sprintf(
+                'Matrix created with %d RBM activit%s.%s Review and complete details on the matrix page.',
+                $count,
+                $count === 1 ? 'y' : 'ies',
+                $warning
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'matrix_id' => $matrix->id,
+                'appended' => $appended,
+                'redirect_url' => route('matrices.show', $matrix),
+                'activity_ids' => array_map(fn ($a) => $a->id, $result['activities']),
+                'key_result_areas' => $result['key_result_areas'],
+            ],
+        ]);
+    }
+
+    /**
+     * Append one or more RBM activities onto an existing draft matrix.
+     */
+    public function appendToMatrix(Request $request, Matrix $matrix): JsonResponse
+    {
+        if (function_exists('pra_create_enabled') && ! pra_create_enabled()) {
+            return response()->json(['success' => false, 'message' => 'RBM import is disabled.'], 403);
+        }
+
+        $isAdmin = (int) (user_session('user_role') ?? session('user.user_role')) === 10;
+        $userDivisionId = (int) (user_session('division_id') ?? session('user.division_id') ?? 0);
+        $userStaffId = (int) (function_exists('resolved_session_staff_id')
+            ? (resolved_session_staff_id() ?? 0)
+            : (user_session('staff_id') ?? user_session('auth_staff_id') ?? session('user.auth_staff_id') ?? 0));
+
+        if ($userStaffId < 1) {
+            return response()->json(['success' => false, 'message' => 'Missing staff context.'], 422);
+        }
+
+        if (! $isAdmin && (int) $matrix->division_id !== $userDivisionId) {
+            return response()->json(['success' => false, 'message' => 'You can only add RBM activities to your division matrix.'], 403);
+        }
+
+        if (strtolower((string) ($matrix->overall_status ?? '')) !== 'draft') {
+            return response()->json(['success' => false, 'message' => 'RBM activities can only be added while the matrix is in draft.'], 422);
+        }
+
+        $validated = $request->validate([
+            'pra_activity_ids' => ['required', 'array', 'min:1'],
+            'pra_activity_ids.*' => ['integer'],
+            'allow_existing' => ['nullable', 'boolean'],
+        ]);
 
         $usageMap = $this->usages->usagesByPraIds($validated['pra_activity_ids']);
         $existingIds = array_keys(array_filter($usageMap, fn ($list) => $list !== []));
@@ -183,56 +296,38 @@ class PraMatrixController extends Controller
         }
 
         try {
-            $result = $this->import->createMatrixWithActivities(
-                $divisionId,
-                $focalPersonId,
-                $userStaffId,
-                (int) $validated['year'],
-                (string) $validated['quarter'],
+            $result = $this->import->appendActivitiesToMatrix(
+                $matrix,
                 $validated['pra_activity_ids'],
+                $userStaffId,
             );
         } catch (Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
 
-        $matrix = $result['matrix'];
-        $appended = ! empty($result['appended']);
-        $recipients = Staff::active()
-            ->where('division_id', $divisionId)
-            ->whereNotNull('work_email')
-            ->get();
-        if (! $appended && function_exists('send_matrix_notification')) {
-            send_matrix_notification($matrix, 'created', $recipients);
-        }
-
+        $count = count($result['activities']);
+        $skipped = count($result['skipped'] ?? []);
         $warning = $existingIds !== []
             ? ' Note: some RBM activities were already linked elsewhere in APM.'
             : '';
-
-        $count = count($result['activities']);
-        $message = $appended
-            ? sprintf(
-                'Added %d RBM activit%s to the existing draft matrix.%s Review and complete details on the matrix page.',
-                $count,
-                $count === 1 ? 'y' : 'ies',
-                $warning
-            )
-            : sprintf(
-                'Matrix created with %d RBM activit%s.%s Review and complete details on the matrix page.',
-                $count,
-                $count === 1 ? 'y' : 'ies',
-                $warning
-            );
+        $skipNote = $skipped > 0
+            ? sprintf(' Skipped %d already on this matrix.', $skipped)
+            : '';
 
         return response()->json([
             'success' => true,
-            'message' => $message,
+            'message' => sprintf(
+                'Added %d RBM activit%s to this matrix.%s%s',
+                $count,
+                $count === 1 ? 'y' : 'ies',
+                $skipNote,
+                $warning
+            ),
             'data' => [
                 'matrix_id' => $matrix->id,
-                'appended' => $appended,
-                'redirect_url' => route('matrices.show', $matrix),
                 'activity_ids' => array_map(fn ($a) => $a->id, $result['activities']),
-                'key_result_areas' => $result['key_result_areas'],
+                'skipped_pra_activity_ids' => $result['skipped'] ?? [],
+                'redirect_url' => route('matrices.show', $matrix),
             ],
         ]);
     }

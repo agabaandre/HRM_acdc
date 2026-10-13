@@ -869,11 +869,14 @@ class MatrixController extends Controller
                 'activityDestroyBase' => url('matrices/'.$matrix->id.'/activities'),
                 'activityCreate' => route('matrices.activities.create', $matrix),
                 'praActivities' => route('matrices.pra.activities'),
+                'praAppend' => route('matrices.pra.append', $matrix),
                 'singleMemoShowBase' => url('single-memos'),
                 'staffShowBase' => url('staff'),
                 'staffMatrixActivitiesBase' => url('staff'),
             ],
             'praCreateEnabled' => function_exists('pra_create_enabled') ? pra_create_enabled() : true,
+            'canAddFromRbm' => strtolower((string) ($matrix->overall_status ?? '')) === 'draft'
+                && (function_exists('pra_create_enabled') ? pra_create_enabled() : true),
             'csrf' => csrf_token(),
             'divisionId' => (int) $matrix->division_id,
             'defaults' => [

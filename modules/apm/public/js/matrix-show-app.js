@@ -229,6 +229,63 @@
                     allowExisting: false,
                 });
 
+                const praMulti = ref({
+                    open: false,
+                    step: 1,
+                    loading: false,
+                    refreshing: false,
+                    creating: false,
+                    search: '',
+                    quarterFilter: String(cfg.quarter || ''),
+                    activities: [],
+                    selected: [],
+                    meta: null,
+                    allowExisting: false,
+                });
+
+                const praMultiHeaders = [
+                    { title: 'Code', key: 'code', width: 110 },
+                    { title: 'Activity', key: 'title', minWidth: 200 },
+                    { title: 'Outcome area', key: 'outcome_area', minWidth: 140 },
+                    { title: 'Budget', key: 'budget', width: 130, align: 'end' },
+                    { title: 'In APM', key: 'existing', width: 160 },
+                    { title: 'Dates', key: 'dates', width: 130 },
+                ];
+
+                function formatPraMoney(value) {
+                    const n = Number(value);
+                    if (!Number.isFinite(n) || n === 0) return '';
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        maximumFractionDigits: 0,
+                    }).format(n);
+                }
+
+                function praQuarterBudget(row) {
+                    const q = String(cfg.quarter || '').toLowerCase();
+                    return Number(row[`${q}_budget`] ?? 0) || 0;
+                }
+
+                function praFormatBudget(row) {
+                    const parts = [];
+                    const qAmt = praQuarterBudget(row);
+                    const main = Number(row.budget_main ?? 0) || 0;
+                    const other = (Number(row.budget_2027 ?? 0) || 0) + (Number(row.budget_2028 ?? 0) || 0);
+                    if (qAmt > 0) parts.push(formatPraMoney(qAmt));
+                    if (main > 0 && main !== qAmt) parts.push(`total ${formatPraMoney(main)}`);
+                    if (other > 0) parts.push(`+${formatPraMoney(other)} other yrs`);
+                    if (!parts.length && main > 0) return formatPraMoney(main);
+                    return parts.length ? parts.join(' · ') : '—';
+                }
+
+                function praFormatDates(row) {
+                    const s = row.start_date ? String(row.start_date).slice(0, 10) : '';
+                    const e = row.end_date ? String(row.end_date).slice(0, 10) : '';
+                    if (s && e) return `${s} → ${e}`;
+                    return s || e || '—';
+                }
+
                 const activitySearch = ref(defaults.activitiesSearch || '');
                 const activityDocument = ref(defaults.activitiesDocumentNumber || '');
                 const activityPage = ref(1);
@@ -874,10 +931,168 @@
 
                 function onPraSingleMemoClick(e) {
                     if (cfg.praCreateEnabled === false) return;
+                    const multiBtn = e.target.closest('[data-open-pra-multi-add]');
+                    if (multiBtn) {
+                        e.preventDefault();
+                        openPraMultiAdd();
+                        return;
+                    }
                     const btn = e.target.closest('[data-open-pra-single-memo]');
                     if (!btn) return;
                     e.preventDefault();
                     openPraSingleMemo();
+                }
+
+                const praMultiFiltered = computed(() => {
+                    const q = String(praMulti.value.search || '').trim().toLowerCase();
+                    const qf = String(praMulti.value.quarterFilter || '').toUpperCase();
+                    let rows = praMulti.value.activities || [];
+                    if (qf) {
+                        rows = rows.filter((r) => {
+                            if (Object.prototype.hasOwnProperty.call(r, 'matches_quarter')
+                                && String(r.filter_quarter || '').toUpperCase() === qf) {
+                                return !!r.matches_quarter;
+                            }
+                            return matchesPraQuarterClient(r, Number(cfg.year), qf);
+                        });
+                    }
+                    if (q) {
+                        rows = rows.filter((r) =>
+                            String(r.code || '').toLowerCase().includes(q)
+                            || String(r.title || '').toLowerCase().includes(q)
+                            || String(r.outcome_area || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return rows;
+                });
+
+                const praMultiSelectedRows = computed(() => {
+                    const set = new Set((praMulti.value.selected || []).map(Number));
+                    return (praMulti.value.activities || []).filter((r) => set.has(Number(r.pra_activity_id)));
+                });
+
+                const praMultiExistingCount = computed(() =>
+                    praMultiSelectedRows.value.filter((r) => r.already_exists).length
+                );
+
+                async function openPraMultiAdd() {
+                    if (cfg.canAddFromRbm === false || cfg.praCreateEnabled === false) {
+                        notify('Adding from RBM is only available on draft matrices.', 'warning');
+                        return;
+                    }
+                    praMulti.value.open = true;
+                    praMulti.value.step = 1;
+                    praMulti.value.selected = [];
+                    praMulti.value.search = '';
+                    praMulti.value.quarterFilter = String(cfg.quarter || '');
+                    praMulti.value.allowExisting = false;
+                    await loadPraMultiActivities(false);
+                }
+
+                async function loadPraMultiActivities(refresh) {
+                    if (!cfg.routes?.praActivities) {
+                        notify('RBM activities route missing.', 'error');
+                        return;
+                    }
+                    praMulti.value.loading = true;
+                    praMulti.value.refreshing = !!refresh;
+                    try {
+                        const params = new URLSearchParams({
+                            year: String(cfg.year || ''),
+                            quarter: String(cfg.quarter || ''),
+                            matrix_id: String(cfg.matrixId || ''),
+                            division_id: String(cfg.divisionId || ''),
+                        });
+                        if (refresh) params.set('refresh', '1');
+                        const res = await fetch(`${cfg.routes.praActivities}?${params}`, {
+                            headers: { Accept: 'application/json' },
+                        });
+                        const json = await res.json();
+                        if (!res.ok || !json.success) {
+                            throw new Error(json.message || 'Could not load RBM activities.');
+                        }
+                        praMulti.value.activities = json.data?.activities || [];
+                        praMulti.value.meta = json.data?.meta || null;
+                        const valid = new Set(praMulti.value.activities.map((a) => Number(a.pra_activity_id)));
+                        praMulti.value.selected = praMulti.value.selected
+                            .map(Number)
+                            .filter((id) => valid.has(id));
+                        if (refresh) notify('RBM activities refreshed.', 'success');
+                    } catch (e) {
+                        praMulti.value.activities = [];
+                        notify(e.message || 'Could not load RBM activities.', 'error');
+                    } finally {
+                        praMulti.value.loading = false;
+                        praMulti.value.refreshing = false;
+                    }
+                }
+
+                function praMultiGoReview() {
+                    if (!praMulti.value.selected.length) {
+                        notify('Select at least one RBM activity.', 'warning');
+                        return;
+                    }
+                    if (praMultiExistingCount.value > 0 && !praMulti.value.allowExisting) {
+                        notify(
+                            `${praMultiExistingCount.value} selected already exist in APM. Review, then confirm on the next step.`,
+                            'warning'
+                        );
+                    }
+                    praMulti.value.step = 2;
+                }
+
+                function praMultiRemoveSelected(id) {
+                    const n = Number(id);
+                    praMulti.value.selected = praMulti.value.selected
+                        .map(Number)
+                        .filter((x) => x !== n);
+                }
+
+                async function praMultiAppend() {
+                    if (!praMulti.value.selected.length) {
+                        notify('Select at least one RBM activity.', 'warning');
+                        return;
+                    }
+                    if (praMultiExistingCount.value > 0 && !praMulti.value.allowExisting) {
+                        notify('Confirm the already-linked checkbox first.', 'warning');
+                        return;
+                    }
+                    if (!cfg.routes?.praAppend) {
+                        notify('Append route missing.', 'error');
+                        return;
+                    }
+                    praMulti.value.creating = true;
+                    try {
+                        const res = await fetch(cfg.routes.praAppend, {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': cfg.csrf || '',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify({
+                                pra_activity_ids: praMulti.value.selected.map(Number),
+                                allow_existing: !!praMulti.value.allowExisting,
+                            }),
+                        });
+                        const json = await res.json();
+                        if (res.status === 409 && json.data?.requires_confirmation) {
+                            praMulti.value.allowExisting = true;
+                            notify(json.message || 'Confirm to continue with already-linked activities.', 'warning');
+                            return;
+                        }
+                        if (!res.ok || !json.success) {
+                            throw new Error(json.message || 'Could not add RBM activities.');
+                        }
+                        notify(json.message || 'Activities added.', 'success');
+                        praMulti.value.open = false;
+                        window.location.reload();
+                    } catch (e) {
+                        notify(e.message || 'Could not add RBM activities.', 'error');
+                    } finally {
+                        praMulti.value.creating = false;
+                    }
                 }
 
                 onMounted(() => {
@@ -915,6 +1130,18 @@
                     openPraSingleMemo,
                     loadPraSingleActivities,
                     proceedPraSingleMemo,
+                    praMulti,
+                    praMultiHeaders,
+                    praMultiFiltered,
+                    praMultiSelectedRows,
+                    praMultiExistingCount,
+                    openPraMultiAdd,
+                    loadPraMultiActivities,
+                    praMultiGoReview,
+                    praMultiRemoveSelected,
+                    praMultiAppend,
+                    praFormatBudget,
+                    praFormatDates,
                     activitySearch,
                     activityDocument,
                     activityPage,
@@ -1454,6 +1681,158 @@
         </v-card-actions>
       </v-card>
     </Teleport>
+
+    <v-dialog v-model="praMulti.open" max-width="1400" width="92vw" content-class="modal-xl" scrollable persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
+          <span class="d-flex align-center gap-2">
+            <v-icon icon="mdi-cloud-download" color="primary" />
+            Add activities from RBM
+          </span>
+          <v-chip size="small" variant="tonal" color="primary">
+            {{ cfg.quarter }} {{ cfg.year }} · step {{ praMulti.step }} of 2
+          </v-chip>
+        </v-card-title>
+        <v-progress-linear v-if="praMulti.refreshing || praMulti.loading" indeterminate color="primary" height="3" />
+        <v-divider v-else />
+        <v-card-text>
+          <div v-if="praMulti.step === 1">
+            <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-3">
+              <div class="text-body-2 text-medium-emphasis">
+                {{ praMultiFiltered.length }} shown
+                <span v-if="praMulti.meta?.count != null"> / {{ praMulti.meta.count }} loaded</span>
+                <span v-if="praMulti.meta?.existing_count"> · {{ praMulti.meta.existing_count }} already in APM</span>
+              </div>
+              <div class="d-flex align-center flex-wrap gap-2">
+                <v-select
+                  v-model="praMulti.quarterFilter"
+                  :items="[{ title: 'All quarters', value: '' }, { title: 'Q1', value: 'Q1' }, { title: 'Q2', value: 'Q2' }, { title: 'Q3', value: 'Q3' }, { title: 'Q4', value: 'Q4' }]"
+                  item-title="title"
+                  item-value="value"
+                  label="Filter by quarter"
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  style="min-width: 150px; max-width: 170px;"
+                />
+                <v-text-field
+                  v-model="praMulti.search"
+                  placeholder="Search…"
+                  prepend-inner-icon="mdi-magnify"
+                  clearable
+                  density="compact"
+                  hide-details
+                  variant="outlined"
+                  style="min-width: 200px; max-width: 260px;"
+                />
+                <v-btn variant="outlined" height="40" :loading="praMulti.refreshing" prepend-icon="mdi-refresh" @click="loadPraMultiActivities(true)">Refresh</v-btn>
+              </div>
+            </div>
+            <v-data-table
+              v-model="praMulti.selected"
+              :headers="praMultiHeaders"
+              :items="praMultiFiltered"
+              :loading="praMulti.loading && !praMulti.refreshing"
+              :items-per-page="25"
+              show-select
+              item-value="pra_activity_id"
+              density="compact"
+              class="border rounded"
+            >
+              <template #item.code="{ item }">
+                <v-chip size="x-small" color="primary" variant="tonal">{{ item.code || item.pra_activity_id }}</v-chip>
+              </template>
+              <template #item.title="{ item }">
+                <div class="text-wrap">{{ item.title }}</div>
+              </template>
+              <template #item.outcome_area="{ item }">
+                <div class="text-caption text-wrap">{{ item.outcome_area || '—' }}</div>
+              </template>
+              <template #item.budget="{ item }">
+                <span class="text-caption text-no-wrap">{{ praFormatBudget(item) }}</span>
+              </template>
+              <template #item.existing="{ item }">
+                <div v-if="item.already_exists" class="d-flex flex-column gap-1">
+                  <v-chip size="x-small" color="warning" variant="tonal">Already exists</v-chip>
+                  <a
+                    v-for="ex in (item.existing || []).slice(0, 3)"
+                    :key="ex.type + '-' + ex.id"
+                    :href="ex.url"
+                    target="_blank"
+                    class="text-caption text-primary text-decoration-none"
+                  >{{ ex.label }} ({{ ex.status }})</a>
+                </div>
+                <span v-else class="text-caption text-medium-emphasis">—</span>
+              </template>
+              <template #item.dates="{ item }">
+                <span class="text-caption">{{ praFormatDates(item) }}</span>
+              </template>
+              <template #no-data>
+                <v-alert type="warning" variant="tonal" class="ma-4">
+                  No RBM activities match this filter. Try “All quarters” or refresh.
+                </v-alert>
+              </template>
+            </v-data-table>
+            <div class="d-flex flex-wrap align-center justify-space-between gap-2 mt-2">
+              <div class="text-body-2">
+                <strong>{{ praMulti.selected.length }}</strong> selected
+                <span v-if="praMultiExistingCount" class="text-warning">
+                  · {{ praMultiExistingCount }} already in APM
+                </span>
+              </div>
+              <v-btn v-if="praMulti.selected.length" variant="text" size="small" color="error" @click="praMulti.selected = []">Clear selection</v-btn>
+            </div>
+          </div>
+          <div v-else>
+            <p class="mb-3">Review selected activities before adding them to this matrix.</p>
+            <v-alert
+              v-if="praMultiExistingCount"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              {{ praMultiExistingCount }} selected RBM activit{{ praMultiExistingCount === 1 ? 'y is' : 'ies are' }}
+              already linked elsewhere in APM. Confirm below to continue.
+            </v-alert>
+            <v-checkbox
+              v-if="praMultiExistingCount"
+              v-model="praMulti.allowExisting"
+              density="compact"
+              hide-details
+              class="mb-3"
+              label="Allow already-linked RBM activities"
+            />
+            <v-list lines="two" class="border rounded">
+              <v-list-item v-for="row in praMultiSelectedRows" :key="row.pra_activity_id">
+                <v-list-item-title class="text-wrap">{{ row.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-wrap">
+                  {{ row.code }} · {{ row.outcome_area || 'No outcome' }}
+                  <span v-if="praFormatBudget(row) !== '—'"> · {{ praFormatBudget(row) }}</span>
+                  <span v-if="row.already_exists" class="text-warning"> · already in APM</span>
+                </v-list-item-subtitle>
+                <template #append>
+                  <v-btn icon="mdi-delete-outline" variant="text" color="error" size="small" @click="praMultiRemoveSelected(row.pra_activity_id)" />
+                </template>
+              </v-list-item>
+              <v-list-item v-if="!praMultiSelectedRows.length">
+                <v-list-item-title class="text-medium-emphasis">No activities selected.</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="px-4 py-3">
+          <v-btn variant="text" :disabled="praMulti.creating" @click="praMulti.open = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn v-if="praMulti.step > 1" variant="outlined" :disabled="praMulti.creating" @click="praMulti.step = 1">Back</v-btn>
+          <v-btn v-if="praMulti.step === 1" color="primary" :disabled="!praMulti.selected.length" @click="praMultiGoReview">Next: review</v-btn>
+          <v-btn v-if="praMulti.step === 2" color="success" :loading="praMulti.creating" :disabled="!praMulti.selected.length" prepend-icon="mdi-check" @click="praMultiAppend">
+            Add to matrix
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="praSingle.open" max-width="960" content-class="modal-lg" scrollable persistent>
       <v-card>

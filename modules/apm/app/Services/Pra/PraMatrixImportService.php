@@ -19,7 +19,7 @@ class PraMatrixImportService
      * Create a draft matrix (or append to an existing draft) with activity stubs from RBM activities.
      *
      * @param  list<int>  $praActivityIds
-     * @return array{matrix: Matrix, activities: list<Activity>, key_result_areas: list<array{description: string}>, appended: bool}
+     * @return array{matrix: Matrix, activities: list<Activity>, key_result_areas: list<array{description: string}>, appended: bool, empty?: bool}
      */
     public function createMatrixWithActivities(
         int $divisionId,
@@ -47,8 +47,43 @@ class PraMatrixImportService
         }
 
         $ids = array_values(array_unique(array_filter(array_map('intval', $praActivityIds))));
+
+        // Empty selection: create (or open) a draft matrix with no activities.
         if ($ids === []) {
-            throw new RuntimeException('Select at least one RBM activity.');
+            if ($existingMatrix) {
+                return [
+                    'matrix' => $existingMatrix,
+                    'activities' => [],
+                    'key_result_areas' => $this->matrixKras($existingMatrix),
+                    'appended' => true,
+                    'empty' => true,
+                ];
+            }
+
+            return DB::transaction(function () use ($divisionId, $focalPersonId, $staffId, $year, $quarter) {
+                $kras = [['description' => 'Quarterly workplan outcomes']];
+                $matrix = Matrix::create([
+                    'division_id' => $divisionId,
+                    'focal_person_id' => $focalPersonId,
+                    'year' => $year,
+                    'quarter' => $quarter,
+                    'key_result_area' => json_encode($kras),
+                    'staff_id' => $staffId,
+                    'forward_workflow_id' => null,
+                    'overall_status' => 'draft',
+                ]);
+
+                $approvalService = new ApprovalService;
+                $approvalService->updateApprovalOrderMap($matrix);
+
+                return [
+                    'matrix' => $matrix->fresh(),
+                    'activities' => [],
+                    'key_result_areas' => $kras,
+                    'appended' => false,
+                    'empty' => true,
+                ];
+            });
         }
 
         $available = $this->cache->activitiesForDivision($divisionId, $year, null);
@@ -117,6 +152,90 @@ class PraMatrixImportService
                 'activities' => $activities,
                 'key_result_areas' => $kras,
                 'appended' => $appended,
+                'empty' => false,
+            ];
+        });
+    }
+
+    /**
+     * Append RBM activity stubs onto an existing draft matrix (multi-select).
+     *
+     * @param  list<int>  $praActivityIds
+     * @return array{matrix: Matrix, activities: list<Activity>, key_result_areas: list<array{description: string}>, skipped: list<int>}
+     */
+    public function appendActivitiesToMatrix(Matrix $matrix, array $praActivityIds, int $staffId): array
+    {
+        if (strtolower((string) ($matrix->overall_status ?? '')) !== 'draft') {
+            throw new RuntimeException('RBM activities can only be added while the matrix is in draft.');
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $praActivityIds))));
+        if ($ids === []) {
+            throw new RuntimeException('Select at least one RBM activity.');
+        }
+
+        $alreadyOnMatrix = Activity::query()
+            ->where('matrix_id', $matrix->id)
+            ->whereIn('pra_activity_id', $ids)
+            ->pluck('pra_activity_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $skipped = $alreadyOnMatrix;
+        $ids = array_values(array_diff($ids, $alreadyOnMatrix));
+        if ($ids === []) {
+            throw new RuntimeException('All selected RBM activities are already on this matrix.');
+        }
+
+        $divisionId = (int) $matrix->division_id;
+        $year = (int) $matrix->year;
+        $quarter = strtoupper((string) $matrix->quarter);
+        $focalPersonId = (int) ($matrix->focal_person_id ?: $matrix->staff_id ?: $staffId);
+
+        $available = $this->cache->activitiesForDivision($divisionId, $year, null);
+        $byId = [];
+        foreach ($available as $row) {
+            $byId[(int) $row['pra_activity_id']] = $row;
+        }
+
+        $selected = [];
+        foreach ($ids as $id) {
+            if (! isset($byId[$id])) {
+                throw new RuntimeException("RBM activity {$id} is not available for this division.");
+            }
+            $selected[] = $byId[$id];
+        }
+
+        $newKras = $this->buildKras($selected);
+        $bounds = $this->cache->quarterBounds($year, $quarter);
+
+        return DB::transaction(function () use (
+            $matrix,
+            $selected,
+            $newKras,
+            $bounds,
+            $staffId,
+            $focalPersonId,
+            $divisionId,
+            $skipped
+        ) {
+            $kras = $this->mergeKras($this->matrixKras($matrix), $newKras);
+            $matrix->forceFill(['key_result_area' => json_encode($kras)])->save();
+
+            $activities = $this->createActivitiesFromRows(
+                $matrix,
+                $selected,
+                $kras,
+                $bounds,
+                $staffId,
+                $focalPersonId,
+                $divisionId
+            );
+
+            return [
+                'matrix' => $matrix->fresh(),
+                'activities' => $activities,
+                'key_result_areas' => $kras,
+                'skipped' => $skipped,
             ];
         });
     }
