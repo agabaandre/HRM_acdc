@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
@@ -326,7 +327,7 @@ onMounted(load)
       <button type="button" class="be__apply" @click="applyFilter">Apply</button>
     </div>
 
-    <div v-if="loading" class="be__muted">Loading budgeted execution…</div>
+    <FinSkeleton v-if="loading" variant="dashboard" :rows="3" />
     <div v-else-if="error" class="be__error">{{ error }}</div>
 
     <template v-else-if="kpis">

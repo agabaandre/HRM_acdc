@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
@@ -163,7 +164,7 @@ onMounted(load)
       </div>
     </header>
 
-    <div v-if="loading" class="ps__muted">Loading performance…</div>
+    <FinSkeleton v-if="loading" variant="dashboard" :rows="4" />
     <div v-else-if="error" class="ps__error">{{ error }}</div>
 
     <template v-else-if="summary">

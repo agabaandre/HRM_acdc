@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 
@@ -231,7 +232,7 @@ onMounted(load)
 
     <p v-if="error" class="geo__error">{{ error }}</p>
     <p v-if="message" class="geo__ok">{{ message }}</p>
-    <p v-if="loading" class="geo__muted">Loading…</p>
+    <FinSkeleton v-if="loading" variant="form" :rows="6" />
 
     <template v-else>
       <p class="geo__status">

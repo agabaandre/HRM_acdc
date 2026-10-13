@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { FINANCE_PERMS } from '@/lib/financePermissions'
@@ -202,7 +203,7 @@ onMounted(load)
     </p>
     <p v-if="message" class="gm__ok">{{ message }}</p>
     <p v-if="error" class="gm__error">{{ error }}</p>
-    <p v-if="loading" class="gm__muted">Loading…</p>
+    <FinSkeleton v-if="loading" variant="table" :rows="8" />
 
     <template v-else>
       <section v-if="canEdit && showForm" class="gm__panel gm__panel--form">

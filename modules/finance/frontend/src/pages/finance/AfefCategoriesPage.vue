@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { FINANCE_PERMS } from '@/lib/financePermissions'
@@ -144,7 +145,7 @@ onMounted(load)
 
     <p v-if="error" class="afef-cat__error">{{ error }}</p>
     <p v-if="message" class="afef-cat__ok">{{ message }}</p>
-    <p v-if="loading" class="afef-cat__muted">Loading…</p>
+    <FinSkeleton v-if="loading" variant="table" :rows="6" />
 
     <template v-else>
       <p class="afef-cat__status">

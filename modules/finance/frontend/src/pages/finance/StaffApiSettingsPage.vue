@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { RouterLink } from 'vue-router'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
@@ -179,7 +180,7 @@ onMounted(() => {
 
     <p v-if="error" class="fn-error">{{ error }}</p>
     <p v-if="message" class="fn-ok">{{ message }}</p>
-    <p v-if="loading" class="fn-muted">Loading…</p>
+    <FinSkeleton v-if="loading" variant="form" :rows="5" />
 
     <template v-else>
       <section class="fn-card">

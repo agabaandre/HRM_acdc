@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
+import FinSkeleton from '@/components/finance/FinSkeleton.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { FINANCE_PERMS } from '@/lib/financePermissions'
@@ -95,7 +96,7 @@ const intramural = ref<{
 /** Empty = show all divisions with SAP data; otherwise filter to selected IDs. */
 const divisionFilterIds = ref<number[]>([])
 const expanded = ref<Record<number, boolean>>({})
-const loading = ref(false)
+const loading = ref(true)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const message = ref<string | null>(null)
@@ -653,7 +654,7 @@ onMounted(loadSection)
     </p>
     <p v-if="message" class="pe__ok">{{ message }}</p>
     <p v-if="error" class="pe__error">{{ error }}</p>
-    <p v-if="loading" class="pe__muted">Loading…</p>
+    <FinSkeleton v-if="loading" variant="table" :rows="8" />
 
     <template v-else-if="isIntramural && intramural">
       <section class="pe__kpi">
