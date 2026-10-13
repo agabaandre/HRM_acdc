@@ -287,7 +287,11 @@ write_app_programs() {
 
   local qname="cbp-${SLUG}-${app}-queue"
   local sname="cbp-${SLUG}-${app}-scheduler"
-  local qcmd="${PHP_BIN} artisan queue:work --sleep=3 --tries=3 --max-time=3600"
+  local queues="default"
+  if [[ "$app" == "finance" ]]; then
+    queues="finance,default"
+  fi
+  local qcmd="${PHP_BIN} artisan queue:work --queue=${queues} --sleep=3 --tries=3 --max-time=3600"
   local scmd="${PHP_BIN} artisan schedule:work"
 
   render_program "$qname" "$qcmd" "$app_abs" "$app_abs/storage/logs/supervisor-queue.log" "$numprocs" "3600"

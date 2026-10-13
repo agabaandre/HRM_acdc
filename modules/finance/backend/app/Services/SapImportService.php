@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncSapImportToApmJob;
 use App\Support\SapExportParser;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -105,35 +106,14 @@ final class SapImportService
             return $importId;
         });
 
-        $apmUpdated = 0;
-        $syncStatus = 'synced';
-        $syncError = null;
-
-        try {
-            $client = $this->apm ?? new ApmFundCodeSyncClient;
-            $apmUpdated = $client->syncTotals($budgetYear, $parsed['totals']);
-        } catch (Throwable $e) {
-            $syncStatus = 'sync_failed';
-            $syncError = $e->getMessage();
-            Log::error('SAP→APM sync failed', [
-                'import_id' => $importId,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        DB::table('fin_sap_imports')->where('id', $importId)->update([
-            'apm_updated_count' => $apmUpdated,
-            'sync_status' => $syncStatus,
-            'sync_error' => $syncError,
-            'updated_at' => now(),
-        ]);
+        SyncSapImportToApmJob::dispatch($importId);
 
         return [
             'import_id' => $importId,
             'rows' => count($parsed['rows']),
             'totals' => count($parsed['totals']),
-            'apm_updated' => $apmUpdated,
-            'sync_status' => $syncStatus,
+            'apm_updated' => 0,
+            'sync_status' => 'pending',
             'budget_year' => $budgetYear,
         ];
     }
@@ -142,6 +122,28 @@ final class SapImportService
      * @return array{import_id: int, apm_updated: int, sync_status: string}
      */
     public function retrySync(int $importId): array
+    {
+        DB::table('fin_sap_imports')->where('id', $importId)->update([
+            'sync_status' => 'pending',
+            'sync_error' => null,
+            'updated_at' => now(),
+        ]);
+
+        SyncSapImportToApmJob::dispatch($importId);
+
+        return [
+            'import_id' => $importId,
+            'apm_updated' => 0,
+            'sync_status' => 'pending',
+        ];
+    }
+
+    /**
+     * Run the APM sync for an import (called by the queue worker).
+     *
+     * @return array{import_id: int, apm_updated: int, sync_status: string}
+     */
+    public function performApmSync(int $importId): array
     {
         $import = DB::table('fin_sap_imports')->where('id', $importId)->first();
         if (! $import) {
@@ -168,7 +170,7 @@ final class SapImportService
         } catch (Throwable $e) {
             $syncStatus = 'sync_failed';
             $syncError = $e->getMessage();
-            Log::error('SAP→APM retry sync failed', [
+            Log::error('SAP→APM sync failed', [
                 'import_id' => $importId,
                 'error' => $e->getMessage(),
             ]);

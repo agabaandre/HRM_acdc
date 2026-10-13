@@ -5,12 +5,15 @@ import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 
 const loading = ref(true)
-const saving = ref(false)
-const testing = ref(false)
+const savingStaff = ref(false)
+const savingApm = ref(false)
+const testingStaff = ref(false)
+const testingApm = ref(false)
 const error = ref<string | null>(null)
 const message = ref<string | null>(null)
 const clearPassword = ref(false)
 const clearToken = ref(false)
+const clearApmPassword = ref(false)
 const probeLines = ref<string[]>([])
 const resolved = reactive({
   base_url: '',
@@ -26,6 +29,18 @@ const form = reactive({
   staff_api_password: '',
   staff_api_token: '',
 })
+const apmResolved = reactive({
+  base_url: '',
+  email: '',
+  password_configured: false,
+  api_prefix: '',
+})
+const apmSources = reactive<Record<string, string>>({})
+const apmForm = reactive({
+  apm_api_base_url: '',
+  apm_api_email: '',
+  apm_api_password: '',
+})
 
 async function load() {
   loading.value = true
@@ -39,6 +54,14 @@ async function load() {
     form.staff_api_token = ''
     Object.assign(resolved, d.resolved)
     Object.assign(sources, d.sources)
+
+    const apm = d.apm || {}
+    apmForm.apm_api_base_url = apm.settings?.apm_api_base_url || ''
+    apmForm.apm_api_email = apm.settings?.apm_api_email || ''
+    apmForm.apm_api_password = ''
+    Object.assign(apmResolved, apm.resolved || {})
+    Object.assign(apmSources, apm.sources || {})
+    clearApmPassword.value = false
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not load Staff API settings')
   } finally {
@@ -46,8 +69,8 @@ async function load() {
   }
 }
 
-async function save() {
-  saving.value = true
+async function saveStaff() {
+  savingStaff.value = true
   error.value = null
   message.value = null
   try {
@@ -55,6 +78,7 @@ async function save() {
       ...form,
       clear_password: clearPassword.value,
       clear_token: clearToken.value,
+      section: 'staff',
     })
     message.value = data.message || 'Staff API settings saved.'
     clearPassword.value = false
@@ -63,17 +87,37 @@ async function save() {
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not save Staff API settings')
   } finally {
-    saving.value = false
+    savingStaff.value = false
   }
 }
 
-async function testConnection() {
-  testing.value = true
+async function saveApm() {
+  savingApm.value = true
+  error.value = null
+  message.value = null
+  try {
+    const { data } = await api.put<{ success: boolean; message: string }>('/api/v1/settings/staff-api', {
+      ...apmForm,
+      clear_apm_password: clearApmPassword.value,
+      section: 'apm',
+    })
+    message.value = data.message || 'APM API settings saved.'
+    clearApmPassword.value = false
+    await load()
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Could not save APM API settings')
+  } finally {
+    savingApm.value = false
+  }
+}
+
+async function testStaffConnection() {
+  testingStaff.value = true
   error.value = null
   message.value = null
   probeLines.value = []
   try {
-    const payload: Record<string, string> = {}
+    const payload: Record<string, string> = { target: 'staff' }
     if (form.staff_api_base_url.trim()) payload.staff_api_base_url = form.staff_api_base_url.trim()
     if (form.staff_api_username.trim()) payload.staff_api_username = form.staff_api_username.trim()
     if (form.staff_api_password.trim()) payload.staff_api_password = form.staff_api_password
@@ -88,7 +132,31 @@ async function testConnection() {
   } catch (e) {
     error.value = apiErrorMessage(e, 'Connection test failed')
   } finally {
-    testing.value = false
+    testingStaff.value = false
+  }
+}
+
+async function testApmConnection() {
+  testingApm.value = true
+  error.value = null
+  message.value = null
+  probeLines.value = []
+  try {
+    const payload: Record<string, string> = { target: 'apm' }
+    if (apmForm.apm_api_base_url.trim()) payload.apm_api_base_url = apmForm.apm_api_base_url.trim()
+    if (apmForm.apm_api_email.trim()) payload.apm_api_email = apmForm.apm_api_email.trim()
+    if (apmForm.apm_api_password.trim()) payload.apm_api_password = apmForm.apm_api_password
+    const { data } = await api.post<{ success: boolean; message: string; details?: string[] }>(
+      '/api/v1/settings/staff-api/test',
+      payload,
+    )
+    probeLines.value = data.details || []
+    if (data.success) message.value = data.message
+    else error.value = data.message || 'APM connection failed'
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'APM connection test failed')
+  } finally {
+    testingApm.value = false
   }
 }
 
@@ -101,9 +169,9 @@ onMounted(() => {
   <div class="fn-page">
     <header class="fn-page__header">
       <div>
-        <h1>Staff API credentials</h1>
+        <h1>API credentials</h1>
         <p class="fn-page__sub">
-          Share API base URL, username/password (JWT), and static token. DB values override env; leave blank to use env / Staff Portal defaults.
+          Staff Share API and APM API users. DB values override env; leave blank to use env defaults.
         </p>
       </div>
       <RouterLink class="fn-link" :to="{ name: 'dashboard' }">Back to portfolio</RouterLink>
@@ -115,7 +183,7 @@ onMounted(() => {
 
     <template v-else>
       <section class="fn-card">
-        <h2>Resolved (effective)</h2>
+        <h2>Staff Share API — resolved</h2>
         <p class="fn-muted">
           Base: <code>{{ resolved.base_url }}</code> ({{ sources.base_url }})
         </p>
@@ -127,7 +195,7 @@ onMounted(() => {
       </section>
 
       <section class="fn-card">
-        <h2>DB overrides</h2>
+        <h2>Staff Share API — DB overrides</h2>
         <label class="fn-field">
           <span>Base URL</span>
           <input v-model="form.staff_api_base_url" type="url" placeholder="http://127.0.0.1/staff/backend" />
@@ -153,11 +221,55 @@ onMounted(() => {
           Clear DB token
         </label>
         <div class="fn-actions">
-          <button type="button" class="fn-btn fn-btn--ghost" :disabled="testing" @click="testConnection">
-            {{ testing ? 'Testing…' : 'Test connection' }}
+          <button type="button" class="fn-btn fn-btn--ghost" :disabled="testingStaff" @click="testStaffConnection">
+            {{ testingStaff ? 'Testing…' : 'Test Staff API' }}
           </button>
-          <button type="button" class="fn-btn" :disabled="saving" @click="save">
-            {{ saving ? 'Saving…' : 'Save' }}
+          <button type="button" class="fn-btn" :disabled="savingStaff" @click="saveStaff">
+            {{ savingStaff ? 'Saving…' : 'Save Staff API' }}
+          </button>
+        </div>
+      </section>
+
+      <section class="fn-card">
+        <h2>APM API — resolved (SAP sync)</h2>
+        <p class="fn-muted">
+          Used by SAP budget import to update APM fund-code budgets. Must be an
+          <code>apm_api_users</code> account with email login enabled.
+        </p>
+        <p class="fn-muted">
+          Base: <code>{{ apmResolved.base_url || '—' }}</code> ({{ apmSources.base_url || 'unset' }})
+        </p>
+        <p class="fn-muted">Email: {{ apmResolved.email || '—' }} ({{ apmSources.email || 'unset' }})</p>
+        <p class="fn-muted">
+          Password: {{ apmResolved.password_configured ? 'set' : 'empty' }} ({{ apmSources.password || 'unset' }})
+        </p>
+        <p class="fn-muted">API prefix: <code>{{ apmResolved.api_prefix || '/api/apm/v1' }}</code></p>
+      </section>
+
+      <section class="fn-card">
+        <h2>APM API — DB overrides</h2>
+        <label class="fn-field">
+          <span>APM base URL</span>
+          <input v-model="apmForm.apm_api_base_url" type="url" placeholder="http://localhost/staff/apm" />
+        </label>
+        <label class="fn-field">
+          <span>APM API email</span>
+          <input v-model="apmForm.apm_api_email" type="email" autocomplete="username" placeholder="finance-sync@africacdc.org" />
+        </label>
+        <label class="fn-field">
+          <span>APM API password (blank = keep)</span>
+          <input v-model="apmForm.apm_api_password" type="password" autocomplete="new-password" />
+        </label>
+        <label class="fn-check">
+          <input v-model="clearApmPassword" type="checkbox" />
+          Clear DB APM password
+        </label>
+        <div class="fn-actions">
+          <button type="button" class="fn-btn fn-btn--ghost" :disabled="testingApm" @click="testApmConnection">
+            {{ testingApm ? 'Testing…' : 'Test APM login' }}
+          </button>
+          <button type="button" class="fn-btn" :disabled="savingApm" @click="saveApm">
+            {{ savingApm ? 'Saving…' : 'Save APM API' }}
           </button>
         </div>
       </section>

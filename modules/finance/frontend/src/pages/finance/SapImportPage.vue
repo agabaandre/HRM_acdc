@@ -92,7 +92,7 @@ onMounted(loadLatest)
       </label>
       <div class="fin-sap__actions">
         <button type="button" class="btn btn-primary" :disabled="uploading || !file" @click="upload">
-          {{ uploading ? 'Uploading…' : 'Upload & sync to APM' }}
+          {{ uploading ? 'Uploading…' : 'Upload & queue APM sync' }}
         </button>
         <button
           v-if="(result?.sync_status || latest?.sync_status) === 'sync_failed'"
@@ -102,6 +102,15 @@ onMounted(loadLatest)
           @click="retrySync"
         >
           Retry APM sync
+        </button>
+        <button
+          v-if="(result?.sync_status || latest?.sync_status) === 'pending'"
+          type="button"
+          class="btn"
+          :disabled="uploading"
+          @click="loadLatest"
+        >
+          Check sync status
         </button>
       </div>
       <p v-if="error" class="rr-error">{{ error }}</p>
@@ -124,6 +133,7 @@ onMounted(loadLatest)
         <li>File: <strong>{{ latest.original_filename }}</strong></li>
         <li>Status: <strong>{{ latest.sync_status }}</strong></li>
         <li>APM updated: <strong>{{ latest.apm_updated_count }}</strong></li>
+        <li v-if="latest.sync_error">Error: <strong class="rr-error">{{ latest.sync_error }}</strong></li>
       </ul>
     </section>
   </div>

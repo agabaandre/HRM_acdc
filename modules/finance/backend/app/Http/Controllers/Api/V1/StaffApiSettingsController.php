@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApmApiCredentials;
 use App\Support\RiskPermissions;
 use App\Support\RrSettingsBag;
 use Illuminate\Http\JsonResponse;
@@ -16,9 +17,13 @@ class StaffApiSettingsController extends Controller
     public function show(Request $request): JsonResponse
     {
         $this->authorizeManage($request);
+        $bag = new RrSettingsBag;
 
         return response()->json([
-            'data' => StaffApiCredentials::snapshot(new RrSettingsBag, 'Finance'),
+            'data' => array_merge(
+                StaffApiCredentials::snapshot($bag, 'Finance'),
+                ['apm' => ApmApiCredentials::snapshot($bag)],
+            ),
         ]);
     }
 
@@ -32,11 +37,28 @@ class StaffApiSettingsController extends Controller
             'staff_api_token' => ['nullable', 'string', 'max:255'],
             'clear_password' => ['nullable', 'boolean'],
             'clear_token' => ['nullable', 'boolean'],
+            'apm_api_base_url' => ['nullable', 'string', 'max:500'],
+            'apm_api_email' => ['nullable', 'string', 'max:255'],
+            'apm_api_password' => ['nullable', 'string', 'max:255'],
+            'clear_apm_password' => ['nullable', 'boolean'],
+            'section' => ['nullable', 'string', 'in:staff,apm,both'],
         ]);
         try {
-            $msg = StaffApiCredentials::persist(new RrSettingsBag, $validated);
+            $bag = new RrSettingsBag;
+            $section = (string) ($validated['section'] ?? 'both');
+            $messages = [];
 
-            return response()->json(['success' => true, 'message' => $msg]);
+            if ($section === 'staff' || $section === 'both') {
+                $messages[] = StaffApiCredentials::persist($bag, $validated);
+            }
+            if ($section === 'apm' || $section === 'both') {
+                $messages[] = ApmApiCredentials::persist($bag, $validated);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => implode(' ', $messages),
+            ]);
         } catch (Throwable $e) {
             Log::error('Finance staff API settings update failed', ['error' => $e->getMessage()]);
 
@@ -47,13 +69,28 @@ class StaffApiSettingsController extends Controller
     public function test(Request $request): JsonResponse
     {
         $this->authorizeManage($request);
+        $target = (string) $request->input('target', 'staff');
+        $bag = new RrSettingsBag;
+
+        if ($target === 'apm') {
+            $override = [];
+            foreach (['apm_api_base_url' => 'base_url', 'apm_api_email' => 'email', 'apm_api_password' => 'password'] as $in => $out) {
+                if ($request->filled($in)) {
+                    $override[$out] = (string) $request->input($in);
+                }
+            }
+            $result = ApmApiCredentials::probe($bag, $override !== [] ? $override : null);
+
+            return response()->json($result);
+        }
+
         $override = [];
         foreach (['staff_api_base_url' => 'base_url', 'staff_api_username' => 'username', 'staff_api_password' => 'password', 'staff_api_token' => 'token'] as $in => $out) {
             if ($request->filled($in)) {
                 $override[$out] = (string) $request->input($in);
             }
         }
-        $result = StaffApiCredentials::probe(new RrSettingsBag, $override !== [] ? $override : null);
+        $result = StaffApiCredentials::probe($bag, $override !== [] ? $override : null);
 
         return response()->json($result);
     }

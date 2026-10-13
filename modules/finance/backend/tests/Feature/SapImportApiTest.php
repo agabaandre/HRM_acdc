@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SyncSapImportToApmJob;
+use App\Services\SapImportService;
 use App\Support\RiskPermissions;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\BuildsMinimalXlsx;
@@ -39,6 +42,7 @@ class SapImportApiTest extends TestCase
 
     public function test_sap_upload_updates_matched_apm_codes_only(): void
     {
+        Queue::fake();
         $year = (int) date('Y');
         Http::fake([
             'http://apm.test/api/apm/v1/auth/login' => Http::response([
@@ -99,12 +103,19 @@ class SapImportApiTest extends TestCase
         $response = $this->withToken($token)->post('/api/v1/sap/import', ['file' => $upload]);
         $response->assertOk();
         $response->assertJsonPath('data.totals', 2);
-        $response->assertJsonPath('data.apm_updated', 1);
-        $response->assertJsonPath('data.sync_status', 'synced');
+        $response->assertJsonPath('data.apm_updated', 0);
+        $response->assertJsonPath('data.sync_status', 'pending');
 
         $this->assertSame(4, DB::table('fin_sap_rows')->count());
         $this->assertSame(2, DB::table('fin_sap_fund_centers')->count());
         $this->assertSame(1, DB::table('fin_sap_imports')->where('is_latest', true)->count());
+
+        $importId = (int) $response->json('data.import_id');
+        Queue::assertPushed(SyncSapImportToApmJob::class, fn ($job) => $job->importId === $importId);
+
+        $sync = app(SapImportService::class)->performApmSync($importId);
+        $this->assertSame('synced', $sync['sync_status']);
+        $this->assertSame(1, $sync['apm_updated']);
 
         Http::assertSent(function ($request) {
             if (! str_ends_with($request->url(), '/fund-codes/9')) {
@@ -120,6 +131,7 @@ class SapImportApiTest extends TestCase
 
     public function test_duplicate_fund_centers_upsert_latest_balances(): void
     {
+        Queue::fake();
         Http::fake([
             'http://apm.test/api/apm/v1/auth/login' => Http::response([
                 'success' => true,
@@ -160,6 +172,8 @@ class SapImportApiTest extends TestCase
         $response = $this->withToken($token)->post('/api/v1/sap/import', ['file' => $upload]);
         $response->assertOk();
         $response->assertJsonPath('data.totals', 2);
+        $response->assertJsonPath('data.sync_status', 'pending');
+        Queue::assertPushed(SyncSapImportToApmJob::class);
 
         $this->assertSame(2, DB::table('fin_sap_fund_centers')->count());
         $row = DB::table('fin_sap_fund_centers')->where('fund_center', 'CDC0901031MB')->first();

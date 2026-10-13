@@ -33,7 +33,7 @@ fi
 
 cd "$STAFF_PORTAL_ROOT"
 exec "$PHP_BIN" artisan queue:work database \
-  --queue=default \
+  --queue=finance,default \
   --sleep=3 \
   --tries=3 \
   --max-time=3600 \

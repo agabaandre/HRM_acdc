@@ -2,12 +2,16 @@
 
 namespace App\Services;
 
+use App\Support\ApmApiCredentials;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 final class ApmFundCodeSyncClient
 {
+    /** @var array{base_url: string, api_prefix: string, email: string, password: string, timeout: int}|null */
+    private ?array $creds = null;
+
     /**
      * @param  list<array{fund_center: string, total_released_budget: float, released_budget_balance: float}>  $totals
      */
@@ -44,13 +48,14 @@ final class ApmFundCodeSyncClient
 
     private function login(): string
     {
-        $email = (string) config('apm.email');
-        $password = (string) config('apm.password');
+        $creds = $this->credentials();
+        $email = $creds['email'];
+        $password = $creds['password'];
         if ($email === '' || $password === '') {
-            throw new RuntimeException('APM_API_EMAIL and APM_API_PASSWORD must be configured.');
+            throw new RuntimeException('APM API email and password must be configured (Settings → Staff API, or APM_API_EMAIL / APM_API_PASSWORD).');
         }
 
-        $response = Http::timeout((int) config('apm.timeout', 60))
+        $response = Http::timeout($creds['timeout'])
             ->acceptJson()
             ->post($this->url('auth/login'), [
                 'email' => $email,
@@ -70,6 +75,26 @@ final class ApmFundCodeSyncClient
     }
 
     /**
+     * @return array{base_url: string, api_prefix: string, email: string, password: string, timeout: int}
+     */
+    private function credentials(): array
+    {
+        if ($this->creds !== null) {
+            return $this->creds;
+        }
+        $resolved = ApmApiCredentials::resolve();
+        $this->creds = [
+            'base_url' => $resolved['base_url'],
+            'api_prefix' => $resolved['api_prefix'],
+            'email' => $resolved['email'],
+            'password' => $resolved['password'],
+            'timeout' => $resolved['timeout'],
+        ];
+
+        return $this->creds;
+    }
+
+    /**
      * @return array<string, array{id: int, code: string}>
      */
     private function fetchFundCodesByCode(string $token, int $year): array
@@ -79,7 +104,7 @@ final class ApmFundCodeSyncClient
         $lastPage = 1;
 
         do {
-            $response = Http::timeout((int) config('apm.timeout', 60))
+            $response = Http::timeout($this->credentials()['timeout'])
                 ->withToken($token)
                 ->acceptJson()
                 ->get($this->url('fund-codes'), [
@@ -117,7 +142,7 @@ final class ApmFundCodeSyncClient
      */
     private function patchFundCode(string $token, int $id, array $payload): void
     {
-        $response = Http::timeout((int) config('apm.timeout', 60))
+        $response = Http::timeout($this->credentials()['timeout'])
             ->withToken($token)
             ->acceptJson()
             ->patch($this->url('fund-codes/'.$id), $payload);
@@ -134,11 +159,12 @@ final class ApmFundCodeSyncClient
 
     private function url(string $path): string
     {
-        $base = rtrim((string) config('apm.base_url'), '/');
+        $creds = $this->credentials();
+        $base = $creds['base_url'];
         if ($base === '') {
-            throw new RuntimeException('APM_BASE_URL is not configured.');
+            throw new RuntimeException('APM base URL is not configured (Settings → Staff API, or APM_BASE_URL).');
         }
-        $prefix = rtrim((string) config('apm.api_prefix', '/api/apm/v1'), '/');
+        $prefix = rtrim($creds['api_prefix'], '/');
 
         return $base.$prefix.'/'.ltrim($path, '/');
     }
