@@ -68,12 +68,18 @@ final class SapImportService
                 DB::table('fin_sap_rows')->insert($chunk);
             }
 
-            $centerInserts = [];
+            // One row per fund center (budget code); upsert so re-imports / file
+            // duplicates update balances and payload instead of violating unique.
+            $centersByCode = [];
             foreach ($parsed['totals'] as $total) {
-                $centerInserts[] = [
+                $fc = trim((string) ($total['fund_center'] ?? ''));
+                if ($fc === '') {
+                    continue;
+                }
+                $centersByCode[$fc] = [
                     'import_id' => $importId,
                     'budget_year' => $budgetYear,
-                    'fund_center' => $total['fund_center'],
+                    'fund_center' => $fc,
                     'total_released_budget' => $total['total_released_budget'],
                     'released_budget_balance' => $total['released_budget_balance'],
                     'payload' => json_encode($total['raw'] ?? [], JSON_THROW_ON_ERROR),
@@ -81,8 +87,19 @@ final class SapImportService
                     'updated_at' => now(),
                 ];
             }
+            $centerInserts = array_values($centersByCode);
             foreach (array_chunk($centerInserts, 200) as $chunk) {
-                DB::table('fin_sap_fund_centers')->insert($chunk);
+                DB::table('fin_sap_fund_centers')->upsert(
+                    $chunk,
+                    ['import_id', 'fund_center'],
+                    [
+                        'budget_year',
+                        'total_released_budget',
+                        'released_budget_balance',
+                        'payload',
+                        'updated_at',
+                    ]
+                );
             }
 
             return $importId;

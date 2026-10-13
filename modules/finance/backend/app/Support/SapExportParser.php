@@ -44,7 +44,8 @@ final class SapExportParser
         }
 
         $rows = [];
-        $totals = [];
+        // Last Total row per fund center wins (SAP exports often repeat a code).
+        $totalsByFundCenter = [];
         foreach ($raw as $idx => $entry) {
             if ($idx === 0) {
                 continue;
@@ -62,7 +63,7 @@ final class SapExportParser
                 continue;
             }
 
-            $totals[] = [
+            $totalsByFundCenter[$fc] = [
                 'fund_center' => $fc,
                 'total_released_budget' => $this->decimal($assoc['total released budget'] ?? 0),
                 'released_budget_balance' => $this->decimal($assoc['released budget balance'] ?? 0),
@@ -70,7 +71,7 @@ final class SapExportParser
             ];
         }
 
-        return ['rows' => $rows, 'totals' => $totals];
+        return ['rows' => $rows, 'totals' => array_values($totalsByFundCenter)];
     }
 
     private function normalizeHeader(string $header): string

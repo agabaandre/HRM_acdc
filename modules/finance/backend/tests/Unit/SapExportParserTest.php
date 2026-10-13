@@ -44,4 +44,27 @@ class SapExportParserTest extends TestCase
         $this->expectExceptionMessage('Missing required header');
         (new SapExportParser)->parse($path);
     }
+
+    public function test_duplicate_total_rows_keep_last_per_fund_center(): void
+    {
+        $path = $this->makeMinimalXlsx([
+            ['Fund center', 'Fund center Text', 'GL Account', 'Total Released Budget', 'Released Budget balance'],
+            ['CDC0901031MB', 'First', '', '100', '0'],
+            ['CDC0901031MB', '', 'Total', '100', '10'],
+            ['CDC0901031MB', 'Second', '', '200', '0'],
+            ['CDC0901031MB', '', 'Total', '200', '55.5'],
+            ['CDC0102004MB', '', 'Total', '50', '5'],
+        ], 'Sheet1');
+
+        $result = (new SapExportParser)->parse($path);
+
+        $this->assertCount(2, $result['totals']);
+        $byCode = [];
+        foreach ($result['totals'] as $row) {
+            $byCode[$row['fund_center']] = $row;
+        }
+        $this->assertSame(200.0, $byCode['CDC0901031MB']['total_released_budget']);
+        $this->assertSame(55.5, $byCode['CDC0901031MB']['released_budget_balance']);
+        $this->assertSame(50.0, $byCode['CDC0102004MB']['total_released_budget']);
+    }
 }

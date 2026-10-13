@@ -118,6 +118,56 @@ class SapImportApiTest extends TestCase
         });
     }
 
+    public function test_duplicate_fund_centers_upsert_latest_balances(): void
+    {
+        Http::fake([
+            'http://apm.test/api/apm/v1/auth/login' => Http::response([
+                'success' => true,
+                'data' => ['access_token' => 'tok', 'token_type' => 'bearer', 'expires_in' => 3600],
+            ], 200),
+            'http://apm.test/api/apm/v1/fund-codes*' => Http::response([
+                'success' => true,
+                'data' => [],
+                'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 100, 'total' => 0],
+            ], 200),
+        ]);
+
+        $token = 'sap-dup-token';
+        Cache::put('risk_api_token:'.$token, [
+            'staff_id' => 42,
+            'division_id' => 1,
+            'permissions' => [RiskPermissions::MANAGE],
+            'api_token' => $token,
+        ], 3600);
+
+        $path = $this->makeMinimalXlsx([
+            ['Fund center', 'Fund center Text', 'GL Account', 'Total Released Budget', 'Released Budget balance'],
+            ['CDC0901031MB', 'A', '', '100', '0'],
+            ['CDC0901031MB', '', 'Total', '100', '10'],
+            ['CDC0901031MB', 'B', '', '250', '0'],
+            ['CDC0901031MB', '', 'Total', '250', '77.25'],
+            ['CDC0102004MB', '', 'Total', '50', '5'],
+        ], 'Sheet1');
+
+        $upload = new UploadedFile(
+            $path,
+            'EXPORT.xlsx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            null,
+            true
+        );
+
+        $response = $this->withToken($token)->post('/api/v1/sap/import', ['file' => $upload]);
+        $response->assertOk();
+        $response->assertJsonPath('data.totals', 2);
+
+        $this->assertSame(2, DB::table('fin_sap_fund_centers')->count());
+        $row = DB::table('fin_sap_fund_centers')->where('fund_center', 'CDC0901031MB')->first();
+        $this->assertNotNull($row);
+        $this->assertEqualsWithDelta(250.0, (float) $row->total_released_budget, 0.001);
+        $this->assertEqualsWithDelta(77.25, (float) $row->released_budget_balance, 0.001);
+    }
+
     private function createSapTables(): void
     {
         Schema::create('fin_sap_imports', function (Blueprint $table) {
@@ -152,6 +202,7 @@ class SapImportApiTest extends TestCase
             $table->decimal('released_budget_balance', 18, 2)->default(0);
             $table->json('payload')->nullable();
             $table->timestamps();
+            $table->unique(['import_id', 'fund_center']);
         });
     }
 }
