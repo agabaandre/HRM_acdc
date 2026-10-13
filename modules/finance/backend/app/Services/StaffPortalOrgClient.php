@@ -159,8 +159,15 @@ class StaffPortalOrgClient
             return [];
         }
 
-        if (Schema::hasTable('staff')) {
-            $rows = DB::table('staff')
+        $orgSchema = class_exists(\App\Support\StaffDivisionContext::class)
+            ? \App\Support\StaffDivisionContext::orgSchema()
+            : Schema::connection(config('database.default'));
+        $orgDb = class_exists(\App\Support\StaffDivisionContext::class)
+            ? \App\Support\StaffDivisionContext::orgDb()
+            : DB::connection();
+
+        if ($orgSchema->hasTable('staff')) {
+            $rows = $orgDb->table('staff')
                 ->select(['staff_id', 'fname', 'lname', 'oname', 'work_email', 'title'])
                 ->whereIn('staff_id', array_keys($wanted))
                 ->get()

@@ -9,8 +9,6 @@ use App\Support\StaffDivisionContext;
 use App\Support\StaffPhoto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class MeController extends Controller
 {
@@ -59,7 +57,7 @@ class MeController extends Controller
     private function resolveIdentity(int $staffId, StaffPortalOrgClient $org): array
     {
         $fallback = [
-            'name' => $staffId > 0 ? ('Staff #'.$staffId) : 'Risk Register user',
+            'name' => $staffId > 0 ? ('Staff #'.$staffId) : 'Finance user',
             'email' => '',
             'avatar_url' => null,
         ];
@@ -68,12 +66,16 @@ class MeController extends Controller
             return $fallback;
         }
 
-        if (Schema::hasTable('staff')) {
+        // staff / photo live on the shared staff DB after Finance own-DB cutover.
+        $schema = StaffDivisionContext::orgSchema();
+        $db = StaffDivisionContext::orgDb();
+
+        if ($schema->hasTable('staff')) {
             $cols = ['staff_id', 'fname', 'lname', 'oname', 'work_email'];
-            if (Schema::hasColumn('staff', 'photo')) {
+            if ($schema->hasColumn('staff', 'photo')) {
                 $cols[] = 'photo';
             }
-            $row = DB::table('staff')->where('staff_id', $staffId)->first($cols);
+            $row = $db->table('staff')->where('staff_id', $staffId)->first($cols);
             if ($row) {
                 $fname = trim((string) ($row->fname ?? ''));
                 $lname = trim((string) ($row->lname ?? ''));
@@ -124,10 +126,11 @@ class MeController extends Controller
         if ($fromSession > 0) {
             return $fromSession;
         }
-        if ($staffId < 1 || ! Schema::hasTable('staff') || ! Schema::hasColumn('staff', 'role_id')) {
+        $schema = StaffDivisionContext::orgSchema();
+        if ($staffId < 1 || ! $schema->hasTable('staff') || ! $schema->hasColumn('staff', 'role_id')) {
             return 0;
         }
-        $roleId = DB::table('staff')->where('staff_id', $staffId)->value('role_id');
+        $roleId = StaffDivisionContext::orgDb()->table('staff')->where('staff_id', $staffId)->value('role_id');
 
         return (int) ($roleId ?? 0);
     }
