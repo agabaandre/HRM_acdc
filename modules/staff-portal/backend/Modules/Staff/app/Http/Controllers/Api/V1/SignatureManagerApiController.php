@@ -34,6 +34,8 @@ class SignatureManagerApiController extends Controller
                 'approver_count' => $result['approver_count'],
                 'approver_cache' => $result['approver_cache'],
                 'filters' => $this->filters($request),
+                'sort_by' => $result['sort_by'],
+                'sort_dir' => $result['sort_dir'],
             ],
         ]);
     }
@@ -173,7 +175,7 @@ class SignatureManagerApiController extends Controller
     }
 
     /**
-     * @return array{staff_name: string, scope: string, signature_status: string}
+     * @return array{staff_name: string, scope: string, signature_status: string, sort_by: ?string, sort_dir: ?string}
      */
     protected function filters(Request $request): array
     {
@@ -190,6 +192,8 @@ class SignatureManagerApiController extends Controller
             'staff_name' => trim((string) $request->query('staff_name', '')),
             'scope' => $scope,
             'signature_status' => $status,
+            'sort_by' => $request->query('sort_by'),
+            'sort_dir' => $request->query('sort_dir'),
         ];
     }
 }

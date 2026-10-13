@@ -4,10 +4,12 @@ import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import StaffColumnPicker from '@/components/molecules/StaffColumnPicker.vue'
+import StaffSortableTh from '@/components/molecules/StaffSortableTh.vue'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import CbpAvatar from '@cbp/common/CbpAvatar.vue'
+import { useStaffTableSort } from '@/composables/useStaffTableSort'
 import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 import { personAvatarName, toAbsoluteMediaUrl } from '@/lib/personAvatar'
@@ -44,6 +46,7 @@ const perPage = ref(20)
 const total = ref(0)
 const selectedColumns = ref<StaffDirectoryColumnKey[]>(loadStaffDirectoryColumns())
 const filterOptions = ref<StaffFilterOptions | null>(null)
+const { sortBy, sortDir, toggleSort, sortIcon, sortParams, isSortable } = useStaffTableSort('firstname')
 
 const filters = reactive({
   name: '',
@@ -107,6 +110,7 @@ function exportParams() {
     job_id: filters.job_id,
     grade_id: filters.grade_id,
     columns,
+    ...sortParams(),
   }
 }
 
@@ -350,7 +354,7 @@ watch(
 )
 
 watch(selectedColumns, (next) => saveStaffDirectoryColumns(next))
-watch([page, perPage], () => void load())
+watch([page, perPage, sortBy, sortDir], () => void load())
 
 onMounted(() => {
   void Promise.all([
@@ -524,7 +528,16 @@ onMounted(() => {
         <thead>
           <tr>
             <th style="width: 3rem">#</th>
-            <th v-for="column in visibleColumns" :key="column.key">{{ column.label }}</th>
+            <StaffSortableTh
+              v-for="column in visibleColumns"
+              :key="column.key"
+              :label="column.label"
+              :sortable="isSortable(column.key)"
+              :active="sortBy === column.key"
+              :direction="sortDir"
+              :icon="sortIcon(column.key)"
+              @click="toggleSort(column.key, () => (page = 1))"
+            />
             <th class="text-end">Actions</th>
           </tr>
         </thead>

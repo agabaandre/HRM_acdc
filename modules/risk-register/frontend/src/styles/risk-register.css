@@ -20,6 +20,13 @@
   margin-bottom: 1.15rem;
 }
 
+.rr-page__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+}
+
 .rr-page__header h1,
 .rr-dash > header h1 {
   margin: 0;

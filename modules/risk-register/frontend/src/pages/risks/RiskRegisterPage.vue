@@ -15,6 +15,7 @@ import { downloadClientExcel } from '@/lib/clientTableExport'
 import { useRiskLookups } from '@/composables/useRiskLookups'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
+import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import RrSkeleton from '@/components/risks/RrSkeleton.vue'
 import RiskApprovalTrail, { type RiskApprovalStep } from '@/components/risks/RiskApprovalTrail.vue'
 
@@ -419,6 +420,14 @@ watch([year, quarter], () => {
   resetPageAndLoad()
 })
 
+watch(
+  () => auth.me?.division_context?.active_id,
+  (id, prev) => {
+    if (prev === undefined || id === prev) return
+    resetPageAndLoad()
+  },
+)
+
 onMounted(() => {
   void load()
 })
@@ -428,7 +437,10 @@ onMounted(() => {
   <div class="rr-page">
     <header class="rr-page__header">
       <div>
-        <h1>{{ locale.t('rr.register_title', 'Risk Register') }}</h1>
+        <div class="rr-page__title-row">
+          <h1>{{ locale.t('rr.register_title', 'Risk Register') }}</h1>
+          <DivisionContextSwitcher />
+        </div>
         <p class="rr-page__sub">
           {{ registerSubParts.before }}
           <span class="rr-period-chip">{{ periodBadge }}</span>

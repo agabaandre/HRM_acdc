@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLocale, useTheme } from 'vuetify'
-import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import ImpersonationBanner from '@/components/organisms/ImpersonationBanner.vue'
 import LanguageSelector from '@/components/organisms/LanguageSelector.vue'
 import PortalTopHeader from '@/components/organisms/PortalTopHeader.vue'
@@ -13,6 +12,11 @@ import { useAuthStore } from '@/stores/auth'
 import { useBrandingStore } from '@/stores/branding'
 import { useLocaleStore } from '@/stores/locale'
 import { apiDocsUrl } from '@/lib/auth'
+import { prefetchHighcharts } from '@/lib/ensureHighcharts'
+
+/** Keep Finance API bearer cache alive while the SPA tab stays open. */
+const SESSION_KEEPALIVE_MS = 5 * 60_000
+let sessionKeepaliveTimer: number | undefined
 
 defineProps<{
   showChrome?: boolean
@@ -55,13 +59,29 @@ if (stored === 'light' || stored === 'dark') {
 watch(
   () => auth.isAuthenticated,
   (ok) => {
+    if (sessionKeepaliveTimer) {
+      window.clearInterval(sessionKeepaliveTimer)
+      sessionKeepaliveTimer = undefined
+    }
     if (ok) {
       void locale.bootstrap()
       void branding.bootstrap()
+      prefetchHighcharts()
+      // Lightweight /me refresh slides the server-side token TTL without a Staff Portal relaunch.
+      sessionKeepaliveTimer = window.setInterval(() => {
+        auth.refreshMeInBackground()
+      }, SESSION_KEEPALIVE_MS)
     }
   },
   { immediate: true },
 )
+
+onUnmounted(() => {
+  if (sessionKeepaliveTimer) {
+    window.clearInterval(sessionKeepaliveTimer)
+    sessionKeepaliveTimer = undefined
+  }
+})
 
 watch(
   () => locale.locale,
@@ -81,7 +101,6 @@ watch(
       :theme="theme"
     >
       <template v-if="auth.isAuthenticated" #extra>
-        <DivisionContextSwitcher />
         <LanguageSelector />
         <CbpThemeSwitch :theme="theme" @update:theme="onThemeChange" />
       </template>

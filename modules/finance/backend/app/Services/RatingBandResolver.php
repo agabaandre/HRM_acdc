@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Versioned score→rating key bands (Excel heat-map colours).
@@ -31,7 +32,7 @@ final class RatingBandResolver
 
     public function activeVersion(): int
     {
-        $v = (int) (DB::table('rr_settings')->where('key', 'active_rating_key_version')->value('value') ?? 0);
+        $v = (int) (DB::table($this->settingsTable())->where('key', 'active_rating_key_version')->value('value') ?? 0);
         if ($v > 0) {
             return $v;
         }
@@ -164,7 +165,7 @@ final class RatingBandResolver
         if (! $exists) {
             throw new \RuntimeException('Rating key version not found.');
         }
-        DB::table('rr_settings')->updateOrInsert(
+        DB::table($this->settingsTable())->updateOrInsert(
             ['key' => 'active_rating_key_version'],
             ['value' => (string) $version, 'updated_at' => now(), 'created_at' => now()]
         );
@@ -233,13 +234,18 @@ final class RatingBandResolver
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        DB::table('rr_settings')->updateOrInsert(
+        DB::table($this->settingsTable())->updateOrInsert(
             ['key' => 'active_rating_key_version'],
             ['value' => (string) $next, 'updated_at' => now(), 'created_at' => now()]
         );
         $this->forgetLookupsCache();
 
         return $next;
+    }
+
+    private function settingsTable(): string
+    {
+        return Schema::hasTable('fin_settings') ? 'fin_settings' : 'rr_settings';
     }
 
     public function forgetLookupsCache(): void

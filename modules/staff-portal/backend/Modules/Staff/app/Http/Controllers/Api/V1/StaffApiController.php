@@ -153,7 +153,7 @@ class StaffApiController extends Controller
         return response()->json(['data' => $directory->filterOptions()]);
     }
 
-    public function history(Request $request, StaffHistoryService $history): JsonResponse
+    public function history(Request $request, StaffHistoryService $history, StaffDirectoryService $directory): JsonResponse
     {
         if (! StaffAccess::canViewDirectory()) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -162,7 +162,8 @@ class StaffApiController extends Controller
         $filters = $this->staffHistoryFilterInput($request);
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(100, max(10, (int) $request->query('per_page', 20)));
-        $paginator = $history->paginate($filters, $page, $perPage);
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
+        $paginator = $history->paginate($filters, $page, $perPage, $sort);
         $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
 
         return response()->json([
@@ -174,11 +175,13 @@ class StaffApiController extends Controller
                 'total' => $paginator->total(),
                 'period_from' => $period[0],
                 'period_to' => $period[1],
+                'sort_by' => $sort['by'],
+                'sort_dir' => $sort['dir'],
             ],
         ]);
     }
 
-    public function exportHistoryCsv(Request $request, StaffHistoryService $history, \Modules\Core\Services\CsvExportService $csv): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function exportHistoryCsv(Request $request, StaffHistoryService $history, \Modules\Core\Services\CsvExportService $csv, StaffDirectoryService $directory): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         if (! StaffAccess::canViewDirectory()) {
             abort(403);
@@ -186,7 +189,8 @@ class StaffApiController extends Controller
 
         $filters = $this->staffHistoryFilterInput($request);
         $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
-        $exported = $history->exportRows($filters, 5000);
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
+        $exported = $history->exportRows($filters, 5000, $sort);
         $selectedColumns = $this->selectedExportColumns($request);
         $definitions = $this->csvColumnDefinitions();
         $rows = [[
@@ -213,7 +217,7 @@ class StaffApiController extends Controller
         return $csv->stream($file, $rows);
     }
 
-    public function exportHistoryPdf(Request $request, StaffHistoryService $history, PdfService $pdf): Response
+    public function exportHistoryPdf(Request $request, StaffHistoryService $history, PdfService $pdf, StaffDirectoryService $directory): Response
     {
         if (! StaffAccess::canViewDirectory()) {
             abort(403);
@@ -221,7 +225,8 @@ class StaffApiController extends Controller
 
         $filters = $this->staffHistoryFilterInput($request);
         $period = $history->normalizePeriod($filters) ?? [$filters['period_from'], $filters['period_to']];
-        $exported = $history->exportRows($filters, 2000);
+        $sort = $directory->normalizeSort($request->query('sort_by'), $request->query('sort_dir'));
+        $exported = $history->exportRows($filters, 2000, $sort);
         $selectedColumns = $this->selectedExportColumns($request);
         $definitions = $this->csvColumnDefinitions();
         $colCount = count($selectedColumns) + 1;

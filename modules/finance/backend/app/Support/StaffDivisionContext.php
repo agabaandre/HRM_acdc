@@ -20,6 +20,41 @@ final class StaffDivisionContext
     public const SESSION_ACTIVE_ID = 'active_division_id';
 
     /**
+     * Org tables (divisions / staff / staff_contracts) live on the shared staff DB
+     * when this module uses its own database (risk_register / finance).
+     */
+    public static function orgConnection(): string
+    {
+        static $resolved = null;
+        if (is_string($resolved)) {
+            return $resolved;
+        }
+
+        if (Schema::hasTable('divisions')) {
+            return $resolved = (string) config('database.default');
+        }
+
+        if (is_array(config('database.connections.staff'))
+            && Schema::connection('staff')->hasTable('divisions')) {
+            return $resolved = 'staff';
+        }
+
+        return $resolved = (string) config('database.default');
+    }
+
+    /** @return \Illuminate\Database\Connection */
+    public static function orgDb()
+    {
+        return DB::connection(self::orgConnection());
+    }
+
+    /** @return \Illuminate\Database\Schema\Builder */
+    public static function orgSchema()
+    {
+        return Schema::connection(self::orgConnection());
+    }
+
+    /**
      * @return list<int>
      */
     public static function switchableIds(int $staffId): array
@@ -35,7 +70,10 @@ final class StaffDivisionContext
      */
     public static function switchableDivisions(int $staffId): array
     {
-        if ($staffId <= 0 || ! Schema::hasTable('divisions')) {
+        $schema = self::orgSchema();
+        $db = self::orgDb();
+
+        if ($staffId <= 0 || ! $schema->hasTable('divisions')) {
             return [];
         }
 
@@ -59,8 +97,8 @@ final class StaffDivisionContext
             $add((int) $raw, 'associated');
         }
 
-        $idCol = Schema::hasColumn('divisions', 'division_id') ? 'division_id' : 'id';
-        $nameCol = Schema::hasColumn('divisions', 'division_name') ? 'division_name' : 'name';
+        $idCol = $schema->hasColumn('divisions', 'division_id') ? 'division_id' : 'id';
+        $nameCol = $schema->hasColumn('divisions', 'division_name') ? 'division_name' : 'name';
         $today = Carbon::now()->toDateString();
 
         $roleColumns = [
@@ -71,22 +109,22 @@ final class StaffDivisionContext
             'director_id' => 'director',
         ];
         foreach ($roleColumns as $column => $source) {
-            if (! Schema::hasColumn('divisions', $column)) {
+            if (! $schema->hasColumn('divisions', $column)) {
                 continue;
             }
-            foreach (DB::table('divisions')->where($column, $staffId)->pluck($idCol) as $id) {
+            foreach ($db->table('divisions')->where($column, $staffId)->pluck($idCol) as $id) {
                 $add((int) $id, $source);
             }
         }
 
-        if (Schema::hasColumn('divisions', 'head_oic_id')) {
-            $q = DB::table('divisions')->where('head_oic_id', $staffId);
-            if (Schema::hasColumn('divisions', 'head_oic_start_date')) {
+        if ($schema->hasColumn('divisions', 'head_oic_id')) {
+            $q = $db->table('divisions')->where('head_oic_id', $staffId);
+            if ($schema->hasColumn('divisions', 'head_oic_start_date')) {
                 $q->where(function ($w) use ($today): void {
                     $w->whereNull('head_oic_start_date')->orWhereDate('head_oic_start_date', '<=', $today);
                 });
             }
-            if (Schema::hasColumn('divisions', 'head_oic_end_date')) {
+            if ($schema->hasColumn('divisions', 'head_oic_end_date')) {
                 $q->where(function ($w) use ($today): void {
                     $w->whereNull('head_oic_end_date')->orWhereDate('head_oic_end_date', '>=', $today);
                 });
@@ -96,14 +134,14 @@ final class StaffDivisionContext
             }
         }
 
-        if (Schema::hasColumn('divisions', 'director_oic_id')) {
-            $q = DB::table('divisions')->where('director_oic_id', $staffId);
-            if (Schema::hasColumn('divisions', 'director_oic_start_date')) {
+        if ($schema->hasColumn('divisions', 'director_oic_id')) {
+            $q = $db->table('divisions')->where('director_oic_id', $staffId);
+            if ($schema->hasColumn('divisions', 'director_oic_start_date')) {
                 $q->where(function ($w) use ($today): void {
                     $w->whereNull('director_oic_start_date')->orWhereDate('director_oic_start_date', '<=', $today);
                 });
             }
-            if (Schema::hasColumn('divisions', 'director_oic_end_date')) {
+            if ($schema->hasColumn('divisions', 'director_oic_end_date')) {
                 $q->where(function ($w) use ($today): void {
                     $w->whereNull('director_oic_end_date')->orWhereDate('director_oic_end_date', '>=', $today);
                 });
@@ -119,7 +157,7 @@ final class StaffDivisionContext
             return [];
         }
 
-        $names = DB::table('divisions')
+        $names = $db->table('divisions')
             ->whereIn($idCol, array_keys($sourcesById))
             ->pluck($nameCol, $idCol);
 
@@ -202,18 +240,20 @@ final class StaffDivisionContext
      */
     private static function staffDivisionMeta(int $staffId): array
     {
+        $schema = self::orgSchema();
+        $db = self::orgDb();
         $primary = 0;
         $associated = [];
 
-        if (Schema::hasTable('staff_contracts')) {
-            $q = DB::table('staff_contracts')->where('staff_id', $staffId);
-            if (Schema::hasColumn('staff_contracts', 'status_id')) {
+        if ($schema->hasTable('staff_contracts')) {
+            $q = $db->table('staff_contracts')->where('staff_id', $staffId);
+            if ($schema->hasColumn('staff_contracts', 'status_id')) {
                 $q->whereIn('status_id', [1, 2, 3, 7]);
             }
             $row = $q->orderByDesc('staff_contract_id')->first();
             if ($row) {
                 $primary = (int) ($row->division_id ?? 0);
-                if (Schema::hasColumn('staff_contracts', 'other_associated_divisions')) {
+                if ($schema->hasColumn('staff_contracts', 'other_associated_divisions')) {
                     $raw = $row->other_associated_divisions ?? null;
                     $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
                     if (is_array($decoded)) {
@@ -228,8 +268,8 @@ final class StaffDivisionContext
             }
         }
 
-        if ($primary <= 0 && Schema::hasTable('staff') && Schema::hasColumn('staff', 'division_id')) {
-            $primary = (int) (DB::table('staff')->where('staff_id', $staffId)->value('division_id') ?? 0);
+        if ($primary <= 0 && $schema->hasTable('staff') && $schema->hasColumn('staff', 'division_id')) {
+            $primary = (int) ($db->table('staff')->where('staff_id', $staffId)->value('division_id') ?? 0);
         }
 
         return [

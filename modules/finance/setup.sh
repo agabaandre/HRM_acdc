@@ -61,6 +61,20 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
   fi
 fi
 
+# Funding Portfolio manage permission lives in Staff Portal (id 124).
+STAFF_PORTAL_BACKEND="$(cd "$ROOT/../staff-portal/backend" 2>/dev/null && pwd || true)"
+if [[ -n "${STAFF_PORTAL_BACKEND:-}" && -f "$STAFF_PORTAL_BACKEND/artisan" ]]; then
+  echo "==> Staff Portal: seed manage_funding_portfolio permission"
+  (cd "$STAFF_PORTAL_BACKEND" && php artisan migrate --path=database/migrations/2026_10_13_150000_seed_manage_funding_portfolio_permission.php --force --no-interaction) \
+    || echo "Warning: staff-portal funding portfolio permission migrate failed — continuing" >&2
+fi
+
+if [[ -f "$ROOT/backend/artisan" && -f "$ROOT/backend/.env" ]]; then
+  echo "==> Finance: ensure grants catalogue seeded"
+  (cd "$ROOT/backend" && php artisan db:seed --class=Database\\Seeders\\FinanceGrantsSeeder --force --no-interaction) \
+    || echo "Warning: FinanceGrantsSeeder failed — continuing" >&2
+fi
+
 echo "==> Frontend (npm install + production build)"
 npm install --legacy-peer-deps --cache ./.npm-cache
 npm run build

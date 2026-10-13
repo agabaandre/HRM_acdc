@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ensureHighcharts } from '@/lib/ensureHighcharts'
+import { ensureHighcharts, ensureHighchartsExtras } from '@/lib/ensureHighcharts'
 import { useLocaleStore } from '@/stores/locale'
 
 declare global {
@@ -288,6 +288,9 @@ function render() {
 async function ensureHighchartsThenRender() {
   try {
     await ensureHighcharts()
+    if (props.type === 'heatmap' || props.type === 'solidgauge') {
+      await ensureHighchartsExtras()
+    }
   } catch {
     return
   }
@@ -403,7 +406,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   padding: 0.2rem 0.55rem;
   border: 1px solid #c5ced8;
-  border-radius: 4px;
+  border-radius: 2px;
   background: #fff;
   color: #455a64;
   cursor: pointer;

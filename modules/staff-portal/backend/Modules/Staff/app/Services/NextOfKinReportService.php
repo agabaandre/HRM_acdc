@@ -14,9 +14,10 @@ class NextOfKinReportService
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return array{rows: list<array<string, mixed>>, total: int, kin_relationships: list<array{id: int, name: string}>}
+     * @param  array{by?: string, dir?: string}  $sort
+     * @return array{rows: list<array<string, mixed>>, total: int, kin_relationships: list<array{id: int, name: string}>, sort_by: string, sort_dir: string}
      */
-    public function page(array $filters, int $page = 1, int $perPage = 20): array
+    public function page(array $filters, int $page = 1, int $perPage = 20, array $sort = []): array
     {
         $page = max(1, $page);
         $perPage = min(100, max(10, $perPage));
@@ -24,32 +25,35 @@ class NextOfKinReportService
         $kinMap = $this->kinNameById();
         $base = $this->baseQuery($filters);
         $total = (int) (clone $base)->count();
-        $raw = (clone $base)
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
-            ->forPage($page, $perPage)
-            ->get();
+        $sorted = clone $base;
+        $normalized = $this->directory->applyColumnSort(
+            $sorted,
+            $sort['by'] ?? 'firstname',
+            $sort['dir'] ?? 'asc'
+        );
+        $raw = $sorted->forPage($page, $perPage)->get();
 
         return [
             'rows' => array_values(array_map(fn ($r) => $this->presentRow($r, $kinMap), $raw->all())),
             'total' => $total,
             'kin_relationships' => $this->kinRelationshipsList($kinMap),
+            'sort_by' => $normalized['by'],
+            'sort_dir' => $normalized['dir'],
         ];
     }
 
     /**
      * @param  array<string, mixed>  $filters
+     * @param  array{by?: string, dir?: string}  $sort
      * @return list<array<string, mixed>>
      */
-    public function exportRows(array $filters, int $limit = 5000): array
+    public function exportRows(array $filters, int $limit = 5000, array $sort = []): array
     {
         $filters = $this->directory->normalizeFilters($filters);
         $kinMap = $this->kinNameById();
-        $raw = $this->baseQuery($filters)
-            ->orderBy('s.lname')
-            ->orderBy('s.fname')
-            ->limit(min(5000, max(1, $limit)))
-            ->get();
+        $rawQuery = $this->baseQuery($filters);
+        $this->directory->applyColumnSort($rawQuery, $sort['by'] ?? 'firstname', $sort['dir'] ?? 'asc');
+        $raw = $rawQuery->limit(min(5000, max(1, $limit)))->get();
 
         return array_values(array_map(fn ($r) => $this->presentRow($r, $kinMap), $raw->all()));
     }

@@ -2,7 +2,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLocale, useTheme } from 'vuetify'
-import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import ImpersonationBanner from '@/components/organisms/ImpersonationBanner.vue'
 import LanguageSelector from '@/components/organisms/LanguageSelector.vue'
 import PortalTopHeader from '@/components/organisms/PortalTopHeader.vue'
@@ -81,7 +80,6 @@ watch(
       :theme="theme"
     >
       <template v-if="auth.isAuthenticated" #extra>
-        <DivisionContextSwitcher />
         <LanguageSelector />
         <CbpThemeSwitch :theme="theme" @update:theme="onThemeChange" />
       </template>

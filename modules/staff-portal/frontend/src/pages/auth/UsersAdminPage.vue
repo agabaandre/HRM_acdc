@@ -56,7 +56,12 @@ const editForm = reactive({
   role: null as number | null,
   status: 1,
   allow_email_login: 0,
+  change_password: false,
 })
+const showPasswordDialog = ref(false)
+const revealedPassword = ref('')
+const revealedPasswordFor = ref('')
+const passwordCopied = ref(false)
 
 let searchTimer: number | undefined
 let loadSeq = 0
@@ -143,8 +148,26 @@ function openEdit(row: AuthUserRow) {
   editForm.role = row.role != null ? Number(row.role) : null
   editForm.status = Number(row.status ?? 1)
   editForm.allow_email_login = Number(row.allow_email_login ?? 0)
+  editForm.change_password = false
   editError.value = null
   showEdit.value = true
+}
+
+function revealPassword(password: string, userLabel: string) {
+  revealedPassword.value = password
+  revealedPasswordFor.value = userLabel
+  passwordCopied.value = false
+  showPasswordDialog.value = true
+}
+
+async function copyRevealedPassword() {
+  if (!revealedPassword.value) return
+  try {
+    await navigator.clipboard.writeText(revealedPassword.value)
+    passwordCopied.value = true
+  } catch {
+    passwordCopied.value = false
+  }
 }
 
 async function saveEdit() {
@@ -155,14 +178,21 @@ async function saveEdit() {
   editSaving.value = true
   editError.value = null
   try {
-    await updateAuthUser(editing.value.user_id, {
+    const updated = await updateAuthUser(editing.value.user_id, {
       name: editForm.name.trim(),
       role: editForm.role,
       status: editForm.status,
       allow_email_login: editForm.allow_email_login,
+      change_password: editForm.change_password || undefined,
     })
-    success.value = 'User updated.'
+    const label = String(editing.value.name || editing.value.work_email || `#${editing.value.user_id}`)
     showEdit.value = false
+    if (updated.temporary_password) {
+      success.value = `User updated. New password generated for ${label}.`
+      revealPassword(updated.temporary_password, label)
+    } else {
+      success.value = 'User updated.'
+    }
     await load()
   } catch (e) {
     editError.value = apiErrorMessage(e, 'Could not update user')
@@ -176,7 +206,7 @@ async function runAction(row: AuthUserRow, action: 'block' | 'unblock' | 'reset'
   const labels: Record<typeof action, string> = {
     block: `Block ${row.name}?`,
     unblock: `Activate ${row.name}?`,
-    reset: `Reset password for ${row.name} to the system default?`,
+    reset: `Generate a new random password for ${row.name}?`,
     'email-on': `Allow email/password sign-in for ${row.name}?`,
     'email-off': `Revoke email/password sign-in for ${row.name}?`,
   }
@@ -188,7 +218,11 @@ async function runAction(row: AuthUserRow, action: 'block' | 'unblock' | 'reset'
   try {
     if (action === 'block') success.value = await blockAuthUser(id)
     if (action === 'unblock') success.value = await unblockAuthUser(id)
-    if (action === 'reset') success.value = await resetAuthUserPassword(id)
+    if (action === 'reset') {
+      const result = await resetAuthUserPassword(id)
+      success.value = result.message
+      revealPassword(result.password, String(row.name || row.work_email || `#${id}`))
+    }
     if (action === 'email-on') success.value = await setAuthUserAllowEmailLogin(id, true)
     if (action === 'email-off') success.value = await setAuthUserAllowEmailLogin(id, false)
     await load()
@@ -598,7 +632,18 @@ onMounted(() => {
             label="Allow email/password sign-in"
             color="primary"
             hide-details
+            class="mb-2"
           />
+          <v-checkbox
+            v-model="editForm.change_password"
+            label="Generate new random password"
+            density="compact"
+            hide-details
+            color="primary"
+          />
+          <p v-if="editForm.change_password" class="text-caption text-medium-emphasis mt-2 mb-0">
+            A random password will be created on save and shown once so you can copy it.
+          </p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -607,10 +652,53 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="showPasswordDialog" max-width="480" persistent>
+      <v-card>
+        <v-card-title>New password</v-card-title>
+        <v-card-text>
+          <p class="mb-2">
+            Password for <strong>{{ revealedPasswordFor }}</strong>. Copy it now — it will not be shown again.
+          </p>
+          <v-text-field
+            :model-value="revealedPassword"
+            label="Temporary password"
+            readonly
+            density="comfortable"
+            variant="outlined"
+            hide-details
+            class="mb-2 password-reveal-field"
+          >
+            <template #append-inner>
+              <v-btn
+                size="small"
+                variant="tonal"
+                color="primary"
+                @click="copyRevealedPassword"
+              >
+                {{ passwordCopied ? 'Copied' : 'Copy' }}
+              </v-btn>
+            </template>
+          </v-text-field>
+          <v-alert v-if="passwordCopied" type="success" variant="tonal" density="compact">
+            Password copied to clipboard.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <PortalBtn @click="showPasswordDialog = false">Done</PortalBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <style scoped>
+.password-reveal-field :deep(input) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
 .users-admin-table :deep(th) {
   white-space: nowrap;
 }

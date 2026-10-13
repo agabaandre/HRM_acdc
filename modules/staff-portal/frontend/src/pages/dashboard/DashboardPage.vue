@@ -248,30 +248,30 @@ onMounted(() => {
     <div v-else-if="refreshing" class="text-caption text-medium-emphasis mb-2" aria-live="polite">Updating…</div>
 
     <template v-if="data">
-      <v-row dense class="mb-4">
+      <v-row class="mb-4 dash-kpi-row">
         <v-col
           v-for="card in [
-            { label: 'Main staff', value: data.staff, icon: 'fa-solid fa-users', color: '#0d7a3a', tint: 'rgba(13, 122, 58, 0.12)', to: '/staff' },
-            { label: 'Contracts due', value: data.two_months, icon: 'fa-solid fa-calendar-day', color: '#c47a0a', tint: 'rgba(196, 122, 10, 0.12)', to: '/staff' },
-            { label: 'Under renewal', value: data.staff_renewal, icon: 'fa-solid fa-arrows-rotate', color: '#1a7a9c', tint: 'rgba(26, 122, 156, 0.12)', to: '/staff' },
-            { label: 'Expired contracts', value: data.expired, icon: 'fa-solid fa-circle-exclamation', color: '#b42318', tint: 'rgba(180, 35, 24, 0.12)', to: '/staff' },
+            { label: 'Main staff', value: data.staff, hint: 'Active on payroll', icon: 'fa-solid fa-users', color: '#119a48', tint: '#e3f6eb', to: '/staff' },
+            { label: 'Contracts due', value: data.two_months, hint: 'Within two months', icon: 'fa-solid fa-calendar-day', color: '#c47a0a', tint: '#fff1d6', to: '/staff' },
+            { label: 'Under renewal', value: data.staff_renewal, hint: 'Renewal in progress', icon: 'fa-solid fa-arrows-rotate', color: '#0f766e', tint: '#e0f5f2', to: '/staff' },
+            { label: 'Expired contracts', value: data.expired, hint: 'Needs attention', icon: 'fa-solid fa-circle-exclamation', color: '#b42318', tint: '#fde8e8', to: '/staff' },
           ]"
           :key="card.label"
-          cols="6"
+          cols="12"
+          sm="6"
           md="3"
         >
           <RouterLink :to="card.to" class="dash-kpi-link">
-            <v-sheet border rounded class="pa-4 dash-kpi" :style="{ borderTop: `3px solid ${card.color}` }">
-              <div class="d-flex align-center ga-3">
-                <span class="dash-kpi__icon" :style="{ background: card.tint, color: card.color }" aria-hidden="true">
-                  <i :class="card.icon" />
-                </span>
-                <div class="dash-kpi__body min-w-0">
-                  <div class="dash-kpi__label">{{ card.label }}</div>
-                  <div class="dash-kpi__value" :style="{ color: card.color }">{{ card.value }}</div>
-                </div>
+            <article class="dash-kpi">
+              <div class="dash-kpi__body">
+                <span class="dash-kpi__label">{{ card.label }}</span>
+                <strong class="dash-kpi__value">{{ card.value }}</strong>
+                <small class="dash-kpi__hint">{{ card.hint }}</small>
               </div>
-            </v-sheet>
+              <span class="dash-kpi__icon" :style="{ background: card.tint, color: card.color }" aria-hidden="true">
+                <i :class="card.icon" />
+              </span>
+            </article>
           </RouterLink>
         </v-col>
       </v-row>
@@ -403,42 +403,74 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.dash-kpi-row {
+  --v-row-gutter: 0.85rem;
+}
 .dash-kpi-link {
   display: block;
   text-decoration: none;
   color: inherit;
-}
-.dash-kpi {
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
   height: 100%;
 }
+.dash-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 102px;
+  height: 100%;
+  padding: 1.05rem 1.15rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  box-sizing: border-box;
+}
 .dash-kpi:hover {
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border-color: rgba(11, 59, 92, 0.2);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 10px 22px rgba(15, 23, 42, 0.07);
   transform: translateY(-1px);
+}
+.dash-kpi__body {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.dash-kpi__label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.25;
+}
+.dash-kpi__value {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+}
+.dash-kpi__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dash-kpi__icon {
   flex: 0 0 auto;
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 0.65rem;
+  border-radius: 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
-}
-.dash-kpi__label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  line-height: 1.2;
-}
-.dash-kpi__value {
-  margin-top: 0.15rem;
-  font-size: 1.65rem;
-  font-weight: 700;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
 }
 </style>

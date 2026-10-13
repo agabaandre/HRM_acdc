@@ -131,9 +131,13 @@ export async function updateAuthUser(
     role?: number
     status?: number
     allow_email_login?: number
+    change_password?: boolean
   },
-): Promise<AuthUserRow> {
-  const { data } = await api.put<{ data: AuthUserRow }>(`/api/v1/auth/users/${id}`, payload)
+): Promise<AuthUserRow & { temporary_password?: string }> {
+  const { data } = await api.put<{ data: AuthUserRow & { temporary_password?: string } }>(
+    `/api/v1/auth/users/${id}`,
+    payload,
+  )
   return data.data
 }
 
@@ -147,9 +151,13 @@ export async function unblockAuthUser(id: number): Promise<string> {
   return data.message
 }
 
-export async function resetAuthUserPassword(id: number): Promise<string> {
-  const { data } = await api.post<{ message: string }>(`/api/v1/auth/users/${id}/reset-password`)
-  return data.message
+export async function resetAuthUserPassword(
+  id: number,
+): Promise<{ message: string; password: string }> {
+  const { data } = await api.post<{ message: string; password: string }>(
+    `/api/v1/auth/users/${id}/reset-password`,
+  )
+  return data
 }
 
 export async function setAuthUserAllowEmailLogin(id: number, allow: boolean): Promise<string> {

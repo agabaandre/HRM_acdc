@@ -53,12 +53,12 @@ Default staff-portal setup can keep `database` queue/cache; Redis is optional.
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=33070
-DB_DATABASE=staff
+DB_DATABASE=finance
 DB_USERNAME=staff
 DB_PASSWORD=staff
 ```
 
-Prefer the shared host `staff` database when developing against real CBP data (`DB_HOST=127.0.0.1`, port `3306`).
+Prefer the dedicated `finance` database (not shared `staff`) when developing against real CBP data (`DB_HOST=127.0.0.1`, port `3306`).
 
 ## Stop
 

@@ -59,6 +59,7 @@ class AuthAdminApiController extends Controller
             'role' => ['sometimes', 'integer', 'min:1', 'exists:user_groups,id'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
             'allow_email_login' => ['sometimes', 'integer', 'in:0,1'],
+            'change_password' => ['sometimes', 'boolean'],
         ]);
 
         try {
@@ -67,7 +68,11 @@ class AuthAdminApiController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json(['data' => $row, 'message' => 'User updated.']);
+        $message = ! empty($row['temporary_password'])
+            ? 'User updated. A new random password was generated.'
+            : 'User updated.';
+
+        return response()->json(['data' => $row, 'message' => $message]);
     }
 
     public function blockUser(int $id, AuthUserAdminService $users): JsonResponse
@@ -101,12 +106,15 @@ class AuthAdminApiController extends Controller
         PortalPermission::authorize(17);
 
         try {
-            $message = $users->resetPassword($id);
+            $result = $users->resetPassword($id);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 404);
         }
 
-        return response()->json(['message' => $message]);
+        return response()->json([
+            'message' => $result['message'],
+            'password' => $result['password'],
+        ]);
     }
 
     public function setAllowEmailLogin(int $id, Request $request, AuthUserAdminService $users): JsonResponse

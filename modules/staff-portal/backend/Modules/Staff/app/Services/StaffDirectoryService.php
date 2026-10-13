@@ -273,6 +273,35 @@ class StaffDirectoryService
     /**
      * @param  array{by: string, dir: 'asc'|'desc'}  $sort
      */
+    public function orderStaffIdsQuery(Builder $light, array $sort): Builder
+    {
+        return $this->sortedStaffIds($light, $this->normalizeSort($sort['by'] ?? null, $sort['dir'] ?? null));
+    }
+
+    /**
+     * Apply allowlisted column ordering to a staff list query (s / sc aliases).
+     *
+     * @return array{by: string, dir: 'asc'|'desc'}
+     */
+    public function applyColumnSort(Builder $q, mixed $sortBy = null, mixed $sortDir = null): array
+    {
+        $sort = $this->normalizeSort($sortBy, $sortDir);
+        $meta = $this->sortableColumns()[$sort['by']];
+        $dir = $sort['dir'];
+        if (! empty($meta['invert'])) {
+            $dir = $dir === 'asc' ? 'desc' : 'asc';
+        }
+        foreach ($meta['joins'] ?? [] as $join) {
+            $q->leftJoin($join[0], $join[1], '=', $join[2]);
+        }
+        $q->orderByRaw($meta['expr'].' '.$dir)->orderBy('s.staff_id');
+
+        return $sort;
+    }
+
+    /**
+     * @param  array{by: string, dir: 'asc'|'desc'}  $sort
+     */
     protected function sortedStaffIds(Builder $light, array $sort): Builder
     {
         $meta = $this->sortableColumns()[$sort['by']];

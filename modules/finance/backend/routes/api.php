@@ -12,9 +12,14 @@ use App\Http\Controllers\Api\V1\RiskLookupsController;
 use App\Http\Controllers\Api\V1\RiskReviewController;
 use App\Http\Controllers\Api\V1\AppLogsController;
 use App\Http\Controllers\Api\V1\EmailSettingsController;
+use App\Http\Controllers\Api\V1\FinanceApmMappingController;
 use App\Http\Controllers\Api\V1\StaffApiSettingsController;
 use App\Http\Controllers\Api\V1\RiskSettingsController;
 use App\Http\Controllers\Api\V1\RiskWorkflowController;
+use App\Http\Controllers\Api\V1\AfefCategoryController;
+use App\Http\Controllers\Api\V1\GeographyController;
+use App\Http\Controllers\Api\V1\GrantController;
+use App\Http\Controllers\Api\V1\BudgetExecutionController;
 use App\Http\Controllers\Api\V1\PortfolioController;
 use App\Http\Controllers\Api\V1\SapImportController;
 use App\Http\Middleware\AuthenticateRiskSession;
@@ -51,6 +56,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/settings/app-logs', [AppLogsController::class, 'show']);
         Route::put('/settings/app-logs/telemetry', [AppLogsController::class, 'updateTelemetry']);
         Route::post('/settings/app-logs/critical-alert/test', [AppLogsController::class, 'testCriticalAlert']);
+        Route::get('/settings/apm-mapping', [FinanceApmMappingController::class, 'show']);
+        Route::post('/settings/apm-mapping/fetch', [FinanceApmMappingController::class, 'fetch']);
+        Route::put('/settings/apm-mapping', [FinanceApmMappingController::class, 'update']);
 
         Route::get('/import/status', [RiskImportController::class, 'status']);
         Route::post('/import/preview', [RiskImportController::class, 'preview']);
@@ -62,9 +70,29 @@ Route::prefix('v1')->group(function () {
         Route::get('/sap/imports/latest', [SapImportController::class, 'latest']);
         Route::post('/sap/imports/{id}/retry-sync', [SapImportController::class, 'retrySync'])->whereNumber('id');
 
+        Route::get('/budget-execution', BudgetExecutionController::class);
+
         Route::get('/portfolio/summary', [PortfolioController::class, 'summary']);
+        Route::get('/portfolio/schemas', [PortfolioController::class, 'schemas']);
         Route::get('/portfolio/sections/{section}', [PortfolioController::class, 'section']);
         Route::put('/portfolio/sections/{section}', [PortfolioController::class, 'replaceSection']);
+
+        Route::get('/grants', [GrantController::class, 'index']);
+        Route::post('/grants', [GrantController::class, 'store']);
+        Route::put('/grants/{id}', [GrantController::class, 'update'])->whereNumber('id');
+        Route::delete('/grants/{id}', [GrantController::class, 'destroy'])->whereNumber('id');
+
+        Route::get('/settings/afef-categories', [AfefCategoryController::class, 'show']);
+        Route::put('/settings/afef-categories', [AfefCategoryController::class, 'update']);
+
+        Route::get('/settings/geography', [GeographyController::class, 'show']);
+        Route::put('/settings/geography/aliases', [GeographyController::class, 'saveAliases']);
+        Route::post('/settings/geography/regions', [GeographyController::class, 'storeRegion']);
+        Route::put('/settings/geography/regions/{id}', [GeographyController::class, 'updateRegion'])->whereNumber('id');
+        Route::post('/settings/geography/countries', [GeographyController::class, 'storeCountry']);
+        Route::put('/settings/geography/countries/{id}', [GeographyController::class, 'updateCountry'])->whereNumber('id');
+        Route::post('/settings/geography/locations', [GeographyController::class, 'storeLocation']);
+        Route::put('/settings/geography/locations/{id}', [GeographyController::class, 'updateLocation'])->whereNumber('id');
 
         Route::get('/risks', [RiskController::class, 'index']);
         Route::post('/risks', [RiskController::class, 'store']);

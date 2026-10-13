@@ -314,6 +314,8 @@ export async function fetchStaffHistory(params: {
   period_to?: string
   page?: number
   per_page?: number
+  sort_by?: string
+  sort_dir?: 'asc' | 'desc'
 } & StaffListFilters = {}): Promise<StaffHistoryResponse> {
   const { data } = await api.get<StaffHistoryResponse>('/api/v1/staff/history', {
     params,

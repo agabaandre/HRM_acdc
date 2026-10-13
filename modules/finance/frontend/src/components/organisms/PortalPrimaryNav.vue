@@ -17,6 +17,8 @@ function navLabel(item: PortalNavItem): string {
 }
 
 function canSee(item: PortalNavItem): boolean {
+  // System admins see the full Finance navigation.
+  if (auth.isAdmin) return true
   if (item.module && !auth.isModuleEnabled(item.module)) return false
   const isHr = !!auth.me?.profile?.is_hr || auth.me?.profile?.role_id === 20
   const hasStaff = Number(auth.me?.profile?.staff_id || 0) > 0

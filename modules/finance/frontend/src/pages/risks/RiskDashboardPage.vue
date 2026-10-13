@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import { themeDisplayName } from '@/lib/riskLabels'
 import { useRiskLookups } from '@/composables/useRiskLookups'
 import { useLocaleStore } from '@/stores/locale'
+import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import RrSkeleton from '@/components/risks/RrSkeleton.vue'
 
@@ -261,7 +262,10 @@ onMounted(async () => {
   <div class="rr-dash">
     <header class="rr-page__header">
       <div>
-        <h1>{{ locale.t('rr.dash_title', 'Risk dashboard') }}</h1>
+        <div class="rr-page__title-row">
+          <h1>{{ locale.t('rr.dash_title', 'Risk dashboard') }}</h1>
+          <DivisionContextSwitcher />
+        </div>
         <p class="rr-page__sub">
           {{ locale.t('rr.dash_sub', 'Enterprise risk overview') }}
           ·

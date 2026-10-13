@@ -1,15 +1,39 @@
-/* Risk Register module layout — full-bleed within portal chrome */
+/* Finance / Risk Register layout — full-bleed within portal chrome (match dashboard) */
 .cbp-page-content.hd-content-frame {
   --cbp-page-max: 100%;
 }
 
 .rr-page,
-.rr-dash {
+.rr-dash,
+.fin-portfolio,
+.fin-sap,
+.pe,
+.map,
+.geo,
+.gm,
+.afef-cat,
+.fn-page {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 1.25rem 0 2.5rem;
   box-sizing: border-box;
+}
+
+.rr-page,
+.rr-dash {
+  padding: 1.25rem 0 2.5rem;
+}
+
+.pe,
+.map,
+.geo,
+.gm,
+.afef-cat {
+  padding-bottom: 2.5rem;
+}
+
+.fn-page {
+  padding: 1rem 0 2rem;
 }
 
 .rr-page__header {
@@ -18,6 +42,13 @@
   gap: 1rem;
   align-items: flex-start;
   margin-bottom: 1.15rem;
+}
+
+.rr-page__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
 }
 
 .rr-page__header h1,

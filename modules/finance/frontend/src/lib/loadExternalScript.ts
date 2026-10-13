@@ -34,7 +34,11 @@ export function loadExternalScript(src: string): Promise<void> {
   return promise
 }
 
-export async function loadExternalScripts(sources: string[]): Promise<void> {
+export async function loadExternalScripts(sources: string[], parallel = false): Promise<void> {
+  if (parallel) {
+    await Promise.all(sources.map((src) => loadExternalScript(src)))
+    return
+  }
   for (const src of sources) {
     await loadExternalScript(src)
   }

@@ -283,7 +283,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fn-page { max-width: 920px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+.fn-page { width: 100%; max-width: none; margin: 0; padding: 1rem 0 2rem; }
 .fn-page__header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
 .fn-page__sub { color: #64748b; margin: 0.35rem 0 0; }
 .fn-card { background: #fff; border: 1px solid rgba(58,71,82,.12); border-radius: .75rem; padding: 1rem 1.15rem; margin-bottom: 1rem; }

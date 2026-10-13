@@ -5,7 +5,9 @@ import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { api } from '@/lib/api'
 import { themeDisplayName } from '@/lib/riskLabels'
 import { useRiskLookups } from '@/composables/useRiskLookups'
+import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
+import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import RrSkeleton from '@/components/risks/RrSkeleton.vue'
 
@@ -56,6 +58,7 @@ type Dash = {
 
 const router = useRouter()
 const locale = useLocaleStore()
+const auth = useAuthStore()
 const { loadLookups } = useRiskLookups()
 const data = ref<Dash | null>(null)
 const error = ref<string | null>(null)
@@ -127,18 +130,90 @@ const kpiCards = computed(() => {
   const k = data.value?.kpis
   if (!k) return []
   return [
-    { label: locale.t('rr.kpi_total', 'Total Risks Logged'), value: k.total_risks },
-    { label: locale.t('rr.kpi_critical', 'Critical (Inherent)'), value: k.critical_inherent, tone: 'critical' },
-    { label: locale.t('rr.kpi_high', 'High (Inherent)'), value: k.high_inherent, tone: 'high' },
-    { label: locale.t('rr.kpi_medium', 'Medium (Inherent)'), value: k.medium_inherent, tone: 'medium' },
-    { label: locale.t('rr.kpi_low', 'Low (Inherent)'), value: k.low_inherent, tone: 'low' },
-    { label: locale.t('rr.kpi_avg_inherent', 'Avg Inherent Score'), value: k.avg_inherent_score },
-    { label: locale.t('rr.kpi_avg_residual', 'Avg Residual Score'), value: k.avg_residual_score },
-    { label: locale.t('rr.kpi_reduction', 'Overall Risk Reduction'), value: `${k.overall_risk_reduction_pct}%` },
-    { label: locale.t('rr.kpi_residual_assessed', 'Residual Assessed'), value: k.residual_assessed },
-    { label: locale.t('rr.kpi_not_assessed', 'Not Yet Assessed'), value: k.not_yet_assessed },
-    { label: locale.t('rr.kpi_open_extended', 'Status: Open/Extended'), value: k.status_open_extended },
-    { label: locale.t('rr.kpi_not_updated', 'Status: Not Updated'), value: k.status_not_updated },
+    {
+      label: locale.t('rr.kpi_total', 'Total Risks Logged'),
+      value: k.total_risks,
+      hint: locale.t('rr.kpi_total_hint', 'All logged risks'),
+      icon: 'mdi-clipboard-list-outline',
+      tone: 'neutral',
+    },
+    {
+      label: locale.t('rr.kpi_critical', 'Critical (Inherent)'),
+      value: k.critical_inherent,
+      hint: locale.t('rr.kpi_critical_hint', 'Highest severity'),
+      icon: 'mdi-alert-octagon',
+      tone: 'critical',
+    },
+    {
+      label: locale.t('rr.kpi_high', 'High (Inherent)'),
+      value: k.high_inherent,
+      hint: locale.t('rr.kpi_high_hint', 'Elevated severity'),
+      icon: 'mdi-alert',
+      tone: 'high',
+    },
+    {
+      label: locale.t('rr.kpi_medium', 'Medium (Inherent)'),
+      value: k.medium_inherent,
+      hint: locale.t('rr.kpi_medium_hint', 'Moderate severity'),
+      icon: 'mdi-alert-circle-outline',
+      tone: 'medium',
+    },
+    {
+      label: locale.t('rr.kpi_low', 'Low (Inherent)'),
+      value: k.low_inherent,
+      hint: locale.t('rr.kpi_low_hint', 'Lower severity'),
+      icon: 'mdi-check-circle-outline',
+      tone: 'low',
+    },
+    {
+      label: locale.t('rr.kpi_avg_inherent', 'Avg Inherent Score'),
+      value: k.avg_inherent_score,
+      hint: locale.t('rr.kpi_avg_inherent_hint', 'Before controls'),
+      icon: 'mdi-gauge',
+      tone: 'info',
+    },
+    {
+      label: locale.t('rr.kpi_avg_residual', 'Avg Residual Score'),
+      value: k.avg_residual_score,
+      hint: locale.t('rr.kpi_avg_residual_hint', 'After controls'),
+      icon: 'mdi-gauge-low',
+      tone: 'info',
+    },
+    {
+      label: locale.t('rr.kpi_reduction', 'Overall Risk Reduction'),
+      value: `${k.overall_risk_reduction_pct}%`,
+      hint: locale.t('rr.kpi_reduction_hint', 'Inherent → residual'),
+      icon: 'mdi-percent-outline',
+      tone: 'teal',
+    },
+    {
+      label: locale.t('rr.kpi_residual_assessed', 'Residual Assessed'),
+      value: k.residual_assessed,
+      hint: locale.t('rr.kpi_residual_assessed_hint', 'Controls evaluated'),
+      icon: 'mdi-clipboard-check-outline',
+      tone: 'teal',
+    },
+    {
+      label: locale.t('rr.kpi_not_assessed', 'Not Yet Assessed'),
+      value: k.not_yet_assessed,
+      hint: locale.t('rr.kpi_not_assessed_hint', 'Awaiting residual'),
+      icon: 'mdi-timer-sand',
+      tone: 'warn',
+    },
+    {
+      label: locale.t('rr.kpi_open_extended', 'Status: Open/Extended'),
+      value: k.status_open_extended,
+      hint: locale.t('rr.kpi_open_hint', 'Active risks'),
+      icon: 'mdi-folder-open-outline',
+      tone: 'info',
+    },
+    {
+      label: locale.t('rr.kpi_not_updated', 'Status: Not Updated'),
+      value: k.status_not_updated,
+      hint: locale.t('rr.kpi_not_updated_hint', 'Needs review'),
+      icon: 'mdi-clock-outline',
+      tone: 'warn',
+    },
   ]
 })
 
@@ -246,6 +321,14 @@ watch([year, quarter], () => {
   void loadDashboard()
 })
 
+watch(
+  () => auth.me?.division_context?.active_id,
+  (id, prev) => {
+    if (prev === undefined || id === prev) return
+    void loadDashboard()
+  },
+)
+
 onMounted(async () => {
   try {
     const lookups = await loadLookups()
@@ -261,7 +344,10 @@ onMounted(async () => {
   <div class="rr-dash">
     <header class="rr-page__header">
       <div>
-        <h1>{{ locale.t('rr.dash_title', 'Risk dashboard') }}</h1>
+        <div class="rr-page__title-row">
+          <h1>{{ locale.t('rr.dash_title', 'Risk dashboard') }}</h1>
+          <DivisionContextSwitcher />
+        </div>
         <p class="rr-page__sub">
           {{ locale.t('rr.dash_sub', 'Enterprise risk overview') }}
           ·
@@ -320,15 +406,21 @@ onMounted(async () => {
       <section class="rr-kpi">
         <div class="rr-kpi__title">{{ locale.t('rr.dash_kpis', 'Key Indicators') }}</div>
         <div class="rr-kpi__grid">
-          <div
+          <article
             v-for="card in kpiCards"
             :key="card.label"
             class="rr-kpi__card"
             :class="card.tone ? `rr-kpi__card--${card.tone}` : undefined"
           >
-            <div class="rr-kpi__value">{{ card.value }}</div>
-            <div class="rr-kpi__label">{{ card.label }}</div>
-          </div>
+            <div class="rr-kpi__body">
+              <span class="rr-kpi__label">{{ card.label }}</span>
+              <strong class="rr-kpi__value">{{ card.value }}</strong>
+              <small class="rr-kpi__hint">{{ card.hint }}</small>
+            </div>
+            <span class="rr-kpi__icon" aria-hidden="true">
+              <v-icon :icon="card.icon" size="22" />
+            </span>
+          </article>
         </div>
       </section>
 
@@ -505,48 +597,89 @@ onMounted(async () => {
 }
 .rr-filters__hint { margin: 0.65rem 0 0; }
 .rr-kpi {
-  margin-bottom: 1rem;
-  border: 1px solid #c5d0da;
-  border-radius: 2px;
-  overflow: hidden;
-  background: #fff;
+  margin-bottom: 1.15rem;
+  background: transparent;
+  border: none;
 }
 .rr-kpi__title {
-  background: #1e3a5f;
-  color: #fff;
+  background: transparent;
+  color: #0f172a;
   font-weight: 700;
-  font-size: 0.95rem;
-  padding: 0.55rem 0.85rem;
+  font-size: 1rem;
+  padding: 0 0 0.75rem;
 }
 .rr-kpi__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  background: #e8f1fb;
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+  gap: 0.85rem;
 }
 .rr-kpi__card {
-  padding: 0.75rem 0.5rem;
-  text-align: center;
-  border-right: 1px solid #c5d0da;
-  border-bottom: 1px solid #c5d0da;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 102px;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.04);
+  box-sizing: border-box;
 }
-.rr-kpi__value {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #1e3a5f;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+.rr-kpi__body {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .rr-kpi__label {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #1a2b3c;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
   line-height: 1.25;
 }
+.rr-kpi__value {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.rr-kpi__hint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rr-kpi__icon {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2f7;
+  color: #475569;
+}
 .rr-kpi__card--critical .rr-kpi__value { color: #c00000; }
+.rr-kpi__card--critical .rr-kpi__icon { background: #fde8e8; color: #c00000; }
 .rr-kpi__card--high .rr-kpi__value { color: #c47a00; }
+.rr-kpi__card--high .rr-kpi__icon { background: #fff1d6; color: #c47a00; }
 .rr-kpi__card--medium .rr-kpi__value { color: #8a7a00; }
+.rr-kpi__card--medium .rr-kpi__icon { background: #f5f0c8; color: #8a7a00; }
 .rr-kpi__card--low .rr-kpi__value { color: #007a38; }
+.rr-kpi__card--low .rr-kpi__icon { background: #e3f6eb; color: #007a38; }
+.rr-kpi__card--info .rr-kpi__icon { background: #e8f0fe; color: #1d4ed8; }
+.rr-kpi__card--teal .rr-kpi__icon { background: #e0f5f2; color: #0f766e; }
+.rr-kpi__card--warn .rr-kpi__icon { background: #fff4e5; color: #b45309; }
+.rr-kpi__card--neutral .rr-kpi__icon { background: #eef2f7; color: #1e3a5f; }
 .rr-top-table { padding: 0; overflow: hidden; }
 .rr-top-table__head {
   display: flex;

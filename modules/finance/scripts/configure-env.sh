@@ -11,6 +11,7 @@ source "$FINANCE_ROOT/scripts/lib/dotenv.sh"
 
 SETUP_ENV="${FINANCE_SETUP_ENV:-$FINANCE_ROOT/setup.env}"
 ENV_FILE="$FINANCE_ROOT/.env"
+BACKEND_ENV="$FINANCE_ROOT/backend/.env"
 
 # shellcheck source=lib/urls.sh
 source "$FINANCE_ROOT/scripts/lib/urls.sh"
@@ -126,16 +127,44 @@ if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "sqlite" 
         "$(cd "$FINANCE_ROOT/database" && pwd)/database.sqlite" "$ENV_PREEXISTED"
 fi
 
+# API backend (modules/finance/backend) is the live Laravel app — keep its DB_* in sync.
+BACKEND_PREEXISTED=0
+[[ -f "$BACKEND_ENV" ]] && BACKEND_PREEXISTED=1
+if [[ -f "$FINANCE_ROOT/backend/.env.example" ]]; then
+    [[ -f "$BACKEND_ENV" ]] || cp "$FINANCE_ROOT/backend/.env.example" "$BACKEND_ENV"
+fi
+if [[ -f "$BACKEND_ENV" ]]; then
+    for key in DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
+               APP_ENV APP_DEBUG APP_URL BASE_URL STAFF_API_TOKEN SESSION_PATH; do
+        val="${!key:-}"
+        [[ -z "$val" ]] && val="$(dotenv_get "$ENV_FILE" "$key" 2>/dev/null || true)"
+        [[ -z "$val" ]] && val="$(dotenv_get "$SETUP_ENV" "$key" 2>/dev/null || true)"
+        dotenv_apply_if_missing "$BACKEND_ENV" "$key" "$val" "$BACKEND_PREEXISTED"
+    done
+    # Never leave the API on staff when setup.env / root .env say finance.
+    target_db="$(dotenv_get "$SETUP_ENV" DB_DATABASE 2>/dev/null || true)"
+    [[ -z "$target_db" ]] && target_db="$(dotenv_get "$ENV_FILE" DB_DATABASE 2>/dev/null || true)"
+    if [[ -n "$target_db" && "$target_db" != "staff" && "$target_db" != /* ]]; then
+        dotenv_set "$BACKEND_ENV" DB_DATABASE "$target_db"
+        dotenv_set "$BACKEND_ENV" DB_CONNECTION mysql
+    fi
+fi
+
 if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" \
     && -f "$FINANCE_ROOT/vendor/autoload.php" ]]; then
     (cd "$FINANCE_ROOT" && php artisan key:generate --no-interaction)
 fi
 
-if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "mysql" ]]; then
+mysql_check_file="$ENV_FILE"
+if [[ -f "$BACKEND_ENV" ]] \
+    && [[ "$(dotenv_get "$BACKEND_ENV" DB_CONNECTION 2>/dev/null || true)" == "mysql" ]]; then
+    mysql_check_file="$BACKEND_ENV"
+fi
+if [[ "$(dotenv_get "$mysql_check_file" DB_CONNECTION 2>/dev/null || true)" == "mysql" ]]; then
     for key in DB_HOST DB_DATABASE DB_USERNAME DB_PASSWORD; do
-        val="$(dotenv_get "$ENV_FILE" "$key" 2>/dev/null || true)"
+        val="$(dotenv_get "$mysql_check_file" "$key" 2>/dev/null || true)"
         if ! dotenv_value_present "$val"; then
-            echo "error: MySQL $key is not set — set it in .env or setup.env (or Staff ../.env DB_PASS)" >&2
+            echo "error: MySQL $key is not set — set it in backend/.env or setup.env (or Staff ../.env DB_PASS)" >&2
             exit 1
         fi
     done
@@ -150,4 +179,7 @@ if [[ "$ENV_PREEXISTED" == "1" ]]; then
     echo "Updated $ENV_FILE (existing values preserved; only missing keys filled from $SETUP_ENV)"
 else
     echo "Configured $ENV_FILE from $SETUP_ENV"
+fi
+if [[ -f "$BACKEND_ENV" ]]; then
+    echo "Synced DB_* on $BACKEND_ENV (DB_DATABASE=$(dotenv_get "$BACKEND_ENV" DB_DATABASE 2>/dev/null || true))"
 fi

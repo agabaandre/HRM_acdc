@@ -20,6 +20,8 @@ class MeController extends Controller
         $staffId = (int) $request->attributes->get('risk_staff_id');
         $divisionId = (int) $request->attributes->get('risk_division_id') ?: 0;
         $identity = $this->resolveIdentity($staffId, $org);
+        $roleId = $this->resolveRoleId($request, $staffId);
+        $isSystemAdmin = $roleId === 10;
 
         return response()->json([
             'data' => [
@@ -29,10 +31,11 @@ class MeController extends Controller
                 'avatar_url' => $identity['avatar_url'],
                 'profile' => [
                     'staff_id' => $staffId > 0 ? $staffId : 0,
-                    'role' => 'staff',
-                    'role_id' => 0,
+                    'role' => $isSystemAdmin ? 'admin' : 'staff',
+                    'role_id' => $roleId,
                     'division_id' => $divisionId > 0 ? $divisionId : null,
                     'permissions' => $request->attributes->get('risk_permissions', []),
+                    'is_system_admin' => $isSystemAdmin,
                 ],
                 'division_context' => StaffDivisionContext::payloadFor($staffId, $divisionId),
                 'enabled_modules' => [
@@ -113,5 +116,19 @@ class MeController extends Controller
         $safe = basename(str_replace('\\', '/', $filename));
 
         return url('/staff-media/photo/'.$safe);
+    }
+
+    private function resolveRoleId(Request $request, int $staffId): int
+    {
+        $fromSession = (int) $request->attributes->get('risk_role_id', 0);
+        if ($fromSession > 0) {
+            return $fromSession;
+        }
+        if ($staffId < 1 || ! Schema::hasTable('staff') || ! Schema::hasColumn('staff', 'role_id')) {
+            return 0;
+        }
+        $roleId = DB::table('staff')->where('staff_id', $staffId)->value('role_id');
+
+        return (int) ($roleId ?? 0);
     }
 }

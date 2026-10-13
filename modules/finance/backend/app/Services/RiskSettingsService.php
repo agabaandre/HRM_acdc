@@ -6,26 +6,29 @@ use Illuminate\Support\Facades\DB;
 
 final class RiskSettingsService
 {
+    /** Finance module settings live on finance.fin_settings (own DB, not staff). */
+    private const TABLE = 'fin_settings';
+
     public function get(string $key, ?string $default = null): ?string
     {
-        if (! DB::getSchemaBuilder()->hasTable('rr_settings')) {
+        if (! DB::getSchemaBuilder()->hasTable(self::TABLE)) {
             return $default;
         }
-        $value = DB::table('rr_settings')->where('key', $key)->value('value');
+        $value = DB::table(self::TABLE)->where('key', $key)->value('value');
 
         return $value === null ? $default : (string) $value;
     }
 
     public function set(string $key, string $value): void
     {
-        $existing = DB::table('rr_settings')->where('key', $key)->first();
+        $existing = DB::table(self::TABLE)->where('key', $key)->first();
         if ($existing) {
-            DB::table('rr_settings')->where('key', $key)->update([
+            DB::table(self::TABLE)->where('key', $key)->update([
                 'value' => $value,
                 'updated_at' => now(),
             ]);
         } else {
-            DB::table('rr_settings')->insert([
+            DB::table(self::TABLE)->insert([
                 'key' => $key,
                 'value' => $value,
                 'created_at' => now(),
@@ -49,10 +52,10 @@ final class RiskSettingsService
      */
     public function all(): array
     {
-        if (! DB::getSchemaBuilder()->hasTable('rr_settings')) {
+        if (! DB::getSchemaBuilder()->hasTable(self::TABLE)) {
             return ['import_enabled' => '1'];
         }
 
-        return DB::table('rr_settings')->pluck('value', 'key')->map(fn ($v) => $v === null ? null : (string) $v)->all();
+        return DB::table(self::TABLE)->pluck('value', 'key')->map(fn ($v) => $v === null ? null : (string) $v)->all();
     }
 }

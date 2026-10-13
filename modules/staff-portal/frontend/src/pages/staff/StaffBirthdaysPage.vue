@@ -5,7 +5,9 @@ import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
+import StaffSortableTh from '@/components/molecules/StaffSortableTh.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
+import { useClientTableSort } from '@/composables/useStaffTableSort'
 import {
   fetchBirthdays,
   type BirthdayRange,
@@ -19,6 +21,21 @@ const error = ref<string | null>(null)
 const rows = ref<BirthdayRow[]>([])
 const range = ref<BirthdayRange>('today')
 const total = ref(0)
+
+const { sortBy, sortDir, toggleSort, sortIcon, sortedRows } = useClientTableSort<BirthdayRow>(
+  rows,
+  {
+    name: (row) => [row.fname, row.lname, row.oname].filter(Boolean).join(' '),
+    date_of_birth: (row) => row.date_of_birth || '',
+    next_birthday: (row) => row.next_birthday || '',
+    age: (row) => row.age ?? null,
+    division: (row) => row.division_name || '',
+    email: (row) => row.work_email || '',
+  },
+  'name',
+)
+
+const displayRows = computed(() => sortedRows())
 
 const birthdayRangeItems = computed<PortalPillNavItem[]>(() => [
   {
@@ -105,54 +122,76 @@ function setRange(key: string) {
 
     <PortalPageSkeleton v-if="loading" variant="table" :rows="8" :cols="6" />
 
-    <v-table v-else density="compact" class="portal-data-table">
-      <thead>
-        <tr>
-          <th style="width: 3rem">#</th>
-          <th>Name</th>
-          <th>Date of birth</th>
-          <th>Next birthday</th>
-          <th>Age</th>
-          <th>Division</th>
-          <th>Email</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(row, index) in rows" :key="row.staff_id">
-          <td>
-            <span class="portal-dt-row-num">{{ index + 1 }}</span>
-          </td>
-          <td>
-            <RouterLink :to="`/staff/${row.staff_id}`">{{ personName(row) || `Staff ${row.staff_id}` }}</RouterLink>
-          </td>
-          <td>{{ row.date_of_birth || '—' }}</td>
-          <td>{{ row.next_birthday || '—' }}</td>
-          <td>{{ row.age != null ? row.age : '—' }}</td>
-          <td>{{ row.division_name || '—' }}</td>
-          <td>{{ row.work_email || '—' }}</td>
-        </tr>
-        <tr v-if="!rows.length">
-          <td colspan="7" class="text-medium-emphasis text-center py-6">
-            No birthdays for {{ rangeLabel.toLowerCase() }}.
-          </td>
-        </tr>
-      </tbody>
-    </v-table>
+    <v-card v-else class="portal-data-table-card mb-3" variant="outlined">
+      <v-table density="compact" class="portal-data-table">
+        <thead>
+          <tr>
+            <th style="width: 3rem">#</th>
+            <StaffSortableTh
+              label="Name"
+              :active="sortBy === 'name'"
+              :direction="sortDir"
+              :icon="sortIcon('name')"
+              @click="toggleSort('name')"
+            />
+            <StaffSortableTh
+              label="Date of birth"
+              :active="sortBy === 'date_of_birth'"
+              :direction="sortDir"
+              :icon="sortIcon('date_of_birth')"
+              @click="toggleSort('date_of_birth')"
+            />
+            <StaffSortableTh
+              label="Next birthday"
+              :active="sortBy === 'next_birthday'"
+              :direction="sortDir"
+              :icon="sortIcon('next_birthday')"
+              @click="toggleSort('next_birthday')"
+            />
+            <StaffSortableTh
+              label="Age"
+              :active="sortBy === 'age'"
+              :direction="sortDir"
+              :icon="sortIcon('age')"
+              @click="toggleSort('age')"
+            />
+            <StaffSortableTh
+              label="Division"
+              :active="sortBy === 'division'"
+              :direction="sortDir"
+              :icon="sortIcon('division')"
+              @click="toggleSort('division')"
+            />
+            <StaffSortableTh
+              label="Email"
+              :active="sortBy === 'email'"
+              :direction="sortDir"
+              :icon="sortIcon('email')"
+              @click="toggleSort('email')"
+            />
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(row, index) in displayRows" :key="row.staff_id">
+            <td>
+              <span class="portal-dt-row-num">{{ index + 1 }}</span>
+            </td>
+            <td>
+              <RouterLink :to="`/staff/${row.staff_id}`">{{ personName(row) || `Staff ${row.staff_id}` }}</RouterLink>
+            </td>
+            <td>{{ row.date_of_birth || '—' }}</td>
+            <td>{{ row.next_birthday || '—' }}</td>
+            <td>{{ row.age != null ? row.age : '—' }}</td>
+            <td>{{ row.division_name || '—' }}</td>
+            <td>{{ row.work_email || '—' }}</td>
+          </tr>
+          <tr v-if="!displayRows.length">
+            <td colspan="7" class="text-medium-emphasis text-center py-6">
+              No birthdays for {{ rangeLabel.toLowerCase() }}.
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </v-card>
   </div>
 </template>
-
-<style scoped>
-.birthday-tabs {
-  border-bottom: 1px solid rgba(58, 71, 82, 0.12);
-}
-.birthday-tabs :deep(.v-tab) {
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
-  min-width: auto;
-}
-.birthday-tabs :deep(.v-tab--selected) {
-  background: rgba(17, 154, 72, 0.08);
-  border-radius: 0.35rem 0.35rem 0 0;
-}
-</style>

@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
+import StaffSortableTh from '@/components/molecules/StaffSortableTh.vue'
 import StaffSubnav from '@/components/molecules/StaffSubnav.vue'
 import { resolveAvatarUrl } from '@/lib/api'
 import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
@@ -39,6 +40,8 @@ const filters = reactive({
   scope: 'approvers' as SignatureScope,
   signature_status: 'all' as SignatureStatusFilter,
 })
+const sortBy = ref('firstname')
+const sortDir = ref<'asc' | 'desc'>('asc')
 
 let nameTimer: number | undefined
 
@@ -47,7 +50,24 @@ function exportParams() {
     staff_name: filters.staff_name || undefined,
     scope: filters.scope,
     signature_status: filters.signature_status,
+    sort_by: sortBy.value,
+    sort_dir: sortDir.value,
   }
+}
+
+function toggleSort(column: string) {
+  if (sortBy.value === column) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = column
+    sortDir.value = 'asc'
+  }
+  page.value = 1
+}
+
+function sortIcon(column: string): string {
+  if (sortBy.value !== column) return 'fa-sort'
+  return sortDir.value === 'asc' ? 'fa-sort-up' : 'fa-sort-down'
 }
 
 async function load() {
@@ -198,6 +218,8 @@ watch(
   },
 )
 
+watch([sortBy, sortDir], () => void load())
+
 onMounted(() => {
   void load()
 })
@@ -314,13 +336,32 @@ onMounted(() => {
 
     <PortalPageSkeleton v-if="loading" variant="table" :rows="8" :cols="6" />
 
-    <v-table v-else density="compact" class="mb-3">
+    <v-card v-else class="portal-data-table-card mb-3" variant="outlined">
+    <v-table density="compact" class="portal-data-table mb-0">
       <thead>
         <tr>
           <th style="width: 2.5rem"></th>
-          <th>Staff</th>
-          <th>SAPNO</th>
-          <th>Status</th>
+          <StaffSortableTh
+            label="Staff"
+            :active="sortBy === 'full_name' || sortBy === 'firstname'"
+            :direction="sortDir"
+            :icon="sortIcon(sortBy === 'full_name' ? 'full_name' : 'firstname')"
+            @click="toggleSort('firstname')"
+          />
+          <StaffSortableTh
+            label="SAPNO"
+            :active="sortBy === 'sap_number'"
+            :direction="sortDir"
+            :icon="sortIcon('sap_number')"
+            @click="toggleSort('sap_number')"
+          />
+          <StaffSortableTh
+            label="Status"
+            :active="sortBy === 'signature_status'"
+            :direction="sortDir"
+            :icon="sortIcon('signature_status')"
+            @click="toggleSort('signature_status')"
+          />
           <th>Signature</th>
           <th>Replace</th>
           <th>Upload</th>
@@ -402,6 +443,7 @@ onMounted(() => {
         </tr>
       </tbody>
     </v-table>
+    </v-card>
 
     <div class="d-flex align-center justify-space-between flex-wrap gap-2">
       <div class="text-caption text-medium-emphasis">{{ total }} record(s)</div>

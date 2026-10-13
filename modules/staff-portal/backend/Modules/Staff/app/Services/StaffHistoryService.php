@@ -43,13 +43,15 @@ class StaffHistoryService
 
     /**
      * @param  array<string, mixed>  $filters
+     * @param  array{by?: string, dir?: string}  $sort
      */
-    public function paginate(array $filters, int $page = 1, int $perPage = 20): LengthAwarePaginator
+    public function paginate(array $filters, int $page = 1, int $perPage = 20, array $sort = []): LengthAwarePaginator
     {
         $perPage = min(100, max(10, $perPage));
         $page = max(1, $page);
         $period = $this->normalizePeriod($filters);
         $filters = $this->directory->normalizeFilters($filters);
+        $sort = $this->directory->normalizeSort($sort['by'] ?? null, $sort['dir'] ?? null);
 
         if ($period === null) {
             return new LengthAwarePaginator(collect(), 0, $perPage, $page, PortalTable::paginationOptions());
@@ -63,13 +65,9 @@ class StaffHistoryService
             return new LengthAwarePaginator(collect(), 0, $perPage, $page, PortalTable::paginationOptions());
         }
 
-        $ids = (clone $light)
-            ->select('s.staff_id', 's.fname', 's.lname')
-            ->groupBy('s.staff_id', 's.fname', 's.lname')
-            ->orderBy('s.fname')
-            ->orderBy('s.lname')
+        $ids = $this->directory->orderStaffIdsQuery($light, $sort)
             ->forPage($page, $perPage)
-            ->pluck('s.staff_id');
+            ->pluck('staff_id');
 
         if ($ids->isEmpty()) {
             return new LengthAwarePaginator(collect(), $total, $perPage, $page, PortalTable::paginationOptions());
@@ -82,24 +80,25 @@ class StaffHistoryService
 
     /**
      * @param  array<string, mixed>  $filters
+     * @param  array{by?: string, dir?: string}  $sort
      */
-    public function exportRows(array $filters, int $limit = 5000): Collection
+    public function exportRows(array $filters, int $limit = 5000, array $sort = []): Collection
     {
         $limit = min(5000, max(1, $limit));
         $period = $this->normalizePeriod($filters);
         $filters = $this->directory->normalizeFilters($filters);
+        $sort = $this->directory->normalizeSort($sort['by'] ?? null, $sort['dir'] ?? null);
         if ($period === null) {
             return collect();
         }
 
         [$periodFrom, $periodTo] = $period;
-        $ids = $this->overlappingQuery($filters, $periodFrom, $periodTo, false)
-            ->select('s.staff_id', 's.fname', 's.lname')
-            ->groupBy('s.staff_id', 's.fname', 's.lname')
-            ->orderBy('s.fname')
-            ->orderBy('s.lname')
+        $ids = $this->directory->orderStaffIdsQuery(
+            $this->overlappingQuery($filters, $periodFrom, $periodTo, false),
+            $sort
+        )
             ->limit($limit)
-            ->pluck('s.staff_id');
+            ->pluck('staff_id');
 
         if ($ids->isEmpty()) {
             return collect();

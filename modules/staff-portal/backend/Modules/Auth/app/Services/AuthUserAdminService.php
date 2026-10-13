@@ -154,6 +154,15 @@ class AuthUserAdminService
             }
         }
 
+        $plainPassword = null;
+        if (! empty($payload['change_password'])) {
+            $plainPassword = $this->generateRandomPassword();
+            $data['password'] = password_hash($plainPassword, PASSWORD_ARGON2ID);
+            if (LegacySchema::hasColumn('user', 'isChanged')) {
+                $data['isChanged'] = 0;
+            }
+        }
+
         if ($data === []) {
             throw new \InvalidArgumentException('No valid fields to update.');
         }
@@ -163,12 +172,23 @@ class AuthUserAdminService
         $afterRow = $this->findRow($userId) ?? [];
         $after = array_intersect_key($afterRow, array_flip($allowed));
 
-        $this->audit->logRecordChange('updated', 'user', $userId, $before, $after);
+        $this->audit->logRecordChange(
+            'updated',
+            'user',
+            $userId,
+            $before + ($plainPassword !== null ? ['password' => '[redacted]'] : []),
+            $after + ($plainPassword !== null ? ['password' => '[changed]'] : []),
+        );
 
         PortalStaffCache::bust();
         PortalReadCache::bust('permissions');
 
-        return $this->presentRow($afterRow);
+        $row = $this->presentRow($afterRow);
+        if ($plainPassword !== null) {
+            $row['temporary_password'] = $plainPassword;
+        }
+
+        return $row;
     }
 
     public function block(int $userId): string
@@ -203,16 +223,19 @@ class AuthUserAdminService
             : 'Email/password sign-in disabled for this user.';
     }
 
-    public function resetPassword(int $userId): string
+    /**
+     * @return array{message: string, password: string}
+     */
+    public function resetPassword(int $userId): array
     {
         $existing = $this->findRow($userId);
         if (! $existing) {
             throw new \InvalidArgumentException('User not found.');
         }
 
-        $defaultPassword = (string) (DB::table('setting')->value('default_password') ?: 'africacdc.org');
+        $plainPassword = $this->generateRandomPassword();
         $update = [
-            'password' => password_hash($defaultPassword, PASSWORD_ARGON2ID),
+            'password' => password_hash($plainPassword, PASSWORD_ARGON2ID),
         ];
         if (LegacySchema::hasColumn('user', 'isChanged')) {
             $update['isChanged'] = 0;
@@ -221,7 +244,36 @@ class AuthUserAdminService
         DB::table('user')->where('user_id', $userId)->update($update);
         $this->audit->logRecordChange('updated', 'user', $userId, ['password' => '[redacted]'], ['password' => '[reset]']);
 
-        return 'Password has been reset successfully.';
+        return [
+            'message' => 'Password has been reset successfully.',
+            'password' => $plainPassword,
+        ];
+    }
+
+    public function generateRandomPassword(int $length = 12): string
+    {
+        $length = max(10, min(32, $length));
+        $upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $lower = 'abcdefghijkmnopqrstuvwxyz';
+        $digits = '23456789';
+        $symbols = '!@#$%*?';
+        $all = $upper.$lower.$digits.$symbols;
+
+        $chars = [
+            $upper[random_int(0, strlen($upper) - 1)],
+            $lower[random_int(0, strlen($lower) - 1)],
+            $digits[random_int(0, strlen($digits) - 1)],
+            $symbols[random_int(0, strlen($symbols) - 1)],
+        ];
+        for ($i = count($chars); $i < $length; $i++) {
+            $chars[] = $all[random_int(0, strlen($all) - 1)];
+        }
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+
+        return implode('', $chars);
     }
 
     /**

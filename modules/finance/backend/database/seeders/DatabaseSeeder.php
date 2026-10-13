@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Intentionally empty for production-safe `php artisan db:seed`.
+        // Production-safe upserts (no demo users / faker). Seeders skip when data exists.
+        $this->call(FinanceGrantsSeeder::class);
+        $this->call(FinanceInvestmentsSeeder::class);
     }
 }

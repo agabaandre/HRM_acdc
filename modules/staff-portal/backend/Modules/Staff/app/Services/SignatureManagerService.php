@@ -14,15 +14,16 @@ use Staff\Shared\StaffStorage;
 class SignatureManagerService
 {
     /**
-     * @param  array{staff_name?: string, scope?: string, signature_status?: string}  $filters
-     * @return array{rows: list<array<string, mixed>>, stats: array{total: int, valid: int, missing: int, broken: int}, total: int, approver_count: int, approver_cache: array<string, mixed>}
+     * @param  array{staff_name?: string, scope?: string, signature_status?: string, sort_by?: string, sort_dir?: string}  $filters
+     * @return array{rows: list<array<string, mixed>>, stats: array{total: int, valid: int, missing: int, broken: int}, total: int, approver_count: int, approver_cache: array<string, mixed>, sort_by: string, sort_dir: string}
      */
     public function page(array $filters, int $page = 1, int $perPage = 20): array
     {
         $page = max(1, $page);
         $perPage = min(100, max(10, $perPage));
         $built = $this->buildRows($filters);
-        $rows = $built['rows'];
+        $sort = $this->normalizeRowSort($filters['sort_by'] ?? null, $filters['sort_dir'] ?? null);
+        $rows = $this->sortBuiltRows($built['rows'], $sort);
         $stats = $built['stats'];
         $total = count($rows);
         $slice = array_slice($rows, ($page - 1) * $perPage, $perPage);
@@ -33,18 +34,72 @@ class SignatureManagerService
             'total' => $total,
             'approver_count' => (int) ($built['approver_count'] ?? 0),
             'approver_cache' => $built['approver_cache'] ?? ['ok' => false, 'count' => 0],
+            'sort_by' => $sort['by'],
+            'sort_dir' => $sort['dir'],
         ];
     }
 
     /**
-     * @param  array{staff_name?: string, scope?: string, signature_status?: string}  $filters
+     * @param  array{staff_name?: string, scope?: string, signature_status?: string, sort_by?: string, sort_dir?: string}  $filters
      * @return list<array<string, mixed>>
      */
     public function exportRows(array $filters, int $limit = 5000): array
     {
         $built = $this->buildRows($filters);
+        $sort = $this->normalizeRowSort($filters['sort_by'] ?? null, $filters['sort_dir'] ?? null);
+        $rows = $this->sortBuiltRows($built['rows'], $sort);
 
-        return array_slice(array_map(fn (array $row) => $this->presentRow($row), $built['rows']), 0, $limit);
+        return array_slice(array_map(fn (array $row) => $this->presentRow($row), $rows), 0, $limit);
+    }
+
+    /**
+     * @return array{by: string, dir: 'asc'|'desc'}
+     */
+    protected function normalizeRowSort(mixed $sortBy, mixed $sortDir): array
+    {
+        $allowed = ['full_name', 'firstname', 'surname', 'sap_number', 'signature_status'];
+        $by = is_string($sortBy) ? trim($sortBy) : '';
+        if (! in_array($by, $allowed, true)) {
+            $by = 'firstname';
+        }
+        $dir = strtolower(trim((string) $sortDir)) === 'desc' ? 'desc' : 'asc';
+
+        return ['by' => $by, 'dir' => $dir];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @param  array{by: string, dir: 'asc'|'desc'}  $sort
+     * @return list<array<string, mixed>>
+     */
+    protected function sortBuiltRows(array $rows, array $sort): array
+    {
+        $dir = $sort['dir'] === 'desc' ? -1 : 1;
+        $by = $sort['by'];
+        usort($rows, static function (array $a, array $b) use ($by, $dir): int {
+            $av = match ($by) {
+                'surname' => (string) ($a['lname'] ?? ''),
+                'sap_number' => (string) ($a['SAPNO'] ?? ''),
+                'signature_status' => (string) ($a['signature_status'] ?? ''),
+                'full_name' => (string) ($a['full_name'] ?? ''),
+                default => (string) ($a['fname'] ?? ''),
+            };
+            $bv = match ($by) {
+                'surname' => (string) ($b['lname'] ?? ''),
+                'sap_number' => (string) ($b['SAPNO'] ?? ''),
+                'signature_status' => (string) ($b['signature_status'] ?? ''),
+                'full_name' => (string) ($b['full_name'] ?? ''),
+                default => (string) ($b['fname'] ?? ''),
+            };
+            $cmp = strcasecmp($av, $bv);
+            if ($cmp === 0) {
+                $cmp = ((int) ($a['staff_id'] ?? 0)) <=> ((int) ($b['staff_id'] ?? 0));
+            }
+
+            return $cmp * $dir;
+        });
+
+        return array_values($rows);
     }
 
     /**

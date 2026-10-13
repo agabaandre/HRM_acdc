@@ -28,7 +28,7 @@ class ApmApiSettingsTest extends TestCase
         ]);
         DB::purge();
         DB::reconnect();
-        Schema::create('rr_settings', function (Blueprint $table) {
+        Schema::create('fin_settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
             $table->text('value')->nullable();
@@ -84,8 +84,8 @@ class ApmApiSettingsTest extends TestCase
         $save->assertOk();
         $save->assertJsonPath('success', true);
 
-        $this->assertSame('finance-sync@africacdc.org', DB::table('rr_settings')->where('key', 'apm_api_email')->value('value'));
-        $this->assertSame('db-secret', DB::table('rr_settings')->where('key', 'apm_api_password')->value('value'));
+        $this->assertSame('finance-sync@africacdc.org', DB::table('fin_settings')->where('key', 'apm_api_email')->value('value'));
+        $this->assertSame('db-secret', DB::table('fin_settings')->where('key', 'apm_api_password')->value('value'));
 
         $resolved = ApmApiCredentials::resolve();
         $this->assertSame('http://apm.db', $resolved['base_url']);

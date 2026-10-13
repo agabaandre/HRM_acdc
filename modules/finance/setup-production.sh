@@ -179,6 +179,17 @@ fi
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
     "$PHP_BIN" artisan migrate --force --no-interaction
+    STAFF_PORTAL_BACKEND="$(cd "$ROOT/../staff-portal/backend" 2>/dev/null && pwd || true)"
+    if [[ -n "${STAFF_PORTAL_BACKEND:-}" && -f "$STAFF_PORTAL_BACKEND/artisan" ]]; then
+        log "Seeding Staff Portal manage_funding_portfolio permission"
+        (cd "$STAFF_PORTAL_BACKEND" && "$PHP_BIN" artisan migrate --path=database/migrations/2026_10_13_150000_seed_manage_funding_portfolio_permission.php --force --no-interaction) \
+            || warn "staff-portal funding portfolio permission migrate failed — continuing"
+    fi
+    if [[ -f "$ROOT/backend/artisan" && -f "$ROOT/backend/.env" ]]; then
+        log "Seeding Finance grants catalogue"
+        (cd "$ROOT/backend" && "$PHP_BIN" artisan db:seed --class=Database\\Seeders\\FinanceGrantsSeeder --force --no-interaction) \
+            || warn "FinanceGrantsSeeder failed — continuing"
+    fi
 else
     log "Skipping migrations (--skip-migrate)"
 fi
@@ -220,6 +231,6 @@ fi
 echo ""
 echo "Finance production setup complete."
 echo "  App:     ${APP_URL_VAL:-/staff/finance}"
-echo "  Staff:   ${FINANCE_STAFF_PORTAL_URL:-/staff} (open Finance tile; permission 92)"
+echo "  Staff:   ${FINANCE_STAFF_PORTAL_URL:-/staff} (Finance tile: permission 92; portfolio edit: 124)"
 echo ""
 echo "Re-deploy after git pull:  ./setup-production.sh"

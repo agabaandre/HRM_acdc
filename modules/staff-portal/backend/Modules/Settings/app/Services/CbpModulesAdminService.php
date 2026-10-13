@@ -216,6 +216,13 @@ class CbpModulesAdminService
 
         $this->disableDuplicateCoreLaunchTargets();
 
+        // Ensure Funding Portfolio manage permission exists on finance/admin groups.
+        try {
+            (new FundingPortfolioPermissionSeeder)->seed();
+        } catch (\Throwable) {
+            // Permissions table may be unavailable during early bootstrap.
+        }
+
         // Any other enabled modules also get admin auto-assign (new systems).
         $rows = DB::table('cbp_modules')->select(['id', 'permission_code'])->get();
         foreach ($rows as $row) {

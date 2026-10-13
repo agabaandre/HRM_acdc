@@ -66,6 +66,20 @@ class AuthenticateRiskSession
             $perms = [];
         }
         $request->attributes->set('risk_permissions', array_values($perms));
+        $request->attributes->set(
+            'risk_role_id',
+            (int) ($session['role_id'] ?? $session['role'] ?? 0)
+        );
+
+        // Sliding session: keep the Finance SPA token alive while the user is active
+        // so they are not forced back through Staff Portal home to relaunch.
+        if ($bearer !== null && $bearer !== '') {
+            try {
+                Cache::put('risk_api_token:'.$bearer, $session, now()->addHours(12));
+            } catch (\Throwable) {
+                // Cache may be unavailable; request can still proceed with in-memory attributes.
+            }
+        }
 
         return $next($request);
     }

@@ -19,8 +19,8 @@ final class RrSettingsBag implements ModuleSettingsBag
     public function set(string $key, ?string $value): void
     {
         if ($value === null || $value === '') {
-            if (\Illuminate\Support\Facades\Schema::hasTable('rr_settings')) {
-                \Illuminate\Support\Facades\DB::table('rr_settings')->where('key', $key)->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('fin_settings')) {
+                \Illuminate\Support\Facades\DB::table('fin_settings')->where('key', $key)->delete();
             }
 
             return;

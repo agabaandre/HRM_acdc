@@ -21,7 +21,11 @@ class NextOfKinApiController extends Controller
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(100, max(10, (int) $request->query('per_page', 20)));
-        $result = $service->page($this->filterInput($request), $page, $perPage);
+        $sort = [
+            'by' => $request->query('sort_by'),
+            'dir' => $request->query('sort_dir'),
+        ];
+        $result = $service->page($this->filterInput($request), $page, $perPage, $sort);
 
         return response()->json([
             'data' => $result['rows'],
@@ -31,6 +35,8 @@ class NextOfKinApiController extends Controller
                 'total' => $result['total'],
                 'last_page' => max(1, (int) ceil($result['total'] / max(1, $perPage))),
                 'kin_relationships' => $result['kin_relationships'],
+                'sort_by' => $result['sort_by'],
+                'sort_dir' => $result['sort_dir'],
             ],
         ]);
     }
@@ -41,7 +47,10 @@ class NextOfKinApiController extends Controller
             abort(403);
         }
 
-        $exported = $service->exportRows($this->filterInput($request));
+        $exported = $service->exportRows($this->filterInput($request), 5000, [
+            'by' => $request->query('sort_by'),
+            'dir' => $request->query('sort_dir'),
+        ]);
         $rows = [[
             'SAPNO', 'Full name', 'Contract status', 'Job', 'Division', 'Duty station', 'Grade',
             'Work email', 'Tel 1', 'Tel 2', 'WhatsApp', 'Private email', 'Physical location',
@@ -101,7 +110,10 @@ class NextOfKinApiController extends Controller
             abort(403);
         }
 
-        $exported = $service->exportRows($this->filterInput($request), 2000);
+        $exported = $service->exportRows($this->filterInput($request), 2000, [
+            'by' => $request->query('sort_by'),
+            'dir' => $request->query('sort_dir'),
+        ]);
         $body = '';
         $n = 0;
         foreach ($exported as $r) {

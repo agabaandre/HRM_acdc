@@ -214,6 +214,20 @@ onMounted(() => {
     <p v-if="ok" class="fn-ok">{{ ok }}</p>
 
     <section class="fn-card">
+      <h2>APM division &amp; funder mapping</h2>
+      <p class="fn-muted">
+        Like APM’s PRA mapping under More: fetch APM divisions and funders, then map Funding Portfolio
+        workbook labels. Extramural entry uses APM funders from
+        <code>/staff/apm/funders</code>.
+      </p>
+      <div class="fn-filters">
+        <RouterLink class="fn-btn" :to="{ name: 'settings-apm-divisions' }">APM divisions</RouterLink>
+        <RouterLink class="fn-btn" :to="{ name: 'settings-apm-funders' }">APM funders</RouterLink>
+        <RouterLink class="fn-link" :to="{ name: 'portfolio-entry' }">Portfolio data entry</RouterLink>
+      </div>
+    </section>
+
+    <section class="fn-card">
       <h2>Telemetry / APM</h2>
       <p class="fn-muted">
         Resolved: <code>{{ telemetryResolved.provider }}</code>
@@ -364,7 +378,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fn-page { max-width: 960px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+.fn-page { width: 100%; max-width: none; margin: 0; padding: 1rem 0 2rem; }
 .fn-page__header { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .fn-page__sub { color: #64748b; margin: 0.35rem 0 0; }
 .fn-card { background: #fff; border: 1px solid rgba(58,71,82,.12); border-radius: .75rem; padding: 1rem 1.15rem; margin-bottom: .75rem; }

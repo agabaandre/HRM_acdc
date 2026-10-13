@@ -175,6 +175,17 @@ export const useAuthStore = defineStore('auth', () => {
     return perms.includes(code) || perms.includes(String(code)) || perms.includes(Number(code))
   }
 
+  /** Staff Portal system admin (role_id 10) — sees all Finance nav. */
+  const isAdmin = computed(
+    () =>
+      !!me.value?.profile?.is_system_admin || Number(me.value?.profile?.role_id || 0) === 10,
+  )
+
+  function hasAnyPermission(codes: Array<number | string>): boolean {
+    if (isAdmin.value) return true
+    return codes.some((c) => hasPermission(c))
+  }
+
   /** Defaults: payroll off, everything else on (matches backend catalog). */
   function isModuleEnabled(moduleKey: string): boolean {
     if (!moduleKey) return true
@@ -223,6 +234,8 @@ export const useAuthStore = defineStore('auth', () => {
     fetchMe,
     refreshMeInBackground,
     hasPermission,
+    hasAnyPermission,
+    isAdmin,
     isModuleEnabled,
     logout,
     invalidateSession,
