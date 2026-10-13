@@ -88,11 +88,29 @@ setup_git_sync() {
     return 0
   fi
 
-  echo "==> Git: stash local changes (if any), then pull"
-  local before after stashed=0
+  echo "==> Git: stash local changes (if any), then sync to upstream"
+  local before after stashed=0 reset_to_upstream=0
   before="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
   local setup_before
   setup_before="$(git -C "$ROOT" hash-object "$ROOT/setup.sh" 2>/dev/null || echo none)"
+
+  # Clear unfinished merge/rebase/cherry-pick so pull/reset can proceed.
+  if [[ -f "$ROOT/.git/MERGE_HEAD" ]]; then
+    echo "    aborting unfinished merge"
+    git -C "$ROOT" merge --abort 2>/dev/null || true
+  fi
+  if [[ -d "$ROOT/.git/rebase-merge" || -d "$ROOT/.git/rebase-apply" ]]; then
+    echo "    aborting unfinished rebase"
+    git -C "$ROOT" rebase --abort 2>/dev/null || true
+  fi
+  if [[ -f "$ROOT/.git/CHERRY_PICK_HEAD" ]]; then
+    echo "    aborting unfinished cherry-pick"
+    git -C "$ROOT" cherry-pick --abort 2>/dev/null || true
+  fi
+  if git -C "$ROOT" status --porcelain 2>/dev/null | grep -qE '^(UU|AA|DD|AU|UA|DU|UD)'; then
+    echo "    warn: unmerged paths remain — resetting index to HEAD" >&2
+    git -C "$ROOT" reset --hard HEAD 2>/dev/null || true
+  fi
 
   # Stash tracked modifications only — leave untracked .env / vendor alone.
   if ! git -C "$ROOT" diff --quiet 2>/dev/null \
@@ -109,17 +127,31 @@ setup_git_sync() {
   branch="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
   remote="$(git -C "$ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
   if [[ -n "$remote" ]]; then
-    echo "    pulling $remote …"
-    if ! git -C "$ROOT" pull --ff-only; then
-      echo "    warn: git pull --ff-only failed — trying plain git pull" >&2
-      git -C "$ROOT" pull || echo "    warn: git pull failed — continuing with current tree" >&2
+    echo "    syncing to $remote …"
+    git -C "$ROOT" fetch --prune "$(echo "$remote" | cut -d/ -f1)" 2>/dev/null || git -C "$ROOT" fetch --prune origin 2>/dev/null || true
+    if git -C "$ROOT" pull --ff-only; then
+      :
+    else
+      # Deploy checkouts often diverge (local commits / prior rebase). Match upstream exactly.
+      echo "    warn: cannot fast-forward — resetting hard to $remote" >&2
+      if git -C "$ROOT" reset --hard "$remote"; then
+        reset_to_upstream=1
+      else
+        echo "    error: could not reset to $remote — continuing with current tree" >&2
+      fi
     fi
   else
     echo "    no upstream for $branch — fetching origin/$branch if present"
     git -C "$ROOT" fetch origin "$branch" 2>/dev/null || true
     if git -C "$ROOT" rev-parse "origin/$branch" >/dev/null 2>&1; then
-      git -C "$ROOT" merge --ff-only "origin/$branch" \
-        || echo "    warn: could not ff-merge origin/$branch — continuing" >&2
+      if ! git -C "$ROOT" merge --ff-only "origin/$branch"; then
+        echo "    warn: cannot ff-merge — resetting hard to origin/$branch" >&2
+        if git -C "$ROOT" reset --hard "origin/$branch"; then
+          reset_to_upstream=1
+        else
+          echo "    warn: could not reset to origin/$branch — continuing" >&2
+        fi
+      fi
     else
       echo "    warn: no origin/$branch — skipping pull" >&2
     fi
@@ -133,9 +165,14 @@ setup_git_sync() {
   fi
 
   if [[ "$stashed" -eq 1 ]]; then
-    echo "    restoring stash"
-    if ! git -C "$ROOT" stash pop --quiet; then
-      echo "    warn: stash pop had conflicts — resolve with: git status && git stash list" >&2
+    if [[ "$reset_to_upstream" -eq 1 ]]; then
+      echo "    left stash in place after upstream reset (avoids reintroducing divergence)"
+      echo "    inspect with: git stash list"
+    else
+      echo "    restoring stash"
+      if ! git -C "$ROOT" stash pop --quiet; then
+        echo "    warn: stash pop had conflicts — resolve with: git status && git stash list" >&2
+      fi
     fi
   fi
 
