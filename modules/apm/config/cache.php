@@ -79,6 +79,16 @@ return [
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
+        /*
+        | Finance AuthenticateRiskSession tokens (same Redis DB + CACHE_PREFIX as Finance).
+        | Prefix is applied in FinanceBudgetExecutionClient to match Finance cache.prefix.
+        */
+        'finance_tokens' => [
+            'driver' => 'redis',
+            'connection' => 'finance_cache',
+            'lock_connection' => 'finance_cache',
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),

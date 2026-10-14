@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
-use Predis\Client as PredisClient;
 use RuntimeException;
 use Throwable;
 
@@ -91,6 +92,15 @@ final class FinanceBudgetExecutionClient
                 'message' => mb_substr($message, 0, 500),
             ]);
 
+            if ($status === 401) {
+                throw new RuntimeException(
+                    'Finance API error: Unauthenticated. APM minted a token but Finance Cache did not see it. '
+                    .'On APM .env set FINANCE_REDIS_HOST / FINANCE_REDIS_CACHE_DB / FINANCE_REDIS_PREFIX / '
+                    .'FINANCE_CACHE_PREFIX to match Finance REDIS_* and CACHE_PREFIX=risk_register, then '
+                    .'php artisan config:clear.'
+                );
+            }
+
             throw new RuntimeException(
                 $message !== ''
                     ? 'Finance API error: '.$message
@@ -151,17 +161,7 @@ final class FinanceBudgetExecutionClient
             'source' => 'apm_finance_budget_execution',
         ];
 
-        $ttl = max(60, (int) config('services.finance_api.token_ttl', 3600));
-        $redisPrefix = (string) config('services.finance_api.redis_prefix', 'laravel-database-');
-        $cachePrefix = (string) config('services.finance_api.cache_prefix', 'risk_register');
-        $fullKey = $redisPrefix.$cachePrefix.'risk_api_token:'.$token;
-
-        try {
-            $this->financeRedis()->setex($fullKey, $ttl, serialize($payload));
-        } catch (Throwable $e) {
-            Log::error('Failed to mint Finance API token in Redis', ['error' => $e->getMessage()]);
-            throw new RuntimeException('Could not prepare Finance API session (Redis unavailable).');
-        }
+        $this->storeFinanceApiToken($token, $payload);
 
         return $token;
     }
@@ -181,30 +181,53 @@ final class FinanceBudgetExecutionClient
             'source' => 'apm_finance_budget_execution_warm',
         ];
 
-        $ttl = max(60, (int) config('services.finance_api.token_ttl', 3600));
-        $redisPrefix = (string) config('services.finance_api.redis_prefix', 'laravel-database-');
-        $cachePrefix = (string) config('services.finance_api.cache_prefix', 'risk_register');
-        $fullKey = $redisPrefix.$cachePrefix.'risk_api_token:'.$token;
-
-        try {
-            $this->financeRedis()->setex($fullKey, $ttl, serialize($payload));
-        } catch (Throwable $e) {
-            Log::error('Failed to mint Finance warm token in Redis', ['error' => $e->getMessage()]);
-            throw new RuntimeException('Could not prepare Finance warm session (Redis unavailable).');
-        }
+        $this->storeFinanceApiToken($token, $payload);
 
         return $token;
     }
 
-    private function financeRedis(): PredisClient
+    /**
+     * Write the same key Finance AuthenticateRiskSession reads via Cache::get('risk_api_token:…').
+     * Redis connection prefix = Finance REDIS_PREFIX; cache prefix = Finance CACHE_PREFIX.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeFinanceApiToken(string $token, array $payload): void
     {
-        return new PredisClient([
-            'scheme' => 'tcp',
-            'host' => (string) config('database.redis.finance_cache.host', '127.0.0.1'),
-            'port' => (int) config('database.redis.finance_cache.port', 6379),
-            'password' => config('database.redis.finance_cache.password'),
-            'database' => (int) config('database.redis.finance_cache.database', 1),
-        ]);
+        $ttl = max(60, (int) config('services.finance_api.token_ttl', 3600));
+        $cachePrefix = (string) config('services.finance_api.cache_prefix', 'risk_register');
+        $logicalKey = 'risk_api_token:'.$token;
+
+        try {
+            $store = Cache::store('finance_tokens');
+            $driver = $store->getStore();
+            if (method_exists($driver, 'setPrefix')) {
+                $driver->setPrefix($cachePrefix);
+            }
+            $store->put($logicalKey, $payload, $ttl);
+
+            // Verify round-trip so misconfigured Redis fails fast with a clear message.
+            $read = $store->get($logicalKey);
+            if (! is_array($read) || (int) ($read['staff_id'] ?? 0) < 1) {
+                // Fallback: write exactly as Finance RedisStore does (prefix + serialize).
+                Redis::connection('finance_cache')->setex(
+                    $cachePrefix.$logicalKey,
+                    $ttl,
+                    serialize($payload)
+                );
+            }
+        } catch (Throwable $e) {
+            Log::error('Failed to mint Finance API token in Redis', [
+                'error' => $e->getMessage(),
+                'redis_host' => config('database.redis.finance_cache.host'),
+                'redis_db' => config('database.redis.finance_cache.database'),
+                'redis_prefix' => config('database.redis.finance_cache.options.prefix'),
+                'cache_prefix' => $cachePrefix,
+            ]);
+            throw new RuntimeException(
+                'Could not prepare Finance API session (Redis unavailable or misconfigured): '.$e->getMessage()
+            );
+        }
     }
 
     private function baseUrl(): string

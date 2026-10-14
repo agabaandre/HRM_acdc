@@ -195,7 +195,9 @@ return [
 
         /*
         | Finance Laravel cache Redis (AuthenticateRiskSession tokens).
-        | Prefix must match Finance REDIS_PREFIX (laravel-database-).
+        | options.prefix must match Finance REDIS_PREFIX (default laravel-database-).
+        | Database must match Finance REDIS_CACHE_DB. Connection options override
+        | APM's global redis.options.prefix so tokens land where Finance Cache::get looks.
         */
         'finance_cache' => [
             'url' => env('FINANCE_REDIS_URL', env('REDIS_URL')),
@@ -204,7 +206,9 @@ return [
             'password' => env('FINANCE_REDIS_PASSWORD', env('REDIS_PASSWORD')),
             'port' => env('FINANCE_REDIS_PORT', env('REDIS_PORT', '6379')),
             'database' => env('FINANCE_REDIS_CACHE_DB', env('REDIS_CACHE_DB', '1')),
-            'prefix' => env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
+            'options' => [
+                'prefix' => env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
+            ],
         ],
 
     ],
