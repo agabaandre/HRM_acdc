@@ -15,6 +15,7 @@ const password = ref('')
 const remember = ref(false)
 const showAlternative = ref(false)
 const loading = ref(false)
+const msRedirecting = ref(false)
 
 const allowAlternativeLogin = ref(false)
 const microsoftEnabled = ref(true)
@@ -32,6 +33,20 @@ const bgUrl = computed(() => `${staffBase.value}/assets/images/bg_login.jpg`)
 const logoUrl = computed(() => `${staffBase.value}/assets/images/AU_CDC_Logo-800.png`)
 const year = computed(() => new Date().getFullYear())
 const msHref = computed(() => microsoftLoginUrl())
+
+function startMicrosoftSignIn(e: MouseEvent) {
+  if (msRedirecting.value) {
+    e.preventDefault()
+    return
+  }
+  // Allow modified clicks (new tab) without locking the button.
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+    return
+  }
+  e.preventDefault()
+  msRedirecting.value = true
+  window.location.assign(msHref.value)
+}
 
 const faqUrl = computed(() =>
   apmBaseUrl.value ? `${apmBaseUrl.value}/faq` : `${staffBase.value}/apm/faq`,
@@ -155,9 +170,14 @@ watch(
         <a
           v-if="microsoftEnabled"
           class="portal-login__ms-btn"
+          :class="{ 'is-loading': msRedirecting }"
           :href="msHref"
+          :aria-busy="msRedirecting ? 'true' : 'false'"
+          :aria-disabled="msRedirecting ? 'true' : 'false'"
+          @click="startMicrosoftSignIn"
         >
-          <span class="portal-login__ms-icon" aria-hidden="true">
+          <span v-if="msRedirecting" class="portal-login__ms-spinner" aria-hidden="true" />
+          <span v-else class="portal-login__ms-icon" aria-hidden="true">
             <svg viewBox="0 0 23 23" width="18" height="18" focusable="false">
               <path fill="#f25022" d="M1 1h10v10H1z" />
               <path fill="#00a4ef" d="M12 1h10v10H12z" />
@@ -165,7 +185,7 @@ watch(
               <path fill="#ffb900" d="M12 12h10v10H12z" />
             </svg>
           </span>
-          <span>Sign in with Staff Email</span>
+          <span>{{ msRedirecting ? 'Signing in…' : 'Sign in with Staff Email' }}</span>
         </a>
         <div
           v-else-if="optionsReady"
@@ -364,6 +384,12 @@ watch(
   outline-offset: 2px;
 }
 
+.portal-login__ms-btn.is-loading {
+  pointer-events: none;
+  opacity: 0.92;
+  cursor: wait;
+}
+
 .portal-login__ms-icon {
   display: inline-flex;
   flex-shrink: 0;
@@ -374,6 +400,20 @@ watch(
   background: #fff;
   border-radius: 2px;
   padding: 1px;
+}
+
+.portal-login__ms-spinner {
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: portal-login-spin 0.7s linear infinite;
+}
+
+@keyframes portal-login-spin {
+  to { transform: rotate(360deg); }
 }
 
 .portal-login__warn {

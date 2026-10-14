@@ -24,9 +24,17 @@
 
     @if ($microsoftEnabled)
         <a href="{{ route('auth.microsoft.redirect') }}"
-           class="btn btn-ms w-100 d-flex align-items-center justify-content-center gap-2 mb-3 text-decoration-none">
-            <i class="fab fa-microsoft"></i>
-            Sign in with Staff Email
+           id="ms-sign-in-btn"
+           class="btn btn-ms w-100 d-flex align-items-center justify-content-center gap-2 mb-3 text-decoration-none"
+           onclick="return window.__cbpMsSignIn && window.__cbpMsSignIn(event, this);">
+            <span class="ms-sign-in__idle">
+                <i class="fab fa-microsoft"></i>
+                Sign in with Staff Email
+            </span>
+            <span class="ms-sign-in__busy d-none" aria-live="polite">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Signing in…
+            </span>
         </a>
     @else
         <div class="alert alert-warning small py-2 mb-3">
@@ -112,6 +120,18 @@
         transform: translateY(-1px);
         box-shadow: 0 6px 20px rgba(0, 120, 212, 0.35);
     }
+    .btn-ms.is-loading {
+        pointer-events: none;
+        cursor: wait;
+        opacity: 0.92;
+        transform: none;
+        box-shadow: none;
+    }
+    .btn-ms .ms-sign-in__busy {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
     .form-toggle.active { animation: slideDown 0.3s ease; }
     @keyframes slideDown {
         from { opacity: 0; transform: translateY(-8px); }
@@ -126,4 +146,27 @@
         border-color: var(--primary-color, #119a48);
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+window.__cbpMsSignIn = function (event, el) {
+  if (!el || el.classList.contains('is-loading')) {
+    event.preventDefault();
+    return false;
+  }
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    return true;
+  }
+  event.preventDefault();
+  el.classList.add('is-loading');
+  el.setAttribute('aria-busy', 'true');
+  var idle = el.querySelector('.ms-sign-in__idle');
+  var busy = el.querySelector('.ms-sign-in__busy');
+  if (idle) idle.classList.add('d-none');
+  if (busy) busy.classList.remove('d-none');
+  window.location.assign(el.href);
+  return false;
+};
+</script>
 @endpush
