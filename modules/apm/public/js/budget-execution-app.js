@@ -178,6 +178,17 @@
                     () => showDivisionCharts.value || showBudgetCodeCharts.value,
                 );
 
+                const emptyReason = computed(() => {
+                    if (!kpis.value || (kpis.value.division_count || 0) > 0) return null;
+                    if (!data.value?.sap_import) {
+                        return 'Finance has no latest SAP import for this year yet. Import a SAP dump in the Finance portal (SAP import), then refresh this page.';
+                    }
+                    if (data.value?.can_view_all) {
+                        return 'Finance returned an empty budget-execution payload (no fund centers mapped to divisions). Check fund-code → division mapping after the SAP import.';
+                    }
+                    return 'No SAP fund centers are mapped for your division / directorate scope yet.';
+                });
+
                 function syncChildFilters() {
                     filterFundCenter.value = String(filterFundCenter.value || '').trim();
                     filterFund.value = String(filterFund.value || '').trim();
@@ -418,7 +429,7 @@
                     fyLabel, scopeLabel, lastSyncedLabel,
                     showDivisionCharts, showBudgetCodeCharts, showAnyCharts,
                     financePortalUrl, expanded, drill,
-                    pieEl, colEl,
+                    pieEl, colEl, emptyReason,
                     fmtMoney, compactUsd, fmtPct, execTone,
                     onDivisionChange, onFundCenterChange, onFundChange, clearFilters, load,
                     toggleExpand, openDivisionDrill, openFundCenterExpenses,
@@ -489,6 +500,7 @@
                     <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
 
                     <template v-else-if="kpis">
+                      <v-alert v-if="emptyReason" type="warning" variant="tonal" class="mb-4">{{ emptyReason }}</v-alert>
                       <v-row class="mb-4" dense>
                         <v-col cols="12" md="4">
                           <v-card class="be-kpi be-kpi--green pa-4" rounded="0">
@@ -604,7 +616,7 @@
                         </v-table>
                       </v-card>
 
-                      <p v-if="!divisions.length" class="text-medium-emphasis">No SAP fund centers mapped for your scope yet.</p>
+                      <p v-if="!divisions.length && !emptyReason" class="text-medium-emphasis">No SAP fund centers mapped for your scope yet.</p>
                     </template>
 
                     <v-dialog v-model="drill.open" max-width="960" scrollable>
