@@ -118,6 +118,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Keep APM budget-execution dashboard hot from Finance API (org-wide snapshot).
+        $schedule->command('finance:warm-budget-execution --force')
+            ->everyFiveMinutes()
+            ->withoutOverlapping(10)
+            ->runInBackground();
+
         // Weekly briefing: times from weekly_briefing_settings; commands self-gate (minute + grace window).
         // Run synchronously so clock gates are not missed when the scheduler tick is delayed.
         $schedule->command('weekly-briefing:hod-reminders')->everyMinute()->withoutOverlapping(120);

@@ -25,6 +25,17 @@ final class FinanceBudgetExecutionClient
     }
 
     /**
+     * Org-wide fetch for background warm / snapshot (IT-admin equivalent token).
+     *
+     * @param  array<string, scalar|null>  $query
+     * @return array<string, mixed>
+     */
+    public function budgetExecutionAsSystem(array $query = []): array
+    {
+        return $this->getJson('/api/v1/budget-execution', $query, $this->mintSystemFinanceApiToken());
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function fundCenterExpenses(string $fundCenter): array
@@ -38,9 +49,9 @@ final class FinanceBudgetExecutionClient
      * @param  array<string, scalar|null>  $query
      * @return array<string, mixed>
      */
-    private function getJson(string $path, array $query = []): array
+    private function getJson(string $path, array $query = [], ?string $token = null): array
     {
-        $token = $this->mintFinanceApiToken();
+        $token ??= $this->mintFinanceApiToken();
         $url = rtrim($this->baseUrl(), '/').$path;
 
         $response = Http::withToken($token)
@@ -83,11 +94,11 @@ final class FinanceBudgetExecutionClient
         $rawPerms = $session['permissions'] ?? [];
         $permissions = array_values(array_map('strval', is_array($rawPerms) ? $rawPerms : []));
 
-        // Finance treats module permission 92 (or role 10) as org-wide budget execution.
-        if ($roleId === 10 || in_array('88', $permissions, true) || in_array('92', $permissions, true)) {
-            if (! in_array('92', $permissions, true)) {
-                $permissions[] = '92';
-            }
+        // Org-wide only for IT admin (role 10), Finance module / workflow perms, or finance officers.
+        // Do not elevate APM "view my/all division" perms (87/88) to Finance org-wide access.
+        if ($this->shouldGrantOrgWideBudgetExecution($roleId, $permissions, $staffId)
+            && ! in_array('92', $permissions, true)) {
+            $permissions[] = '92';
         }
 
         $token = 'apm_fin_'.$staffId.'_'.Str::random(40);
@@ -117,6 +128,36 @@ final class FinanceBudgetExecutionClient
         return $token;
     }
 
+    private function mintSystemFinanceApiToken(): string
+    {
+        $staffId = max(1, (int) config('services.finance_api.warm_staff_id', 1));
+        $token = 'apm_fin_warm_'.$staffId.'_'.Str::random(40);
+        $payload = [
+            'staff_id' => $staffId,
+            'name' => 'APM Finance Warm',
+            'email' => 'apm-finance-warm@africacdc.org',
+            'permissions' => ['92'],
+            'division_id' => 0,
+            'role_id' => 10,
+            'api_token' => $token,
+            'source' => 'apm_finance_budget_execution_warm',
+        ];
+
+        $ttl = max(60, (int) config('services.finance_api.token_ttl', 3600));
+        $redisPrefix = (string) config('services.finance_api.redis_prefix', 'laravel-database-');
+        $cachePrefix = (string) config('services.finance_api.cache_prefix', 'risk_register');
+        $fullKey = $redisPrefix.$cachePrefix.'risk_api_token:'.$token;
+
+        try {
+            $this->financeRedis()->setex($fullKey, $ttl, serialize($payload));
+        } catch (Throwable $e) {
+            Log::error('Failed to mint Finance warm token in Redis', ['error' => $e->getMessage()]);
+            throw new RuntimeException('Could not prepare Finance warm session (Redis unavailable).');
+        }
+
+        return $token;
+    }
+
     private function financeRedis(): PredisClient
     {
         return new PredisClient([
@@ -136,5 +177,52 @@ final class FinanceBudgetExecutionClient
         }
 
         return rtrim($base, '/');
+    }
+
+    /**
+     * @param  list<string>  $permissions
+     */
+    private function shouldGrantOrgWideBudgetExecution(int $roleId, array $permissions, int $staffId): bool
+    {
+        if ($roleId === 10) {
+            return true;
+        }
+
+        foreach (['92', '93', '124'] as $code) {
+            if (in_array($code, $permissions, true)) {
+                return true;
+            }
+        }
+
+        return $this->isFinanceOfficer($staffId);
+    }
+
+    private function isFinanceOfficer(int $staffId): bool
+    {
+        if ($staffId < 1 || ! class_exists(\App\Models\Division::class)) {
+            return false;
+        }
+
+        try {
+            if (\App\Models\Division::query()->where('finance_officer', $staffId)->exists()) {
+                return true;
+            }
+
+            $today = now()->toDateString();
+
+            return \App\Models\Division::query()
+                ->where('finance_officer_oic_id', $staffId)
+                ->where(function ($q) use ($today) {
+                    $q->whereNull('finance_officer_oic_start_date')
+                        ->orWhereDate('finance_officer_oic_start_date', '<=', $today);
+                })
+                ->where(function ($q) use ($today) {
+                    $q->whereNull('finance_officer_oic_end_date')
+                        ->orWhereDate('finance_officer_oic_end_date', '>=', $today);
+                })
+                ->exists();
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

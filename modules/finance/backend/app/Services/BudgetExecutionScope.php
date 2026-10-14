@@ -24,7 +24,8 @@ final class BudgetExecutionScope
      */
     public function resolve(array $permissions, int $roleId, int $staffId, int $sessionDivisionId): array
     {
-        if (FinancePermissions::canViewAllBudgetExecution($permissions, $roleId)) {
+        if (FinancePermissions::canViewAllBudgetExecution($permissions, $roleId)
+            || $this->isFinanceOfficer($staffId)) {
             return [
                 'mode' => 'all',
                 'can_view_all' => true,
@@ -163,8 +164,9 @@ final class BudgetExecutionScope
             $directorateIds[$dirId] = true;
         }
 
-        // Staff without org-wide finance access still see peer divisions in their directorate.
-        if ($seedDirIds === []) {
+        // Directors / directorate leads see every division under their directorate(s).
+        // Other staff keep only attached / switchable divisions (no peer expansion).
+        if (! $isDirectorateLead || $seedDirIds === []) {
             return;
         }
 
@@ -174,8 +176,43 @@ final class BudgetExecutionScope
                 $ids[$n] = true;
             }
         }
-        if (count($ids) > 1) {
-            $isDirectorateLead = true;
+    }
+
+    private function isFinanceOfficer(int $staffId): bool
+    {
+        if ($staffId < 1) {
+            return false;
         }
+
+        $schema = StaffDivisionContext::orgSchema();
+        $db = StaffDivisionContext::orgDb();
+        if (! $schema->hasTable('divisions') || ! $schema->hasColumn('divisions', 'finance_officer')) {
+            return false;
+        }
+
+        if ($db->table('divisions')->where('finance_officer', $staffId)->exists()) {
+            return true;
+        }
+
+        if (! $schema->hasColumn('divisions', 'finance_officer_oic_id')) {
+            return false;
+        }
+
+        $today = now()->toDateString();
+        $q = $db->table('divisions')->where('finance_officer_oic_id', $staffId);
+        if ($schema->hasColumn('divisions', 'finance_officer_oic_start_date')) {
+            $q->where(function ($inner) use ($today) {
+                $inner->whereNull('finance_officer_oic_start_date')
+                    ->orWhereDate('finance_officer_oic_start_date', '<=', $today);
+            });
+        }
+        if ($schema->hasColumn('divisions', 'finance_officer_oic_end_date')) {
+            $q->where(function ($inner) use ($today) {
+                $inner->whereNull('finance_officer_oic_end_date')
+                    ->orWhereDate('finance_officer_oic_end_date', '>=', $today);
+            });
+        }
+
+        return $q->exists();
     }
 }

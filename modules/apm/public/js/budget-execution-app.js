@@ -30,6 +30,28 @@
         return (ratio * 100).toFixed(1) + '%';
     }
 
+    function execTone(n) {
+        if (n == null || Number.isNaN(Number(n))) return 'muted';
+        const v = Number(n);
+        const pct = Math.abs(v) > 1 ? v : v * 100;
+        if (pct >= 90) return 'high';
+        if (pct >= 70) return 'mid';
+        return 'low';
+    }
+
+    function formatDisplayDateTime(value) {
+        if (!value) return '';
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+        return d.toLocaleString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
     function boot(mountEl, cfg) {
         if (!mountEl || !cfg || !window.Vue || !window.Vuetify) {
             if (window.ApmVuetifyPage) window.ApmVuetifyPage.destroy(MOUNT_ID);
@@ -43,13 +65,34 @@
 
         const { createApp, ref, computed, onMounted, watch, nextTick } = window.Vue;
         const { createVuetify } = window.Vuetify;
-        const vuetify = createVuetify({ theme: { defaultTheme: 'light' } });
+        const vuetify = createVuetify({
+            theme: {
+                defaultTheme: 'apmLight',
+                themes: {
+                    apmLight: {
+                        dark: false,
+                        colors: {
+                            primary: '#119a48',
+                            secondary: '#64748b',
+                            success: '#119a48',
+                            error: '#dc3545',
+                            info: '#0ea5e9',
+                            warning: '#f59e0b',
+                            surface: '#ffffff',
+                            background: '#f8fafc',
+                        },
+                    },
+                },
+            },
+        });
+        const financePortalUrl = String(cfg.financePortalUrl || '').trim();
 
         appInstance = createApp({
             setup() {
                 const loading = ref(true);
                 const error = ref(null);
                 const data = ref(null);
+                const financeSyncedAt = ref(null);
                 const filterDivisionId = ref('');
                 const filterFundCenter = ref('');
                 const filterFund = ref('');
@@ -115,8 +158,24 @@
                     return 'No division mapped';
                 });
 
+                const lastSyncedLabel = computed(() =>
+                    formatDisplayDateTime(
+                        financeSyncedAt.value
+                            || data.value?.finance_synced_at
+                            || null,
+                    ),
+                );
+
                 const showDivisionCharts = computed(
                     () => !!(data.value?.show_org_charts || data.value?.show_directorate_charts),
+                );
+
+                const showBudgetCodeCharts = computed(
+                    () => !showDivisionCharts.value && !!(data.value?.show_budget_code_charts),
+                );
+
+                const showAnyCharts = computed(
+                    () => showDivisionCharts.value || showBudgetCodeCharts.value,
                 );
 
                 function syncChildFilters() {
@@ -150,6 +209,9 @@
                             throw new Error(json.message || 'Failed to load budget execution.');
                         }
                         data.value = json.data || null;
+                        financeSyncedAt.value = json.finance_synced_at
+                            || json.data?.finance_synced_at
+                            || null;
                         if (data.value?.filter_division_id) {
                             filterDivisionId.value = String(data.value.filter_division_id);
                         }
@@ -160,14 +222,15 @@
                             filterFund.value = data.value.filter_fund;
                         }
                         syncChildFilters();
-                        await nextTick();
-                        renderCharts();
                     } catch (e) {
                         error.value = e.message || 'Failed to load';
                         data.value = null;
+                        financeSyncedAt.value = null;
                     } finally {
                         loading.value = false;
                     }
+                    await nextTick();
+                    renderCharts();
                 }
 
                 function onDivisionChange() {
@@ -240,13 +303,19 @@
                     }
                 }
 
+                function usedAmount(row) {
+                    return Number(((row.commitment || 0) + (row.actual_expenditure || 0)).toFixed(2));
+                }
+
                 function renderCharts() {
-                    if (!window.Highcharts || !kpis.value) return;
-                    if (showDivisionCharts.value && pieEl.value) {
+                    if (!window.Highcharts || !kpis.value || loading.value) return;
+                    if (!pieEl.value || !colEl.value) return;
+
+                    if (showDivisionCharts.value) {
                         const pieData = divisions.value
                             .map((d) => ({
                                 name: d.division_name,
-                                y: Number(((d.commitment || 0) + (d.actual_expenditure || 0)).toFixed(2)),
+                                y: usedAmount(d),
                             }))
                             .filter((p) => p.y > 0)
                             .sort((a, b) => b.y - a.y)
@@ -273,8 +342,7 @@
                                 },
                             },
                         });
-                    }
-                    if (showDivisionCharts.value && colEl.value) {
+
                         const top = divisions.value.slice().sort((a, b) => b.approved_budget - a.approved_budget).slice(0, 10);
                         Highcharts.chart(colEl.value, {
                             chart: { type: 'column' },
@@ -286,7 +354,51 @@
                                 { name: 'Approved', data: top.map((d) => Number(d.approved_budget.toFixed(0))), color: '#119a48' },
                                 {
                                     name: 'Used',
-                                    data: top.map((d) => Number(((d.commitment || 0) + (d.actual_expenditure || 0)).toFixed(0))),
+                                    data: top.map((d) => Number(usedAmount(d).toFixed(0))),
+                                    color: '#c3a366',
+                                },
+                            ],
+                        });
+                        return;
+                    }
+
+                    if (showBudgetCodeCharts.value) {
+                        const codes = budgetCodes.value.slice();
+                        const pieData = codes
+                            .map((c) => ({
+                                name: c.budget_code || c.fund_center,
+                                y: usedAmount(c),
+                            }))
+                            .filter((p) => p.y > 0)
+                            .sort((a, b) => b.y - a.y)
+                            .slice(0, 12);
+                        Highcharts.chart(pieEl.value, {
+                            chart: { type: 'pie' },
+                            title: { text: 'Proportion of used by fund' },
+                            credits: { enabled: false },
+                            series: [{ name: 'Used', data: pieData }],
+                            colors: ['#c3a366', '#911c39', '#119a48', '#385cad', '#0b3b5c'],
+                            plotOptions: {
+                                pie: {
+                                    allowPointSelect: true,
+                                    cursor: 'pointer',
+                                    dataLabels: { enabled: true, format: '{point.name}' },
+                                },
+                            },
+                        });
+
+                        const top = codes.slice().sort((a, b) => b.approved_budget - a.approved_budget).slice(0, 10);
+                        Highcharts.chart(colEl.value, {
+                            chart: { type: 'column' },
+                            title: { text: 'Fund usage' },
+                            credits: { enabled: false },
+                            xAxis: { categories: top.map((c) => c.budget_code || c.fund_center) },
+                            yAxis: { title: { text: 'Amount (USD)' } },
+                            series: [
+                                { name: 'Approved', data: top.map((c) => Number(Number(c.approved_budget || 0).toFixed(0))), color: '#119a48' },
+                                {
+                                    name: 'Used',
+                                    data: top.map((c) => Number(usedAmount(c).toFixed(0))),
                                     color: '#c3a366',
                                 },
                             ],
@@ -295,15 +407,19 @@
                 }
 
                 onMounted(load);
-                watch([showDivisionCharts, divisions], () => nextTick(renderCharts));
+                watch([showAnyCharts, divisions, budgetCodes, loading], () => {
+                    if (!loading.value) nextTick(renderCharts);
+                });
 
                 return {
                     loading, error, data, kpis, divisions, budgetCodes,
                     filterDivisionId, filterFundCenter, filterFund,
                     divisionItems, fundCenterItems, fundItems,
-                    fyLabel, scopeLabel, showDivisionCharts, expanded, drill,
+                    fyLabel, scopeLabel, lastSyncedLabel,
+                    showDivisionCharts, showBudgetCodeCharts, showAnyCharts,
+                    financePortalUrl, expanded, drill,
                     pieEl, colEl,
-                    fmtMoney, compactUsd, fmtPct,
+                    fmtMoney, compactUsd, fmtPct, execTone,
                     onDivisionChange, onFundCenterChange, onFundChange, clearFilters, load,
                     toggleExpand, openDivisionDrill, openFundCenterExpenses,
                 };
@@ -312,19 +428,38 @@
               <div class="be-vuetify-app">
                 <v-app>
                   <v-main>
-                    <v-card class="be-hero mb-4 pa-4" rounded="0" elevation="0">
+                    <v-card class="be-hero mb-4 pa-4" rounded="0" elevation="1">
                       <div class="d-flex flex-wrap justify-space-between align-start ga-3">
                         <div>
-                          <h2 class="text-h5 font-weight-bold mb-1">Budget execution</h2>
-                          <div class="text-body-2 opacity-90">
+                          <h2 class="text-h5 font-weight-bold mb-1">
+                            <v-icon icon="mdi-chart-box-outline" color="primary" class="me-1"></v-icon>
+                            Budget execution
+                          </h2>
+                          <div class="text-body-2">
                             Intramural SAP budget execution (Finance API)
-                            <v-chip v-if="fyLabel" size="small" class="ml-2" color="white" variant="flat">{{ fyLabel }}</v-chip>
-                            <v-chip v-if="scopeLabel" size="small" class="ml-1" variant="tonal">{{ scopeLabel }}</v-chip>
+                            <v-chip v-if="fyLabel" size="small" class="ml-2" color="primary" variant="tonal">{{ fyLabel }}</v-chip>
+                            <v-chip v-if="scopeLabel" size="small" class="ml-1" color="secondary" variant="tonal">{{ scopeLabel }}</v-chip>
                           </div>
+                          <p v-if="lastSyncedLabel" class="be-asat">
+                            Last synced with Finance <strong>{{ lastSyncedLabel }}</strong>
+                          </p>
                         </div>
-                        <v-btn color="white" variant="flat" :disabled="loading" @click="load">
-                          <v-icon start>mdi-refresh</v-icon> Refresh
-                        </v-btn>
+                        <div class="d-flex flex-wrap align-center ga-2">
+                          <v-btn
+                            v-if="financePortalUrl"
+                            color="primary"
+                            variant="outlined"
+                            :href="financePortalUrl"
+                            target="_blank"
+                            rel="noopener"
+                          >
+                            <v-icon start>mdi-open-in-new</v-icon>
+                            Finance portal
+                          </v-btn>
+                          <v-btn color="primary" variant="flat" :disabled="loading" @click="load">
+                            <v-icon start>mdi-refresh</v-icon> Refresh
+                          </v-btn>
+                        </div>
                       </div>
                     </v-card>
 
@@ -356,56 +491,96 @@
                     <template v-else-if="kpis">
                       <v-row class="mb-4" dense>
                         <v-col cols="12" md="4">
-                          <v-card class="be-kpi pa-4" rounded="0">
-                            <div class="text-caption text-medium-emphasis">Approved budget</div>
-                            <strong>{{ compactUsd(kpis.approved_budget) }}</strong>
-                            <div class="text-caption text-medium-emphasis">{{ fmtMoney(kpis.approved_budget) }}</div>
-                          </v-card>
-                        </v-col>
-                        <v-col cols="12" md="4">
-                          <v-card class="be-kpi pa-4" rounded="0">
-                            <div class="text-caption text-medium-emphasis">Used budget</div>
-                            <strong>{{ compactUsd(kpis.used_budget) }}</strong>
-                            <div class="text-caption text-medium-emphasis">{{ fmtMoney(kpis.used_budget) }}</div>
-                          </v-card>
-                        </v-col>
-                        <v-col cols="12" md="4">
-                          <v-card class="be-kpi pa-4" rounded="0">
-                            <div class="text-caption text-medium-emphasis">Execution rate</div>
-                            <strong>{{ fmtPct(kpis.execution_rate) }}</strong>
-                            <div class="text-caption text-medium-emphasis">
-                              {{ kpis.division_count }} division(s) · {{ kpis.fund_center_count }} fund centers
+                          <v-card class="be-kpi be-kpi--green pa-4" rounded="0">
+                            <div class="be-kpi-body">
+                              <span>Approved budget</span>
+                              <strong>{{ compactUsd(kpis.approved_budget) }}</strong>
+                              <small>{{ fmtMoney(kpis.approved_budget) }}</small>
                             </div>
+                            <span class="be-kpi-icon" aria-hidden="true"><i class="fa-solid fa-cart-shopping"></i></span>
+                          </v-card>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-card class="be-kpi be-kpi--gold pa-4" rounded="0">
+                            <div class="be-kpi-body">
+                              <span>Used budget</span>
+                              <strong>{{ compactUsd(kpis.used_budget) }}</strong>
+                              <small>{{ fmtMoney(kpis.used_budget) }}</small>
+                            </div>
+                            <span class="be-kpi-icon" aria-hidden="true"><i class="fa-solid fa-wallet"></i></span>
+                          </v-card>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-card class="be-kpi be-kpi--maroon pa-4" rounded="0">
+                            <div class="be-kpi-body">
+                              <span>Execution rate</span>
+                              <strong>{{ fmtPct(kpis.execution_rate) }}</strong>
+                              <small>
+                                {{ kpis.division_count }} division(s) · {{ kpis.fund_center_count }} fund centers
+                              </small>
+                            </div>
+                            <span class="be-kpi-icon" aria-hidden="true"><i class="fa-solid fa-chart-column"></i></span>
                           </v-card>
                         </v-col>
                       </v-row>
 
-                      <v-row v-if="showDivisionCharts" class="mb-4" dense>
+                      <v-row v-if="showAnyCharts" class="mb-4" dense>
                         <v-col cols="12" md="6"><v-card rounded="0" class="pa-2"><div ref="pieEl" class="be-chart"></div></v-card></v-col>
                         <v-col cols="12" md="6"><v-card rounded="0" class="pa-2"><div ref="colEl" class="be-chart"></div></v-card></v-col>
                       </v-row>
 
-                      <v-card v-for="div in divisions" :key="div.division_id" class="mb-3 pa-4" rounded="0">
+                      <v-card v-for="div in divisions" :key="div.division_id" class="be-div-card mb-3 pa-4" rounded="0">
                         <div class="d-flex justify-space-between align-start ga-3 mb-3">
                           <div>
                             <h3 class="text-subtitle-1 font-weight-bold mb-0">
-                              <v-chip size="small" color="primary" class="mr-2">{{ div.division_short_name }}</v-chip>
+                              <v-chip size="small" color="primary" variant="flat" class="mr-2">{{ div.division_short_name }}</v-chip>
                               {{ div.division_name }}
                             </h3>
                             <div class="text-caption text-medium-emphasis">{{ div.fund_center_count }} fund center(s)</div>
                           </div>
-                          <v-btn size="small" variant="outlined" @click="toggleExpand(div.division_id)">
+                          <v-btn size="small" color="primary" variant="outlined" @click="toggleExpand(div.division_id)">
+                            <v-icon start size="16">{{ expanded[div.division_id] ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
                             {{ expanded[div.division_id] ? 'Hide funds' : 'Show funds' }}
                           </v-btn>
                         </div>
-                        <v-row dense class="be-row-link" @click="openDivisionDrill(div)">
-                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Released</div><div class="font-weight-bold">{{ fmtMoney(div.approved_budget) }}</div></v-col>
-                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Commitment</div><div class="font-weight-bold">{{ fmtMoney(div.commitment) }}</div></v-col>
-                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Actual</div><div class="font-weight-bold">{{ fmtMoney(div.actual_expenditure) }}</div></v-col>
-                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Balance</div><div class="font-weight-bold">{{ fmtMoney(div.budget_balance) }}</div></v-col>
-                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Exec %</div><div class="font-weight-bold">{{ fmtPct(div.execution_rate) }}</div></v-col>
-                        </v-row>
-                        <v-table v-if="expanded[div.division_id]" density="compact" class="mt-3">
+                        <div class="be-metrics be-row-link" @click="openDivisionDrill(div)">
+                          <article class="be-metric be-metric--green">
+                            <span class="be-metric-icon" aria-hidden="true"><i class="fa-solid fa-hand-holding-dollar"></i></span>
+                            <div>
+                              <span>Released</span>
+                              <strong>{{ fmtMoney(div.approved_budget) }}</strong>
+                            </div>
+                          </article>
+                          <article class="be-metric be-metric--gold">
+                            <span class="be-metric-icon" aria-hidden="true"><i class="fa-solid fa-file-signature"></i></span>
+                            <div>
+                              <span>Commitment</span>
+                              <strong>{{ fmtMoney(div.commitment) }}</strong>
+                            </div>
+                          </article>
+                          <article class="be-metric be-metric--blue">
+                            <span class="be-metric-icon" aria-hidden="true"><i class="fa-solid fa-receipt"></i></span>
+                            <div>
+                              <span>Actual</span>
+                              <strong>{{ fmtMoney(div.actual_expenditure) }}</strong>
+                            </div>
+                          </article>
+                          <article class="be-metric be-metric--slate">
+                            <span class="be-metric-icon" aria-hidden="true"><i class="fa-solid fa-scale-balanced"></i></span>
+                            <div>
+                              <span>Balance</span>
+                              <strong>{{ fmtMoney(div.budget_balance) }}</strong>
+                            </div>
+                          </article>
+                          <article class="be-metric" :class="'be-metric--exec-' + execTone(div.execution_rate)">
+                            <span class="be-metric-icon" aria-hidden="true"><i class="fa-solid fa-gauge-high"></i></span>
+                            <div>
+                              <span>Exec %</span>
+                              <strong>{{ fmtPct(div.execution_rate) }}</strong>
+                            </div>
+                          </article>
+                        </div>
+                        <v-table v-if="expanded[div.division_id]" density="compact" class="mt-3 be-funds-table">
                           <thead>
                             <tr>
                               <th>Fund center</th><th>Fund</th><th>Released</th><th>Commitment</th><th>Actual</th><th>Balance</th><th>Exec %</th>
@@ -419,7 +594,11 @@
                               <td>{{ fmtMoney(fc.commitment) }}</td>
                               <td>{{ fmtMoney(fc.actual_expenditure) }}</td>
                               <td>{{ fmtMoney(fc.budget_balance) }}</td>
-                              <td>{{ fmtPct(fc.execution_rate) }}</td>
+                              <td>
+                                <span class="be-exec-pill" :class="'be-exec-pill--' + execTone(fc.execution_rate)">
+                                  {{ fmtPct(fc.execution_rate) }}
+                                </span>
+                              </td>
                             </tr>
                           </tbody>
                         </v-table>

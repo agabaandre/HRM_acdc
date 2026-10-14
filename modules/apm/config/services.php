@@ -105,8 +105,14 @@ return [
     */
     'finance_api' => [
         'base_url' => rtrim((string) env('FINANCE_API_BASE_URL', 'http://localhost/staff/finance/backend'), '/'),
+        'spa_url' => rtrim((string) env(
+            'FINANCE_SPA_URL',
+            rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/').'/finance'
+        ), '/'),
         'timeout' => (int) env('FINANCE_API_TIMEOUT', 60),
         'token_ttl' => (int) env('FINANCE_API_TOKEN_TTL', 3600),
+        'snapshot_ttl' => (int) env('FINANCE_BUDGET_SNAPSHOT_TTL', 900),
+        'warm_staff_id' => (int) env('FINANCE_WARM_STAFF_ID', 1),
         'cache_prefix' => (string) env('FINANCE_CACHE_PREFIX', 'risk_register'),
         'redis_prefix' => (string) env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
     ],

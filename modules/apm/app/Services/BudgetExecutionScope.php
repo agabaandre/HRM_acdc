@@ -28,7 +28,20 @@ final class BudgetExecutionScope
         $role = (int) (user_session('role') ?? user_session('user_role') ?? 0);
         $permissions = user_session('permissions', []) ?? [];
 
-        if ($role === 10 || in_array(88, $permissions, true) || approver_timing_report_can_view_all()) {
+        $permStrings = array_map('strval', is_array($permissions) ? $permissions : []);
+        $isFinanceOfficer = $staffId
+            && class_exists(\App\Models\Division::class)
+            && (
+                \App\Models\Division::query()->where('finance_officer', $staffId)->exists()
+                || \App\Models\Division::query()->where('finance_officer_oic_id', $staffId)->exists()
+            );
+
+        // Org-wide: IT admin, Finance module/workflow perms (92/93/124), or finance officers.
+        if ($role === 10
+            || in_array('92', $permStrings, true)
+            || in_array('93', $permStrings, true)
+            || in_array('124', $permStrings, true)
+            || $isFinanceOfficer) {
             return [
                 'access' => self::ACCESS_ALL,
                 'allowed_division_ids' => null,
@@ -49,10 +62,16 @@ final class BudgetExecutionScope
             ];
         }
 
+        $attached = class_exists(\App\Support\StaffDivisionContext::class)
+            ? \App\Support\StaffDivisionContext::listDivisionIds($staffId)
+            : ($sessionDivisionId > 0 ? [$sessionDivisionId] : []);
+
         return [
-            'access' => self::ACCESS_DIVISION,
-            'allowed_division_ids' => $sessionDivisionId > 0 ? [$sessionDivisionId] : [],
-            'default_division_id' => $sessionDivisionId > 0 ? $sessionDivisionId : null,
+            'access' => count($attached) > 1 ? self::ACCESS_DIRECTORATE : self::ACCESS_DIVISION,
+            'allowed_division_ids' => $attached,
+            'default_division_id' => $sessionDivisionId > 0 && in_array($sessionDivisionId, $attached, true)
+                ? $sessionDivisionId
+                : ($attached[0] ?? null),
             'is_director' => false,
         ];
     }
