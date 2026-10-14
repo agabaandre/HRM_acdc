@@ -641,14 +641,8 @@ onUnmounted(() => {
           </span>
           <span v-if="data" class="be__chip be__chip--muted">{{ scopeLabel }}</span>
         </p>
-        <p v-if="dataAsAtLabel || lastUpdatedLabel" class="be__asat">
-          <template v-if="dataAsAtLabel">
-            Budget execution as at <strong>{{ dataAsAtLabel }}</strong>
-          </template>
-          <template v-if="dataAsAtLabel && lastUpdatedLabel"> · </template>
-          <template v-if="lastUpdatedLabel">
-            Last updated <strong>{{ lastUpdatedLabel }}</strong>
-          </template>
+        <p v-if="lastUpdatedLabel" class="be__asat">
+          Last updated <strong>{{ lastUpdatedLabel }}</strong>
           <template v-if="data?.sap_import?.original_filename">
             <span class="be__asat-file">({{ data.sap_import.original_filename }})</span>
           </template>
