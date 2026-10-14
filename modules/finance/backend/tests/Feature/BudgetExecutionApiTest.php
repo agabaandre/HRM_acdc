@@ -91,6 +91,18 @@ class BudgetExecutionApiTest extends TestCase
         $filtered->assertOk();
         $this->assertCount(1, $filtered->json('data.divisions'));
         $filtered->assertJsonPath('data.divisions.0.division_id', 6);
+
+        $byCenter = $this->withToken($token)->getJson('/api/v1/budget-execution?fund_center=CDC1');
+        $byCenter->assertOk();
+        $this->assertCount(1, $byCenter->json('data.divisions'));
+        $byCenter->assertJsonPath('data.kpis.fund_center_count', 1);
+        $byCenter->assertJsonPath('data.kpis.approved_budget', 1000);
+        $this->assertNotEmpty($byCenter->json('data.filter_catalog.fund_centers'));
+
+        $byFund = $this->withToken($token)->getJson('/api/v1/budget-execution?fund=PB-WDB12');
+        $byFund->assertOk();
+        $this->assertCount(1, $byFund->json('data.divisions'));
+        $byFund->assertJsonPath('data.divisions.0.fund_centers.0.fund_center', 'CDC1');
     }
 
     private function seedSap(): void
@@ -114,9 +126,12 @@ class BudgetExecutionApiTest extends TestCase
                 'import_id' => $importId,
                 'budget_year' => $year,
                 'fund_center' => 'CDC1',
+                'budget_code' => 'PB-WDB12',
                 'total_released_budget' => 1000,
                 'released_budget_balance' => 250,
-                'payload' => json_encode(['commitment' => 100, 'actual expenditure' => 650]),
+                'commitment' => 100,
+                'actual_expenditure' => 650,
+                'payload' => json_encode(['fund' => 'PB-WDB12', 'commitment' => 100, 'actual expenditure' => 650]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -124,9 +139,12 @@ class BudgetExecutionApiTest extends TestCase
                 'import_id' => $importId,
                 'budget_year' => $year,
                 'fund_center' => 'CDC2',
+                'budget_code' => 'PB-KOR01',
                 'total_released_budget' => 500,
                 'released_budget_balance' => 100,
-                'payload' => json_encode(['commitment' => 50, 'actual expenditure' => 350]),
+                'commitment' => 50,
+                'actual_expenditure' => 350,
+                'payload' => json_encode(['fund' => 'PB-KOR01', 'commitment' => 50, 'actual expenditure' => 350]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -176,9 +194,25 @@ class BudgetExecutionApiTest extends TestCase
             $table->unsignedBigInteger('import_id');
             $table->unsignedSmallInteger('budget_year');
             $table->string('fund_center', 64);
+            $table->string('budget_code', 128)->nullable();
+            $table->string('fund_center_text', 255)->nullable();
             $table->decimal('total_released_budget', 18, 2)->default(0);
             $table->decimal('released_budget_balance', 18, 2)->default(0);
+            $table->decimal('commitment', 18, 2)->default(0);
+            $table->decimal('actual_expenditure', 18, 2)->default(0);
             $table->json('payload')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('fin_sap_rows', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('import_id');
+            $table->unsignedSmallInteger('budget_year');
+            $table->string('fund_center', 64)->nullable();
+            $table->string('budget_code', 64)->nullable();
+            $table->string('gl_account', 64)->nullable();
+            $table->boolean('is_total_row')->default(false);
+            $table->boolean('is_expense_row')->default(false);
+            $table->json('payload');
             $table->timestamps();
         });
     }

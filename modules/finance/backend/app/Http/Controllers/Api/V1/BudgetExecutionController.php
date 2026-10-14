@@ -40,6 +40,9 @@ class BudgetExecutionController extends Controller
         $allowedDivisionIds = $scope['division_ids'];
 
         $filterDivisionId = (int) $request->query('division_id', 0);
+        $filterFundCenter = strtoupper(preg_replace('/\s+/', '', trim((string) $request->query('fund_center', ''))) ?? '');
+        $filterFund = strtoupper(trim((string) $request->query('fund', '')));
+
         if ($filterDivisionId > 0) {
             if (! $viewAll && ! in_array($filterDivisionId, $allowedDivisionIds, true)) {
                 return response()->json([
@@ -56,28 +59,56 @@ class BudgetExecutionController extends Controller
             'cache' => true,
         ]);
 
-        $divisions = [];
         if (! $viewAll && $allowedDivisionIds === []) {
             $raw['by_division'] = [];
         }
+
+        $scopedDivisions = [];
         foreach ($raw['by_division'] as $div) {
             if (! is_array($div)) {
                 continue;
             }
             $divId = (int) ($div['division_id'] ?? 0);
-            if ($divId <= 0) {
-                continue;
-            }
-            if ((int) ($div['fund_center_count'] ?? 0) < 1) {
+            if ($divId <= 0 || (int) ($div['fund_center_count'] ?? 0) < 1) {
                 continue;
             }
             if (! $viewAll && ! in_array($divId, $allowedDivisionIds, true)) {
                 continue;
             }
+            $scopedDivisions[] = $div;
+        }
+
+        $filterCatalog = $this->buildFilterCatalog($scopedDivisions);
+
+        $divisions = [];
+        foreach ($scopedDivisions as $div) {
+            $divId = (int) ($div['division_id'] ?? 0);
             if ($filterDivisionId > 0 && $divId !== $filterDivisionId) {
                 continue;
             }
-            $divisions[] = $div;
+
+            $centers = [];
+            foreach ($div['fund_centers'] ?? [] as $fc) {
+                if (! is_array($fc)) {
+                    continue;
+                }
+                $code = strtoupper(preg_replace('/\s+/', '', trim((string) ($fc['fund_center'] ?? ''))) ?? '');
+                if ($code === '') {
+                    continue;
+                }
+                if ($filterFundCenter !== '' && $code !== $filterFundCenter) {
+                    continue;
+                }
+                if ($filterFund !== '' && ! $this->fundMatches($fc['budget_code'] ?? null, $filterFund)) {
+                    continue;
+                }
+                $centers[] = $fc;
+            }
+            if ($centers === []) {
+                continue;
+            }
+
+            $divisions[] = $this->rollupDivision($div, $centers);
         }
 
         $approved = 0.0;
@@ -86,6 +117,7 @@ class BudgetExecutionController extends Controller
         $actual = 0.0;
         $fundCenters = 0;
         $budgetCodes = [];
+        $trendFundCenters = [];
         foreach ($divisions as $div) {
             $approved += (float) ($div['approved_budget'] ?? 0);
             $balance += (float) ($div['budget_balance'] ?? 0);
@@ -96,8 +128,12 @@ class BudgetExecutionController extends Controller
                 if (! is_array($fc)) {
                     continue;
                 }
+                $code = (string) ($fc['fund_center'] ?? '');
+                if ($code !== '') {
+                    $trendFundCenters[] = $code;
+                }
                 $budgetCodes[] = [
-                    'fund_center' => (string) ($fc['fund_center'] ?? ''),
+                    'fund_center' => $code,
                     'budget_code' => $fc['budget_code'] ?? null,
                     'division_id' => (int) ($fc['division_id'] ?? $div['division_id'] ?? 0),
                     'division_name' => (string) ($fc['division_name'] ?? $div['division_name'] ?? ''),
@@ -120,39 +156,16 @@ class BudgetExecutionController extends Controller
             $used = max(0.0, $approved - $balance);
         }
 
-        $filterOptions = [];
-        $sourceForFilters = $viewAll ? ($raw['by_division'] ?? []) : $divisions;
-        foreach ($sourceForFilters as $div) {
-            if (! is_array($div) || (int) ($div['division_id'] ?? 0) <= 0) {
-                continue;
-            }
-            if ((int) ($div['fund_center_count'] ?? 0) < 1) {
-                continue;
-            }
-            $filterOptions[] = [
-                'id' => (int) $div['division_id'],
-                'name' => (string) ($div['division_name'] ?? ''),
-                'short_name' => (string) ($div['division_short_name'] ?? ''),
-            ];
-        }
+        $showOrgCharts = $viewAll && $filterDivisionId < 1 && $filterFundCenter === '' && $filterFund === '';
+        $showDirectorateCharts = ! $viewAll && (bool) $scope['show_division_charts']
+            && $filterFundCenter === '' && $filterFund === '';
+        $showBudgetCodeCharts = ! $viewAll || $filterDivisionId > 0 || $filterFundCenter !== '' || $filterFund !== '';
 
-        $showOrgCharts = $viewAll;
-        $showDirectorateCharts = ! $viewAll && (bool) $scope['show_division_charts'];
-
-        $fundCenterFilter = null;
-        if (! $viewAll || $filterDivisionId > 0) {
-            $fundCenterFilter = [];
-            foreach ($divisions as $div) {
-                foreach ($div['fund_centers'] ?? [] as $fc) {
-                    if (! is_array($fc)) {
-                        continue;
-                    }
-                    $code = trim((string) ($fc['fund_center'] ?? ''));
-                    if ($code !== '') {
-                        $fundCenterFilter[] = $code;
-                    }
-                }
-            }
+        $fundCenterFilter = $trendFundCenters;
+        if ($fundCenterFilter === [] && ($filterDivisionId > 0 || $filterFundCenter !== '' || $filterFund !== '')) {
+            $fundCenterFilter = ['__none__'];
+        } elseif ($viewAll && $filterDivisionId < 1 && $filterFundCenter === '' && $filterFund === '') {
+            $fundCenterFilter = null;
         }
 
         $trendPayload = $this->trends->trends($year, $fundCenterFilter);
@@ -167,11 +180,14 @@ class BudgetExecutionController extends Controller
                 'can_view_all' => $viewAll,
                 'show_org_charts' => $showOrgCharts,
                 'show_directorate_charts' => $showDirectorateCharts,
-                'show_budget_code_charts' => ! $viewAll,
+                'show_budget_code_charts' => $showBudgetCodeCharts,
                 'allowed_division_ids' => $allowedDivisionIds,
                 'directorate_ids' => $scope['directorate_ids'],
                 'filter_division_id' => $filterDivisionId > 0 ? $filterDivisionId : null,
-                'filter_options' => $filterOptions,
+                'filter_fund_center' => $filterFundCenter !== '' ? $filterFundCenter : null,
+                'filter_fund' => $filterFund !== '' ? $filterFund : null,
+                'filter_options' => $filterCatalog['divisions'],
+                'filter_catalog' => $filterCatalog,
                 'kpis' => [
                     'approved_budget' => $approved,
                     'used_budget' => $used,
@@ -197,6 +213,145 @@ class BudgetExecutionController extends Controller
     }
 
     /**
+     * @param  list<array<string, mixed>>  $divisions
+     * @return array{
+     *   divisions: list<array{id: int, name: string, short_name: string}>,
+     *   fund_centers: list<array{code: string, division_id: int, funds: list<string>}>,
+     *   funds: list<array{code: string, fund_centers: list<string>, division_ids: list<int>}>
+     * }
+     */
+    private function buildFilterCatalog(array $divisions): array
+    {
+        $divOpts = [];
+        $centers = [];
+        /** @var array<string, array{code: string, fund_centers: array<string, true>, division_ids: array<int, true>}> */
+        $funds = [];
+
+        foreach ($divisions as $div) {
+            $divId = (int) ($div['division_id'] ?? 0);
+            if ($divId <= 0) {
+                continue;
+            }
+            $divOpts[] = [
+                'id' => $divId,
+                'name' => (string) ($div['division_name'] ?? ''),
+                'short_name' => (string) ($div['division_short_name'] ?? ''),
+            ];
+            foreach ($div['fund_centers'] ?? [] as $fc) {
+                if (! is_array($fc)) {
+                    continue;
+                }
+                $code = strtoupper(preg_replace('/\s+/', '', trim((string) ($fc['fund_center'] ?? ''))) ?? '');
+                if ($code === '') {
+                    continue;
+                }
+                $fundList = $this->splitFunds($fc['budget_code'] ?? null);
+                $centers[$code] = [
+                    'code' => $code,
+                    'division_id' => $divId,
+                    'funds' => $fundList,
+                ];
+                foreach ($fundList as $fund) {
+                    if (! isset($funds[$fund])) {
+                        $funds[$fund] = [
+                            'code' => $fund,
+                            'fund_centers' => [],
+                            'division_ids' => [],
+                        ];
+                    }
+                    $funds[$fund]['fund_centers'][$code] = true;
+                    $funds[$fund]['division_ids'][$divId] = true;
+                }
+            }
+        }
+
+        usort($divOpts, static fn (array $a, array $b): int => strcasecmp($a['short_name'].$a['name'], $b['short_name'].$b['name']));
+        $centerList = array_values($centers);
+        usort($centerList, static fn (array $a, array $b): int => strcasecmp($a['code'], $b['code']));
+
+        $fundList = [];
+        foreach ($funds as $fund) {
+            $fcCodes = array_keys($fund['fund_centers']);
+            sort($fcCodes);
+            $divIds = array_map('intval', array_keys($fund['division_ids']));
+            sort($divIds);
+            $fundList[] = [
+                'code' => $fund['code'],
+                'fund_centers' => $fcCodes,
+                'division_ids' => $divIds,
+            ];
+        }
+        usort($fundList, static fn (array $a, array $b): int => strcasecmp($a['code'], $b['code']));
+
+        return [
+            'divisions' => $divOpts,
+            'fund_centers' => $centerList,
+            'funds' => $fundList,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $div
+     * @param  list<array<string, mixed>>  $centers
+     * @return array<string, mixed>
+     */
+    private function rollupDivision(array $div, array $centers): array
+    {
+        $approved = 0.0;
+        $balance = 0.0;
+        $commitment = 0.0;
+        $actual = 0.0;
+        $main = 0.0;
+        foreach ($centers as $fc) {
+            $approved += (float) ($fc['approved_budget'] ?? 0);
+            $balance += (float) ($fc['budget_balance'] ?? 0);
+            $commitment += (float) ($fc['commitment'] ?? 0);
+            $actual += (float) ($fc['actual_expenditure'] ?? 0);
+            $main += (float) ($fc['main_budget'] ?? $fc['approved_budget'] ?? 0);
+        }
+
+        $div['fund_centers'] = $centers;
+        $div['fund_center_count'] = count($centers);
+        $div['approved_budget'] = $approved;
+        $div['budget_balance'] = $balance;
+        $div['commitment'] = $commitment;
+        $div['actual_expenditure'] = $actual;
+        $div['main_budget'] = $main;
+        $div['execution_rate'] = $approved > 0 ? (($approved - $balance) / $approved) : null;
+        $div['cy_expenditure'] = $commitment + $actual;
+
+        return $div;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function splitFunds(mixed $budgetCode): array
+    {
+        $parts = preg_split('/\s*,\s*/', trim((string) $budgetCode)) ?: [];
+        $out = [];
+        foreach ($parts as $part) {
+            $code = strtoupper(trim((string) $part));
+            if ($code !== '') {
+                $out[] = $code;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    private function fundMatches(mixed $budgetCode, string $selectedFund): bool
+    {
+        foreach ($this->splitFunds($budgetCode) as $fund) {
+            if ($fund === $selectedFund) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return array{data_as_at: string|null, last_updated_at: string|null, sap_import: array<string, mixed>|null}
      */
     private function sapImportMeta(mixed $import): array
@@ -212,7 +367,6 @@ class BudgetExecutionController extends Controller
         $created = isset($row['created_at']) ? (string) $row['created_at'] : null;
         $updated = isset($row['updated_at']) ? (string) $row['updated_at'] : $created;
         $periodYm = isset($row['period_ym']) ? trim((string) $row['period_ym']) : '';
-        // Prefer calendar last day of the reporting month when period is set; else upload timestamp.
         $dataAsAt = null;
         if ($periodYm !== '' && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodYm)) {
             $ts = strtotime($periodYm.'-01');

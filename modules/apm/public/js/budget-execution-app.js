@@ -1,5 +1,5 @@
 /**
- * Budget execution dashboard — Vue 3 + Vuetify 3
+ * Budget Execution — Finance SAP API (proxied + Redis-cached by APM)
  */
 (function () {
     'use strict';
@@ -7,38 +7,32 @@
     const MOUNT_ID = 'budget-execution-app';
     let appInstance = null;
 
-    const TYPE_LABELS = {
-        matrix_activity: 'Matrix activity',
-        single_memo: 'Single memo',
-        special_memo: 'Special memo',
-        non_travel_memo: 'Non-travel',
-    };
-
     function fmtMoney(n) {
-        return '$' + (parseFloat(n) || 0).toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            maximumFractionDigits: 0,
+        }).format(Number(n || 0));
+    }
+
+    function compactUsd(n) {
+        const v = Number(n || 0);
+        const abs = Math.abs(v);
+        if (abs >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+        if (abs >= 1_000) return (v / 1_000).toFixed(2) + 'K';
+        return v.toFixed(0);
     }
 
     function fmtPct(n) {
-        return (parseFloat(n) || 0).toFixed(1) + '%';
+        if (n == null || Number.isNaN(Number(n))) return '—';
+        const v = Number(n);
+        const ratio = Math.abs(v) > 1 ? v / 100 : v;
+        return (ratio * 100).toFixed(1) + '%';
     }
 
-    function pctColor(n) {
-        const v = parseFloat(n) || 0;
-        if (v >= 99.9) return 'success';
-        if (v >= 50) return 'warning';
-        return 'error';
-    }
-
-    function typeLabel(t) {
-        return TYPE_LABELS[t] || t || '—';
-    }
-
-    function bootBudgetExecution(mountEl, cfg) {
-        if (!mountEl || !cfg) {
-            window.ApmVuetifyPage.destroy(MOUNT_ID);
+    function boot(mountEl, cfg) {
+        if (!mountEl || !cfg || !window.Vue || !window.Vuetify) {
+            if (window.ApmVuetifyPage) window.ApmVuetifyPage.destroy(MOUNT_ID);
             appInstance = null;
             return;
         }
@@ -47,500 +41,451 @@
         appInstance = null;
         mountEl.innerHTML = '';
 
-        const { createApp, ref, computed, onMounted } = Vue;
-        const { createVuetify } = Vuetify;
-
-        const vuetify = createVuetify({
-            theme: {
-                defaultTheme: 'apmLight',
-                themes: {
-                    apmLight: {
-                        dark: false,
-                        colors: {
-                            primary: '#119a48',
-                            secondary: '#64748b',
-                            success: '#119a48',
-                            error: '#dc2626',
-                            info: '#2563eb',
-                            warning: '#d97706',
-                            surface: '#ffffff',
-                            background: '#f8fafc',
-                        },
-                    },
-                },
-            },
-            defaults: {
-                VCard: { rounded: 'lg', elevation: 2 },
-                VBtn: { rounded: 'lg' },
-                VSelect: { variant: 'outlined', density: 'comfortable' },
-            },
-        });
+        const { createApp, ref, computed, onMounted, watch, nextTick } = window.Vue;
+        const { createVuetify } = window.Vuetify;
+        const vuetify = createVuetify({ theme: { defaultTheme: 'light' } });
 
         appInstance = createApp({
             setup() {
-                const filters = ref({
-                    period_mode: 'quarterly',
-                    year: cfg.currentYear,
-                    quarter: cfg.currentQuarter,
-                    division_id: cfg.canViewAllDivisions
-                        ? ''
-                        : String(cfg.defaultDivisionId || ''),
+                const loading = ref(true);
+                const error = ref(null);
+                const data = ref(null);
+                const filterDivisionId = ref('');
+                const filterFundCenter = ref('');
+                const filterFund = ref('');
+                const expanded = ref({});
+                const drill = ref({ open: false, title: '', mode: 'centers', rows: [], loading: false });
+                const pieEl = ref(null);
+                const colEl = ref(null);
+
+                const kpis = computed(() => data.value?.kpis || null);
+                const divisions = computed(() => data.value?.divisions || []);
+                const budgetCodes = computed(() => data.value?.budget_codes || []);
+                const catalog = computed(() => data.value?.filter_catalog || {
+                    divisions: data.value?.filter_options || [],
+                    fund_centers: [],
+                    funds: [],
                 });
-
-                const page = ref(1);
-                const loading = ref(false);
-                const error = ref('');
-                const dashboard = ref(null);
-                const snackbar = ref({ show: false, text: '', color: 'success' });
-
-                const periodModeItems = [
-                    { title: 'Quarterly', value: 'quarterly' },
-                    { title: 'Annual (full year)', value: 'annual' },
-                ];
-
-                const yearItems = (cfg.years || []).map((y) => ({ title: String(y), value: y }));
-                const quarterItems = (cfg.quarters || []).map((q) => ({ title: q, value: q }));
 
                 const divisionItems = computed(() => {
-                    const list = [{ title: 'All divisions', value: '' }];
-                    (cfg.divisions || []).forEach((d) => list.push({ title: d.name, value: String(d.id) }));
-                    return list;
+                    const opts = catalog.value.divisions || [];
+                    return [
+                        { title: 'All divisions', value: '' },
+                        ...opts.map((o) => ({
+                            title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
+                            value: String(o.id),
+                        })),
+                    ];
                 });
 
-                const scopeMessage = computed(() => {
-                    if (cfg.scopeAccess === 'all') {
-                        return 'Viewing all divisions — 10 divisions per page. Use filters to narrow results.';
+                const fundCenterItems = computed(() => {
+                    const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value);
+                    const centers = (catalog.value.fund_centers || []).filter(
+                        (fc) => divId == null || fc.division_id === divId,
+                    );
+                    return [
+                        { title: 'All fund centers', value: '' },
+                        ...centers.map((fc) => ({ title: fc.code, value: fc.code })),
+                    ];
+                });
+
+                const fundItems = computed(() => {
+                    const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value);
+                    const center = String(filterFundCenter.value || '').trim().toUpperCase();
+                    const funds = (catalog.value.funds || []).filter((f) => {
+                        if (divId != null && !(f.division_ids || []).includes(divId)) return false;
+                        if (center && !(f.fund_centers || []).includes(center)) return false;
+                        return true;
+                    });
+                    return [
+                        { title: 'All funds', value: '' },
+                        ...funds.map((f) => ({ title: f.code, value: f.code })),
+                    ];
+                });
+
+                const fyLabel = computed(() =>
+                    data.value?.financial_year?.label || (data.value ? `FY ${data.value.budget_year}` : ''),
+                );
+
+                const scopeLabel = computed(() => {
+                    if (!data.value) return '';
+                    if (data.value.can_view_all) return 'All divisions';
+                    if (data.value.scope === 'directorate') return 'Your directorate';
+                    if (data.value.scope === 'division') return 'Your division';
+                    return 'No division mapped';
+                });
+
+                const showDivisionCharts = computed(
+                    () => !!(data.value?.show_org_charts || data.value?.show_directorate_charts),
+                );
+
+                function syncChildFilters() {
+                    filterFundCenter.value = String(filterFundCenter.value || '').trim();
+                    filterFund.value = String(filterFund.value || '').trim();
+                    const centers = fundCenterItems.value.map((i) => String(i.value)).filter(Boolean);
+                    if (filterFundCenter.value && !centers.includes(filterFundCenter.value)) {
+                        filterFundCenter.value = '';
                     }
-                    if (cfg.isDirector) {
-                        return 'Viewing divisions under your directorate oversight.';
+                    const funds = fundItems.value.map((i) => String(i.value)).filter(Boolean);
+                    if (filterFund.value && !funds.includes(filterFund.value)) {
+                        filterFund.value = '';
                     }
-                    return 'Viewing your division only.';
-                });
-
-                const scopeIcon = computed(() => {
-                    if (cfg.scopeAccess === 'all') return 'mdi-office-building';
-                    if (cfg.isDirector) return 'mdi-sitemap';
-                    return 'mdi-domain';
-                });
-
-                const periodLabel = computed(() => {
-                    const f = dashboard.value?.filters || {};
-                    return f.period_mode === 'annual'
-                        ? `Annual ${f.year}`
-                        : `${f.quarter || ''} ${f.year}`.trim();
-                });
-
-                const summary = computed(() => dashboard.value?.summary || {});
-                const divisions = computed(() => dashboard.value?.divisions || []);
-                const pagination = computed(() => dashboard.value?.pagination || null);
-                const cacheLabel = computed(() => {
-                    const ts = dashboard.value?.cached_at;
-                    return ts ? `Cached ${new Date(ts).toLocaleString()}` : '';
-                });
-
-                const exportQuery = computed(() => {
-                    const params = new URLSearchParams();
-                    params.set('year', String(filters.value.year));
-                    params.set('period_mode', filters.value.period_mode);
-                    if (filters.value.period_mode === 'quarterly') {
-                        params.set('quarter', filters.value.quarter);
-                    }
-                    if (filters.value.division_id) {
-                        params.set('division_id', filters.value.division_id);
-                    }
-                    return params.toString();
-                });
-
-                const excelHref = computed(() => `${cfg.routes.excel}?${exportQuery.value}`);
-                const pdfHref = computed(() => `${cfg.routes.pdf}?${exportQuery.value}`);
-
-                const initiativeHeaders = [
-                    { title: 'Type', key: 'source_type', sortable: false, width: '9%' },
-                    { title: 'Document', key: 'document_number', sortable: false, width: '11%' },
-                    { title: 'Title', key: 'title', sortable: false, width: '22%' },
-                    { title: 'Budget', key: 'planned_budget', sortable: false, align: 'end', width: '9%' },
-                    { title: 'Executed', key: 'executed_budget', sortable: false, align: 'end', width: '9%' },
-                    { title: '%', key: 'execution_pct', sortable: false, align: 'end', width: '6%' },
-                    { title: 'Status', key: 'status', sortable: false, width: '10%' },
-                    { title: 'Fund codes', key: 'fund_codes', sortable: false, width: '24%' },
-                ];
-
-                const fundCodeHeaders = [
-                    { title: 'Code', key: 'code', sortable: false },
-                    { title: 'Planned', key: 'planned', sortable: false, align: 'end' },
-                    { title: 'Executed', key: 'executed', sortable: false, align: 'end' },
-                    { title: 'Remaining', key: 'remaining', sortable: false, align: 'end' },
-                    { title: 'Working bal.', key: 'working_balance', sortable: false, align: 'end' },
-                ];
-
-                function initiativeStatus(row) {
-                    if (row.fully_executed) return { label: '100%', color: 'success' };
-                    if (row.has_sr_or_arf) return { label: 'Partial', color: 'warning' };
-                    return { label: 'Not started', color: 'secondary' };
                 }
 
-                function buildParams(forceRefresh) {
-                    const params = new URLSearchParams();
-                    params.set('year', String(filters.value.year));
-                    params.set('period_mode', filters.value.period_mode);
-                    if (filters.value.period_mode === 'quarterly') {
-                        params.set('quarter', filters.value.quarter);
-                    }
-                    if (filters.value.division_id) {
-                        params.set('division_id', filters.value.division_id);
-                    }
-                    params.set('page', String(page.value));
-                    if (forceRefresh) params.set('nocache', '1');
-                    return params;
-                }
-
-                async function loadData(forceRefresh = false, resetPage = false) {
-                    if (resetPage) page.value = 1;
+                async function load() {
                     loading.value = true;
-                    error.value = '';
+                    error.value = null;
                     try {
-                        const res = await fetch(`${cfg.routes.data}?${buildParams(forceRefresh).toString()}`, {
-                            headers: { Accept: 'application/json' },
+                        syncChildFilters();
+                        const params = new URLSearchParams();
+                        if (filterDivisionId.value) params.set('division_id', filterDivisionId.value);
+                        if (filterFundCenter.value) params.set('fund_center', filterFundCenter.value);
+                        if (filterFund.value) params.set('fund', filterFund.value);
+                        const res = await fetch(cfg.routes.data + (params.toString() ? '?' + params : ''), {
+                            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
                         });
                         const json = await res.json();
-                        if (!res.ok || json?.error) {
-                            throw new Error(json?.message || json?.error || 'Could not load data.');
+                        if (!res.ok || !json.success) {
+                            throw new Error(json.message || 'Failed to load budget execution.');
                         }
-                        dashboard.value = json;
+                        data.value = json.data || null;
+                        if (data.value?.filter_division_id) {
+                            filterDivisionId.value = String(data.value.filter_division_id);
+                        }
+                        if (data.value?.filter_fund_center) {
+                            filterFundCenter.value = data.value.filter_fund_center;
+                        }
+                        if (data.value?.filter_fund) {
+                            filterFund.value = data.value.filter_fund;
+                        }
+                        syncChildFilters();
+                        await nextTick();
+                        renderCharts();
                     } catch (e) {
-                        dashboard.value = null;
-                        error.value = e.message || 'Could not load budget execution data.';
+                        error.value = e.message || 'Failed to load';
+                        data.value = null;
                     } finally {
                         loading.value = false;
                     }
                 }
 
-                function applyFilters() {
-                    loadData(false, true);
+                function onDivisionChange() {
+                    filterFundCenter.value = '';
+                    filterFund.value = '';
+                    void load();
                 }
 
-                function resetFilters() {
-                    filters.value = {
-                        period_mode: 'quarterly',
-                        year: cfg.currentYear,
-                        quarter: cfg.currentQuarter,
-                        division_id: cfg.canViewAllDivisions
-                            ? ''
-                            : String(cfg.defaultDivisionId || ''),
+                function onFundCenterChange() {
+                    syncChildFilters();
+                    void load();
+                }
+
+                function onFundChange() {
+                    filterFund.value = String(filterFund.value || '').trim();
+                    void load();
+                }
+
+                function clearFilters() {
+                    filterDivisionId.value = '';
+                    filterFundCenter.value = '';
+                    filterFund.value = '';
+                    void load();
+                }
+
+                function toggleExpand(id) {
+                    expanded.value = { ...expanded.value, [id]: !expanded.value[id] };
+                }
+
+                function openDivisionDrill(div) {
+                    drill.value = {
+                        open: true,
+                        title: `${div.division_short_name} — ${div.division_name}`,
+                        mode: 'centers',
+                        rows: div.fund_centers || [],
+                        loading: false,
                     };
-                    loadData(false, true);
+                    expanded.value = { ...expanded.value, [div.division_id]: true };
                 }
 
-                function onPageChange() {
-                    loadData(false, false);
+                async function openFundCenterExpenses(fc) {
+                    const code = String(fc.fund_center || '').trim();
+                    if (!code) return;
+                    drill.value = { open: true, title: `Expenses — ${code}`, mode: 'expenses', rows: [], loading: true };
+                    try {
+                        const url = String(cfg.routes.expenses).replace('__CODE__', encodeURIComponent(code));
+                        const res = await fetch(url, {
+                            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                        });
+                        const json = await res.json();
+                        if (!res.ok || !json.success) throw new Error(json.message || 'Failed to load expenses');
+                        const expenses = json.data?.expenses || json.data || [];
+                        drill.value = {
+                            open: true,
+                            title: `Expenses — ${code}`,
+                            mode: 'expenses',
+                            rows: Array.isArray(expenses) ? expenses : [],
+                            loading: false,
+                        };
+                    } catch (e) {
+                        drill.value = {
+                            open: true,
+                            title: `Expenses — ${code}`,
+                            mode: 'expenses',
+                            rows: [],
+                            loading: false,
+                        };
+                        error.value = e.message || 'Failed to load expenses';
+                    }
                 }
 
-                onMounted(() => loadData(false, false));
+                function renderCharts() {
+                    if (!window.Highcharts || !kpis.value) return;
+                    if (showDivisionCharts.value && pieEl.value) {
+                        const pieData = divisions.value
+                            .map((d) => ({
+                                name: d.division_name,
+                                y: Number(((d.commitment || 0) + (d.actual_expenditure || 0)).toFixed(2)),
+                            }))
+                            .filter((p) => p.y > 0)
+                            .sort((a, b) => b.y - a.y)
+                            .slice(0, 12);
+                        Highcharts.chart(pieEl.value, {
+                            chart: { type: 'pie' },
+                            title: { text: data.value?.can_view_all ? 'Proportion of used by division' : 'Proportion of used' },
+                            credits: { enabled: false },
+                            series: [{ name: 'Used', data: pieData }],
+                            colors: ['#c3a366', '#911c39', '#119a48', '#385cad', '#0b3b5c'],
+                            plotOptions: {
+                                pie: {
+                                    allowPointSelect: true,
+                                    cursor: 'pointer',
+                                    dataLabels: { enabled: true, format: '{point.name}' },
+                                    point: {
+                                        events: {
+                                            click: function () {
+                                                const match = divisions.value.find((d) => d.division_name === this.name);
+                                                if (match) openDivisionDrill(match);
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        });
+                    }
+                    if (showDivisionCharts.value && colEl.value) {
+                        const top = divisions.value.slice().sort((a, b) => b.approved_budget - a.approved_budget).slice(0, 10);
+                        Highcharts.chart(colEl.value, {
+                            chart: { type: 'column' },
+                            title: { text: data.value?.can_view_all ? 'Division usage' : 'Directorate division usage' },
+                            credits: { enabled: false },
+                            xAxis: { categories: top.map((d) => d.division_short_name || d.division_name) },
+                            yAxis: { title: { text: 'Amount (USD)' } },
+                            series: [
+                                { name: 'Approved', data: top.map((d) => Number(d.approved_budget.toFixed(0))), color: '#119a48' },
+                                {
+                                    name: 'Used',
+                                    data: top.map((d) => Number(((d.commitment || 0) + (d.actual_expenditure || 0)).toFixed(0))),
+                                    color: '#c3a366',
+                                },
+                            ],
+                        });
+                    }
+                }
+
+                onMounted(load);
+                watch([showDivisionCharts, divisions], () => nextTick(renderCharts));
 
                 return {
-                    cfg,
-                    filters,
-                    page,
-                    loading,
-                    error,
-                    dashboard,
-                    snackbar,
-                    periodModeItems,
-                    yearItems,
-                    quarterItems,
-                    divisionItems,
-                    scopeMessage,
-                    scopeIcon,
-                    periodLabel,
-                    summary,
-                    divisions,
-                    pagination,
-                    cacheLabel,
-                    excelHref,
-                    pdfHref,
-                    initiativeHeaders,
-                    fundCodeHeaders,
-                    fmtMoney,
-                    fmtPct,
-                    pctColor,
-                    typeLabel,
-                    initiativeStatus,
-                    applyFilters,
-                    resetFilters,
-                    loadData,
-                    onPageChange,
+                    loading, error, data, kpis, divisions, budgetCodes,
+                    filterDivisionId, filterFundCenter, filterFund,
+                    divisionItems, fundCenterItems, fundItems,
+                    fyLabel, scopeLabel, showDivisionCharts, expanded, drill,
+                    pieEl, colEl,
+                    fmtMoney, compactUsd, fmtPct,
+                    onDivisionChange, onFundCenterChange, onFundChange, clearFilters, load,
+                    toggleExpand, openDivisionDrill, openFundCenterExpenses,
                 };
             },
             template: `
-<v-app class="be-vuetify-app">
-  <v-container fluid class="pa-0">
-    <div class="d-flex flex-wrap align-center justify-space-between gap-2 mb-4">
-      <v-btn :href="cfg.routes.reports" variant="outlined" size="small" prepend-icon="mdi-arrow-left">
-        Reports
-      </v-btn>
-      <div v-if="dashboard" class="d-flex gap-2">
-        <v-btn :href="excelHref" target="_blank" color="success" variant="tonal" size="small" prepend-icon="mdi-file-excel">
-          Export Excel
-        </v-btn>
-        <v-btn :href="pdfHref" target="_blank" color="error" variant="tonal" size="small" prepend-icon="mdi-file-pdf-box">
-          Export PDF
-        </v-btn>
-      </div>
-    </div>
+              <div class="be-vuetify-app">
+                <v-app>
+                  <v-main>
+                    <v-card class="be-hero mb-4 pa-4" rounded="0" elevation="0">
+                      <div class="d-flex flex-wrap justify-space-between align-start ga-3">
+                        <div>
+                          <h2 class="text-h5 font-weight-bold mb-1">Budget execution</h2>
+                          <div class="text-body-2 opacity-90">
+                            Intramural SAP budget execution (Finance API)
+                            <v-chip v-if="fyLabel" size="small" class="ml-2" color="white" variant="flat">{{ fyLabel }}</v-chip>
+                            <v-chip v-if="scopeLabel" size="small" class="ml-1" variant="tonal">{{ scopeLabel }}</v-chip>
+                          </div>
+                        </div>
+                        <v-btn color="white" variant="flat" :disabled="loading" @click="load">
+                          <v-icon start>mdi-refresh</v-icon> Refresh
+                        </v-btn>
+                      </div>
+                    </v-card>
 
-    <v-sheet class="be-hero rounded-lg pa-4 mb-4">
-      <div class="d-flex flex-wrap align-center justify-space-between gap-2">
-        <div>
-          <div class="text-h6 font-weight-bold">
-            <v-icon icon="mdi-chart-donut" class="me-2"></v-icon>Budget execution
-          </div>
-          <div class="text-body-2 opacity-90">
-            Approved APM initiatives vs executed through Service Requests &amp; ARFs
-          </div>
-        </div>
-        <div class="text-body-2 opacity-90">{{ periodLabel || '—' }}</div>
-      </div>
-    </v-sheet>
+                    <v-row class="mb-3" dense>
+                      <v-col cols="12" md="3">
+                        <v-select v-model="filterDivisionId" :items="divisionItems" label="Division" hide-details
+                          variant="outlined" density="comfortable" @update:model-value="onDivisionChange" />
+                      </v-col>
+                      <v-col cols="12" md="3">
+                        <v-select v-model="filterFundCenter" :items="fundCenterItems" label="Fund center" hide-details clearable
+                          variant="outlined" density="comfortable" @update:model-value="onFundCenterChange" />
+                      </v-col>
+                      <v-col cols="12" md="3">
+                        <v-select v-model="filterFund" :items="fundItems" label="Fund" hide-details clearable
+                          variant="outlined" density="comfortable" @update:model-value="onFundChange" />
+                      </v-col>
+                      <v-col cols="12" md="3" class="d-flex align-center ga-2">
+                        <v-btn color="success" @click="load">Apply</v-btn>
+                        <v-btn v-if="filterDivisionId || filterFundCenter || filterFund" variant="outlined" @click="clearFilters">Clear</v-btn>
+                      </v-col>
+                    </v-row>
 
-    <v-alert type="success" variant="tonal" density="comfortable" class="mb-4" :icon="scopeIcon">
-      {{ scopeMessage }}
-    </v-alert>
+                    <div v-if="loading" class="text-center py-8 text-medium-emphasis">
+                      <v-progress-circular indeterminate color="primary" />
+                      <p class="mt-2 mb-0">Loading from Finance…</p>
+                    </div>
+                    <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
 
-    <v-card class="mb-4">
-      <v-card-title class="text-subtitle-1 font-weight-medium">
-        <v-icon icon="mdi-filter-outline" class="me-2"></v-icon>Filters
-      </v-card-title>
-      <v-card-text>
-        <v-row dense align="end">
-          <v-col cols="6" md="2">
-            <v-select v-model="filters.period_mode" :items="periodModeItems" label="Period" hide-details></v-select>
-          </v-col>
-          <v-col cols="6" md="2">
-            <v-select v-model="filters.year" :items="yearItems" label="Year" hide-details></v-select>
-          </v-col>
-          <v-col v-show="filters.period_mode === 'quarterly'" cols="6" md="2">
-            <v-select v-model="filters.quarter" :items="quarterItems" label="Quarter" hide-details></v-select>
-          </v-col>
-          <v-col v-if="cfg.canPickDivision" cols="12" md="3">
-            <v-select
-              v-model="filters.division_id"
-              :items="divisionItems"
-              label="Division"
-              hide-details
-              :disabled="!cfg.canViewAllDivisions && divisionItems.length <= 2"
-            ></v-select>
-          </v-col>
-          <v-col cols="12" md="3" class="d-flex gap-2">
-            <v-btn color="primary" prepend-icon="mdi-magnify" @click="applyFilters">Apply</v-btn>
-            <v-btn variant="outlined" @click="resetFilters">Reset</v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+                    <template v-else-if="kpis">
+                      <v-row class="mb-4" dense>
+                        <v-col cols="12" md="4">
+                          <v-card class="be-kpi pa-4" rounded="0">
+                            <div class="text-caption text-medium-emphasis">Approved budget</div>
+                            <strong>{{ compactUsd(kpis.approved_budget) }}</strong>
+                            <div class="text-caption text-medium-emphasis">{{ fmtMoney(kpis.approved_budget) }}</div>
+                          </v-card>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-card class="be-kpi pa-4" rounded="0">
+                            <div class="text-caption text-medium-emphasis">Used budget</div>
+                            <strong>{{ compactUsd(kpis.used_budget) }}</strong>
+                            <div class="text-caption text-medium-emphasis">{{ fmtMoney(kpis.used_budget) }}</div>
+                          </v-card>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-card class="be-kpi pa-4" rounded="0">
+                            <div class="text-caption text-medium-emphasis">Execution rate</div>
+                            <strong>{{ fmtPct(kpis.execution_rate) }}</strong>
+                            <div class="text-caption text-medium-emphasis">
+                              {{ kpis.division_count }} division(s) · {{ kpis.fund_center_count }} fund centers
+                            </div>
+                          </v-card>
+                        </v-col>
+                      </v-row>
 
-    <div v-if="loading" class="text-center py-10">
-      <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-      <p class="text-medium-emphasis mt-3 mb-0">Loading budget execution…</p>
-    </div>
+                      <v-row v-if="showDivisionCharts" class="mb-4" dense>
+                        <v-col cols="12" md="6"><v-card rounded="0" class="pa-2"><div ref="pieEl" class="be-chart"></div></v-card></v-col>
+                        <v-col cols="12" md="6"><v-card rounded="0" class="pa-2"><div ref="colEl" class="be-chart"></div></v-card></v-col>
+                      </v-row>
 
-    <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">
-      <div class="d-flex flex-wrap align-center justify-space-between gap-2">
-        <div>
-          <strong>Could not load budget execution data.</strong>
-          <div class="text-body-2 mt-1">{{ error }}</div>
-        </div>
-        <v-btn variant="outlined" color="error" size="small" @click="loadData(true, false)">Retry</v-btn>
-      </div>
-    </v-alert>
+                      <v-card v-for="div in divisions" :key="div.division_id" class="mb-3 pa-4" rounded="0">
+                        <div class="d-flex justify-space-between align-start ga-3 mb-3">
+                          <div>
+                            <h3 class="text-subtitle-1 font-weight-bold mb-0">
+                              <v-chip size="small" color="primary" class="mr-2">{{ div.division_short_name }}</v-chip>
+                              {{ div.division_name }}
+                            </h3>
+                            <div class="text-caption text-medium-emphasis">{{ div.fund_center_count }} fund center(s)</div>
+                          </div>
+                          <v-btn size="small" variant="outlined" @click="toggleExpand(div.division_id)">
+                            {{ expanded[div.division_id] ? 'Hide funds' : 'Show funds' }}
+                          </v-btn>
+                        </div>
+                        <v-row dense class="be-row-link" @click="openDivisionDrill(div)">
+                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Released</div><div class="font-weight-bold">{{ fmtMoney(div.approved_budget) }}</div></v-col>
+                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Commitment</div><div class="font-weight-bold">{{ fmtMoney(div.commitment) }}</div></v-col>
+                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Actual</div><div class="font-weight-bold">{{ fmtMoney(div.actual_expenditure) }}</div></v-col>
+                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Balance</div><div class="font-weight-bold">{{ fmtMoney(div.budget_balance) }}</div></v-col>
+                          <v-col cols="6" sm="4" md="2"><div class="text-caption">Exec %</div><div class="font-weight-bold">{{ fmtPct(div.execution_rate) }}</div></v-col>
+                        </v-row>
+                        <v-table v-if="expanded[div.division_id]" density="compact" class="mt-3">
+                          <thead>
+                            <tr>
+                              <th>Fund center</th><th>Fund</th><th>Released</th><th>Commitment</th><th>Actual</th><th>Balance</th><th>Exec %</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="fc in (div.fund_centers || [])" :key="fc.fund_center" class="be-row-link" @click="openFundCenterExpenses(fc)">
+                              <td><code>{{ fc.fund_center }}</code></td>
+                              <td><span class="be-fund">{{ fc.budget_code || '—' }}</span></td>
+                              <td>{{ fmtMoney(fc.approved_budget) }}</td>
+                              <td>{{ fmtMoney(fc.commitment) }}</td>
+                              <td>{{ fmtMoney(fc.actual_expenditure) }}</td>
+                              <td>{{ fmtMoney(fc.budget_balance) }}</td>
+                              <td>{{ fmtPct(fc.execution_rate) }}</td>
+                            </tr>
+                          </tbody>
+                        </v-table>
+                      </v-card>
 
-    <template v-else-if="dashboard">
-      <div v-if="cacheLabel" class="text-caption text-medium-emphasis mb-2">{{ cacheLabel }}</div>
+                      <p v-if="!divisions.length" class="text-medium-emphasis">No SAP fund centers mapped for your scope yet.</p>
+                    </template>
 
-      <v-row dense class="mb-4">
-        <v-col cols="6" lg="3">
-          <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
-            <v-icon icon="mdi-file-document-multiple" color="success" class="mb-2"></v-icon>
-            <div class="text-caption text-medium-emphasis">Initiatives</div>
-            <div class="text-h5 font-weight-bold text-success">{{ summary.initiative_count || 0 }}</div>
-            <div class="text-caption text-medium-emphasis">{{ summary.division_count || 0 }} divisions</div>
-          </v-sheet>
-        </v-col>
-        <v-col cols="6" lg="3">
-          <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
-            <v-icon icon="mdi-wallet" color="info" class="mb-2"></v-icon>
-            <div class="text-caption text-medium-emphasis">Approved budget</div>
-            <div class="text-h6 font-weight-bold">{{ fmtMoney(summary.planned_budget) }}</div>
-            <div class="text-caption text-medium-emphasis">Remaining {{ fmtMoney(summary.remaining_budget) }}</div>
-          </v-sheet>
-        </v-col>
-        <v-col cols="6" lg="3">
-          <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
-            <v-icon icon="mdi-swap-horizontal" color="warning" class="mb-2"></v-icon>
-            <div class="text-caption text-medium-emphasis">Executed (SR/ARF)</div>
-            <div class="text-h6 font-weight-bold">{{ fmtMoney(summary.executed_budget) }}</div>
-            <div class="text-caption text-medium-emphasis">{{ summary.sr_count || 0 }} SR · {{ summary.arf_count || 0 }} ARF</div>
-          </v-sheet>
-        </v-col>
-        <v-col cols="6" lg="3">
-          <v-sheet rounded="lg" class="pa-4 h-100 border" color="surface">
-            <v-icon icon="mdi-check-circle" color="success" class="mb-2"></v-icon>
-            <div class="text-caption text-medium-emphasis">Execution rate</div>
-            <div class="text-h5 font-weight-bold" :class="'text-' + pctColor(summary.execution_pct)">{{ fmtPct(summary.execution_pct) }}</div>
-            <div class="text-caption text-medium-emphasis">
-              {{ summary.fully_executed_count || 0 }} at 100% · {{ summary.partial_count || 0 }} partial · {{ summary.not_started_count || 0 }} not started
-            </div>
-          </v-sheet>
-        </v-col>
-      </v-row>
-
-      <v-alert v-if="!divisions.length" type="info" variant="tonal" class="mb-4">
-        No data for this period.
-      </v-alert>
-
-      <div v-for="div in divisions" :key="div.division_id || div.division_name" class="mb-6">
-        <v-card>
-          <v-card-text class="pb-2">
-            <div class="d-flex flex-wrap justify-space-between align-start gap-4">
-              <div class="flex-grow-1">
-                <div class="text-h6 font-weight-bold text-primary mb-2">
-                  <v-icon icon="mdi-domain" class="me-1"></v-icon>{{ div.division_name }}
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                  <v-chip size="small" variant="tonal" prepend-icon="mdi-file-document">{{ div.initiative_count || 0 }} initiatives</v-chip>
-                  <v-chip size="small" color="success" variant="tonal">{{ div.fully_executed_count || 0 }} at 100%</v-chip>
-                  <v-chip size="small" color="warning" variant="tonal">{{ div.partial_count || 0 }} partial</v-chip>
-                  <v-chip size="small" variant="outlined">{{ div.not_started_count || 0 }} not started</v-chip>
-                  <v-chip size="small" variant="tonal">{{ div.sr_count || 0 }} SR · {{ div.arf_count || 0 }} ARF</v-chip>
-                </div>
+                    <v-dialog v-model="drill.open" max-width="960" scrollable>
+                      <v-card>
+                        <v-card-title class="d-flex justify-space-between align-center">
+                          <span>{{ drill.title }}</span>
+                          <v-btn icon variant="text" @click="drill.open = false"><v-icon>mdi-close</v-icon></v-btn>
+                        </v-card-title>
+                        <v-card-text>
+                          <p v-if="drill.loading" class="text-medium-emphasis">Loading expenses…</p>
+                          <p v-else-if="!drill.rows.length" class="text-medium-emphasis">
+                            {{ drill.mode === 'expenses' ? 'No expenses for this fund center.' : 'No fund centers.' }}
+                          </p>
+                          <v-table v-else density="compact">
+                            <thead>
+                              <tr v-if="drill.mode === 'expenses'">
+                                <th>Fund</th><th>GL account</th><th>Description</th><th>Commitment</th><th>Actual</th>
+                              </tr>
+                              <tr v-else>
+                                <th>Fund center</th><th>Fund</th><th>Released</th><th>Commitment</th><th>Actual</th><th>Balance</th><th>Exec %</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <template v-if="drill.mode === 'expenses'">
+                                <tr v-for="(ex, idx) in drill.rows" :key="idx">
+                                  <td><span class="be-fund">{{ ex.budget_code || '—' }}</span></td>
+                                  <td><code>{{ ex.gl_account }}</code></td>
+                                  <td>{{ ex.gl_description || '—' }}</td>
+                                  <td>{{ fmtMoney(ex.commitment) }}</td>
+                                  <td>{{ fmtMoney(ex.actual_expenditure) }}</td>
+                                </tr>
+                              </template>
+                              <template v-else>
+                                <tr v-for="(fc, idx) in drill.rows" :key="idx" class="be-row-link" @click="openFundCenterExpenses(fc)">
+                                  <td><code>{{ fc.fund_center }}</code></td>
+                                  <td><span class="be-fund">{{ fc.budget_code || '—' }}</span></td>
+                                  <td>{{ fmtMoney(fc.approved_budget) }}</td>
+                                  <td>{{ fmtMoney(fc.commitment) }}</td>
+                                  <td>{{ fmtMoney(fc.actual_expenditure) }}</td>
+                                  <td>{{ fmtMoney(fc.budget_balance) }}</td>
+                                  <td>{{ fmtPct(fc.execution_rate) }}</td>
+                                </tr>
+                              </template>
+                            </tbody>
+                          </v-table>
+                        </v-card-text>
+                      </v-card>
+                    </v-dialog>
+                  </v-main>
+                </v-app>
               </div>
-              <div class="d-flex flex-wrap align-center gap-4">
-                <v-progress-circular
-                  :model-value="Math.min(100, parseFloat(div.execution_pct) || 0)"
-                  :color="pctColor(div.execution_pct)"
-                  size="64"
-                  width="6"
-                >
-                  <span class="text-caption font-weight-bold">{{ fmtPct(div.execution_pct) }}</span>
-                </v-progress-circular>
-                <div class="d-flex flex-column gap-2">
-                  <v-sheet color="primary" rounded="lg" class="pa-3 text-white" min-width="160">
-                    <div class="text-caption text-uppercase opacity-90">Budget remaining</div>
-                    <div class="text-h6 font-weight-bold">{{ fmtMoney(div.remaining_budget) }}</div>
-                    <div class="text-caption opacity-75">{{ fmtMoney(div.executed_budget) }} of {{ fmtMoney(div.planned_budget) }} executed</div>
-                  </v-sheet>
-                  <v-sheet color="info" rounded="lg" class="pa-3 text-white" min-width="160">
-                    <div class="text-caption text-uppercase opacity-90">Fund working balance</div>
-                    <div class="text-h6 font-weight-bold">{{ fmtMoney(div.total_working_balance) }}</div>
-                    <div class="text-caption opacity-75">{{ div.fund_code_count || 0 }} fund codes</div>
-                  </v-sheet>
-                </div>
-              </div>
-            </div>
-            <v-progress-linear
-              class="mt-4 rounded-pill"
-              :model-value="Math.min(100, parseFloat(div.execution_pct) || 0)"
-              color="primary"
-              height="8"
-              rounded
-            ></v-progress-linear>
-          </v-card-text>
-
-          <v-divider v-if="div.fund_codes?.length"></v-divider>
-          <div v-if="div.fund_codes?.length" class="pa-4 bg-grey-lighten-5">
-            <div class="text-subtitle-2 font-weight-medium text-primary mb-2">
-              <v-icon icon="mdi-barcode" size="small" class="me-1"></v-icon>
-              Fund codes ({{ div.fund_code_count || 0 }})
-            </div>
-            <v-data-table
-              :headers="fundCodeHeaders"
-              :items="div.fund_codes"
-              density="compact"
-              class="border rounded-lg bg-white"
-              hide-default-footer
-              :items-per-page="-1"
-            >
-              <template #item.code="{ item }">
-                <span>{{ item.code }}</span>
-                <span v-if="item.activity" class="text-caption text-medium-emphasis d-block">{{ item.activity }}</span>
-              </template>
-              <template #item.planned="{ item }">{{ fmtMoney(item.planned) }}</template>
-              <template #item.executed="{ item }">{{ fmtMoney(item.executed) }}</template>
-              <template #item.remaining="{ item }">{{ fmtMoney(item.remaining) }}</template>
-              <template #item.working_balance="{ item }">{{ fmtMoney(item.working_balance) }}</template>
-            </v-data-table>
-          </div>
-
-          <v-data-table
-            :headers="initiativeHeaders"
-            :items="div.initiatives || []"
-            density="compact"
-            class="be-initiatives-table"
-            hide-default-footer
-            :items-per-page="-1"
-          >
-            <template #item.source_type="{ item }">{{ typeLabel(item.source_type) }}</template>
-            <template #item.document_number="{ item }">
-              <span class="text-body-2">{{ item.document_number || '—' }}</span>
-            </template>
-            <template #item.title="{ item }">
-              <span class="be-initiative-title text-body-2">{{ item.title || '—' }}</span>
-            </template>
-            <template #item.planned_budget="{ item }">{{ fmtMoney(item.planned_budget) }}</template>
-            <template #item.executed_budget="{ item }">{{ fmtMoney(item.executed_budget) }}</template>
-            <template #item.execution_pct="{ item }">
-              <span :class="'text-' + pctColor(item.execution_pct) + ' font-weight-bold'">{{ fmtPct(item.execution_pct) }}</span>
-            </template>
-            <template #item.status="{ item }">
-              <v-chip :color="initiativeStatus(item).color" size="x-small" variant="tonal" label>
-                {{ initiativeStatus(item).label }}
-              </v-chip>
-            </template>
-            <template #item.fund_codes="{ item }">
-              <div v-if="item.fund_codes?.length">
-                <div v-for="(fc, fi) in item.fund_codes" :key="fi" class="text-caption py-1 border-b">
-                  <span class="font-weight-medium">{{ fc.code }}</span>
-                  <span v-if="fc.activity" class="text-medium-emphasis"> ({{ fc.activity }})</span>
-                  <div class="text-medium-emphasis">
-                    Planned {{ fmtMoney(fc.planned) }} · Exec {{ fmtMoney(fc.executed) }} · Rem {{ fmtMoney(fc.remaining) }}
-                  </div>
-                  <div class="text-medium-emphasis">Working bal. {{ fmtMoney(fc.working_balance) }}</div>
-                </div>
-              </div>
-              <span v-else class="text-medium-emphasis">—</span>
-            </template>
-            <template #no-data>
-              <div class="text-center text-medium-emphasis py-4">No initiatives</div>
-            </template>
-          </v-data-table>
-        </v-card>
-      </div>
-
-      <div v-if="pagination && pagination.total > pagination.per_page" class="d-flex flex-wrap align-center justify-space-between gap-3 mt-4 pt-3 border-t">
-        <span class="text-body-2 text-medium-emphasis">
-          Showing divisions {{ pagination.from }}–{{ pagination.to }} of {{ pagination.total }}
-          · Page {{ pagination.current_page }} of {{ pagination.last_page }}
-        </span>
-        <v-pagination
-          v-model="page"
-          :length="pagination.last_page"
-          :total-visible="7"
-          density="comfortable"
-          rounded="circle"
-          active-color="primary"
-          @update:model-value="onPageChange"
-        ></v-pagination>
-      </div>
-    </template>
-  </v-container>
-</v-app>
             `,
-        }).use(vuetify);
+        });
 
+        appInstance.use(vuetify);
+        appInstance.mount(mountEl);
         window.ApmVuetifyPage.register(MOUNT_ID, appInstance);
-        appInstance.mount(`#${MOUNT_ID}`);
     }
 
     if (window.ApmVuetifyPage) {
-        window.ApmVuetifyPage.bind(MOUNT_ID, bootBudgetExecution);
+        window.ApmVuetifyPage.bind(MOUNT_ID, boot);
     }
 })();

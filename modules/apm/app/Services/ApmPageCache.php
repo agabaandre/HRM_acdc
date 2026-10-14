@@ -16,6 +16,7 @@ final class ApmPageCache
         'approver_dashboard',
         'reports',
         'budget_execution',
+        'finance_budget_execution',
         'weekly_briefing',
         'matrices',
         'activities',

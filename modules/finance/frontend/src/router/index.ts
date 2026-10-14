@@ -25,7 +25,7 @@ const router = createRouter({
       path: '/budget-execution',
       name: 'budget-execution',
       component: () => import('../pages/finance/BudgetedExecutionPage.vue'),
-      meta: { requiresAuth: true, title: 'Budgeted execution', module: 'dashboard' },
+      meta: { requiresAuth: true, title: 'Budget execution', module: 'dashboard' },
     },
     {
       path: '/dashboard',

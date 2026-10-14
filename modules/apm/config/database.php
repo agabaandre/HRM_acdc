@@ -193,6 +193,20 @@ return [
             'database' => env('REDIS_CACHE_DB', '1'),
         ],
 
+        /*
+        | Finance Laravel cache Redis (AuthenticateRiskSession tokens).
+        | Prefix must match Finance REDIS_PREFIX (laravel-database-).
+        */
+        'finance_cache' => [
+            'url' => env('FINANCE_REDIS_URL', env('REDIS_URL')),
+            'host' => env('FINANCE_REDIS_HOST', env('REDIS_HOST', '127.0.0.1')),
+            'username' => env('FINANCE_REDIS_USERNAME', env('REDIS_USERNAME')),
+            'password' => env('FINANCE_REDIS_PASSWORD', env('REDIS_PASSWORD')),
+            'port' => env('FINANCE_REDIS_PORT', env('REDIS_PORT', '6379')),
+            'database' => env('FINANCE_REDIS_CACHE_DB', env('REDIS_CACHE_DB', '1')),
+            'prefix' => env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
+        ],
+
     ],
 
 ];

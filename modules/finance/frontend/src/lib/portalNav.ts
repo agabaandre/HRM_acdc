@@ -41,7 +41,7 @@ export function pageIconForPath(path: string): string {
 /** Finance Funding Portfolio primary navigation. */
 export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   {
-    label: 'Budgeted execution',
+    label: 'Budget execution',
     i18nKey: 'finance.budget_execution',
     to: '/budget-execution',
     match: ['/budget-execution'],

@@ -106,7 +106,7 @@
                             </div>
                             <h5 class="mb-0 fw-bold text-success">Budget execution</h5>
                         </div>
-                        <p class="text-muted small mb-2">Quarterly and annual execution by division — approved APM initiatives vs funds requested through approved Service Requests and ARFs. Scoped to your division or directorate.</p>
+                        <p class="text-muted small mb-2">Intramural SAP budget execution from Finance (division → fund center → fund). KPIs and charts are Redis-cached in APM.</p>
                         <a href="{{ route('budget-execution.index') }}" wire:navigate class="btn btn-success btn-sm"><i class="bx bx-right-arrow-circle me-1"></i> View dashboard</a>
                     </div>
                 </div>

@@ -233,6 +233,28 @@ function fieldErrors(name: string): string[] {
   return [...(clientErrors.value[name] ?? []), ...(serverErrors.value[name] ?? [])]
 }
 
+const allFieldErrors = computed(() => {
+  const messages: string[] = []
+  const seen = new Set<string>()
+  for (const bag of [clientErrors.value, serverErrors.value]) {
+    for (const list of Object.values(bag)) {
+      for (const msg of list) {
+        const text = String(msg || '').trim()
+        if (!text || seen.has(text)) continue
+        seen.add(text)
+        messages.push(text)
+      }
+    }
+  }
+  return messages
+})
+
+function scrollContractDialogErrors() {
+  requestAnimationFrame(() => {
+    document.querySelector('.contract-form-validation')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+}
+
 function biodataFieldErrors(name: string): string[] {
   return [...(biodataClientErrors.value[name] ?? []), ...(biodataServerErrors.value[name] ?? [])]
 }
@@ -610,9 +632,11 @@ async function submitContract() {
   formError.value = null
   validationMessage.value = null
   serverErrors.value = {}
+  clientErrors.value = {}
 
   if (!validateForm()) {
     validationMessage.value = 'Please fix the highlighted fields.'
+    scrollContractDialogErrors()
     return
   }
 
@@ -651,9 +675,23 @@ async function submitContract() {
     await load()
     await payPanelRef.value?.reload?.()
   } catch (cause) {
-    if (errorStatus(cause) === 422) {
+    const status = errorStatus(cause)
+    if (status === 422) {
       serverErrors.value = validationErrors(cause)
       validationMessage.value = 'Please fix the highlighted fields.'
+      scrollContractDialogErrors()
+      return
+    }
+
+    if (status === 419) {
+      formError.value = 'Session expired (CSRF). Reload the page and try again.'
+      scrollContractDialogErrors()
+      return
+    }
+
+    if (status === 403) {
+      formError.value = 'You do not have permission to manage contracts.'
+      scrollContractDialogErrors()
       return
     }
 
@@ -661,6 +699,7 @@ async function submitContract() {
       cause,
       formMode.value === 'create' ? 'Could not create contract' : 'Could not update contract',
     )
+    scrollContractDialogErrors()
   } finally {
     saving.value = false
   }
@@ -1135,11 +1174,26 @@ onMounted(() => void load())
       <v-card>
         <v-card-title>{{ dialogTitle }}</v-card-title>
         <v-card-text>
-          <v-alert v-if="formError" type="error" variant="tonal" class="mb-3" density="compact">
+          <v-alert
+            v-if="formError"
+            type="error"
+            variant="tonal"
+            class="mb-3 contract-form-validation"
+            density="compact"
+          >
             {{ formError }}
           </v-alert>
-          <v-alert v-if="validationMessage" type="warning" variant="tonal" class="mb-3" density="compact">
-            {{ validationMessage }}
+          <v-alert
+            v-if="validationMessage"
+            type="warning"
+            variant="tonal"
+            class="mb-3 contract-form-validation"
+            density="compact"
+          >
+            <div class="font-weight-medium mb-1">{{ validationMessage }}</div>
+            <ul v-if="allFieldErrors.length" class="pl-4 mb-0">
+              <li v-for="(msg, idx) in allFieldErrors" :key="idx">{{ msg }}</li>
+            </ul>
           </v-alert>
           <div v-if="lookupsLoading" class="text-medium-emphasis">Loading…</div>
           <form v-else-if="lookups" @submit.prevent="submitContract">
@@ -1155,11 +1209,12 @@ onMounted(() => void load())
                           :items="lookups.jobs"
                           :item-title="(item) => String(item.label || item.job_name || '')"
                           item-value="job_id"
-                          label="Job"
                           density="comfortable"
                           :error-messages="fieldErrors('job_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Job <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1179,11 +1234,12 @@ onMounted(() => void load())
                           :items="lookups.grades"
                           item-title="grade"
                           item-value="grade_id"
-                          label="Grade"
                           density="comfortable"
                           :error-messages="fieldErrors('grade_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Grade <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1191,11 +1247,12 @@ onMounted(() => void load())
                           :items="lookups.contractTypes"
                           :item-title="(item) => String(item.label || item.contract_type || '')"
                           item-value="contract_type_id"
-                          label="Contract type"
                           density="comfortable"
                           :error-messages="fieldErrors('contract_type_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Contract type <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1203,11 +1260,12 @@ onMounted(() => void load())
                           :items="lookups.institutions"
                           item-title="contracting_institution"
                           item-value="contracting_institution_id"
-                          label="Contracting institution"
                           density="comfortable"
                           :error-messages="fieldErrors('contracting_institution_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Contracting institution <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1215,11 +1273,12 @@ onMounted(() => void load())
                           :items="lookups.funders"
                           item-title="funder"
                           item-value="funder_id"
-                          label="Funder"
                           density="comfortable"
                           :error-messages="fieldErrors('funder_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Funder <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                     </v-row>
                   </v-card-text>
@@ -1237,11 +1296,12 @@ onMounted(() => void load())
                           :items="lookups.dutyStations"
                           item-title="duty_station_name"
                           item-value="duty_station_id"
-                          label="Duty station"
                           density="comfortable"
                           :error-messages="fieldErrors('duty_station_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Duty station <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1249,11 +1309,12 @@ onMounted(() => void load())
                           :items="lookups.divisions"
                           item-title="division_name"
                           item-value="division_id"
-                          label="Division"
                           density="comfortable"
                           :error-messages="fieldErrors('division_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Division <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1288,11 +1349,12 @@ onMounted(() => void load())
                           :items="lookups.supervisors"
                           :item-title="supervisorLabel"
                           item-value="staff_id"
-                          label="First supervisor"
                           density="comfortable"
                           :error-messages="fieldErrors('first_supervisor')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>First supervisor <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12" sm="6">
                         <v-autocomplete
@@ -1320,18 +1382,24 @@ onMounted(() => void load())
                         <UDateInput
                           v-model="form.start_date"
                           label="Start date"
+                          required
+                          placeholder="Select start date"
                           density="comfortable"
                           :error-messages="fieldErrors('start_date')"
                           hide-details="auto"
+                          :max="form.end_date || undefined"
                         />
                       </v-col>
                       <v-col cols="12" sm="4">
                         <UDateInput
                           v-model="form.end_date"
                           label="End date"
+                          required
+                          placeholder="Select end date"
                           density="comfortable"
                           :error-messages="fieldErrors('end_date')"
                           hide-details="auto"
+                          :min="form.start_date || undefined"
                         />
                       </v-col>
                       <v-col cols="12" sm="4">
@@ -1340,11 +1408,12 @@ onMounted(() => void load())
                           :items="statusOptions"
                           item-title="status"
                           item-value="status_id"
-                          label="Contract status"
                           density="comfortable"
                           :error-messages="fieldErrors('status_id')"
                           hide-details="auto"
-                        />
+                        >
+                          <template #label>Contract status <span class="staff-req">*</span></template>
+                        </v-autocomplete>
                       </v-col>
                       <v-col cols="12">
                         <v-textarea
@@ -1837,5 +1906,8 @@ onMounted(() => void load())
   max-height: 10rem;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.staff-req {
+  color: rgb(var(--v-theme-error));
 }
 </style>

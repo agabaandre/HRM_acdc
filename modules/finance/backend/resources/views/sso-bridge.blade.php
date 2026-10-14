@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <title>Opening Risk Register…</title>
+    <title>Opening Finance…</title>
     <style>
         body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f4f6f8; color: #2c3e50; }
     </style>
 </head>
 <body>
-    <p>Opening Risk Register…</p>
+    <p>Opening Finance…</p>
     <script>
         (function () {
             try {

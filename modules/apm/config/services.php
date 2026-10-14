@@ -98,4 +98,17 @@ return [
         ),
     ],
 
+    /*
+    | Finance module HTTP API (budget execution dashboard proxy).
+    | Tokens are written into Finance Redis (CACHE_PREFIX=risk_register) so Finance
+    | AuthenticateRiskSession accepts Bearer auth from APM.
+    */
+    'finance_api' => [
+        'base_url' => rtrim((string) env('FINANCE_API_BASE_URL', 'http://localhost/staff/finance/backend'), '/'),
+        'timeout' => (int) env('FINANCE_API_TIMEOUT', 60),
+        'token_ttl' => (int) env('FINANCE_API_TOKEN_TTL', 3600),
+        'cache_prefix' => (string) env('FINANCE_CACHE_PREFIX', 'risk_register'),
+        'redis_prefix' => (string) env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
+    ],
+
 ];

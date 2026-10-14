@@ -14,7 +14,8 @@ return [
 
     'page_cache_enabled' => env('APM_PAGE_CACHE_ENABLED', true),
 
-    'page_cache_store' => env('APM_PAGE_CACHE_STORE', env('CACHE_STORE')),
+    // Prefer Redis for heavy dashboard payloads (falls back to CACHE_STORE / file).
+    'page_cache_store' => env('APM_PAGE_CACHE_STORE', env('CACHE_STORE', 'redis')),
 
     'page_cache_ttl' => (int) env('APM_PAGE_CACHE_TTL', 120),
 
@@ -22,6 +23,7 @@ return [
         'approver_dashboard' => (int) env('APM_PAGE_CACHE_TTL_APPROVER_DASHBOARD', 120),
         'reports' => (int) env('APM_PAGE_CACHE_TTL_REPORTS', 300),
         'budget_execution' => (int) env('APM_PAGE_CACHE_TTL_BUDGET_EXECUTION', 300),
+        'finance_budget_execution' => (int) env('APM_PAGE_CACHE_TTL_FINANCE_BUDGET_EXECUTION', 300),
         'weekly_briefing' => (int) env('APM_PAGE_CACHE_TTL_WEEKLY_BRIEFING', 120),
         'matrices' => (int) env('APM_PAGE_CACHE_TTL_MATRICES', 120),
         'activities' => (int) env('APM_PAGE_CACHE_TTL_ACTIVITIES', 120),

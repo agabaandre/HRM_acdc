@@ -421,6 +421,12 @@ class StaffApiController extends Controller
             );
         } catch (ValidationException $e) {
             return $this->validationErrorResponse($e);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not create contract. '.$e->getMessage(),
+            ], 500);
         }
 
         PortalStaffCache::bust();
@@ -452,6 +458,12 @@ class StaffApiController extends Controller
             );
         } catch (ValidationException $e) {
             return $this->validationErrorResponse($e);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Could not update contract. '.$e->getMessage(),
+            ], 500);
         }
 
         if (! $updated) {

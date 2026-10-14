@@ -54,6 +54,12 @@ type TrendPoint = {
   quarter?: number
 }
 
+type FilterCatalog = {
+  divisions: Array<{ id: number; name: string; short_name: string }>
+  fund_centers: Array<{ code: string; division_id: number; funds: string[] }>
+  funds: Array<{ code: string; fund_centers: string[]; division_ids: number[] }>
+}
+
 type Payload = {
   budget_year: number
   financial_year?: { fy_year: number; start_month: number; start_month_name: string; label: string }
@@ -63,7 +69,10 @@ type Payload = {
   show_directorate_charts?: boolean
   show_budget_code_charts?: boolean
   filter_division_id: number | null
+  filter_fund_center?: string | null
+  filter_fund?: string | null
   filter_options: Array<{ id: number; name: string; short_name: string }>
+  filter_catalog?: FilterCatalog
   kpis: {
     approved_budget: number
     used_budget: number
@@ -95,20 +104,43 @@ type DrillState = {
   mode: 'centers' | 'expenses'
   rows: Array<Record<string, unknown>>
   loading?: boolean
+  fundCenter?: string
 }
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const data = ref<Payload | null>(null)
 const filterDivisionId = ref<number | ''>('')
+const filterFundCenter = ref<string>('')
 const filterFund = ref<string>('')
-const filterText = ref('')
 const expanded = ref<Record<number, boolean>>({})
 const drill = ref<DrillState>({ open: false, title: '', mode: 'centers', rows: [] })
+
+const expenseTotals = computed(() => {
+  if (drill.value.mode !== 'expenses') {
+    return { commitment: 0, actual_expenditure: 0, count: 0 }
+  }
+  let commitment = 0
+  let actual = 0
+  for (const row of drill.value.rows) {
+    commitment += Number(row.commitment || 0)
+    actual += Number(row.actual_expenditure || 0)
+  }
+  return {
+    commitment,
+    actual_expenditure: actual,
+    count: drill.value.rows.length,
+  }
+})
 
 const kpis = computed(() => data.value?.kpis || null)
 const divisions = computed(() => data.value?.divisions || [])
 const budgetCodes = computed(() => data.value?.budget_codes || [])
+const catalog = computed<FilterCatalog>(() => data.value?.filter_catalog || {
+  divisions: data.value?.filter_options || [],
+  fund_centers: [],
+  funds: [],
+})
 
 const showDivisionCharts = computed(
   () => !!(data.value?.show_org_charts || data.value?.show_directorate_charts),
@@ -130,9 +162,9 @@ const scopeLabel = computed(() => {
 })
 
 const divisionSelectItems = computed(() => {
-  const opts = data.value?.filter_options || []
+  const opts = catalog.value.divisions || []
   return [
-    { title: 'All in scope', value: '' as number | '' },
+    { title: 'All divisions', value: '' as number | '' },
     ...opts.map((o) => ({
       title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
       value: o.id as number | '',
@@ -140,81 +172,34 @@ const divisionSelectItems = computed(() => {
   ]
 })
 
-const fundSelectItems = computed(() => {
-  const set = new Set<string>()
-  for (const d of divisions.value) {
-    for (const fc of d.fund_centers || []) {
-      const fund = String(fc.budget_code || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-      for (const f of fund) set.add(f)
-    }
-  }
-  for (const c of budgetCodes.value) {
-    const fund = String(c.budget_code || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    for (const f of fund) set.add(f)
-  }
+const fundCenterSelectItems = computed(() => {
+  const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value)
+  const centers = (catalog.value.fund_centers || []).filter(
+    (fc) => divId == null || fc.division_id === divId,
+  )
   return [
-    { title: 'All funds', value: '' },
-    ...Array.from(set)
-      .sort((a, b) => a.localeCompare(b))
-      .map((f) => ({ title: f, value: f })),
+    { title: 'All fund centers', value: '' },
+    ...centers.map((fc) => ({ title: fc.code, value: fc.code })),
   ]
 })
 
-function fundMatches(budgetCode: unknown, selected: string): boolean {
-  if (!selected) return true
-  const parts = String(budgetCode || '')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-  return parts.includes(selected.toLowerCase())
-}
-
-const filteredDivisions = computed(() => {
-  const q = filterText.value.trim().toLowerCase()
-  const fund = filterFund.value
-  return divisions.value
-    .map((d) => {
-      const centers = (d.fund_centers || []).filter((fc) => fundMatches(fc.budget_code, fund))
-      if (fund && !centers.length) return null
-      const matchText =
-        !q ||
-        d.division_name.toLowerCase().includes(q) ||
-        d.division_short_name.toLowerCase().includes(q) ||
-        centers.some(
-          (fc) =>
-            String(fc.fund_center || '')
-              .toLowerCase()
-              .includes(q) ||
-            String(fc.budget_code || '')
-              .toLowerCase()
-              .includes(q),
-        )
-      if (!matchText) return null
-      if (!fund) return d
-      return { ...d, fund_centers: centers, fund_center_count: centers.length }
-    })
-    .filter((d): d is DivisionRow => d != null)
+const fundSelectItems = computed(() => {
+  const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value)
+  const center = filterFundCenter.value.trim().toUpperCase()
+  const funds = (catalog.value.funds || []).filter((f) => {
+    if (divId != null && !f.division_ids.includes(divId)) return false
+    if (center && !f.fund_centers.includes(center)) return false
+    return true
+  })
+  return [
+    { title: 'All funds', value: '' },
+    ...funds.map((f) => ({ title: f.code, value: f.code })),
+  ]
 })
 
-const filteredBudgetCodes = computed(() => {
-  const q = filterText.value.trim().toLowerCase()
-  const fund = filterFund.value
-  return budgetCodes.value.filter(
-    (c) =>
-      fundMatches(c.budget_code, fund) &&
-      (!q ||
-        c.fund_center.toLowerCase().includes(q) ||
-        (c.budget_code || '').toLowerCase().includes(q) ||
-        c.division_name.toLowerCase().includes(q) ||
-        c.division_short_name.toLowerCase().includes(q)),
-  )
-})
+/** Server already applies chained filters to the full dashboard payload. */
+const filteredDivisions = computed(() => divisions.value)
+const filteredBudgetCodes = computed(() => budgetCodes.value)
 
 const pieSeries = computed(() => [
   {
@@ -459,6 +444,33 @@ function openDivisionDrill(div: DivisionRow) {
   expanded.value = { ...expanded.value, [div.division_id]: true }
 }
 
+function exportExpensesDrill() {
+  if (drill.value.mode !== 'expenses' || !drill.value.rows.length) return
+  const code = (drill.value.fundCenter || 'fund-center').replace(/[^\w.-]+/g, '-')
+  const stamp = new Date().toISOString().slice(0, 10)
+  const rows = drill.value.rows.map((ex) => [
+    String(ex.budget_code || ''),
+    String(ex.gl_account || ''),
+    String(ex.gl_description || ''),
+    Number(ex.commitment || 0),
+    Number(ex.actual_expenditure || 0),
+  ])
+  rows.push([
+    '',
+    '',
+    `Total (${expenseTotals.value.count} line${expenseTotals.value.count === 1 ? '' : 's'})`,
+    expenseTotals.value.commitment,
+    expenseTotals.value.actual_expenditure,
+  ])
+  downloadClientExcelSheets(`expenses-${code}-${stamp}`, [
+    {
+      name: 'Expenses',
+      headers: ['Fund', 'GL account', 'Description', 'Commitment', 'Actual expenditure'],
+      rows,
+    },
+  ])
+}
+
 async function openFundCenterExpenses(fc: Record<string, unknown> | BudgetCodeRow) {
   const code = String(fc.fund_center || '').trim()
   if (!code) return
@@ -466,6 +478,7 @@ async function openFundCenterExpenses(fc: Record<string, unknown> | BudgetCodeRo
     open: true,
     title: `Expenses — ${code}`,
     mode: 'expenses',
+    fundCenter: code,
     rows: [],
     loading: true,
   }
@@ -476,6 +489,7 @@ async function openFundCenterExpenses(fc: Record<string, unknown> | BudgetCodeRo
       open: true,
       title: `Expenses — ${code}`,
       mode: 'expenses',
+      fundCenter: code,
       rows: expenses as unknown as Array<Record<string, unknown>>,
       loading: false,
     }
@@ -484,6 +498,7 @@ async function openFundCenterExpenses(fc: Record<string, unknown> | BudgetCodeRo
       open: true,
       title: `Expenses — ${code}`,
       mode: 'expenses',
+      fundCenter: code,
       rows: [],
       loading: false,
     }
@@ -511,27 +526,82 @@ function onBudgetCodeClick(payload: { name: string; category?: string }) {
   void openFundCenterExpenses(match)
 }
 
+function normalizeFilterString(value: string | null | undefined): string {
+  return String(value || '').trim()
+}
+
+function syncChildFilters() {
+  filterFundCenter.value = normalizeFilterString(filterFundCenter.value)
+  filterFund.value = normalizeFilterString(filterFund.value)
+  const centers = fundCenterSelectItems.value.map((i) => String(i.value)).filter(Boolean)
+  if (filterFundCenter.value && !centers.includes(filterFundCenter.value)) {
+    filterFundCenter.value = ''
+  }
+  const funds = fundSelectItems.value.map((i) => String(i.value)).filter(Boolean)
+  if (filterFund.value && !funds.includes(filterFund.value)) {
+    filterFund.value = ''
+  }
+}
+
+function onDivisionChange() {
+  filterFundCenter.value = ''
+  filterFund.value = ''
+  void load()
+}
+
+function onFundCenterChange() {
+  syncChildFilters()
+  void load()
+}
+
+function onFundChange() {
+  filterFund.value = normalizeFilterString(filterFund.value)
+  void load()
+}
+
 async function load() {
   loading.value = true
   error.value = null
   try {
+    syncChildFilters()
     const params: Record<string, string | number> = {}
     if (filterDivisionId.value !== '') {
       params.division_id = Number(filterDivisionId.value)
+    }
+    if (filterFundCenter.value) {
+      params.fund_center = filterFundCenter.value
+    }
+    if (filterFund.value) {
+      params.fund = filterFund.value
     }
     const { data: res } = await api.get('/api/v1/budget-execution', { params })
     data.value = res.data as Payload
     if (data.value.filter_division_id) {
       filterDivisionId.value = data.value.filter_division_id
     }
+    if (data.value.filter_fund_center) {
+      filterFundCenter.value = data.value.filter_fund_center
+    }
+    if (data.value.filter_fund) {
+      filterFund.value = data.value.filter_fund
+    }
+    syncChildFilters()
   } catch (e) {
-    error.value = apiErrorMessage(e, 'Failed to load budgeted execution.')
+    error.value = apiErrorMessage(e, 'Failed to load budget execution.')
   } finally {
     loading.value = false
   }
 }
 
 function applyFilter() {
+  syncChildFilters()
+  void load()
+}
+
+function clearFilters() {
+  filterDivisionId.value = ''
+  filterFundCenter.value = ''
+  filterFund.value = ''
   void load()
 }
 
@@ -560,7 +630,7 @@ onUnmounted(() => {
     <header class="be__header">
       <div>
         <div class="be__title-row">
-          <h1>Budgeted execution</h1>
+          <h1>Budget execution</h1>
           <DivisionContextSwitcher />
         </div>
         <p class="be__sub">
@@ -597,18 +667,7 @@ onUnmounted(() => {
     </header>
 
     <div class="be__filters" :class="{ 'be__filters--narrow': narrowFilters }">
-      <v-text-field
-        v-model="filterText"
-        :density="narrowFilters ? 'compact' : 'comfortable'"
-        variant="outlined"
-        hide-details
-        clearable
-        :placeholder="showBudgetCodeCharts ? 'Search fund, fund center or division…' : 'Search fund or division…'"
-        prepend-inner-icon="mdi-magnify"
-        class="be__search"
-      />
       <v-select
-        v-if="data && (data.can_view_all || data.scope === 'directorate') && divisionSelectItems.length > 2"
         v-model="filterDivisionId"
         :items="divisionSelectItems"
         :density="narrowFilters ? 'compact' : 'comfortable'"
@@ -617,9 +676,21 @@ onUnmounted(() => {
         :label="narrowFilters ? undefined : 'Division'"
         :placeholder="narrowFilters ? 'Division' : undefined"
         class="be__select"
+        @update:model-value="onDivisionChange"
       />
       <v-select
-        v-if="fundSelectItems.length > 1"
+        v-model="filterFundCenter"
+        :items="fundCenterSelectItems"
+        :density="narrowFilters ? 'compact' : 'comfortable'"
+        variant="outlined"
+        hide-details
+        :label="narrowFilters ? undefined : 'Fund center'"
+        :placeholder="narrowFilters ? 'Fund center' : undefined"
+        clearable
+        class="be__select"
+        @update:model-value="onFundCenterChange"
+      />
+      <v-select
         v-model="filterFund"
         :items="fundSelectItems"
         :density="narrowFilters ? 'compact' : 'comfortable'"
@@ -629,8 +700,17 @@ onUnmounted(() => {
         :placeholder="narrowFilters ? 'Fund' : undefined"
         clearable
         class="be__select"
+        @update:model-value="onFundChange"
       />
       <button type="button" class="be__apply" @click="applyFilter">Apply</button>
+      <button
+        v-if="filterDivisionId !== '' || filterFundCenter || filterFund"
+        type="button"
+        class="be__clear"
+        @click="clearFilters"
+      >
+        Clear
+      </button>
     </div>
 
     <FinSkeleton v-if="loading" variant="dashboard" :rows="3" />
@@ -837,9 +917,20 @@ onUnmounted(() => {
       <v-card>
         <v-card-title class="be__dialog-title">
           <span>{{ drill.title }}</span>
-          <button type="button" class="be__dialog-close" aria-label="Close" @click="drill.open = false">
-            <i class="fa-solid fa-xmark" aria-hidden="true" />
-          </button>
+          <div class="be__dialog-actions">
+            <button
+              v-if="drill.mode === 'expenses' && drill.rows.length"
+              type="button"
+              class="be__export be__export--sm"
+              @click="exportExpensesDrill"
+            >
+              <i class="fa-solid fa-file-excel" aria-hidden="true" />
+              Export Excel
+            </button>
+            <button type="button" class="be__dialog-close" aria-label="Close" @click="drill.open = false">
+              <i class="fa-solid fa-xmark" aria-hidden="true" />
+            </button>
+          </div>
         </v-card-title>
         <v-card-text>
           <p v-if="drill.loading" class="be__muted">Loading expenses…</p>
@@ -866,6 +957,15 @@ onUnmounted(() => {
                   <td>{{ usd(Number(ex.actual_expenditure || 0)) }}</td>
                 </tr>
               </tbody>
+              <tfoot>
+                <tr class="be__total-row">
+                  <td colspan="3">
+                    Total ({{ expenseTotals.count }} line{{ expenseTotals.count === 1 ? '' : 's' }})
+                  </td>
+                  <td>{{ usd(expenseTotals.commitment) }}</td>
+                  <td>{{ usd(expenseTotals.actual_expenditure) }}</td>
+                </tr>
+              </tfoot>
             </table>
             <table v-else class="be__table">
               <thead>
@@ -931,41 +1031,40 @@ onUnmounted(() => {
 .be__filters {
   display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; margin-bottom: 1rem;
 }
-.be__search { flex: 1 1 220px; max-width: 420px; }
-.be__select { flex: 0 1 280px; }
-.be__search :deep(.v-field),
+.be__select { flex: 1 1 200px; max-width: 280px; }
 .be__select :deep(.v-field) { border-radius: var(--be-radius) !important; }
 .be__apply {
   border: none; background: #119a48; color: #fff; font-weight: 700; border-radius: var(--be-radius);
   padding: 0.55rem 1.1rem; cursor: pointer; min-height: 40px;
 }
+.be__clear {
+  border: 1px solid rgba(15, 23, 42, 0.15); background: #fff; color: #334155; font-weight: 650;
+  border-radius: var(--be-radius); padding: 0.55rem 1rem; cursor: pointer; min-height: 40px;
+}
 .be__filters--narrow {
   gap: 0.45rem;
   margin-bottom: 0.75rem;
 }
-.be__filters--narrow .be__search :deep(.v-field),
 .be__filters--narrow .be__select :deep(.v-field) {
   --v-input-control-height: 36px;
   min-height: 36px !important;
 }
-.be__filters--narrow .be__search :deep(.v-field__input),
 .be__filters--narrow .be__select :deep(.v-field__input) {
   min-height: 36px !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   font-size: 0.875rem;
 }
-.be__filters--narrow .be__search :deep(.v-field--variant-outlined),
 .be__filters--narrow .be__select :deep(.v-field--variant-outlined) {
   --v-field-padding-top: 2px;
   --v-field-padding-bottom: 2px;
 }
-.be__filters--narrow .be__search :deep(.v-icon),
 .be__filters--narrow .be__select :deep(.v-icon) {
   font-size: 1.05rem;
   opacity: 0.75;
 }
-.be__filters--narrow .be__apply {
+.be__filters--narrow .be__apply,
+.be__filters--narrow .be__clear {
   min-height: 36px;
   padding: 0.3rem 0.85rem;
   font-size: 0.875rem;
@@ -1064,8 +1163,19 @@ onUnmounted(() => {
   display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
   font-weight: 700; color: #0b3b5c;
 }
+.be__dialog-actions {
+  display: inline-flex; align-items: center; gap: 0.5rem; flex: 0 0 auto;
+}
+.be__export--sm {
+  padding: 0.35rem 0.7rem; font-size: 0.82rem; min-height: 0;
+}
 .be__dialog-close {
   border: none; background: transparent; cursor: pointer; color: #64748b; font-size: 1.1rem;
+}
+.be__total-row td {
+  background: #e8f1f7; color: #0b3b5c; font-weight: 800;
+  border-top: 2px solid rgba(11, 59, 92, 0.2);
+  position: sticky; bottom: 0;
 }
 @media (max-width: 900px) {
   .be__charts { grid-template-columns: 1fr; }
@@ -1075,7 +1185,7 @@ onUnmounted(() => {
   .be__header { flex-direction: column; }
   .be__export { width: 100%; justify-content: center; }
   .be__filters { flex-direction: column; align-items: stretch; }
-  .be__search, .be__select { max-width: none; width: 100%; }
-  .be__apply { width: 100%; }
+  .be__select { max-width: none; width: 100%; }
+  .be__apply, .be__clear { width: 100%; }
 }
 </style>
