@@ -72,6 +72,27 @@ class BudgetExecutionApiTest extends TestCase
         $this->assertNotEmpty($res->json('data.sap_import.original_filename'));
     }
 
+    public function test_apm_warm_token_sees_all_even_without_role_or_perms(): void
+    {
+        // Mimics a Redis/bridge payload that lost role_id/permissions — previously
+        // wiped by_division to [] while Finance SPA (real user session) still had data.
+        $token = 'apm_fin_warm_1_testhash';
+        Cache::put('risk_api_token:'.$token, [
+            'staff_id' => 1,
+            'division_id' => 0,
+            'role_id' => 0,
+            'permissions' => [],
+            'api_token' => $token,
+            'source' => 'apm_finance_budget_execution_warm',
+        ], 3600);
+
+        $res = $this->withToken($token)->getJson('/api/v1/budget-execution');
+        $res->assertOk();
+        $res->assertJsonPath('data.can_view_all', true);
+        $this->assertGreaterThanOrEqual(2, count($res->json('data.divisions')));
+        $this->assertGreaterThan(0, (float) $res->json('data.kpis.approved_budget'));
+    }
+
     public function test_admin_sees_all_and_can_filter(): void
     {
         $token = 'be-admin';

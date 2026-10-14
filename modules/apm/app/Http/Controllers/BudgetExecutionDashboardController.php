@@ -75,10 +75,27 @@ class BudgetExecutionDashboardController extends Controller
                     $fund
                 );
 
-                // Org warm can be empty (stale Redis / warm token) while Finance SPA
-                // already has SAP data for this user — fall back to a live user fetch.
+                // Empty snapshot while Finance SPA has data: force a fresh org-wide warm
+                // (ACCESS_ALL) or a live user fetch (scoped users). Never keep a wiped empty.
                 if ($this->snapshot->divisionCount($data) === 0) {
-                    $live = $this->liveFinancePayload($year, $divisionId, $fundCenter, $fund);
+                    $live = null;
+                    if (($scope['access'] ?? '') === BudgetExecutionScope::ACCESS_ALL) {
+                        try {
+                            $record = $this->snapshot->remember($year, forceRefresh: true);
+                            $data = $this->snapshot->presentForScope(
+                                $record['data'],
+                                $scope,
+                                $divisionId,
+                                $fundCenter,
+                                $fund
+                            );
+                        } catch (Throwable $e) {
+                            report($e);
+                        }
+                    }
+                    if ($this->snapshot->divisionCount($data) === 0) {
+                        $live = $this->liveFinancePayload($year, $divisionId, $fundCenter, $fund);
+                    }
                     if ($live !== null && $this->snapshot->divisionCount($live['data']) > 0) {
                         $data = $this->snapshot->presentForScope(
                             $live['data'],

@@ -174,9 +174,11 @@ final class FinanceBudgetExecutionClient
             'staff_id' => $staffId,
             'name' => 'APM Finance Warm',
             'email' => 'apm-finance-warm@africacdc.org',
-            'permissions' => ['92'],
+            // Strings + ints: Finance hasAny cast, role checks int — keep both shapes.
+            'permissions' => ['92', 92],
             'division_id' => 0,
             'role_id' => 10,
+            'role' => 10,
             'api_token' => $token,
             'source' => 'apm_finance_budget_execution_warm',
         ];

@@ -184,7 +184,7 @@
                         return 'Finance has no latest SAP import for this year yet. Import a SAP dump in the Finance portal (SAP import), then refresh this page.';
                     }
                     if (data.value?.can_view_all) {
-                        return 'Finance returned an empty budget-execution payload (no fund centers mapped to divisions). Check fund-code → division mapping after the SAP import.';
+                        return 'APM could not load org-wide budget rows from Finance (import exists, but the API returned 0 divisions). Click Refresh, or run: php artisan finance:warm-budget-execution --force. If Finance SPA shows data, the APM→Finance warm token/session was likely empty — redeploy the latest Finance/APM auth fix.';
                     }
                     return 'No SAP fund centers are mapped for your division / directorate scope yet.';
                 });

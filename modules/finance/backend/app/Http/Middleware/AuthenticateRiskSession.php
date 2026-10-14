@@ -70,6 +70,10 @@ class AuthenticateRiskSession
             'risk_role_id',
             (int) ($session['role_id'] ?? $session['role'] ?? 0)
         );
+        $request->attributes->set(
+            'risk_session_source',
+            is_string($session['source'] ?? null) ? (string) $session['source'] : ''
+        );
 
         // Sliding session: keep the Finance SPA token alive while the user is active
         // so they are not forced back through Staff Portal home to relaunch.

@@ -30,14 +30,19 @@ class BudgetExecutionController extends Controller
         $staffId = (int) $request->attributes->get('risk_staff_id', 0);
         $sessionDivisionId = (int) $request->attributes->get('risk_division_id', 0);
 
+        $sessionSource = (string) $request->attributes->get('risk_session_source', '');
+        $isApmWarm = str_contains($sessionSource, 'apm_finance_budget_execution_warm')
+            || str_starts_with((string) $request->bearerToken(), 'apm_fin_warm_');
+
         $scope = $this->scope->resolve(
             is_array($permissions) ? $permissions : [],
             $roleId,
             $staffId,
             $sessionDivisionId
         );
-        $viewAll = (bool) $scope['can_view_all'];
-        $allowedDivisionIds = $scope['division_ids'];
+        // APM org-wide Redis warm must never be scoped to staff_id=1's empty divisions.
+        $viewAll = (bool) $scope['can_view_all'] || $isApmWarm;
+        $allowedDivisionIds = $viewAll ? [] : $scope['division_ids'];
 
         $filterDivisionId = (int) $request->query('division_id', 0);
         $filterFundCenter = strtoupper(preg_replace('/\s+/', '', trim((string) $request->query('fund_center', ''))) ?? '');
