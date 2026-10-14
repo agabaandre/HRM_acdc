@@ -7,7 +7,7 @@ import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
 import PortalTableToolbar from '@/components/molecules/PortalTableToolbar.vue'
 import { api } from '@/lib/api'
-import { downloadClientCsv, openClientPdfTable } from '@/lib/clientTableExport'
+import { downloadClientCsv, downloadClientExcel, openClientPdfTable } from '@/lib/clientTableExport'
 import {
   fetchPerformanceApprovalHistory,
   fetchPerformanceHub,
@@ -22,6 +22,7 @@ import { usePerformancePendingStore } from '@/stores/performancePending'
 
 type HubTab = PerformanceTab | 'analytics'
 type AnalyticsPhase = 'ppa' | 'midterm' | 'endterm'
+type AnalyticsCohortFilter = 'total' | 'approved' | 'pdps' | 'without' | 'require_calibration'
 type NameY = { name: string; y: number }
 type TrendPoint = { date: string; count: number }
 type AvgRow = { name: string; avg_score: number }
@@ -51,6 +52,29 @@ type AnalyticsPayload = {
   division_averages?: AvgRow[]
   funder_averages?: AvgRow[]
 }
+type AnalyticsCohortRow = {
+  entry_id?: string | null
+  staff_id?: number
+  staff_name?: string
+  sapno?: string | null
+  division?: string
+  contract_type?: string
+  status?: string
+  updated_at?: string | null
+  score?: number | null
+  form_url?: string | null
+  can_preview?: boolean
+  pending_with?: string | null
+  pending_supervisor_id?: number | null
+  can_remind_supervisor?: boolean
+}
+type AnalyticsCohortPayload = {
+  filter?: string
+  title?: string
+  phase?: string
+  period?: string
+  rows?: AnalyticsCohortRow[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -63,6 +87,11 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const data = ref<PerformanceHubData | null>(null)
 const analytics = ref<AnalyticsPayload | null>(null)
+const cohortFilter = ref<AnalyticsCohortFilter | null>(null)
+const cohort = ref<AnalyticsCohortPayload | null>(null)
+const cohortLoading = ref(false)
+const remindingEntryId = ref<string | null>(null)
+const remindMessage = ref<string | null>(null)
 const funders = ref<Array<{ funder_id: number; funder: string }>>([])
 const period = ref<string>('')
 const divisionId = ref<number | null>(null)
@@ -368,7 +397,93 @@ function exportPendingPdf() {
 function setAnalyticsPhase(phase: AnalyticsPhase) {
   analyticsPhase.value = phase
   if (phase !== 'endterm') funderId.value = null
+  clearCohort()
   void router.replace({ query: { tab: 'analytics', phase } })
+}
+
+function clearCohort() {
+  cohortFilter.value = null
+  cohort.value = null
+}
+
+async function openCohort(filter: AnalyticsCohortFilter) {
+  if (cohortFilter.value === filter && cohort.value) {
+    clearCohort()
+    return
+  }
+  cohortFilter.value = filter
+  cohortLoading.value = true
+  error.value = null
+  try {
+    const { data: res } = await api.get<{ data: AnalyticsCohortPayload }>(
+      '/api/v1/performance/analytics/entries',
+      {
+        params: {
+          filter,
+          ...analyticsExportParams(),
+        },
+      },
+    )
+    cohort.value = res.data
+  } catch (e) {
+    cohort.value = null
+    error.value = apiErrorMessage(e, 'Could not load cohort list')
+  } finally {
+    cohortLoading.value = false
+  }
+}
+
+function previewEntry(row: AnalyticsCohortRow) {
+  if (!row.entry_id || row.can_preview === false) return
+  void openApiPdf(`/api/v1/performance/entries/${row.entry_id}/print`, {
+    phase: analyticsPhase.value,
+  })
+}
+
+function exportCohortExcel() {
+  const headers = [
+    'Staff',
+    'SAP NO',
+    'Division',
+    'Contract',
+    'Status',
+    'Pending with',
+    ...(isEndterm.value ? ['Score'] : []),
+    'Updated',
+  ]
+  const rows = cohortRows.value.map((row) => [
+    row.staff_name || '',
+    row.sapno || '',
+    row.division || '',
+    row.contract_type || '',
+    row.status || '',
+    row.pending_with || '',
+    ...(isEndterm.value ? [row.score != null ? row.score : ''] : []),
+    row.updated_at || '',
+  ])
+  downloadClientExcel(
+    `performance-${analyticsPhase.value}-${cohortFilter.value || 'cohort'}.xls`,
+    headers,
+    rows,
+    cohort.value?.title || 'Cohort',
+  )
+}
+
+async function remindSupervisor(row: AnalyticsCohortRow) {
+  if (!row.entry_id || !row.can_remind_supervisor) return
+  remindingEntryId.value = row.entry_id
+  remindMessage.value = null
+  try {
+    const { data: res } = await api.post<{ message?: string; data?: { message?: string } }>(
+      `/api/v1/performance/analytics/entries/${row.entry_id}/remind-supervisor`,
+      { phase: analyticsPhase.value },
+    )
+    remindMessage.value = res.message || res.data?.message || 'Reminder queued.'
+  } catch (e) {
+    remindMessage.value = apiErrorMessage(e, 'Could not queue supervisor reminder')
+  } finally {
+    remindingEntryId.value = null
+  }
 }
 
 function openForm(url: unknown) {
@@ -432,20 +547,28 @@ const kpiCards = computed(() => {
   const s = summary.value
   if (isEndterm.value) {
     return [
-      { label: 'Endterm reviews', value: s.total ?? 0, icon: 'fa-solid fa-file-lines', color: '#911C39' },
-      { label: 'Approved', value: s.approved ?? 0, icon: 'fa-solid fa-circle-check', color: '#119A48' },
-      { label: 'Require calibration', value: s.require_calibration ?? 0, icon: 'fa-solid fa-triangle-exclamation', color: '#fbb924' },
-      { label: 'Without endterm', value: s.without ?? 0, icon: 'fa-solid fa-user-xmark', color: '#C3A366' },
+      { filter: 'total' as const, label: 'Endterm reviews', value: s.total ?? 0, icon: 'fa-solid fa-file-lines', color: '#911C39' },
+      { filter: 'approved' as const, label: 'Approved', value: s.approved ?? 0, icon: 'fa-solid fa-circle-check', color: '#119A48' },
+      {
+        filter: 'require_calibration' as const,
+        label: 'Require calibration',
+        value: s.require_calibration ?? 0,
+        icon: 'fa-solid fa-triangle-exclamation',
+        color: '#fbb924',
+      },
+      { filter: 'without' as const, label: 'Without endterm', value: s.without ?? 0, icon: 'fa-solid fa-user-xmark', color: '#C3A366' },
     ]
   }
   const noun = analyticsPhase.value === 'midterm' ? 'midterms' : 'PPAs'
   return [
-    { label: `Staff ${noun}`, value: s.total ?? 0, icon: 'fa-solid fa-file-lines', color: '#911C39' },
-    { label: 'Approved', value: s.approved ?? 0, icon: 'fa-solid fa-circle-check', color: '#119A48' },
-    { label: 'Staff PDPs', value: s.pdps ?? 0, icon: 'fa-solid fa-user-check', color: '#385CAD' },
-    { label: `Without ${noun}`, value: s.without ?? 0, icon: 'fa-solid fa-user-xmark', color: '#C3A366' },
+    { filter: 'total' as const, label: `Staff ${noun}`, value: s.total ?? 0, icon: 'fa-solid fa-file-lines', color: '#911C39' },
+    { filter: 'approved' as const, label: 'Approved', value: s.approved ?? 0, icon: 'fa-solid fa-circle-check', color: '#119A48' },
+    { filter: 'pdps' as const, label: 'Staff PDPs', value: s.pdps ?? 0, icon: 'fa-solid fa-user-check', color: '#385CAD' },
+    { filter: 'without' as const, label: `Without ${noun}`, value: s.without ?? 0, icon: 'fa-solid fa-user-xmark', color: '#C3A366' },
   ]
 })
+
+const cohortRows = computed(() => cohort.value?.rows || [])
 
 const approvalSeries = computed(() => [
   {
@@ -545,6 +668,7 @@ const filtersReady = ref(false)
 
 watch([tab, analyticsPhase, period, divisionId, funderId, page, perPage], () => {
   if (!filtersReady.value) return
+  if (tab.value === 'analytics') clearCohort()
   void load()
 })
 
@@ -660,20 +784,127 @@ onMounted(() => {
       />
 
       <v-row dense class="mb-4">
-        <v-col v-for="card in kpiCards" :key="card.label" cols="12" sm="6" md="3">
-          <v-sheet rounded border class="pa-4 perf-kpi perf-kpi--muted">
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <div class="text-caption text-uppercase perf-kpi__label">{{ card.label }}</div>
-                <div class="text-h5 font-weight-bold perf-kpi__value">{{ card.value }}</div>
+        <v-col v-for="card in kpiCards" :key="card.filter" cols="12" sm="6" md="3">
+          <button
+            type="button"
+            class="perf-kpi-card"
+            :class="{ 'perf-kpi-card--active': cohortFilter === card.filter }"
+            :aria-pressed="cohortFilter === card.filter"
+            @click="openCohort(card.filter)"
+          >
+            <v-sheet rounded border class="pa-4 perf-kpi perf-kpi--muted perf-kpi--clickable">
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <div class="text-caption text-uppercase perf-kpi__label">{{ card.label }}</div>
+                  <div class="text-h5 font-weight-bold perf-kpi__value">{{ card.value }}</div>
+                  <div class="text-caption text-medium-emphasis mt-1">Click to view list</div>
+                </div>
+                <i :class="card.icon" class="perf-kpi__icon" aria-hidden="true" />
               </div>
-              <i :class="card.icon" class="perf-kpi__icon" aria-hidden="true" />
-            </div>
-          </v-sheet>
+            </v-sheet>
+          </button>
         </v-col>
       </v-row>
 
-      <v-row dense>
+      <v-card v-if="cohortFilter" class="portal-data-table-card mb-4" variant="outlined">
+        <div class="d-flex align-center justify-space-between px-3 pt-3 pb-1 ga-2 flex-wrap">
+          <div>
+            <div class="text-subtitle-1 font-weight-medium">{{ cohort?.title || 'Cohort' }}</div>
+            <div class="text-caption text-medium-emphasis">
+              {{ cohortRows.length }} staff · {{ analyticsPhase.toUpperCase() }} · {{ period || '—' }}
+            </div>
+          </div>
+          <div class="d-flex align-center ga-2">
+            <v-btn
+              size="small"
+              variant="tonal"
+              :disabled="!cohortRows.length || cohortLoading"
+              @click="exportCohortExcel"
+            >
+              Excel
+            </v-btn>
+            <v-btn size="small" variant="text" @click="clearCohort">Back to charts</v-btn>
+          </div>
+        </div>
+        <v-alert
+          v-if="remindMessage"
+          class="ma-3"
+          type="info"
+          variant="tonal"
+          density="compact"
+          closable
+          @click:close="remindMessage = null"
+        >
+          {{ remindMessage }}
+        </v-alert>
+        <div v-if="cohortLoading" class="px-3 py-6 text-medium-emphasis">Loading list…</div>
+        <v-table v-else density="compact">
+          <thead>
+            <tr>
+              <th style="width: 3rem">#</th>
+              <th>Staff</th>
+              <th>SAP NO</th>
+              <th>Division</th>
+              <th>Contract</th>
+              <th>Status</th>
+              <th>Pending with</th>
+              <th v-if="isEndterm">Score</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, i) in cohortRows" :key="`${row.entry_id || row.staff_id}-${i}`">
+              <td><span class="portal-dt-row-num">{{ i + 1 }}</span></td>
+              <td>{{ row.staff_name || '—' }}</td>
+              <td>{{ row.sapno || '—' }}</td>
+              <td>{{ row.division || '—' }}</td>
+              <td>{{ row.contract_type || '—' }}</td>
+              <td>{{ row.status || '—' }}</td>
+              <td>{{ row.pending_with || '—' }}</td>
+              <td v-if="isEndterm">{{ row.score != null ? `${row.score}%` : '—' }}</td>
+              <td>{{ row.updated_at || '—' }}</td>
+              <td class="text-end text-no-wrap">
+                <v-btn
+                  v-if="row.form_url"
+                  size="x-small"
+                  variant="tonal"
+                  class="me-1"
+                  @click="openForm(row.form_url)"
+                >
+                  Open
+                </v-btn>
+                <v-btn
+                  v-if="row.entry_id && row.can_preview !== false"
+                  size="x-small"
+                  variant="text"
+                  class="me-1"
+                  @click="previewEntry(row)"
+                >
+                  Preview
+                </v-btn>
+                <v-btn
+                  v-if="row.can_remind_supervisor && row.entry_id"
+                  size="x-small"
+                  color="primary"
+                  variant="text"
+                  :loading="remindingEntryId === row.entry_id"
+                  @click="remindSupervisor(row)"
+                >
+                  Email supervisor
+                </v-btn>
+              </td>
+            </tr>
+            <tr v-if="!cohortRows.length">
+              <td :colspan="isEndterm ? 10 : 9" class="text-medium-emphasis text-center py-6">
+                No staff in this group.
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </v-card>
+
+      <v-row v-if="!cohortFilter" dense>
         <v-col cols="12" md="6">
           <v-sheet border rounded class="pa-3 mb-3">
             <PortalHighchart
@@ -1226,6 +1457,27 @@ onMounted(() => {
 }
 .perf-kpi {
   min-height: 5.5rem;
+}
+.perf-kpi-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+.perf-kpi-card:focus-visible {
+  outline: 2px solid #911c39;
+  outline-offset: 2px;
+}
+.perf-kpi-card--active .perf-kpi--muted {
+  border-color: #911c39 !important;
+  box-shadow: inset 0 0 0 1px #911c39;
+}
+.perf-kpi--clickable:hover {
+  border-color: rgba(145, 28, 57, 0.35) !important;
 }
 .perf-kpi--muted {
   --perf-kpi-bg: #f8fafc !important;

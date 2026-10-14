@@ -9,6 +9,8 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     Route::get('performance/pending-count', [PerformanceHubApiController::class, 'pendingCount']);
     Route::get('performance/approval-history', [PerformanceHubApiController::class, 'approvalHistory']);
     Route::get('performance/analytics', [PerformanceFormApiController::class, 'analytics']);
+    Route::get('performance/analytics/entries', [PerformanceFormApiController::class, 'analyticsEntries']);
+    Route::post('performance/analytics/entries/{entryId}/remind-supervisor', [PerformanceFormApiController::class, 'remindSupervisor']);
     Route::get('performance/analytics/export/csv', [PerformanceFormApiController::class, 'exportCsv']);
     Route::get('performance/analytics/export.csv', [PerformanceFormApiController::class, 'exportCsv']);
     Route::post('performance/entries', [PerformanceFormApiController::class, 'create']);

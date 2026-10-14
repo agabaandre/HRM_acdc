@@ -16,6 +16,7 @@ use Modules\Core\Support\PortalPermission;
 use Modules\Performance\Enums\PerformancePhase;
 use Modules\Performance\Services\CompetencyService;
 use Modules\Performance\Services\PerformanceApprovalService;
+use Modules\Jobs\Services\PerformanceReminderService;
 use Modules\Performance\Services\PerformanceAnalyticsService;
 use Modules\Performance\Services\PerformanceService;
 use Modules\Performance\Services\PerformanceWorkflowCorrectionService;
@@ -53,7 +54,7 @@ class PerformanceFormApiController extends Controller
         }
 
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
-        $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
+        $this->authorizeEntryReadAccess($entry, $phase, $actorStaffId, $workflow);
 
         return response()->json([
             'data' => $this->buildExistingPayload(
@@ -470,6 +471,63 @@ class PerformanceFormApiController extends Controller
         ]);
     }
 
+    public function analyticsEntries(
+        Request $request,
+        PerformanceAnalyticsService $analytics,
+        PerformanceService $performance
+    ): JsonResponse {
+        PortalPermission::authorize(74);
+
+        $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
+        $period = (string) ($request->query('period') ?: $performance->currentPeriodSlug());
+        $division = $request->filled('division_id') ? (int) $request->query('division_id') : null;
+        $funder = $request->filled('funder_id') ? (int) $request->query('funder_id') : null;
+        $filter = (string) $request->query('filter', 'total');
+
+        try {
+            $data = $analytics->cohort(
+                $phase,
+                $filter,
+                $division,
+                $period,
+                $this->analyticsRestrictStaffId(),
+                $funder,
+            );
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'filter' => [$e->getMessage()],
+            ]);
+        }
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function remindSupervisor(
+        string $entryId,
+        Request $request,
+        PerformanceReminderService $reminders,
+        PpaFormService $forms,
+        PerformanceWorkflowService $workflow,
+    ): JsonResponse {
+        PortalPermission::authorize(74);
+
+        $phase = PerformancePhase::tryFrom((string) $request->input('phase', $request->query('phase', 'ppa')))
+            ?? PerformancePhase::Ppa;
+        $entry = $forms->findEntry($entryId);
+        if (! $entry) {
+            abort(404, 'Entry not found.');
+        }
+
+        $this->authorizeEntryReadAccess($entry, $phase, $this->actorStaffId(), $workflow);
+
+        $result = $reminders->nudgePendingSupervisorForEntry($entryId, $phase);
+
+        return response()->json([
+            'message' => $result['message'],
+            'data' => $result,
+        ], $result['queued'] ? 200 : 422);
+    }
+
     public function exportCsv(
         Request $request,
         PerformanceAnalyticsService $analytics,
@@ -500,12 +558,14 @@ class PerformanceFormApiController extends Controller
             ['Division', 'Count'],
         ];
         foreach ($data['by_division'] as $row) {
-            $rows[] = [$row['name'] ?? ($row->name ?? ''), $row['y'] ?? ($row->y ?? 0)];
+            $row = (array) $row;
+            $rows[] = [$row['name'] ?? ($row['label'] ?? ''), $row['y'] ?? ($row['value'] ?? 0)];
         }
         $rows[] = [];
         $rows[] = ['Contract type', 'Count'];
         foreach ($data['by_contract'] ?? [] as $row) {
-            $rows[] = [$row['name'] ?? '', $row['y'] ?? 0];
+            $row = (array) $row;
+            $rows[] = [$row['name'] ?? ($row['label'] ?? ''), $row['y'] ?? ($row['value'] ?? 0)];
         }
 
         return $csv->stream('performance-'.$phase->value.'-dashboard.csv', $rows);
@@ -531,7 +591,7 @@ class PerformanceFormApiController extends Controller
             abort(404, 'Entry not found');
         }
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
-        $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
+        $this->authorizeEntryReadAccess($entry, $phase, $actorStaffId, $workflow);
 
         $objectives = $forms->decodeObjectives((string) ($entry->objectives ?? ''), 5);
         if ($phase === PerformancePhase::Midterm) {
@@ -1199,6 +1259,33 @@ class PerformanceFormApiController extends Controller
         int $actorStaffId,
         PerformanceWorkflowService $workflow
     ): void {
+        if (! $this->actorMayAccessEntry($entry, $phase, $actorStaffId, $workflow, false)) {
+            abort(403, 'You are not allowed to access this entry.');
+        }
+    }
+
+    /**
+     * Read-only access for show/print: owners, supervisors, HR (perm 83),
+     * or org analytics browsers (perm 74, not self-only role 17).
+     */
+    protected function authorizeEntryReadAccess(
+        object $entry,
+        PerformancePhase $phase,
+        int $actorStaffId,
+        PerformanceWorkflowService $workflow
+    ): void {
+        if (! $this->actorMayAccessEntry($entry, $phase, $actorStaffId, $workflow, true)) {
+            abort(403, 'You are not allowed to access this entry.');
+        }
+    }
+
+    protected function actorMayAccessEntry(
+        object $entry,
+        PerformancePhase $phase,
+        int $actorStaffId,
+        PerformanceWorkflowService $workflow,
+        bool $allowAnalyticsBrowse
+    ): bool {
         $isOwner = $actorStaffId === (int) $entry->staff_id;
         $supervisors = $workflow->supervisorIdsForPhase($entry, $phase);
         $isSupervisor = in_array($actorStaffId, array_filter([
@@ -1206,9 +1293,13 @@ class PerformanceFormApiController extends Controller
             $supervisors['supervisor_2'] ?? null,
         ]), true);
 
-        if (! $isOwner && ! $isSupervisor && ! PerformanceFormAccess::canViewAnyEntry()) {
-            abort(403, 'You are not allowed to access this entry.');
+        if ($isOwner || $isSupervisor || PerformanceFormAccess::canViewAnyEntry()) {
+            return true;
         }
+
+        return $allowAnalyticsBrowse
+            && PortalPermission::can(74)
+            && $this->analyticsRestrictStaffId() === null;
     }
 
     protected function authorizeTargetStaffAccess(int $staffId, int $actorStaffId, SupervisorResolver $supervisors): void

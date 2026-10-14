@@ -46,9 +46,16 @@ class EmailNotificationService
         }
     }
 
+    /**
+     * True when this entry_id was already sent successfully (status=1).
+     * Unsent / failed rows must not block re-queue — queue() replaces them.
+     */
     public function entryExists(string $entryId): bool
     {
-        return DB::table('email_notifications')->where('entry_id', $entryId)->exists();
+        return DB::table('email_notifications')
+            ->where('entry_id', $entryId)
+            ->where('status', 1)
+            ->exists();
     }
 
     public function render(string $view, array $data = []): string

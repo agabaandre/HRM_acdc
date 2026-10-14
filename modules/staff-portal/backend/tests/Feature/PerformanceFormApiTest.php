@@ -917,6 +917,109 @@ class PerformanceFormApiTest extends TestCase
         $this->assertStringContainsString('People,1', $csv);
     }
 
+    public function test_analytics_entries_returns_cohort_rows_for_kpi_cards(): void
+    {
+        session()->put($this->portalSession(999, 22, [74]));
+
+        $analytics = \Mockery::mock(PerformanceAnalyticsService::class);
+        $analytics->shouldReceive('cohort')
+            ->once()
+            ->withArgs(fn (PerformancePhase $phase, string $filter, ?int $divisionId, string $period, ?int $restrictStaffId): bool => $phase === PerformancePhase::Ppa
+                && $filter === 'approved'
+                && $divisionId === null
+                && $period === 'January-2026-to-December-2026'
+                && $restrictStaffId === null)
+            ->andReturn([
+                'filter' => 'approved',
+                'title' => 'Approved PPAs',
+                'phase' => 'ppa',
+                'period' => 'January-2026-to-December-2026',
+                'rows' => [
+                    [
+                        'entry_id' => 'ppa-entry-1',
+                        'staff_id' => 100,
+                        'staff_name' => 'Current Staff',
+                        'can_preview' => true,
+                        'form_url' => '/performance/form/ppa/ppa-entry-1/100',
+                    ],
+                ],
+            ]);
+
+        $response = app(PerformanceFormApiController::class)->analyticsEntries(
+            Request::create('/api/v1/performance/analytics/entries', 'GET', [
+                'phase' => 'ppa',
+                'filter' => 'approved',
+                'period' => 'January-2026-to-December-2026',
+            ]),
+            $analytics,
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true)['data'];
+        $this->assertSame('approved', $payload['filter']);
+        $this->assertSame('ppa-entry-1', $payload['rows'][0]['entry_id']);
+        $this->assertTrue($payload['rows'][0]['can_preview']);
+    }
+
+    public function test_analytics_browser_can_preview_another_staff_ppa_pdf(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-entry-analytics-preview',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'staff_sign_off' => 1,
+            'objectives' => json_encode([
+                1 => [
+                    'objective' => '<p>Deliver</p>',
+                    'timeline' => '2026-12-31',
+                    'indicator' => '<p>Done</p>',
+                    'weight' => 100,
+                ],
+            ]),
+        ]);
+
+        // Org analytics browser (not role 17, no perm 83) may preview PDF.
+        session()->put($this->portalSession(999, 22, [74]));
+
+        $compiled = sys_get_temp_dir().'/staff-phpunit-views';
+        if (! is_dir($compiled)) {
+            mkdir($compiled, 0777, true);
+        }
+        config(['view.compiled' => $compiled]);
+        $this->app->forgetInstance('blade.compiler');
+        $this->app->forgetInstance('view');
+
+        $pdf = new class extends PdfService
+        {
+            public string $html = '';
+
+            public function inline(string $htmlBody, string $filename, array $options = []): Response
+            {
+                $this->html = $htmlBody;
+
+                return response($htmlBody, 200, ['Content-Type' => 'text/html']);
+            }
+        };
+
+        app(PerformanceFormApiController::class)->printEntry(
+            'ppa-entry-analytics-preview',
+            Request::create('/api/v1/performance/entries/ppa-entry-analytics-preview/print.pdf', 'GET', [
+                'phase' => 'ppa',
+            ]),
+            app(PpaFormService::class),
+            $pdf,
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PpaContractService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $this->assertStringContainsString('Deliver', $pdf->html);
+        $this->assertStringContainsString('Current Staff', $pdf->html);
+    }
+
     public function test_return_entry_requires_permission_83(): void
     {
         $this->insertPpaEntry([

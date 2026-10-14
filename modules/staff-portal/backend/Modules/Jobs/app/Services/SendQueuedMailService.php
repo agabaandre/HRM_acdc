@@ -23,6 +23,7 @@ class SendQueuedMailService
     {
         $this->notifications->purgeTestRecipients();
         $today = date('Y-m-d');
+        $this->reclaimOverdueDispatchDates($today);
 
         $messages = DB::table('email_notifications')
             ->where('next_dispatch', 'like', $today.'%')
@@ -44,6 +45,7 @@ class SendQueuedMailService
     public function sendInstant(bool $sleep = false): array
     {
         $today = date('Y-m-d');
+        $this->reclaimOverdueDispatchDates($today);
 
         // Reclaim locks stuck > 15 minutes.
         DB::table('email_notifications')
@@ -56,24 +58,63 @@ class SendQueuedMailService
             ->where('next_dispatch', 'like', $today.'%')
             ->where(function ($q) {
                 $q->whereNull('status')
-                    ->orWhere('status', '')
-                    ->orWhere('status', '0')
-                    ->orWhere('status', 0);
+                    ->orWhere('status', 0)
+                    ->orWhere('status', '0');
             })
             ->where(function ($q) {
+                // Combined daily approval reminder uses "Pending performance approvals"
+                // (no PPA/Midterm/Endterm token) — must be included or messages stall forever.
                 $q->where('subject', 'like', '%PPA%')
                     ->orWhere('subject', 'like', '%Midterm%')
                     ->orWhere('subject', 'like', '%Endterm%')
                     ->orWhere('subject', 'like', '%Consent%')
+                    ->orWhere('subject', 'like', '%performance approval%')
+                    ->orWhere('subject', 'like', '%Pending performance%')
                     ->orWhere('subject', 'like', '%Birthday%')
                     ->orWhere('subject', 'like', '%Contract%')
                     ->orWhere('subject', 'like', '%Profile%');
             })
+            // Prefer performance approval traffic so older failing contract mails cannot starve it.
+            ->orderByRaw("CASE
+                WHEN subject LIKE '%performance approval%' OR subject LIKE '%Pending performance%' THEN 0
+                WHEN subject LIKE '%PPA%' OR subject LIKE '%Midterm%' OR subject LIKE '%Endterm%' OR subject LIKE '%Consent%' THEN 1
+                ELSE 2
+            END")
             ->orderBy('id')
             ->limit(100)
             ->get();
 
         return $this->dispatchMessages($messages, $sleep);
+    }
+
+    /**
+     * Missed days leave status=0 with a past next_dispatch; bump performance-related
+     * rows to today so the dispatcher can retry without flooding the queue with
+     * unrelated historic contract/birthday mail.
+     */
+    protected function reclaimOverdueDispatchDates(string $today): void
+    {
+        // status is numeric in production; avoid empty-string comparisons (MySQL truncates).
+        DB::table('email_notifications')
+            ->whereNotNull('next_dispatch')
+            ->where('next_dispatch', '<', $today.' 00:00:00')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                    ->orWhere('status', 0)
+                    ->orWhere('status', '0');
+            })
+            ->where(function ($q) {
+                $q->where('subject', 'like', '%performance approval%')
+                    ->orWhere('subject', 'like', '%Pending performance%')
+                    ->orWhere('subject', 'like', '%PPA%')
+                    ->orWhere('subject', 'like', '%Midterm%')
+                    ->orWhere('subject', 'like', '%Endterm%')
+                    ->orWhere('subject', 'like', '%Consent%');
+            })
+            ->update([
+                'next_dispatch' => $today,
+                'status' => 0,
+            ]);
     }
 
     /**

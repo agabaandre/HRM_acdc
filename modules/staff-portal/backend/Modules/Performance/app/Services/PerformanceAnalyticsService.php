@@ -12,6 +12,11 @@ use Modules\Performance\Support\EndtermScore;
  */
 class PerformanceAnalyticsService
 {
+    public function __construct(
+        protected PerformanceWorkflowService $workflow,
+        protected SupervisorResolver $supervisors,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -157,6 +162,349 @@ class PerformanceAnalyticsService
         }
 
         return $payload;
+    }
+
+    /**
+     * CI3-parity KPI card drill-down: staff/entry rows for a summary cohort.
+     *
+     * @param  'total'|'approved'|'submitted'|'pdps'|'without'|'require_calibration'  $filter
+     * @return array{filter: string, title: string, phase: string, period: string, rows: list<array<string, mixed>>}
+     */
+    public function cohort(
+        PerformancePhase $phase,
+        string $filter,
+        ?int $divisionId,
+        string $period,
+        ?int $restrictStaffId = null,
+        ?int $funderId = null,
+    ): array {
+        $allowed = ['total', 'approved', 'submitted', 'pdps', 'without', 'require_calibration'];
+        if (! in_array($filter, $allowed, true)) {
+            throw new \InvalidArgumentException('Unsupported analytics cohort filter.');
+        }
+        if ($filter === 'pdps' && $phase === PerformancePhase::Endterm) {
+            throw new \InvalidArgumentException('PDPs are not available for endterm.');
+        }
+        if ($filter === 'require_calibration' && $phase !== PerformancePhase::Endterm) {
+            throw new \InvalidArgumentException('Calibration is only available for endterm.');
+        }
+
+        $rows = match ($filter) {
+            'without' => $this->withoutRows($phase, $period, $divisionId, $restrictStaffId, $funderId),
+            'pdps' => $this->entryCohortRows($phase, $period, $divisionId, $restrictStaffId, $funderId, 'pdps'),
+            'approved' => $this->entryCohortRows($phase, $period, $divisionId, $restrictStaffId, $funderId, 'approved'),
+            'submitted' => $this->entryCohortRows($phase, $period, $divisionId, $restrictStaffId, $funderId, 'submitted'),
+            'require_calibration' => $this->entryCohortRows($phase, $period, $divisionId, $restrictStaffId, $funderId, 'require_calibration'),
+            default => $this->entryCohortRows($phase, $period, $divisionId, $restrictStaffId, $funderId, 'total'),
+        };
+
+        $noun = match ($phase) {
+            PerformancePhase::Midterm => 'midterms',
+            PerformancePhase::Endterm => 'endterm reviews',
+            default => 'PPAs',
+        };
+
+        $title = match ($filter) {
+            'approved' => 'Approved '.$noun,
+            'submitted' => 'Pending '.$noun,
+            'pdps' => 'Staff PDPs',
+            'without' => 'Without '.$noun,
+            'require_calibration' => 'Require calibration',
+            default => 'Staff '.$noun,
+        };
+
+        return [
+            'filter' => $filter,
+            'title' => $title,
+            'phase' => $phase->value,
+            'period' => $period,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  'total'|'approved'|'submitted'|'pdps'|'require_calibration'  $filter
+     * @return list<array<string, mixed>>
+     */
+    protected function entryCohortRows(
+        PerformancePhase $phase,
+        string $period,
+        ?int $divisionId,
+        ?int $restrictStaffId,
+        ?int $funderId,
+        string $filter,
+    ): array {
+        $draftCol = $phase->draftStatusColumn();
+        $trailTable = $phase->trailTable();
+        $updatedCol = match ($phase) {
+            PerformancePhase::Ppa => 'pe.updated_at',
+            PerformancePhase::Midterm => 'pe.midterm_updated_at',
+            PerformancePhase::Endterm => 'pe.endterm_updated_at',
+        };
+
+        $latestContractSub = DB::table('staff_contracts')
+            ->selectRaw('MAX(staff_contract_id)')
+            ->groupBy('staff_id');
+
+        $q = DB::table('ppa_entries as pe')
+            ->leftJoin('staff as s', 's.staff_id', '=', 'pe.staff_id')
+            ->leftJoin('staff_contracts as sc', function ($j) use ($latestContractSub): void {
+                $j->on('sc.staff_id', '=', 'pe.staff_id')
+                    ->whereIn('sc.staff_contract_id', $latestContractSub);
+            })
+            ->leftJoin('divisions as d', 'd.division_id', '=', 'sc.division_id')
+            ->leftJoin('contract_types as ct', 'ct.contract_type_id', '=', 'sc.contract_type_id')
+            ->where('pe.performance_period', $period)
+            ->whereNotNull("pe.{$draftCol}")
+            ->where("pe.{$draftCol}", '!=', 1);
+
+        if ($phase === PerformancePhase::Endterm) {
+            $q->whereNotNull('pe.endterm_updated_at');
+        }
+        if ($divisionId) {
+            $q->where('sc.division_id', $divisionId);
+        }
+        if ($funderId && $phase === PerformancePhase::Endterm) {
+            $q->where('sc.funder_id', $funderId);
+        }
+        if ($restrictStaffId) {
+            $q->where('pe.staff_id', $restrictStaffId);
+        }
+
+        if ($filter === 'pdps') {
+            if ($phase === PerformancePhase::Ppa) {
+                $q->where('pe.training_recommended', 'Yes');
+            } else {
+                $q->whereNotNull('pe.midterm_recommended_skills')
+                    ->where('pe.midterm_recommended_skills', '!=', '')
+                    ->where('pe.midterm_recommended_skills', '!=', '[]')
+                    ->where('pe.midterm_recommended_skills', '!=', 'null');
+            }
+        }
+
+        if (in_array($filter, ['approved', 'submitted'], true) && Schema::hasTable($trailTable)) {
+            $latest = DB::table($trailTable.' as pat1')
+                ->joinSub(
+                    DB::table($trailTable)->selectRaw('entry_id, MAX(id) as max_id')->groupBy('entry_id'),
+                    'latest',
+                    'pat1.id',
+                    '=',
+                    'latest.max_id'
+                )
+                ->select('pat1.entry_id', 'pat1.action');
+
+            $q->leftJoinSub($latest, 'trail', function ($join): void {
+                $join->whereRaw('trail.entry_id COLLATE utf8mb4_unicode_ci = pe.entry_id COLLATE utf8mb4_unicode_ci');
+            });
+
+            if ($filter === 'approved') {
+                $q->where(function ($w) use ($draftCol): void {
+                    $w->whereRaw("trail.action COLLATE utf8mb4_unicode_ci = 'Approved'")
+                        ->orWhere("pe.{$draftCol}", 2);
+                });
+            } else {
+                $q->where(function ($w) use ($draftCol): void {
+                    $w->whereRaw("trail.action COLLATE utf8mb4_unicode_ci = 'Submitted'")
+                        ->orWhere(function ($inner) use ($draftCol): void {
+                            $inner->where("pe.{$draftCol}", 0)
+                                ->where(function ($trail) {
+                                    $trail->whereNull('trail.action')
+                                        ->orWhereRaw("trail.action COLLATE utf8mb4_unicode_ci != 'Approved'");
+                                });
+                        });
+                });
+            }
+        } elseif ($filter === 'approved') {
+            $q->where("pe.{$draftCol}", 2);
+        } elseif ($filter === 'submitted') {
+            $q->where("pe.{$draftCol}", 0);
+        }
+
+        $rawRows = $q->orderBy('s.lname')->orderBy('s.fname')->get([
+            'pe.entry_id',
+            'pe.staff_id',
+            's.fname',
+            's.lname',
+            's.SAPNO',
+            'd.division_name',
+            'ct.contract_type',
+            "pe.{$draftCol} as draft_status",
+            DB::raw("{$updatedCol} as updated_at"),
+            'pe.objectives',
+            'pe.midterm_objectives',
+            'pe.endterm_objectives',
+        ]);
+
+        $out = [];
+        foreach ($rawRows as $row) {
+            $score = null;
+            $category = null;
+            if ($phase === PerformancePhase::Endterm) {
+                $objectives = $row->endterm_objectives ?: ($row->midterm_objectives ?: $row->objectives);
+                $rating = EndtermScore::fromObjectives($objectives);
+                $score = $rating['score'];
+                $category = $rating['category'];
+                if ($filter === 'require_calibration' && ! ($score > 0 && $score < 51)) {
+                    continue;
+                }
+            }
+
+            $draftStatus = (int) ($row->draft_status ?? 0);
+            $status = match (true) {
+                $draftStatus === 2 => 'Approved',
+                $draftStatus === 0 => 'Submitted',
+                default => 'In progress',
+            };
+            if ($filter === 'require_calibration') {
+                $status = 'Requires calibration'.($score !== null ? ' ('.$score.'%)' : '');
+            }
+
+            $staffId = (int) $row->staff_id;
+            $entryId = (string) $row->entry_id;
+            $out[] = [
+                'entry_id' => $entryId,
+                'staff_id' => $staffId,
+                'staff_name' => trim(($row->fname ?? '').' '.($row->lname ?? '')) ?: ('Staff #'.$staffId),
+                'sapno' => $row->SAPNO ?: null,
+                'division' => $row->division_name ?: 'Unassigned',
+                'contract_type' => $row->contract_type ?: 'Unknown',
+                'status' => $status,
+                'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+                'score' => $score,
+                'score_category' => $category,
+                'form_url' => '/performance/form/'.$phase->value.'/'.$entryId.'/'.$staffId,
+                'can_preview' => true,
+                'pending_with' => null,
+                'pending_supervisor_id' => null,
+                'can_remind_supervisor' => false,
+            ];
+        }
+
+        return $this->enrichPendingSupervisors($out, $phase);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function enrichPendingSupervisors(array $rows, PerformancePhase $phase): array
+    {
+        if ($rows === []) {
+            return $rows;
+        }
+
+        $entryIds = array_values(array_filter(array_map(
+            fn (array $row) => $row['entry_id'] ?? null,
+            $rows,
+        )));
+        if ($entryIds === []) {
+            return $rows;
+        }
+
+        $entries = DB::table('ppa_entries')->whereIn('entry_id', $entryIds)->get()->keyBy('entry_id');
+
+        foreach ($rows as &$row) {
+            $entryId = (string) ($row['entry_id'] ?? '');
+            $entry = $entries->get($entryId);
+            if (! $entry) {
+                continue;
+            }
+
+            $state = $this->workflow->resolveState($entry, $phase);
+            $statusKey = (string) ($state['status_key'] ?? '');
+            $actorId = (int) ($state['actor_staff_id'] ?? 0);
+
+            if (str_starts_with($statusKey, 'pending_')) {
+                $row['status'] = (string) ($state['label'] ?? $row['status']);
+            }
+
+            if (str_starts_with($statusKey, 'pending_supervisor') && $actorId > 0) {
+                $row['pending_with'] = $this->supervisors->staffName($actorId);
+                $row['pending_supervisor_id'] = $actorId;
+                $row['can_remind_supervisor'] = true;
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function withoutRows(
+        PerformancePhase $phase,
+        string $period,
+        ?int $divisionId,
+        ?int $restrictStaffId,
+        ?int $funderId,
+    ): array {
+        $draftCol = $phase->draftStatusColumn();
+        $latestContractSub = DB::table('staff_contracts')
+            ->selectRaw('MAX(staff_contract_id)')
+            ->groupBy('staff_id');
+
+        $withPhase = DB::table('ppa_entries as pe')
+            ->where('pe.performance_period', $period)
+            ->whereNotNull("pe.{$draftCol}")
+            ->where("pe.{$draftCol}", '!=', 1)
+            ->when($phase === PerformancePhase::Endterm, fn ($q) => $q->whereNotNull('pe.endterm_updated_at'))
+            ->when($restrictStaffId, fn ($q) => $q->where('pe.staff_id', $restrictStaffId))
+            ->distinct()
+            ->pluck('pe.staff_id');
+
+        $eligible = $this->eligibleStaffIds($divisionId, $funderId, $restrictStaffId, $phase === PerformancePhase::Endterm);
+        $withoutIds = $eligible->diff($withPhase)->values();
+        if ($withoutIds->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('staff as s')
+            ->leftJoin('staff_contracts as sc', function ($j) use ($latestContractSub): void {
+                $j->on('sc.staff_id', '=', 's.staff_id')
+                    ->whereIn('sc.staff_contract_id', $latestContractSub);
+            })
+            ->leftJoin('divisions as d', 'd.division_id', '=', 'sc.division_id')
+            ->leftJoin('contract_types as ct', 'ct.contract_type_id', '=', 'sc.contract_type_id')
+            ->whereIn('s.staff_id', $withoutIds->all())
+            ->orderBy('s.lname')
+            ->orderBy('s.fname')
+            ->get([
+                's.staff_id',
+                's.fname',
+                's.lname',
+                's.SAPNO',
+                'd.division_name',
+                'ct.contract_type',
+            ])
+            ->map(function ($row) use ($phase): array {
+                $staffId = (int) $row->staff_id;
+                $noun = match ($phase) {
+                    PerformancePhase::Midterm => 'midterm',
+                    PerformancePhase::Endterm => 'endterm',
+                    default => 'PPA',
+                };
+
+                return [
+                    'entry_id' => null,
+                    'staff_id' => $staffId,
+                    'staff_name' => trim(($row->fname ?? '').' '.($row->lname ?? '')) ?: ('Staff #'.$staffId),
+                    'sapno' => $row->SAPNO ?: null,
+                    'division' => $row->division_name ?: 'Unassigned',
+                    'contract_type' => $row->contract_type ?: 'Unknown',
+                    'status' => 'Without '.$noun,
+                    'updated_at' => null,
+                    'score' => null,
+                    'score_category' => null,
+                    'form_url' => null,
+                    'can_preview' => false,
+                    'pending_with' => null,
+                    'pending_supervisor_id' => null,
+                    'can_remind_supervisor' => false,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**

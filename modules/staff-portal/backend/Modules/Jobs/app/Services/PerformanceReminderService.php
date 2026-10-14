@@ -169,37 +169,129 @@ class PerformanceReminderService
             if ($pending === []) {
                 continue;
             }
-            $entryId = md5($supervisorId.'-SUPPERFAPPREM-'.date('Y-m-d'));
-            if ($this->mail->entryExists($entryId)) {
-                continue;
-            }
-            $supervisor = $this->staffRow($supervisorId);
-            if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
-                continue;
-            }
-            $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
-            foreach ($pending as $row) {
-                $key = strtolower((string) ($row['approval_type'] ?? 'ppa'));
-                if (isset($typeCounts[$key])) {
-                    $typeCounts[$key]++;
-                }
-            }
-            $name = $this->displayName($supervisor);
-            $portal = (string) config('jobs.schedule.portal_base_url');
-            $body = $this->mail->render('supervisor_reminder_performance_approval', [
-                'supervisor_name' => $name,
-                'generated_on' => date('d M Y H:i'),
-                'type_counts' => $typeCounts,
-                'pending_list' => $pending,
-                'pending_url' => $portal.'performance?tab=pending',
-            ]);
-            $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
-            if ($this->mail->queue('Staff Portal System', $to, $body, 'Reminder: Pending performance approvals', $supervisorId, date('Y-m-d'), date('Y-m-d'), $entryId)) {
+            if ($this->queueCombinedApprovalReminder((int) $supervisorId, $pending)) {
                 $queued++;
             }
         }
 
         return $queued;
+    }
+
+    /**
+     * Instant nudge for the supervisor currently pending on one entry (analytics UI).
+     *
+     * @return array{queued: bool, supervisor_id: int|null, supervisor_name: string|null, message: string}
+     */
+    public function nudgePendingSupervisorForEntry(string $entryId, PerformancePhase $phase): array
+    {
+        $entry = DB::table('ppa_entries')->where('entry_id', $entryId)->first();
+        if (! $entry) {
+            return [
+                'queued' => false,
+                'supervisor_id' => null,
+                'supervisor_name' => null,
+                'message' => 'Entry not found.',
+            ];
+        }
+
+        $state = app(\Modules\Performance\Services\PerformanceWorkflowService::class)
+            ->resolveState($entry, $phase);
+        $statusKey = (string) ($state['status_key'] ?? '');
+        $actorId = (int) ($state['actor_staff_id'] ?? 0);
+        if (! str_starts_with($statusKey, 'pending_supervisor') || $actorId < 1) {
+            return [
+                'queued' => false,
+                'supervisor_id' => null,
+                'supervisor_name' => null,
+                'message' => 'No supervisor is currently pending on this form.',
+            ];
+        }
+
+        $supervisor = $this->staffRow($actorId);
+        $supervisorName = $supervisor ? $this->displayName($supervisor) : ('Staff #'.$actorId);
+        if (! $this->staffHasAllowedContract($actorId)) {
+            return [
+                'queued' => false,
+                'supervisor_id' => $actorId,
+                'supervisor_name' => $supervisorName,
+                'message' => 'Pending supervisor does not have an eligible contract.',
+            ];
+        }
+
+        if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
+            return [
+                'queued' => false,
+                'supervisor_id' => $actorId,
+                'supervisor_name' => $supervisorName,
+                'message' => 'Pending supervisor has no work email.',
+            ];
+        }
+
+        $staff = $this->staffRow((int) $entry->staff_id);
+        $portal = (string) config('jobs.schedule.portal_base_url');
+        $pending = [[
+            'staff_name' => $staff ? $this->displayName($staff) : ('Staff #'.$entry->staff_id),
+            'approval_type' => $phase->value,
+            'period' => (string) ($entry->performance_period ?? ''),
+            'status' => (string) ($state['label'] ?? 'Pending approval'),
+            'submitted_at' => $entry->updated_at ?? $entry->created_at ?? null,
+            'review_url' => $portal.'performance/form/'.$phase->value.'/'.$entryId.'/'.$entry->staff_id,
+        ]];
+
+        // Unique per entry+day so repeat clicks refresh the unsent queue row.
+        $queued = $this->queueCombinedApprovalReminder($actorId, $pending, 'NUDGE-'.$entryId.'-'.date('Y-m-d'));
+
+        return [
+            'queued' => $queued,
+            'supervisor_id' => $actorId,
+            'supervisor_name' => $supervisorName,
+            'message' => $queued
+                ? 'Reminder queued for '.$supervisorName.'.'
+                : 'Reminder was already sent today for this supervisor, or queue failed.',
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $pending
+     */
+    protected function queueCombinedApprovalReminder(int $supervisorId, array $pending, ?string $entryKeySuffix = null): bool
+    {
+        $entryKey = md5($supervisorId.'-SUPPERFAPPREM-'.($entryKeySuffix ?: date('Y-m-d')));
+        if ($this->mail->entryExists($entryKey)) {
+            return false;
+        }
+        $supervisor = $this->staffRow($supervisorId);
+        if (! $supervisor || trim((string) ($supervisor->work_email ?? '')) === '') {
+            return false;
+        }
+        $typeCounts = ['ppa' => 0, 'midterm' => 0, 'endterm' => 0];
+        foreach ($pending as $row) {
+            $key = strtolower((string) ($row['approval_type'] ?? 'ppa'));
+            if (isset($typeCounts[$key])) {
+                $typeCounts[$key]++;
+            }
+        }
+        $name = $this->displayName($supervisor);
+        $portal = (string) config('jobs.schedule.portal_base_url');
+        $body = $this->mail->render('supervisor_reminder_performance_approval', [
+            'supervisor_name' => $name,
+            'generated_on' => date('d M Y H:i'),
+            'type_counts' => $typeCounts,
+            'pending_list' => $pending,
+            'pending_url' => $portal.'performance?tab=pending',
+        ]);
+        $to = $this->mail->appendSystemInbox((string) $supervisor->work_email);
+
+        return $this->mail->queue(
+            'Staff Portal System',
+            $to,
+            $body,
+            'Reminder: Pending performance approvals',
+            $supervisorId,
+            date('Y-m-d'),
+            date('Y-m-d'),
+            $entryKey,
+        );
     }
 
     protected function notifyUnsubmittedPpas(string $period, string $deadline): int
