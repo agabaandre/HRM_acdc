@@ -2,8 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Schema;
-use Throwable;
+use App\Support\FinanceOfficerAccess;
 
 /**
  * Resolves which divisions a user may view on the budget execution dashboard.
@@ -32,16 +31,13 @@ final class BudgetExecutionScope
         $permissions = user_session('permissions', []) ?? [];
 
         $permStrings = array_map('strval', is_array($permissions) ? $permissions : []);
-        $isFinanceOfficer = $staffId
-            && class_exists(\App\Models\Division::class)
-            && self::isFinanceOfficer((int) $staffId);
 
         // Org-wide: IT admin, Finance module/workflow perms (92/93/124), or finance officers.
         if ($role === 10
             || in_array('92', $permStrings, true)
             || in_array('93', $permStrings, true)
             || in_array('124', $permStrings, true)
-            || $isFinanceOfficer) {
+            || ($staffId > 0 && FinanceOfficerAccess::grantsOrgWideBudgetExecution((int) $staffId))) {
             return [
                 'access' => self::ACCESS_ALL,
                 'allowed_division_ids' => null,
@@ -74,43 +70,6 @@ final class BudgetExecutionScope
                 : ($attached[0] ?? null),
             'is_director' => false,
         ];
-    }
-
-    private static function isFinanceOfficer(int $staffId): bool
-    {
-        if ($staffId < 1 || ! class_exists(\App\Models\Division::class)) {
-            return false;
-        }
-
-        try {
-            if (Schema::hasColumn('divisions', 'finance_officer')
-                && \App\Models\Division::query()->where('finance_officer', $staffId)->exists()) {
-                return true;
-            }
-
-            if (! Schema::hasColumn('divisions', 'finance_officer_oic_id')) {
-                return false;
-            }
-
-            $today = now()->toDateString();
-            $q = \App\Models\Division::query()->where('finance_officer_oic_id', $staffId);
-            if (Schema::hasColumn('divisions', 'finance_officer_oic_start_date')) {
-                $q->where(function ($inner) use ($today) {
-                    $inner->whereNull('finance_officer_oic_start_date')
-                        ->orWhereDate('finance_officer_oic_start_date', '<=', $today);
-                });
-            }
-            if (Schema::hasColumn('divisions', 'finance_officer_oic_end_date')) {
-                $q->where(function ($inner) use ($today) {
-                    $inner->whereNull('finance_officer_oic_end_date')
-                        ->orWhereDate('finance_officer_oic_end_date', '>=', $today);
-                });
-            }
-
-            return $q->exists();
-        } catch (Throwable) {
-            return false;
-        }
     }
 
     /**

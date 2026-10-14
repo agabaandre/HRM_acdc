@@ -25,6 +25,7 @@ class BudgetExecutionScopeTest extends TestCase
         Schema::create('divisions', function (Blueprint $table) {
             $table->unsignedBigInteger('id')->primary();
             $table->string('division_name');
+            $table->string('division_short_name')->nullable();
             $table->unsignedBigInteger('directorate_id')->nullable();
             $table->unsignedBigInteger('director_id')->nullable();
             $table->unsignedBigInteger('finance_officer')->nullable();
@@ -35,6 +36,7 @@ class BudgetExecutionScopeTest extends TestCase
         Schema::create('staff', function (Blueprint $table) {
             $table->unsignedBigInteger('staff_id')->primary();
             $table->unsignedBigInteger('division_id')->nullable();
+            $table->string('job_name')->nullable();
             $table->json('associated_divisions')->nullable();
         });
         Schema::create('directorates', function (Blueprint $table) {
@@ -52,6 +54,47 @@ class BudgetExecutionScopeTest extends TestCase
         ]);
 
         $scope = (new BudgetExecutionScope)->resolve([], 1, 7001, 10);
+
+        $this->assertTrue($scope['can_view_all']);
+        $this->assertSame('all', $scope['mode']);
+    }
+
+    public function test_finance_officer_job_title_sees_all_divisions(): void
+    {
+        DB::table('divisions')->insert([
+            'id' => 15,
+            'division_name' => 'Western RCC',
+            'finance_officer' => null,
+        ]);
+        DB::table('staff')->insert([
+            'staff_id' => 6670,
+            'division_id' => 15,
+            'job_name' => 'Finance Officer',
+            'associated_divisions' => json_encode([]),
+        ]);
+
+        $scope = (new BudgetExecutionScope)->resolve([], 1, 6670, 15);
+
+        $this->assertTrue($scope['can_view_all']);
+        $this->assertSame('all', $scope['mode']);
+    }
+
+    public function test_directorate_of_finance_staff_sees_all_divisions(): void
+    {
+        DB::table('divisions')->insert([
+            'id' => 19,
+            'division_name' => 'Directorate of Finance',
+            'division_short_name' => 'DOF',
+            'finance_officer' => null,
+        ]);
+        DB::table('staff')->insert([
+            'staff_id' => 6450,
+            'division_id' => 19,
+            'job_name' => 'Finance Officer',
+            'associated_divisions' => json_encode([]),
+        ]);
+
+        $scope = (new BudgetExecutionScope)->resolve([], 1, 6450, 19);
 
         $this->assertTrue($scope['can_view_all']);
         $this->assertSame('all', $scope['mode']);
