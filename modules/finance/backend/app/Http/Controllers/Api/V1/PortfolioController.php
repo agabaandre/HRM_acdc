@@ -8,7 +8,9 @@ use App\Services\FinanceAfefCategoryService;
 use App\Services\FinanceApmOrgService;
 use App\Services\FinanceGeographyService;
 use App\Services\PortfolioIntramuralService;
+use App\Services\SapTrendService;
 use App\Support\FinancePermissions;
+use App\Support\FinanceYearConfig;
 use App\Support\PortfolioSectionSchema;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,11 +26,13 @@ class PortfolioController extends Controller
         private readonly FinanceApmOrgService $apmOrg = new FinanceApmOrgService,
         private readonly FinanceGeographyService $geography = new FinanceGeographyService,
         private readonly FinanceAfefCategoryService $afefCategories = new FinanceAfefCategoryService,
+        private readonly SapTrendService $trends = new SapTrendService,
+        private readonly FinanceYearConfig $fy = new FinanceYearConfig,
     ) {}
 
     public function summary(): JsonResponse
     {
-        $year = (int) date('Y');
+        $year = $this->fy->currentFyYear();
         $intramural = $this->intramural->forYear($year, [
             'include_zero_divisions' => true,
             'include_apm_divisions' => true,
@@ -45,14 +49,21 @@ class PortfolioController extends Controller
             ];
         }
 
+        $trendPayload = $this->trends->trends($year);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'budget_year' => $year,
+                'financial_year' => $trendPayload['financial_year'],
                 'intramural' => $intramural,
                 'sections' => $sections,
                 'kpis' => $this->portfolioKpis($intramural, $sections),
                 'performance' => $this->performanceRanking($intramural),
+                'trends' => [
+                    'monthly' => $trendPayload['monthly'],
+                    'quarterly' => $trendPayload['quarterly'],
+                ],
                 'schemas' => PortfolioSectionSchema::catalog(),
                 'sap_import' => $intramural['sap_import'],
             ],
@@ -178,6 +189,14 @@ class PortfolioController extends Controller
             $approved = (float) ($div['approved_budget'] ?? 0);
             $actual = (float) ($div['actual_expenditure'] ?? 0);
             $commitment = (float) ($div['commitment'] ?? 0);
+            $fundCenters = $div['fund_centers'] ?? [];
+            if (is_array($fundCenters)) {
+                usort($fundCenters, function (array $a, array $b): int {
+                    return ($b['execution_rate'] ?? -1) <=> ($a['execution_rate'] ?? -1);
+                });
+            } else {
+                $fundCenters = [];
+            }
             $rows[] = [
                 'division_id' => (int) $div['division_id'],
                 'division_name' => (string) ($div['division_name'] ?? ''),
@@ -189,11 +208,23 @@ class PortfolioController extends Controller
                 'actual_expenditure' => $actual,
                 'cy_expenditure' => (float) ($div['cy_expenditure'] ?? ($commitment + $actual)),
                 'execution_rate' => $div['execution_rate'] ?? ($approved > 0 ? (($approved - (float) ($div['budget_balance'] ?? 0)) / $approved) : null),
-                'fund_centers' => $div['fund_centers'] ?? [],
+                'fund_centers' => $fundCenters,
             ];
         }
+        // Best execution first; null/unknown rates sink to the bottom.
         usort($rows, function (array $a, array $b): int {
-            return ($b['execution_rate'] ?? -1) <=> ($a['execution_rate'] ?? -1);
+            $aRate = $a['execution_rate'];
+            $bRate = $b['execution_rate'];
+            $aMissing = $aRate === null;
+            $bMissing = $bRate === null;
+            if ($aMissing !== $bMissing) {
+                return $aMissing ? 1 : -1;
+            }
+            if (! $aMissing && (float) $bRate !== (float) $aRate) {
+                return (float) $bRate <=> (float) $aRate;
+            }
+
+            return strcasecmp((string) $a['division_name'], (string) $b['division_name']);
         });
         $rank = 1;
         foreach ($rows as &$row) {

@@ -19,12 +19,12 @@ const locale = useLocaleStore()
 const props = withDefaults(
   defineProps<{
     title: string
-    type?: 'pie' | 'column' | 'bar' | 'area' | 'solidgauge' | 'heatmap'
+    type?: 'pie' | 'column' | 'bar' | 'area' | 'line' | 'solidgauge' | 'heatmap'
     categories?: string[]
     yCategories?: string[]
     series: Array<{
       name: string
-      data: Array<number | { name: string; y: number; color?: string } | [number, number, number]>
+      data: Array<number | null | { name: string; y: number; color?: string } | [number, number, number]>
       color?: string
     }>
     height?: number
@@ -62,6 +62,10 @@ const tableRows = computed(() => {
   const series = props.series[0]
   if (!series) return rows
   series.data.forEach((point, idx) => {
+    if (point === null) {
+      rows.push({ label: props.categories?.[idx] || String(idx + 1), value: 0 })
+      return
+    }
     if (typeof point === 'number') {
       rows.push({ label: props.categories?.[idx] || String(idx + 1), value: point })
       return

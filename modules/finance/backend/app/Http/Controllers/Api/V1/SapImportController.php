@@ -7,6 +7,7 @@ use App\Services\SapImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class SapImportController extends Controller
@@ -19,6 +20,7 @@ class SapImportController extends Controller
     {
         $validated = $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx', 'max:20480'],
+            'period_ym' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
         ]);
 
         $file = $validated['file'];
@@ -34,6 +36,7 @@ class SapImportController extends Controller
             $absolute,
             (string) $file->getClientOriginalName(),
             $userId,
+            $validated['period_ym'] ?? null,
         );
 
         return response()->json([
@@ -44,9 +47,7 @@ class SapImportController extends Controller
 
     public function latest(): JsonResponse
     {
-        $year = (int) date('Y');
         $import = DB::table('fin_sap_imports')
-            ->where('budget_year', $year)
             ->where('is_latest', true)
             ->orderByDesc('id')
             ->first();
@@ -54,6 +55,55 @@ class SapImportController extends Controller
         return response()->json([
             'success' => true,
             'data' => $import,
+        ]);
+    }
+
+    public function history(): JsonResponse
+    {
+        $columns = [
+            'id',
+            'original_filename',
+            'budget_year',
+            'row_count',
+            'total_row_count',
+            'apm_updated_count',
+            'sync_status',
+            'is_latest',
+            'created_at',
+        ];
+        if (Schema::hasColumn('fin_sap_imports', 'period_ym')) {
+            $columns[] = 'period_ym';
+        }
+
+        $query = DB::table('fin_sap_imports')->select($columns);
+        if (Schema::hasColumn('fin_sap_imports', 'period_ym')) {
+            $query->orderByDesc('period_ym')->orderByDesc('id');
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->limit(36)->get(),
+        ]);
+    }
+
+    public function fundCenterExpenses(Request $request, string $fundCenter): JsonResponse
+    {
+        $importId = (int) $request->query('import_id', 0);
+        $expenses = $this->imports->fundCenterExpenses(
+            $fundCenter,
+            $importId > 0 ? $importId : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'fund_center' => $fundCenter,
+                'import_id' => $importId > 0 ? $importId : null,
+                'expenses' => $expenses,
+                'count' => count($expenses),
+            ],
         ]);
     }
 

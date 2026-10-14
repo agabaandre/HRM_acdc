@@ -26,6 +26,7 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/settings/grants': 'fa-solid fa-hand-holding-dollar',
   '/settings/geography': 'fa-solid fa-earth-africa',
   '/settings/afef-categories': 'fa-solid fa-shield-heart',
+  '/settings/financial-year': 'fa-solid fa-calendar-days',
 }
 
 export function pageIconForPath(path: string): string {
@@ -159,6 +160,15 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     match: ['/settings/afef-categories'],
     group: 'more',
     icon: 'fa-solid fa-shield-heart',
+    module: 'settings',
+  },
+  {
+    label: 'Financial year',
+    i18nKey: 'finance.financial_year',
+    to: '/settings/financial-year',
+    match: ['/settings/financial-year'],
+    group: 'more',
+    icon: 'fa-solid fa-calendar-days',
     module: 'settings',
   },
 ]

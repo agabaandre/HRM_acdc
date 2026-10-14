@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\StaffApiSettingsController;
 use App\Http\Controllers\Api\V1\RiskSettingsController;
 use App\Http\Controllers\Api\V1\RiskWorkflowController;
 use App\Http\Controllers\Api\V1\AfefCategoryController;
+use App\Http\Controllers\Api\V1\FinanceYearSettingsController;
 use App\Http\Controllers\Api\V1\GeographyController;
 use App\Http\Controllers\Api\V1\GrantController;
 use App\Http\Controllers\Api\V1\BudgetExecutionController;
@@ -68,6 +69,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/sap/import', [SapImportController::class, 'store']);
         Route::get('/sap/imports/latest', [SapImportController::class, 'latest']);
+        Route::get('/sap/imports/history', [SapImportController::class, 'history']);
+        Route::get('/sap/fund-centers/{fundCenter}/expenses', [SapImportController::class, 'fundCenterExpenses'])
+            ->where('fundCenter', '[A-Za-z0-9._\-]+');
         Route::post('/sap/imports/{id}/retry-sync', [SapImportController::class, 'retrySync'])->whereNumber('id');
 
         Route::get('/budget-execution', BudgetExecutionController::class);
@@ -84,6 +88,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/settings/afef-categories', [AfefCategoryController::class, 'show']);
         Route::put('/settings/afef-categories', [AfefCategoryController::class, 'update']);
+        Route::get('/settings/financial-year', [FinanceYearSettingsController::class, 'show']);
+        Route::put('/settings/financial-year', [FinanceYearSettingsController::class, 'update']);
 
         Route::get('/settings/geography', [GeographyController::class, 'show']);
         Route::put('/settings/geography/aliases', [GeographyController::class, 'saveAliases']);

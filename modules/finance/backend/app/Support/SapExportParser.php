@@ -13,7 +13,16 @@ final class SapExportParser
     /**
      * @return array{
      *   rows: list<array<string, mixed>>,
-     *   totals: list<array{fund_center: string, total_released_budget: float, released_budget_balance: float, raw: array<string, mixed>}>
+     *   totals: list<array{
+     *     fund_center: string,
+     *     budget_code: string|null,
+     *     fund_center_text: string|null,
+     *     total_released_budget: float,
+     *     released_budget_balance: float,
+     *     commitment: float,
+     *     actual_expenditure: float,
+     *     raw: array<string, mixed>
+     *   }>
      * }
      */
     public function parse(string $path): array
@@ -46,6 +55,11 @@ final class SapExportParser
         $rows = [];
         // Last Total row per fund center wins (SAP exports often repeat a code).
         $totalsByFundCenter = [];
+        /** @var array<string, array<string, true>> */
+        $budgetCodesByFc = [];
+        /** @var array<string, string> */
+        $textByFc = [];
+
         foreach ($raw as $idx => $entry) {
             if ($idx === 0) {
                 continue;
@@ -59,17 +73,41 @@ final class SapExportParser
 
             $gl = strtolower(trim((string) ($assoc['gl account'] ?? '')));
             $fc = trim((string) ($assoc['fund center'] ?? ''));
+            $fund = trim((string) ($assoc['fund'] ?? ''));
+            $text = trim((string) ($assoc['fund center text'] ?? ''));
+
+            if ($fc !== '' && $fund !== '') {
+                $budgetCodesByFc[$fc][$fund] = true;
+            }
+            if ($fc !== '' && $text !== '') {
+                $textByFc[$fc] = $text;
+            }
+
             if ($fc === '' || $gl !== 'total') {
                 continue;
             }
 
             $totalsByFundCenter[$fc] = [
                 'fund_center' => $fc,
+                'budget_code' => null,
+                'fund_center_text' => $textByFc[$fc] ?? ($text !== '' ? $text : null),
                 'total_released_budget' => $this->decimal($assoc['total released budget'] ?? 0),
                 'released_budget_balance' => $this->decimal($assoc['released budget balance'] ?? 0),
+                'commitment' => $this->decimal($assoc['commitment'] ?? 0),
+                'actual_expenditure' => $this->decimal($assoc['actual expenditure'] ?? 0),
                 'raw' => $assoc,
             ];
         }
+
+        foreach ($totalsByFundCenter as $fc => &$total) {
+            $codes = array_keys($budgetCodesByFc[$fc] ?? []);
+            sort($codes);
+            $total['budget_code'] = $codes !== [] ? implode(', ', $codes) : null;
+            if (($total['fund_center_text'] ?? null) === null && isset($textByFc[$fc])) {
+                $total['fund_center_text'] = $textByFc[$fc];
+            }
+        }
+        unset($total);
 
         return ['rows' => $rows, 'totals' => array_values($totalsByFundCenter)];
     }
@@ -92,4 +130,4 @@ final class SapExportParser
 
         return (float) $clean;
     }
-}
+};

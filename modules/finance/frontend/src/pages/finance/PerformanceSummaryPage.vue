@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import FinSkeleton from '@/components/finance/FinSkeleton.vue'
+import SapTrendCharts from '@/components/finance/SapTrendCharts.vue'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
@@ -24,9 +25,22 @@ type PerfRow = {
   fund_centers?: Array<Record<string, unknown>>
 }
 
+type TrendPoint = {
+  period_ym?: string
+  label: string
+  has_data?: boolean
+  approved_budget: number
+  actual_expenditure: number
+  commitment: number
+  execution_rate: number | null
+  quarter?: number
+}
+
 type Summary = {
   budget_year: number
+  financial_year?: { fy_year: number; start_month: number; start_month_name: string; label: string }
   performance?: PerfRow[]
+  trends?: { monthly: TrendPoint[]; quarterly: TrendPoint[] }
   intramural?: {
     approved_budget: number
     execution_rate: number | null
@@ -40,6 +54,8 @@ const error = ref<string | null>(null)
 const summary = ref<Summary | null>(null)
 const drillOpen = ref(false)
 const drillTitle = ref('')
+const drillMode = ref<'centers' | 'expenses'>('centers')
+const drillLoading = ref(false)
 const drillRows = ref<Array<Record<string, unknown>>>([])
 
 const canAccess = computed(
@@ -47,6 +63,11 @@ const canAccess = computed(
 )
 
 const rows = computed(() => summary.value?.performance || [])
+const trendMonthly = computed(() => summary.value?.trends?.monthly || [])
+const trendQuarterly = computed(() => summary.value?.trends?.quarterly || [])
+const fyTrendLabel = computed(
+  () => summary.value?.financial_year?.label || (summary.value ? `FY ${summary.value.budget_year}` : ''),
+)
 
 const topCategories = computed(() =>
   rows.value.slice(0, 10).map((r) => r.division_short_name || r.division_name),
@@ -105,8 +126,11 @@ function pct(n: number | null | undefined): string {
 
 function openDivision(row: PerfRow) {
   drillTitle.value = `${row.rank}. ${row.division_short_name} — ${row.division_name}`
+  drillMode.value = 'centers'
+  drillLoading.value = false
   drillRows.value = (row.fund_centers || []).map((fc) => ({
     fund_center: fc.fund_center,
+    budget_code: fc.budget_code,
     approved_budget: fc.approved_budget,
     commitment: fc.commitment,
     actual_expenditure: fc.actual_expenditure,
@@ -114,6 +138,24 @@ function openDivision(row: PerfRow) {
     execution_rate: fc.execution_rate,
   }))
   drillOpen.value = true
+}
+
+async function openFundCenterExpenses(fc: Record<string, unknown>) {
+  const code = String(fc.fund_center || '').trim()
+  if (!code) return
+  drillTitle.value = `Expenses — ${code}`
+  drillMode.value = 'expenses'
+  drillLoading.value = true
+  drillRows.value = []
+  drillOpen.value = true
+  try {
+    const { data } = await api.get(`/api/v1/sap/fund-centers/${encodeURIComponent(code)}/expenses`)
+    drillRows.value = (data.data?.expenses || []) as Array<Record<string, unknown>>
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Failed to load fund-center expenses.')
+  } finally {
+    drillLoading.value = false
+  }
 }
 
 function onChartClick(payload: { name: string; category?: string }) {
@@ -155,7 +197,10 @@ onMounted(load)
         </div>
         <p class="ps__sub">
           Divisional budget execution ranking from the latest SAP import
-          <span v-if="summary" class="ps__chip">FY {{ summary.budget_year }}</span>
+          <span v-if="summary" class="ps__chip">{{ fyTrendLabel }}</span>
+          <span v-if="summary?.financial_year" class="ps__chip ps__chip--muted">
+            starts {{ summary.financial_year.start_month_name }}
+          </span>
         </p>
       </div>
       <div class="ps__actions">
@@ -277,6 +322,12 @@ onMounted(load)
           No mapped APM divisions with SAP data yet. Import SAP and map fund centers first.
         </p>
       </section>
+
+      <SapTrendCharts
+        :monthly="trendMonthly"
+        :quarterly="trendQuarterly"
+        :fy-label="fyTrendLabel"
+      />
     </template>
 
     <v-dialog v-model="drillOpen" max-width="920" scrollable>
@@ -288,12 +339,36 @@ onMounted(load)
           </button>
         </v-card-title>
         <v-card-text>
-          <div v-if="!drillRows.length" class="ps__muted">No fund centers for this division.</div>
+          <p v-if="drillLoading" class="ps__muted">Loading expenses…</p>
+          <div v-else-if="!drillRows.length" class="ps__muted">
+            {{ drillMode === 'expenses' ? 'No expenses for this fund center.' : 'No fund centers for this division.' }}
+          </div>
           <div v-else class="ps__table-wrap">
-            <table class="ps__table">
+            <table v-if="drillMode === 'expenses'" class="ps__table">
+              <thead>
+                <tr>
+                  <th>Budget code</th>
+                  <th>GL account</th>
+                  <th>Description</th>
+                  <th>Commitment</th>
+                  <th>Actual expenditure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(ex, idx) in drillRows" :key="idx">
+                  <td><code class="ps__fund">{{ ex.budget_code || '—' }}</code></td>
+                  <td><code>{{ ex.gl_account }}</code></td>
+                  <td>{{ ex.gl_description || '—' }}</td>
+                  <td>{{ usd(Number(ex.commitment || 0)) }}</td>
+                  <td>{{ usd(Number(ex.actual_expenditure || 0)) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table v-else class="ps__table">
               <thead>
                 <tr>
                   <th>Fund center</th>
+                  <th>Budget code</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>
@@ -302,8 +377,14 @@ onMounted(load)
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(fc, idx) in drillRows" :key="idx">
+                <tr
+                  v-for="(fc, idx) in drillRows"
+                  :key="idx"
+                  class="ps__row-link"
+                  @click="openFundCenterExpenses(fc)"
+                >
                   <td><code>{{ fc.fund_center }}</code></td>
+                  <td><code class="ps__fund">{{ fc.budget_code || '—' }}</code></td>
                   <td>{{ usd(Number(fc.approved_budget || 0)) }}</td>
                   <td>{{ usd(Number(fc.commitment || 0)) }}</td>
                   <td>{{ usd(Number(fc.actual_expenditure || 0)) }}</td>
@@ -331,6 +412,7 @@ onMounted(load)
   display: inline-block; margin-left: 0.4rem; padding: 0.12rem 0.5rem; border-radius: var(--ps-radius);
   background: #e8f1f7; color: #0b3b5c; font-size: 0.78rem; font-weight: 700;
 }
+.ps__chip--muted { background: #f1f5f9; color: #475569; }
 .ps__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .ps__link { color: #0b3b5c; font-weight: 650; text-decoration: none; }
 .ps__muted { color: #64748b; margin: 0; }
@@ -395,6 +477,12 @@ onMounted(load)
 .ps__table th { background: #0b3b5c; color: #fff; position: sticky; top: 0; }
 .ps__row { cursor: pointer; }
 .ps__row:hover { background: #f0f7fb; }
+.ps__row-link { cursor: pointer; }
+.ps__row-link:hover { background: #f1f5f9; }
+.ps__fund {
+  display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: #e8f6ee; color: #0f5132; font-size: 0.78rem; font-weight: 700;
+}
 .ps__rank {
   display: inline-flex; min-width: 1.6rem; justify-content: center; font-weight: 700; color: #0b3b5c;
 }

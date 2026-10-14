@@ -2,7 +2,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import DivisionContextSwitcher from '@/components/organisms/DivisionContextSwitcher.vue'
 import FinSkeleton from '@/components/finance/FinSkeleton.vue'
+import SapTrendCharts from '@/components/finance/SapTrendCharts.vue'
 import PortalHighchart from '@/components/molecules/PortalHighchart.vue'
+import { downloadClientExcelSheets } from '@/lib/clientTableExport'
 import { api } from '@/lib/api'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 
@@ -21,6 +23,7 @@ type DivisionRow = {
 
 type BudgetCodeRow = {
   fund_center: string
+  budget_code?: string | null
   division_id: number
   division_name: string
   division_short_name: string
@@ -31,8 +34,29 @@ type BudgetCodeRow = {
   execution_rate: number | null
 }
 
+type ExpenseRow = {
+  fund_center: string
+  budget_code?: string | null
+  gl_account: string
+  gl_description?: string | null
+  commitment: number
+  actual_expenditure: number
+}
+
+type TrendPoint = {
+  period_ym?: string
+  label: string
+  has_data?: boolean
+  approved_budget: number
+  actual_expenditure: number
+  commitment: number
+  execution_rate: number | null
+  quarter?: number
+}
+
 type Payload = {
   budget_year: number
+  financial_year?: { fy_year: number; start_month: number; start_month_name: string; label: string }
   scope: 'all' | 'directorate' | 'division' | 'none'
   can_view_all: boolean
   show_org_charts?: boolean
@@ -53,12 +77,24 @@ type Payload = {
   }
   divisions: DivisionRow[]
   budget_codes?: BudgetCodeRow[]
+  trends?: { monthly: TrendPoint[]; quarterly: TrendPoint[] }
+  data_as_at?: string | null
+  last_updated_at?: string | null
+  sap_import?: {
+    id?: number | null
+    original_filename?: string | null
+    period_ym?: string | null
+    created_at?: string | null
+    updated_at?: string | null
+  } | null
 }
 
 type DrillState = {
   open: boolean
   title: string
+  mode: 'centers' | 'expenses'
   rows: Array<Record<string, unknown>>
+  loading?: boolean
 }
 
 const loading = ref(true)
@@ -67,7 +103,7 @@ const data = ref<Payload | null>(null)
 const filterDivisionId = ref<number | ''>('')
 const filterText = ref('')
 const expanded = ref<Record<number, boolean>>({})
-const drill = ref<DrillState>({ open: false, title: '', rows: [] })
+const drill = ref<DrillState>({ open: false, title: '', mode: 'centers', rows: [] })
 
 const kpis = computed(() => data.value?.kpis || null)
 const divisions = computed(() => data.value?.divisions || [])
@@ -77,6 +113,12 @@ const showDivisionCharts = computed(
   () => !!(data.value?.show_org_charts || data.value?.show_directorate_charts),
 )
 const showBudgetCodeCharts = computed(() => !!data.value?.show_budget_code_charts)
+const trendMonthly = computed(() => data.value?.trends?.monthly || [])
+const trendQuarterly = computed(() => data.value?.trends?.quarterly || [])
+const fyTrendLabel = computed(() => data.value?.financial_year?.label || (data.value ? `FY ${data.value.budget_year}` : ''))
+
+const dataAsAtLabel = computed(() => formatDisplayDate(data.value?.data_as_at))
+const lastUpdatedLabel = computed(() => formatDisplayDateTime(data.value?.last_updated_at || data.value?.sap_import?.created_at))
 
 const scopeLabel = computed(() => {
   if (!data.value) return ''
@@ -113,6 +155,7 @@ const filteredBudgetCodes = computed(() => {
   return budgetCodes.value.filter(
     (c) =>
       c.fund_center.toLowerCase().includes(q) ||
+      (c.budget_code || '').toLowerCase().includes(q) ||
       c.division_name.toLowerCase().includes(q) ||
       c.division_short_name.toLowerCase().includes(q),
   )
@@ -227,17 +270,170 @@ function pct(n: number | null | undefined): string {
   return `${(ratio * 100).toFixed(1)}%`
 }
 
+function pctNumber(n: number | null | undefined): number | string {
+  if (n == null || Number.isNaN(Number(n))) return ''
+  const v = Number(n)
+  const ratio = Math.abs(v) > 1 ? v / 100 : v
+  return Number((ratio * 100).toFixed(2))
+}
+
+function formatDisplayDate(value: string | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value.includes('T') || value.includes(' ') ? value : `${value}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatDisplayDateTime(value: string | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function exportExcel() {
+  const asAt = dataAsAtLabel.value || 'current'
+  const stamp = new Date().toISOString().slice(0, 10)
+  const divisionRows = filteredDivisions.value.map((d) => [
+    d.division_short_name,
+    d.division_name,
+    d.fund_center_count,
+    Number(d.approved_budget || 0),
+    Number(d.commitment || 0),
+    Number(d.actual_expenditure || 0),
+    Number(d.budget_balance || 0),
+    pctNumber(d.execution_rate),
+  ])
+  const fundCenterRows: Array<Array<string | number>> = []
+  for (const d of filteredDivisions.value) {
+    for (const fc of d.fund_centers || []) {
+      fundCenterRows.push([
+        d.division_short_name,
+        d.division_name,
+        String(fc.fund_center || ''),
+        String(fc.budget_code || ''),
+        Number(fc.approved_budget || 0),
+        Number(fc.commitment || 0),
+        Number(fc.actual_expenditure || 0),
+        Number(fc.budget_balance || 0),
+        pctNumber(fc.execution_rate == null ? null : Number(fc.execution_rate)),
+      ])
+    }
+  }
+  type Sheet = { name: string; headers: string[]; rows: Array<Array<string | number>> }
+  const sheets: Sheet[] = [
+    {
+      name: 'Divisions',
+      headers: [
+        'Division short',
+        'Division',
+        'Fund centers',
+        'Released',
+        'Commitment',
+        'Actual',
+        'Balance',
+        'Exec %',
+      ],
+      rows: divisionRows,
+    },
+    {
+      name: 'Fund centers',
+      headers: [
+        'Division short',
+        'Division',
+        'Fund center',
+        'Budget code',
+        'Released',
+        'Commitment',
+        'Actual',
+        'Balance',
+        'Exec %',
+      ],
+      rows: fundCenterRows,
+    },
+  ]
+  if (filteredBudgetCodes.value.length) {
+    sheets.push({
+      name: 'Budget codes',
+      headers: [
+        'Fund center',
+        'Budget code',
+        'Division short',
+        'Division',
+        'Released',
+        'Commitment',
+        'Actual',
+        'Balance',
+        'Exec %',
+      ],
+      rows: filteredBudgetCodes.value.map((fc) => [
+        fc.fund_center,
+        fc.budget_code || '',
+        fc.division_short_name,
+        fc.division_name,
+        Number(fc.approved_budget || 0),
+        Number(fc.commitment || 0),
+        Number(fc.actual_expenditure || 0),
+        Number(fc.budget_balance || 0),
+        pctNumber(fc.execution_rate),
+      ]),
+    })
+  }
+  downloadClientExcelSheets(
+    `budget-execution-as-at-${asAt.replace(/\s+/g, '-')}-${stamp}`,
+    sheets,
+  )
+}
+
 function toggleExpand(id: number) {
   expanded.value = { ...expanded.value, [id]: !expanded.value[id] }
 }
 
-function openDrill(title: string, rows: Array<Record<string, unknown>>) {
-  drill.value = { open: true, title, rows }
+function openDrill(title: string, rows: Array<Record<string, unknown>>, mode: 'centers' | 'expenses' = 'centers') {
+  drill.value = { open: true, title, mode, rows, loading: false }
 }
 
 function openDivisionDrill(div: DivisionRow) {
-  openDrill(`${div.division_short_name} — ${div.division_name}`, div.fund_centers || [])
+  openDrill(`${div.division_short_name} — ${div.division_name}`, div.fund_centers || [], 'centers')
   expanded.value = { ...expanded.value, [div.division_id]: true }
+}
+
+async function openFundCenterExpenses(fc: Record<string, unknown> | BudgetCodeRow) {
+  const code = String(fc.fund_center || '').trim()
+  if (!code) return
+  drill.value = {
+    open: true,
+    title: `Expenses — ${code}`,
+    mode: 'expenses',
+    rows: [],
+    loading: true,
+  }
+  try {
+    const { data: res } = await api.get(`/api/v1/sap/fund-centers/${encodeURIComponent(code)}/expenses`)
+    const expenses = (res.data?.expenses || []) as ExpenseRow[]
+    drill.value = {
+      open: true,
+      title: `Expenses — ${code}`,
+      mode: 'expenses',
+      rows: expenses as unknown as Array<Record<string, unknown>>,
+      loading: false,
+    }
+  } catch (e) {
+    drill.value = {
+      open: true,
+      title: `Expenses — ${code}`,
+      mode: 'expenses',
+      rows: [],
+      loading: false,
+    }
+    error.value = apiErrorMessage(e, 'Failed to load fund-center expenses.')
+  }
 }
 
 function onPieClick(payload: { name: string }) {
@@ -257,7 +453,7 @@ function onBudgetCodeClick(payload: { name: string; category?: string }) {
   const key = payload.category || payload.name
   const match = budgetCodes.value.find((c) => c.fund_center === key)
   if (!match) return
-  openDrill(`Budget code ${match.fund_center}`, [match as unknown as Record<string, unknown>])
+  void openFundCenterExpenses(match)
 }
 
 async function load() {
@@ -314,10 +510,35 @@ onUnmounted(() => {
         </div>
         <p class="be__sub">
           Intramural SAP budget execution
-          <span v-if="data" class="be__chip">FY {{ data.budget_year }}</span>
+          <span v-if="data" class="be__chip">{{ fyTrendLabel }}</span>
+          <span v-if="data?.financial_year" class="be__chip be__chip--muted">
+            starts {{ data.financial_year.start_month_name }}
+          </span>
           <span v-if="data" class="be__chip be__chip--muted">{{ scopeLabel }}</span>
         </p>
+        <p v-if="dataAsAtLabel || lastUpdatedLabel" class="be__asat">
+          <template v-if="dataAsAtLabel">
+            Budget execution as at <strong>{{ dataAsAtLabel }}</strong>
+          </template>
+          <template v-if="dataAsAtLabel && lastUpdatedLabel"> · </template>
+          <template v-if="lastUpdatedLabel">
+            Last updated <strong>{{ lastUpdatedLabel }}</strong>
+          </template>
+          <template v-if="data?.sap_import?.original_filename">
+            <span class="be__asat-file">({{ data.sap_import.original_filename }})</span>
+          </template>
+        </p>
       </div>
+      <button
+        v-if="kpis"
+        type="button"
+        class="be__export"
+        :disabled="!filteredDivisions.length && !filteredBudgetCodes.length"
+        @click="exportExcel"
+      >
+        <i class="fa-solid fa-file-excel" aria-hidden="true" />
+        Export Excel
+      </button>
     </header>
 
     <div class="be__filters" :class="{ 'be__filters--narrow': narrowFilters }">
@@ -445,6 +666,7 @@ onUnmounted(() => {
           <table class="be__table">
             <thead>
               <tr>
+                <th>Fund center</th>
                 <th>Budget code</th>
                 <th>Division</th>
                 <th>Released</th>
@@ -455,8 +677,14 @@ onUnmounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="fc in filteredBudgetCodes" :key="fc.fund_center + '-' + fc.division_id">
+              <tr
+                v-for="fc in filteredBudgetCodes"
+                :key="fc.fund_center + '-' + fc.division_id"
+                class="be__row-link"
+                @click="openFundCenterExpenses(fc)"
+              >
                 <td><code>{{ fc.fund_center }}</code></td>
+                <td><code class="be__fund">{{ fc.budget_code || '—' }}</code></td>
                 <td>{{ fc.division_short_name }}</td>
                 <td>{{ usd(fc.approved_budget) }}</td>
                 <td>{{ usd(fc.commitment) }}</td>
@@ -499,6 +727,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th>Fund center</th>
+                  <th>Budget code</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>
@@ -507,8 +736,14 @@ onUnmounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="fc in div.fund_centers || []" :key="String(fc.fund_center)">
+                <tr
+                  v-for="fc in div.fund_centers || []"
+                  :key="String(fc.fund_center)"
+                  class="be__row-link"
+                  @click="openFundCenterExpenses(fc)"
+                >
                   <td><code>{{ fc.fund_center }}</code></td>
+                  <td><code class="be__fund">{{ String(fc.budget_code || '—') }}</code></td>
                   <td>{{ usd(Number(fc.approved_budget || 0)) }}</td>
                   <td>{{ usd(Number(fc.commitment || 0)) }}</td>
                   <td>{{ usd(Number(fc.actual_expenditure || 0)) }}</td>
@@ -523,6 +758,12 @@ onUnmounted(() => {
           No SAP fund centers mapped for your scope yet.
         </p>
       </section>
+
+      <SapTrendCharts
+        :monthly="trendMonthly"
+        :quarterly="trendQuarterly"
+        :fy-label="fyTrendLabel"
+      />
     </template>
 
     <v-dialog v-model="drill.open" max-width="960" scrollable>
@@ -534,12 +775,36 @@ onUnmounted(() => {
           </button>
         </v-card-title>
         <v-card-text>
-          <div v-if="!drill.rows.length" class="be__muted">No fund centers.</div>
+          <p v-if="drill.loading" class="be__muted">Loading expenses…</p>
+          <div v-else-if="!drill.rows.length" class="be__muted">
+            {{ drill.mode === 'expenses' ? 'No expenses for this fund center.' : 'No fund centers.' }}
+          </div>
           <div v-else class="be__table-wrap">
-            <table class="be__table">
+            <table v-if="drill.mode === 'expenses'" class="be__table">
+              <thead>
+                <tr>
+                  <th>Budget code</th>
+                  <th>GL account</th>
+                  <th>Description</th>
+                  <th>Commitment</th>
+                  <th>Actual expenditure</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(ex, idx) in drill.rows" :key="idx">
+                  <td><code class="be__fund">{{ ex.budget_code || '—' }}</code></td>
+                  <td><code>{{ ex.gl_account }}</code></td>
+                  <td>{{ ex.gl_description || '—' }}</td>
+                  <td>{{ usd(Number(ex.commitment || 0)) }}</td>
+                  <td>{{ usd(Number(ex.actual_expenditure || 0)) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <table v-else class="be__table">
               <thead>
                 <tr>
                   <th>Fund center</th>
+                  <th>Budget code</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>
@@ -548,8 +813,14 @@ onUnmounted(() => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(fc, idx) in drill.rows" :key="idx">
+                <tr
+                  v-for="(fc, idx) in drill.rows"
+                  :key="idx"
+                  class="be__row-link"
+                  @click="openFundCenterExpenses(fc)"
+                >
                   <td><code>{{ fc.fund_center }}</code></td>
+                  <td><code class="be__fund">{{ fc.budget_code || '—' }}</code></td>
                   <td>{{ usd(Number(fc.approved_budget || 0)) }}</td>
                   <td>{{ usd(Number(fc.commitment || 0)) }}</td>
                   <td>{{ usd(Number(fc.actual_expenditure || 0)) }}</td>
@@ -567,10 +838,24 @@ onUnmounted(() => {
 
 <style scoped>
 .be { width: 100%; padding-bottom: 2rem; --be-radius: 2px; }
-.be__header { margin-bottom: 1rem; }
+.be__header {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem;
+}
 .be__title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem 0.85rem; }
 .be__header h1 { margin: 0; font-size: 1.55rem; font-weight: 700; color: #0b3b5c; }
 .be__sub { margin: 0.35rem 0 0; color: #64748b; }
+.be__asat {
+  margin: 0.45rem 0 0; color: #334155; font-size: 0.9rem;
+}
+.be__asat strong { color: #0b3b5c; font-weight: 700; }
+.be__asat-file { color: #64748b; margin-left: 0.25rem; font-size: 0.82rem; }
+.be__export {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 0.4rem;
+  border: 1px solid rgba(15, 23, 42, 0.15); background: #fff; color: #0b3b5c;
+  font-weight: 700; border-radius: var(--be-radius); padding: 0.5rem 0.9rem; cursor: pointer;
+}
+.be__export:disabled { opacity: 0.5; cursor: not-allowed; }
+.be__export i { color: #217346; }
 .be__chip {
   display: inline-block; margin-left: 0.35rem; padding: 0.12rem 0.5rem; border-radius: var(--be-radius);
   background: #e8f1f7; color: #0b3b5c; font-size: 0.78rem; font-weight: 700;
@@ -702,6 +987,12 @@ onUnmounted(() => {
   text-align: left; padding: 0.5rem 0.55rem; border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 .be__table th { background: #0b3b5c; color: #fff; position: sticky; top: 0; }
+.be__row-link { cursor: pointer; }
+.be__row-link:hover { background: #f1f5f9; }
+.be__fund {
+  display: inline-block; padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: #e8f6ee; color: #0f5132; font-size: 0.78rem; font-weight: 700;
+}
 .be__dialog-title {
   display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
   font-weight: 700; color: #0b3b5c;
@@ -714,6 +1005,8 @@ onUnmounted(() => {
   .be__kpis { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
+  .be__header { flex-direction: column; }
+  .be__export { width: 100%; justify-content: center; }
   .be__filters { flex-direction: column; align-items: stretch; }
   .be__search, .be__select { max-width: none; width: 100%; }
   .be__apply { width: 100%; }

@@ -40,15 +40,7 @@ function escapeXml(value: TableExportCell): string {
     .replace(/"/g, '&quot;')
 }
 
-/**
- * Excel-compatible SpreadsheetML (.xls) — opens in Excel / LibreOffice without extra deps.
- */
-export function downloadClientExcel(
-  filename: string,
-  headers: string[],
-  rows: TableExportCell[][],
-  sheetName = 'Sheet1',
-): void {
+function sheetXml(sheetName: string, headers: string[], rows: TableExportCell[][]): string {
   const safeSheet = escapeXml(sheetName).slice(0, 31) || 'Sheet1'
   const headerRow = `<Row>${headers
     .map((h) => `<Cell><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`)
@@ -64,13 +56,36 @@ export function downloadClientExcel(
       return `<Row>${cells}</Row>`
     })
     .join('')
+
+  return `<Worksheet ss:Name="${safeSheet}"><Table>${headerRow}${dataRows}</Table></Worksheet>`
+}
+
+/**
+ * Excel-compatible SpreadsheetML (.xls) — opens in Excel / LibreOffice without extra deps.
+ */
+export function downloadClientExcel(
+  filename: string,
+  headers: string[],
+  rows: TableExportCell[][],
+  sheetName = 'Sheet1',
+): void {
+  downloadClientExcelSheets(filename, [{ name: sheetName, headers, rows }])
+}
+
+/** Multi-sheet Excel-compatible SpreadsheetML (.xls). */
+export function downloadClientExcelSheets(
+  filename: string,
+  sheets: Array<{ name: string; headers: string[]; rows: TableExportCell[][] }>,
+): void {
+  const body = sheets
+    .filter((s) => s.headers.length > 0)
+    .map((s) => sheetXml(s.name || 'Sheet1', s.headers, s.rows))
+    .join('')
   const xml = `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
- <Worksheet ss:Name="${safeSheet}">
-  <Table>${headerRow}${dataRows}</Table>
- </Worksheet>
+${body || sheetXml('Sheet1', ['Note'], [['No data']])}
 </Workbook>`
   const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const name = filename.replace(/\.(csv|xlsx|xls)$/i, '')

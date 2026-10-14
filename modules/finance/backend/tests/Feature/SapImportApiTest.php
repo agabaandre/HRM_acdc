@@ -189,6 +189,7 @@ class SapImportApiTest extends TestCase
             $table->unsignedBigInteger('uploaded_by')->nullable();
             $table->string('original_filename');
             $table->unsignedSmallInteger('budget_year');
+            $table->string('period_ym', 7)->nullable();
             $table->unsignedInteger('row_count')->default(0);
             $table->unsignedInteger('total_row_count')->default(0);
             $table->unsignedInteger('apm_updated_count')->default(0);
@@ -202,8 +203,16 @@ class SapImportApiTest extends TestCase
             $table->unsignedBigInteger('import_id');
             $table->unsignedSmallInteger('budget_year');
             $table->string('fund_center', 64)->nullable();
+            $table->string('budget_code', 64)->nullable();
+            $table->string('cost_center', 64)->nullable();
+            $table->string('fund_center_text', 255)->nullable();
             $table->string('gl_account', 64)->nullable();
+            $table->string('gl_description', 255)->nullable();
             $table->boolean('is_total_row')->default(false);
+            $table->boolean('is_expense_row')->default(false);
+            $table->decimal('commitment', 18, 2)->default(0);
+            $table->decimal('actual_expenditure', 18, 2)->default(0);
+            $table->decimal('total_released_budget', 18, 2)->default(0);
             $table->json('payload');
             $table->timestamps();
         });
@@ -212,11 +221,79 @@ class SapImportApiTest extends TestCase
             $table->unsignedBigInteger('import_id');
             $table->unsignedSmallInteger('budget_year');
             $table->string('fund_center', 64);
+            $table->string('budget_code', 128)->nullable();
+            $table->string('fund_center_text', 255)->nullable();
             $table->decimal('total_released_budget', 18, 2)->default(0);
             $table->decimal('released_budget_balance', 18, 2)->default(0);
+            $table->decimal('commitment', 18, 2)->default(0);
+            $table->decimal('actual_expenditure', 18, 2)->default(0);
             $table->json('payload')->nullable();
             $table->timestamps();
             $table->unique(['import_id', 'fund_center']);
         });
+    }
+
+    public function test_period_replace_and_expense_drilldown(): void
+    {
+        Queue::fake();
+        Http::fake([
+            'http://apm.test/api/apm/v1/auth/login' => Http::response([
+                'success' => true,
+                'data' => ['access_token' => 'tok', 'token_type' => 'bearer', 'expires_in' => 3600],
+            ], 200),
+            'http://apm.test/api/apm/v1/fund-codes*' => Http::response([
+                'success' => true,
+                'data' => [],
+                'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 100, 'total' => 0],
+            ], 200),
+        ]);
+
+        $token = 'sap-period-token';
+        Cache::put('risk_api_token:'.$token, [
+            'staff_id' => 42,
+            'division_id' => 1,
+            'permissions' => [RiskPermissions::MANAGE],
+            'api_token' => $token,
+        ], 3600);
+
+        $path = $this->makeMinimalXlsx([
+            ['Fund center', 'Fund', 'Fund center Text', 'GL Account', 'GL Description', 'Total Released Budget', 'Commitment', 'Actual Expenditure', 'Released Budget balance'],
+            ['CDC100205MB', 'PB-WDB12', 'CHSHP', '0000505000', 'Travel Ticket.', '394550', '0', '77465.83', '77101'],
+            ['CDC100205MB', 'PB-WDB12', '', 'Total', '', '394550', '90404', '227045', '77101'],
+        ], 'Sheet1');
+
+        $upload = new UploadedFile($path, 'EXPORT.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+        $first = $this->withToken($token)->post('/api/v1/sap/import', [
+            'file' => $upload,
+            'period_ym' => '2026-09',
+        ]);
+        $first->assertOk();
+        $first->assertJsonPath('data.period_ym', '2026-09');
+        $this->assertSame(1, DB::table('fin_sap_imports')->count());
+
+        $path2 = $this->makeMinimalXlsx([
+            ['Fund center', 'Fund', 'Fund center Text', 'GL Account', 'GL Description', 'Total Released Budget', 'Commitment', 'Actual Expenditure', 'Released Budget balance'],
+            ['CDC100205MB', 'PB-WDB12', 'CHSHP', '0000505001', 'DSA', '394550', '101110', '28918', '77101'],
+            ['CDC100205MB', 'PB-WDB12', '', 'Total', '', '394550', '90404', '227045', '77101'],
+        ], 'Sheet1');
+        $upload2 = new UploadedFile($path2, 'EXPORT-2.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+        $second = $this->withToken($token)->post('/api/v1/sap/import', [
+            'file' => $upload2,
+            'period_ym' => '2026-09',
+        ]);
+        $second->assertOk();
+        $this->assertSame(1, DB::table('fin_sap_imports')->count());
+        $this->assertSame('EXPORT-2.xlsx', DB::table('fin_sap_imports')->value('original_filename'));
+
+        $fc = DB::table('fin_sap_fund_centers')->where('fund_center', 'CDC100205MB')->first();
+        $this->assertNotNull($fc);
+        $this->assertSame('PB-WDB12', $fc->budget_code);
+
+        $expenses = $this->withToken($token)->getJson('/api/v1/sap/fund-centers/CDC100205MB/expenses');
+        $expenses->assertOk();
+        $expenses->assertJsonPath('data.count', 1);
+        $expenses->assertJsonPath('data.expenses.0.budget_code', 'PB-WDB12');
+        $expenses->assertJsonPath('data.expenses.0.gl_account', '0000505001');
+        $this->assertEqualsWithDelta(28918.0, (float) $expenses->json('data.expenses.0.actual_expenditure'), 0.01);
     }
 }

@@ -67,6 +67,9 @@ class BudgetExecutionApiTest extends TestCase
         $res->assertJsonPath('data.show_org_charts', true);
         $res->assertJsonPath('data.show_budget_code_charts', false);
         $this->assertGreaterThanOrEqual(2, count($res->json('data.divisions')));
+        $this->assertNotEmpty($res->json('data.last_updated_at'));
+        $this->assertNotEmpty($res->json('data.data_as_at'));
+        $this->assertNotEmpty($res->json('data.sap_import.original_filename'));
     }
 
     public function test_admin_sees_all_and_can_filter(): void

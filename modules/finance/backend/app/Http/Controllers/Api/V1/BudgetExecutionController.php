@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Services\BudgetExecutionScope;
 use App\Services\PortfolioIntramuralService;
+use App\Services\SapTrendService;
+use App\Support\FinanceYearConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,11 +18,13 @@ class BudgetExecutionController extends Controller
     public function __construct(
         private readonly PortfolioIntramuralService $intramural = new PortfolioIntramuralService,
         private readonly BudgetExecutionScope $scope = new BudgetExecutionScope,
+        private readonly SapTrendService $trends = new SapTrendService,
+        private readonly FinanceYearConfig $fy = new FinanceYearConfig,
     ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
-        $year = (int) ($request->query('year') ?: date('Y'));
+        $year = (int) ($request->query('year') ?: $this->fy->currentFyYear());
         $permissions = $request->attributes->get('risk_permissions', []);
         $roleId = (int) $request->attributes->get('risk_role_id', 0);
         $staffId = (int) $request->attributes->get('risk_staff_id', 0);
@@ -94,6 +98,7 @@ class BudgetExecutionController extends Controller
                 }
                 $budgetCodes[] = [
                     'fund_center' => (string) ($fc['fund_center'] ?? ''),
+                    'budget_code' => $fc['budget_code'] ?? null,
                     'division_id' => (int) ($fc['division_id'] ?? $div['division_id'] ?? 0),
                     'division_name' => (string) ($fc['division_name'] ?? $div['division_name'] ?? ''),
                     'division_short_name' => (string) ($fc['division_short_name'] ?? $div['division_short_name'] ?? ''),
@@ -134,10 +139,30 @@ class BudgetExecutionController extends Controller
         $showOrgCharts = $viewAll;
         $showDirectorateCharts = ! $viewAll && (bool) $scope['show_division_charts'];
 
+        $fundCenterFilter = null;
+        if (! $viewAll || $filterDivisionId > 0) {
+            $fundCenterFilter = [];
+            foreach ($divisions as $div) {
+                foreach ($div['fund_centers'] ?? [] as $fc) {
+                    if (! is_array($fc)) {
+                        continue;
+                    }
+                    $code = trim((string) ($fc['fund_center'] ?? ''));
+                    if ($code !== '') {
+                        $fundCenterFilter[] = $code;
+                    }
+                }
+            }
+        }
+
+        $trendPayload = $this->trends->trends($year, $fundCenterFilter);
+        $sapMeta = $this->sapImportMeta($raw['sap_import'] ?? null);
+
         return response()->json([
             'success' => true,
             'data' => [
                 'budget_year' => $year,
+                'financial_year' => $trendPayload['financial_year'],
                 'scope' => $scope['mode'],
                 'can_view_all' => $viewAll,
                 'show_org_charts' => $showOrgCharts,
@@ -160,8 +185,58 @@ class BudgetExecutionController extends Controller
                 ],
                 'divisions' => $divisions,
                 'budget_codes' => $budgetCodes,
-                'sap_import' => $raw['sap_import'],
+                'trends' => [
+                    'monthly' => $trendPayload['monthly'],
+                    'quarterly' => $trendPayload['quarterly'],
+                ],
+                'data_as_at' => $sapMeta['data_as_at'],
+                'last_updated_at' => $sapMeta['last_updated_at'],
+                'sap_import' => $sapMeta['sap_import'],
             ],
         ]);
+    }
+
+    /**
+     * @return array{data_as_at: string|null, last_updated_at: string|null, sap_import: array<string, mixed>|null}
+     */
+    private function sapImportMeta(mixed $import): array
+    {
+        if (! is_object($import) && ! is_array($import)) {
+            return [
+                'data_as_at' => null,
+                'last_updated_at' => null,
+                'sap_import' => null,
+            ];
+        }
+        $row = is_array($import) ? $import : (array) $import;
+        $created = isset($row['created_at']) ? (string) $row['created_at'] : null;
+        $updated = isset($row['updated_at']) ? (string) $row['updated_at'] : $created;
+        $periodYm = isset($row['period_ym']) ? trim((string) $row['period_ym']) : '';
+        // Prefer calendar last day of the reporting month when period is set; else upload timestamp.
+        $dataAsAt = null;
+        if ($periodYm !== '' && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periodYm)) {
+            $ts = strtotime($periodYm.'-01');
+            if ($ts !== false) {
+                $dataAsAt = date('Y-m-t', $ts);
+            }
+        }
+        if ($dataAsAt === null && $created) {
+            $ts = strtotime($created);
+            $dataAsAt = $ts !== false ? date('Y-m-d', $ts) : null;
+        }
+
+        return [
+            'data_as_at' => $dataAsAt,
+            'last_updated_at' => $updated ?: $created,
+            'sap_import' => [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'original_filename' => $row['original_filename'] ?? null,
+                'period_ym' => $periodYm !== '' ? $periodYm : null,
+                'budget_year' => isset($row['budget_year']) ? (int) $row['budget_year'] : null,
+                'sync_status' => $row['sync_status'] ?? null,
+                'created_at' => $created,
+                'updated_at' => $updated,
+            ],
+        ];
     }
 }

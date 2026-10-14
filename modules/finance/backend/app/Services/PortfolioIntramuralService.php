@@ -89,6 +89,7 @@ final class PortfolioIntramuralService
             ->get();
 
         $codeToDivision = $this->fundCenterDivisionMap($year);
+        $budgetCodesFromRows = $this->budgetCodesByFundCenter((int) $latestImport->id);
 
         $byDivision = [];
         $byFc = [];
@@ -99,6 +100,8 @@ final class PortfolioIntramuralService
         $mapped = 0;
         $unmapped = 0;
 
+        $hasBudgetCodeCol = Schema::hasColumn('fin_sap_fund_centers', 'budget_code');
+
         foreach ($centers as $c) {
             $code = $this->normalizeCode((string) $c->fund_center);
             $payload = $this->decodePayload($c->payload ?? null);
@@ -106,9 +109,37 @@ final class PortfolioIntramuralService
             $b = (float) $c->released_budget_balance;
             $comm = $this->payloadAmount($payload, ['commitment']);
             $act = $this->payloadAmount($payload, ['actual expenditure', 'actual_expenditure']);
+            // Prefer denormalized columns only when this snapshot was imported with them.
+            if ($hasBudgetCodeCol && trim((string) ($c->budget_code ?? '')) !== '') {
+                $comm = (float) ($c->commitment ?? $comm);
+                $act = (float) ($c->actual_expenditure ?? $act);
+            }
             $main = $this->payloadAmount($payload, ['original budget', 'main budget']);
             if ($main <= 0) {
                 $main = $a;
+            }
+            $budgetCode = null;
+            if ($hasBudgetCodeCol) {
+                $budgetCode = trim((string) ($c->budget_code ?? ''));
+            }
+            if ($budgetCode === null || $budgetCode === '') {
+                $budgetCode = trim((string) ($payload['fund'] ?? ''));
+            }
+            if ($budgetCode === '') {
+                $budgetCode = $budgetCodesFromRows[$code] ?? null;
+            }
+            if ($budgetCode === '') {
+                $budgetCode = null;
+            }
+            $fcText = '';
+            if ($hasBudgetCodeCol) {
+                $fcText = trim((string) ($c->fund_center_text ?? ''));
+            }
+            if ($fcText === '') {
+                $fcText = trim((string) ($payload['fund center text'] ?? ''));
+            }
+            if ($fcText === '') {
+                $fcText = null;
             }
 
             $divId = $codeToDivision[$code] ?? null;
@@ -132,6 +163,8 @@ final class PortfolioIntramuralService
 
             $fcRow = [
                 'fund_center' => $code,
+                'budget_code' => $budgetCode,
+                'fund_center_text' => $fcText,
                 'division_id' => $divId,
                 'division_name' => $meta['division_name'],
                 'division_short_name' => $meta['division_short_name'],
@@ -198,6 +231,15 @@ final class PortfolioIntramuralService
             if ($xHas !== $yHas) {
                 return $xHas <=> $yHas;
             }
+            $xRate = $x['approved_budget'] > 0
+                ? (((float) $x['approved_budget'] - (float) $x['budget_balance']) / (float) $x['approved_budget'])
+                : -1.0;
+            $yRate = $y['approved_budget'] > 0
+                ? (((float) $y['approved_budget'] - (float) $y['budget_balance']) / (float) $y['approved_budget'])
+                : -1.0;
+            if ($xRate !== $yRate) {
+                return $yRate <=> $xRate;
+            }
 
             return strcasecmp((string) $x['division_name'], (string) $y['division_name']);
         });
@@ -206,6 +248,9 @@ final class PortfolioIntramuralService
             $b = (float) $row['budget_balance'];
             $row['execution_rate'] = $a > 0 ? (($a - $b) / $a) : null;
             $row['cy_expenditure'] = (float) $row['commitment'] + (float) $row['actual_expenditure'];
+            usort($row['fund_centers'], function (array $x, array $y): int {
+                return ($y['execution_rate'] ?? -1) <=> ($x['execution_rate'] ?? -1);
+            });
         }
         unset($row);
 
@@ -330,6 +375,56 @@ final class PortfolioIntramuralService
     private function normalizeCode(string $code): string
     {
         return strtoupper(preg_replace('/\s+/', '', trim($code)) ?? '');
+    }
+
+    /**
+     * Distinct SAP "Fund" (budget code) values per fund center from line rows.
+     *
+     * @return array<string, string> normalized fund center => comma-joined budget codes
+     */
+    private function budgetCodesByFundCenter(int $importId): array
+    {
+        if ($importId < 1 || ! Schema::hasTable('fin_sap_rows')) {
+            return [];
+        }
+
+        $hasBudgetCode = Schema::hasColumn('fin_sap_rows', 'budget_code');
+        $rows = DB::table('fin_sap_rows')
+            ->where('import_id', $importId)
+            ->where('is_total_row', false)
+            ->whereNotNull('fund_center')
+            ->select(['fund_center', 'budget_code', 'payload'])
+            ->get();
+
+        /** @var array<string, array<string, true>> $map */
+        $map = [];
+        foreach ($rows as $row) {
+            $fc = $this->normalizeCode((string) ($row->fund_center ?? ''));
+            if ($fc === '') {
+                continue;
+            }
+            $code = '';
+            if ($hasBudgetCode) {
+                $code = trim((string) ($row->budget_code ?? ''));
+            }
+            if ($code === '') {
+                $payload = $this->decodePayload($row->payload ?? null);
+                $code = trim((string) ($payload['fund'] ?? ''));
+            }
+            if ($code === '') {
+                continue;
+            }
+            $map[$fc][$code] = true;
+        }
+
+        $out = [];
+        foreach ($map as $fc => $codes) {
+            $list = array_keys($codes);
+            sort($list);
+            $out[$fc] = implode(', ', $list);
+        }
+
+        return $out;
     }
 
     /**

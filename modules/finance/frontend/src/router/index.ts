@@ -103,6 +103,12 @@ const router = createRouter({
       component: () => import('../pages/finance/AfefCategoriesPage.vue'),
       meta: { requiresAuth: true, title: 'AfEF categories', module: 'settings' },
     },
+    {
+      path: '/settings/financial-year',
+      name: 'settings-financial-year',
+      component: () => import('../pages/finance/FinancialYearSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Financial year', module: 'settings' },
+    },
   ],
 })
 
