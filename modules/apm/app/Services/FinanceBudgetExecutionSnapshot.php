@@ -65,7 +65,23 @@ final class FinanceBudgetExecutionSnapshot
             'synced_at' => $syncedAt,
         ];
 
-        $ttl = max(60, (int) config('services.finance_api.snapshot_ttl', 900));
+        $divisionCount = $this->divisionCount($data);
+        // Never pin an empty warm for the full TTL — production recovered from auth
+        // issues by caching zeros and serving them while Finance already had SAP data.
+        $ttl = $divisionCount > 0
+            ? max(60, (int) config('services.finance_api.snapshot_ttl', 900))
+            : 60;
+
+        if ($divisionCount === 0) {
+            Log::warning('Finance budget-execution warm returned zero divisions', [
+                'year' => $year,
+                'sap_import' => $data['sap_import'] ?? null,
+                'kpis' => $data['kpis'] ?? null,
+            ]);
+        } else {
+            ApmPageCache::bust('finance_budget_execution');
+        }
+
         $store = Cache::store($this->store());
         $store->put($this->key($year), $record, $ttl);
         $store->put(self::SYNCED_AT_KEY, $syncedAt, $ttl);
@@ -74,7 +90,7 @@ final class FinanceBudgetExecutionSnapshot
     }
 
     /**
-     * Return a fresh-enough snapshot; refresh synchronously on miss.
+     * Return a fresh-enough snapshot; refresh synchronously on miss or empty cache.
      *
      * @return array{data: array<string, mixed>, synced_at: string}
      */
@@ -82,12 +98,24 @@ final class FinanceBudgetExecutionSnapshot
     {
         if (! $forceRefresh) {
             $cached = $this->get($year);
-            if ($cached !== null) {
+            if ($cached !== null && $this->divisionCount($cached['data'] ?? []) > 0) {
                 return $cached;
+            }
+            // Empty cached warm: refresh immediately so APM catches up with Finance.
+            if ($cached !== null) {
+                $forceRefresh = true;
             }
         }
 
         return $this->refresh($year);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function divisionCount(array $data): int
+    {
+        return count($data['divisions'] ?? []);
     }
 
     /**

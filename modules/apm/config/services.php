@@ -111,7 +111,8 @@ return [
         ), '/'),
         'timeout' => (int) env('FINANCE_API_TIMEOUT', 60),
         'token_ttl' => (int) env('FINANCE_API_TOKEN_TTL', 3600),
-        'snapshot_ttl' => (int) env('FINANCE_BUDGET_SNAPSHOT_TTL', 900),
+        // Must exceed the 10-minute scheduler warm so Redis does not go cold between ticks.
+        'snapshot_ttl' => (int) env('FINANCE_BUDGET_SNAPSHOT_TTL', 1800),
         'warm_staff_id' => (int) env('FINANCE_WARM_STAFF_ID', 1),
         'cache_prefix' => (string) env('FINANCE_CACHE_PREFIX', 'risk_register'),
         'redis_prefix' => (string) env('FINANCE_REDIS_PREFIX', 'laravel-database-'),

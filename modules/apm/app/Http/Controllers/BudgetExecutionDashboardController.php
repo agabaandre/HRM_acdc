@@ -60,11 +60,11 @@ class BudgetExecutionDashboardController extends Controller
 
         $keyParts = $this->apmCacheKeyFromRequest($request, ['year', 'division_id', 'fund_center', 'fund'], [
             'source' => 'finance_snapshot',
-            'scope_v' => 3,
+            'scope_v' => 4,
         ]);
 
         try {
-            return $this->apmCachedJson('finance_budget_execution', $request, $keyParts, function () use ($year, $divisionId, $fundCenter, $fund) {
+            $build = function () use ($year, $divisionId, $fundCenter, $fund) {
                 $record = $this->snapshot->remember($year);
                 $scope = BudgetExecutionScope::resolve();
                 $data = $this->snapshot->presentForScope(
@@ -74,6 +74,26 @@ class BudgetExecutionDashboardController extends Controller
                     $fundCenter,
                     $fund
                 );
+
+                // Org warm can be empty (stale Redis / warm token) while Finance SPA
+                // already has SAP data for this user — fall back to a live user fetch.
+                if ($this->snapshot->divisionCount($data) === 0) {
+                    $live = $this->liveFinancePayload($year, $divisionId, $fundCenter, $fund);
+                    if ($live !== null && $this->snapshot->divisionCount($live['data']) > 0) {
+                        $data = $this->snapshot->presentForScope(
+                            $live['data'],
+                            $scope,
+                            $divisionId,
+                            $fundCenter,
+                            $fund
+                        );
+                        $record = [
+                            'data' => $live['data'],
+                            'synced_at' => $live['synced_at'],
+                        ];
+                    }
+                }
+
                 $data['finance_synced_at'] = $record['synced_at'];
 
                 // Soft refresh in the background when snapshot is aging.
@@ -92,12 +112,55 @@ class BudgetExecutionDashboardController extends Controller
                     'finance_synced_at' => $record['synced_at'],
                     'cached_at' => now()->toIso8601String(),
                 ]);
-            });
+            };
+
+            // Never page-cache an empty dashboard — it sticks zeros for minutes after Finance imports.
+            $cached = $this->snapshot->get($year);
+            if ($cached === null || $this->snapshot->divisionCount($cached['data'] ?? []) === 0) {
+                return $build();
+            }
+
+            return $this->apmCachedJson('finance_budget_execution', $request, $keyParts, $build);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 502);
+        }
+    }
+
+    /**
+     * Live Finance API call as the signed-in APM user (same path as Finance SPA).
+     *
+     * @return array{data: array<string, mixed>, synced_at: string}|null
+     */
+    private function liveFinancePayload(
+        int $year,
+        ?int $divisionId,
+        string $fundCenter,
+        string $fund
+    ): ?array {
+        try {
+            $query = array_filter([
+                'year' => $year,
+                'division_id' => $divisionId,
+                'fund_center' => $fundCenter !== '' ? $fundCenter : null,
+                'fund' => $fund !== '' ? $fund : null,
+            ], static fn ($v) => $v !== null && $v !== '');
+            $payload = $this->finance->budgetExecution($query);
+            $data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+            if (! is_array($data)) {
+                return null;
+            }
+
+            return [
+                'data' => $data,
+                'synced_at' => now()->toIso8601String(),
+            ];
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
         }
     }
 

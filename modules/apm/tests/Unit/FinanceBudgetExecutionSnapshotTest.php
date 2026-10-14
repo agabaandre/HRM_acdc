@@ -102,3 +102,10 @@ test('present for scope keeps org-wide when access is all', function () {
         ->and($presented['divisions'])->toHaveCount(2)
         ->and($presented['kpis']['approved_budget'])->toBe(300.0);
 });
+
+test('division count treats missing divisions as zero', function () {
+    $snapshot = new FinanceBudgetExecutionSnapshot;
+
+    expect($snapshot->divisionCount([]))->toBe(0)
+        ->and($snapshot->divisionCount(['divisions' => [[], []]]))->toBe(2);
+});
