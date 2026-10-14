@@ -25,8 +25,10 @@ beforeEach(function () {
 });
 
 test('fetch cbp modules accepts staff share envelope with success and data', function () {
-    Http::fake([
-        'http://staff.test/share/cbp_modules*' => Http::response([
+    Http::fake(function (\Illuminate\Http\Client\Request $request) {
+        expect($request->url())->toContain('/share/cbp_modules');
+
+        return Http::response([
             'success' => true,
             'data' => [
                 'home' => ['label' => 'CBP Home', 'href' => 'http://localhost/staff/'],
@@ -38,8 +40,8 @@ test('fetch cbp modules accepts staff share envelope with success and data', fun
                     ],
                 ],
             ],
-        ], 200),
-    ]);
+        ], 200);
+    });
 
     $payload = (new StaffPortalShareClient)->fetchCbpModules(11, 'approvals_management', 'approvals_management');
 
@@ -49,15 +51,15 @@ test('fetch cbp modules accepts staff share envelope with success and data', fun
 });
 
 test('fetch cbp modules accepts already unwrapped nav payload from StaffShareHttp', function () {
-    Http::fake([
-        'http://staff.test/share/cbp_modules*' => Http::response([
+    Http::fake(function () {
+        return Http::response([
             'home' => ['label' => 'CBP Home', 'href' => 'http://localhost/staff/'],
             'modules' => [
                 ['module_key' => 'risk_register', 'label' => 'Risk Register', 'href' => 'http://localhost/staff/risk-register'],
                 ['module_key' => 'finance_management', 'label' => 'Finance', 'href' => 'http://localhost/staff/finance'],
             ],
-        ], 200),
-    ]);
+        ], 200);
+    });
 
     $payload = (new StaffPortalShareClient)->fetchCbpModules(11);
 
