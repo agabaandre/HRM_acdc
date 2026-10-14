@@ -295,5 +295,13 @@ class SapImportApiTest extends TestCase
         $expenses->assertJsonPath('data.expenses.0.budget_code', 'PB-WDB12');
         $expenses->assertJsonPath('data.expenses.0.gl_account', '0000505001');
         $this->assertEqualsWithDelta(28918.0, (float) $expenses->json('data.expenses.0.actual_expenditure'), 0.01);
+
+        // Legacy rows: GL present but is_expense_row never backfilled.
+        $importId = (int) DB::table('fin_sap_imports')->value('id');
+        DB::table('fin_sap_rows')->where('import_id', $importId)->update(['is_expense_row' => false]);
+        $legacy = $this->withToken($token)->getJson('/api/v1/sap/fund-centers/CDC100205MB/expenses');
+        $legacy->assertOk();
+        $legacy->assertJsonPath('data.count', 1);
+        $this->assertEqualsWithDelta(28918.0, (float) $legacy->json('data.expenses.0.actual_expenditure'), 0.01);
     }
 }

@@ -101,6 +101,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const data = ref<Payload | null>(null)
 const filterDivisionId = ref<number | ''>('')
+const filterFund = ref<string>('')
 const filterText = ref('')
 const expanded = ref<Record<number, boolean>>({})
 const drill = ref<DrillState>({ open: false, title: '', mode: 'centers', rows: [] })
@@ -139,25 +140,79 @@ const divisionSelectItems = computed(() => {
   ]
 })
 
+const fundSelectItems = computed(() => {
+  const set = new Set<string>()
+  for (const d of divisions.value) {
+    for (const fc of d.fund_centers || []) {
+      const fund = String(fc.budget_code || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      for (const f of fund) set.add(f)
+    }
+  }
+  for (const c of budgetCodes.value) {
+    const fund = String(c.budget_code || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    for (const f of fund) set.add(f)
+  }
+  return [
+    { title: 'All funds', value: '' },
+    ...Array.from(set)
+      .sort((a, b) => a.localeCompare(b))
+      .map((f) => ({ title: f, value: f })),
+  ]
+})
+
+function fundMatches(budgetCode: unknown, selected: string): boolean {
+  if (!selected) return true
+  const parts = String(budgetCode || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  return parts.includes(selected.toLowerCase())
+}
+
 const filteredDivisions = computed(() => {
   const q = filterText.value.trim().toLowerCase()
-  if (!q) return divisions.value
-  return divisions.value.filter(
-    (d) =>
-      d.division_name.toLowerCase().includes(q) ||
-      d.division_short_name.toLowerCase().includes(q),
-  )
+  const fund = filterFund.value
+  return divisions.value
+    .map((d) => {
+      const centers = (d.fund_centers || []).filter((fc) => fundMatches(fc.budget_code, fund))
+      if (fund && !centers.length) return null
+      const matchText =
+        !q ||
+        d.division_name.toLowerCase().includes(q) ||
+        d.division_short_name.toLowerCase().includes(q) ||
+        centers.some(
+          (fc) =>
+            String(fc.fund_center || '')
+              .toLowerCase()
+              .includes(q) ||
+            String(fc.budget_code || '')
+              .toLowerCase()
+              .includes(q),
+        )
+      if (!matchText) return null
+      if (!fund) return d
+      return { ...d, fund_centers: centers, fund_center_count: centers.length }
+    })
+    .filter((d): d is DivisionRow => d != null)
 })
 
 const filteredBudgetCodes = computed(() => {
   const q = filterText.value.trim().toLowerCase()
-  if (!q) return budgetCodes.value
+  const fund = filterFund.value
   return budgetCodes.value.filter(
     (c) =>
-      c.fund_center.toLowerCase().includes(q) ||
-      (c.budget_code || '').toLowerCase().includes(q) ||
-      c.division_name.toLowerCase().includes(q) ||
-      c.division_short_name.toLowerCase().includes(q),
+      fundMatches(c.budget_code, fund) &&
+      (!q ||
+        c.fund_center.toLowerCase().includes(q) ||
+        (c.budget_code || '').toLowerCase().includes(q) ||
+        c.division_name.toLowerCase().includes(q) ||
+        c.division_short_name.toLowerCase().includes(q)),
   )
 })
 
@@ -348,7 +403,7 @@ function exportExcel() {
         'Division short',
         'Division',
         'Fund center',
-        'Budget code',
+        'Fund',
         'Released',
         'Commitment',
         'Actual',
@@ -360,10 +415,10 @@ function exportExcel() {
   ]
   if (filteredBudgetCodes.value.length) {
     sheets.push({
-      name: 'Budget codes',
+      name: 'Funds',
       headers: [
         'Fund center',
-        'Budget code',
+        'Fund',
         'Division short',
         'Division',
         'Released',
@@ -548,7 +603,7 @@ onUnmounted(() => {
         variant="outlined"
         hide-details
         clearable
-        :placeholder="showBudgetCodeCharts ? 'Search budget code or division…' : 'Search division…'"
+        :placeholder="showBudgetCodeCharts ? 'Search fund, fund center or division…' : 'Search fund or division…'"
         prepend-inner-icon="mdi-magnify"
         class="be__search"
       />
@@ -561,6 +616,18 @@ onUnmounted(() => {
         hide-details
         :label="narrowFilters ? undefined : 'Division'"
         :placeholder="narrowFilters ? 'Division' : undefined"
+        class="be__select"
+      />
+      <v-select
+        v-if="fundSelectItems.length > 1"
+        v-model="filterFund"
+        :items="fundSelectItems"
+        :density="narrowFilters ? 'compact' : 'comfortable'"
+        variant="outlined"
+        hide-details
+        :label="narrowFilters ? undefined : 'Fund'"
+        :placeholder="narrowFilters ? 'Fund' : undefined"
+        clearable
         class="be__select"
       />
       <button type="button" class="be__apply" @click="applyFilter">Apply</button>
@@ -599,10 +666,10 @@ onUnmounted(() => {
 
       <p class="be__hint">
         <template v-if="showDivisionCharts">
-          Click a chart segment or “Show budget codes” to preview fund-center expenses.
+          Click a chart segment or “Show funds” to preview fund-center expenses.
         </template>
         <template v-else>
-          Charts show your budget codes. Expand a division card for the full code list.
+          Charts show your funds. Expand a division card for the full fund-center list.
         </template>
       </p>
 
@@ -633,7 +700,7 @@ onUnmounted(() => {
       <section v-else-if="showBudgetCodeCharts" class="be__charts">
         <div class="be__card">
           <PortalHighchart
-            title="Proportion of used by budget code"
+            title="Proportion of used by fund"
             type="pie"
             :series="codePieSeries"
             :height="340"
@@ -643,7 +710,7 @@ onUnmounted(() => {
         </div>
         <div class="be__card">
           <PortalHighchart
-            title="Budget code usage"
+            title="Fund usage"
             type="column"
             :categories="codeCategories"
             :series="codeSeries"
@@ -659,15 +726,15 @@ onUnmounted(() => {
         class="be__card be__codes-table"
       >
         <div class="be__table-head">
-          <h2>Budget codes in your scope</h2>
-          <p class="be__muted">{{ filteredBudgetCodes.length }} code(s)</p>
+          <h2>Funds in your scope</h2>
+          <p class="be__muted">{{ filteredBudgetCodes.length }} fund center(s)</p>
         </div>
         <div class="be__table-wrap">
           <table class="be__table">
             <thead>
               <tr>
                 <th>Fund center</th>
-                <th>Budget code</th>
+                <th>Fund</th>
                 <th>Division</th>
                 <th>Released</th>
                 <th>Commitment</th>
@@ -712,7 +779,7 @@ onUnmounted(() => {
               <p class="be__muted">{{ div.fund_center_count }} fund center(s)</p>
             </div>
             <button type="button" class="be__codes" @click="toggleExpand(div.division_id)">
-              {{ expanded[div.division_id] ? 'Hide budget codes' : 'Show budget codes' }}
+              {{ expanded[div.division_id] ? 'Hide funds' : 'Show funds' }}
             </button>
           </header>
           <div class="be__metrics" @click="openDivisionDrill(div)">
@@ -727,7 +794,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th>Fund center</th>
-                  <th>Budget code</th>
+                  <th>Fund</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>
@@ -783,7 +850,7 @@ onUnmounted(() => {
             <table v-if="drill.mode === 'expenses'" class="be__table">
               <thead>
                 <tr>
-                  <th>Budget code</th>
+                  <th>Fund</th>
                   <th>GL account</th>
                   <th>Description</th>
                   <th>Commitment</th>
@@ -804,7 +871,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th>Fund center</th>
-                  <th>Budget code</th>
+                  <th>Fund</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>

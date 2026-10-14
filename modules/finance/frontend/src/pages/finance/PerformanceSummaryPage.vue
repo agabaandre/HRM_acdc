@@ -347,7 +347,7 @@ onMounted(load)
             <table v-if="drillMode === 'expenses'" class="ps__table">
               <thead>
                 <tr>
-                  <th>Budget code</th>
+                  <th>Fund</th>
                   <th>GL account</th>
                   <th>Description</th>
                   <th>Commitment</th>
@@ -368,7 +368,7 @@ onMounted(load)
               <thead>
                 <tr>
                   <th>Fund center</th>
-                  <th>Budget code</th>
+                  <th>Fund</th>
                   <th>Released</th>
                   <th>Commitment</th>
                   <th>Actual</th>

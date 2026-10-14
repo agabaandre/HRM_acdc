@@ -280,21 +280,17 @@ final class SapImportService
             return [];
         }
 
-        $hasExpenseFlag = Schema::hasColumn('fin_sap_rows', 'is_expense_row');
         $hasBudgetCode = Schema::hasColumn('fin_sap_rows', 'budget_code');
 
-        $query = DB::table('fin_sap_rows')
+        // Prefer denormalized expense flag when set; also accept any non-empty GL
+        // that is not a Total row (covers imports before expense columns were backfilled).
+        $rows = DB::table('fin_sap_rows')
             ->where('import_id', $importId)
             ->where('is_total_row', false)
-            ->whereRaw('UPPER(fund_center) = ?', [$fc]);
+            ->whereRaw('UPPER(fund_center) = ?', [$fc])
+            ->orderBy('id')
+            ->get();
 
-        if ($hasExpenseFlag) {
-            $query->where('is_expense_row', true);
-        } else {
-            $query->whereNotNull('gl_account')->where('gl_account', '!=', '');
-        }
-
-        $rows = $query->orderBy('id')->get();
         $out = [];
         foreach ($rows as $row) {
             $payload = [];
@@ -307,23 +303,39 @@ final class SapImportService
                 }
             }
 
-            $budgetCode = $hasBudgetCode
-                ? trim((string) ($row->budget_code ?? ''))
-                : trim((string) ($payload['fund'] ?? ''));
-            $glDesc = $hasBudgetCode
-                ? trim((string) ($row->gl_description ?? ''))
-                : trim((string) ($payload['gl description'] ?? ''));
-            $commitment = $hasBudgetCode
-                ? (float) ($row->commitment ?? 0)
-                : $this->decimal($payload['commitment'] ?? 0);
-            $actual = $hasBudgetCode
-                ? (float) ($row->actual_expenditure ?? 0)
-                : $this->decimal($payload['actual expenditure'] ?? 0);
+            $glAccount = trim((string) ($row->gl_account ?? ''));
+            if ($glAccount === '') {
+                $glAccount = trim((string) ($payload['gl account'] ?? ''));
+            }
+            $glLower = strtolower($glAccount);
+            $flaggedExpense = Schema::hasColumn('fin_sap_rows', 'is_expense_row')
+                && (bool) ($row->is_expense_row ?? false);
+            $looksLikeExpense = $glAccount !== '' && $glLower !== 'total';
+            if (! $flaggedExpense && ! $looksLikeExpense) {
+                continue;
+            }
+
+            $budgetCode = $hasBudgetCode ? trim((string) ($row->budget_code ?? '')) : '';
+            if ($budgetCode === '') {
+                $budgetCode = trim((string) ($payload['fund'] ?? ''));
+            }
+            $glDesc = $hasBudgetCode ? trim((string) ($row->gl_description ?? '')) : '';
+            if ($glDesc === '') {
+                $glDesc = trim((string) ($payload['gl description'] ?? ''));
+            }
+            $commitment = $hasBudgetCode ? (float) ($row->commitment ?? 0) : 0.0;
+            if ($commitment == 0.0) {
+                $commitment = $this->decimal($payload['commitment'] ?? 0);
+            }
+            $actual = $hasBudgetCode ? (float) ($row->actual_expenditure ?? 0) : 0.0;
+            if ($actual == 0.0) {
+                $actual = $this->decimal($payload['actual expenditure'] ?? 0);
+            }
 
             $out[] = [
                 'fund_center' => (string) ($row->fund_center ?? $fc),
                 'budget_code' => $budgetCode !== '' ? $budgetCode : null,
-                'gl_account' => (string) ($row->gl_account ?? ''),
+                'gl_account' => $glAccount,
                 'gl_description' => $glDesc !== '' ? $glDesc : null,
                 'commitment' => $commitment,
                 'actual_expenditure' => $actual,
