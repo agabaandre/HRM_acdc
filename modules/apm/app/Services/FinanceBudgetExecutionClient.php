@@ -56,27 +56,65 @@ final class FinanceBudgetExecutionClient
 
         $response = Http::withToken($token)
             ->acceptJson()
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
             ->timeout((int) config('services.finance_api.timeout', 60))
+            ->withOptions(['allow_redirects' => false])
             ->get($url, array_filter($query, static fn ($v) => $v !== null && $v !== ''));
 
-        if (! $response->successful()) {
-            $message = (string) ($response->json('message') ?? $response->body());
-            Log::warning('Finance budget-execution API failed', [
-                'status' => $response->status(),
+        $status = $response->status();
+        $contentType = (string) $response->header('Content-Type');
+        $body = (string) $response->body();
+
+        if ($status >= 300 && $status < 400) {
+            $location = (string) $response->header('Location');
+            Log::warning('Finance budget-execution API redirected', [
+                'status' => $status,
                 'path' => $path,
+                'url' => $url,
+                'location' => $location,
+            ]);
+
+            throw new RuntimeException(
+                'Finance API redirected (HTTP '.$status.') — check FINANCE_API_BASE_URL'
+                .($location !== '' ? ' (to '.$location.')' : '')
+                .'. Expected JSON at '.$url
+            );
+        }
+
+        if (! $response->successful()) {
+            $message = (string) ($response->json('message') ?? $body);
+            Log::warning('Finance budget-execution API failed', [
+                'status' => $status,
+                'path' => $path,
+                'url' => $url,
+                'content_type' => $contentType,
                 'message' => mb_substr($message, 0, 500),
             ]);
 
             throw new RuntimeException(
                 $message !== ''
                     ? 'Finance API error: '.$message
-                    : 'Finance API request failed (HTTP '.$response->status().').'
+                    : 'Finance API request failed (HTTP '.$status.').'
             );
         }
 
         $json = $response->json();
         if (! is_array($json)) {
-            throw new RuntimeException('Finance API returned an invalid response.');
+            $snippet = mb_substr(trim(preg_replace('/\s+/', ' ', $body) ?? ''), 0, 160);
+            Log::warning('Finance budget-execution API returned non-JSON', [
+                'status' => $status,
+                'path' => $path,
+                'url' => $url,
+                'content_type' => $contentType,
+                'body' => $snippet,
+            ]);
+
+            throw new RuntimeException(
+                'Finance API returned an invalid response (HTTP '.$status
+                .', type '.($contentType !== '' ? $contentType : 'unknown')
+                .'). Check FINANCE_API_BASE_URL points at the Finance Laravel backend'
+                .' (…/staff/finance/backend), not the SPA. Tried: '.$url
+            );
         }
 
         return $json;
