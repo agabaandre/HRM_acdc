@@ -41,7 +41,7 @@ class PerformanceReminderService
 
     public function notifySupervisorsPendingPpas(): int
     {
-        $periods = $this->reminderPeriods();
+        $periods = $this->activeReminderPeriods(PerformancePhase::Ppa);
         $deadline = $this->deadlineLabel(PerformancePhase::Ppa);
         $queued = 0;
 
@@ -89,7 +89,7 @@ class PerformanceReminderService
 
     public function notifySupervisorsPendingMidterms(): int
     {
-        $periods = $this->reminderPeriods();
+        $periods = $this->activeReminderPeriods(PerformancePhase::Midterm);
         $deadline = $this->deadlineLabel(PerformancePhase::Midterm);
         $queued = 0;
 
@@ -155,17 +155,22 @@ class PerformanceReminderService
     public function notifySupervisorsPendingPerformanceApproval(): int
     {
         $queued = 0;
-        $supervisorIds = $this->candidateSupervisorIdsForPhase(PerformancePhase::Ppa, null)
-            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Midterm, null))
-            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Endterm, null))
+        $ppaPeriods = $this->activeReminderPeriods(PerformancePhase::Ppa);
+        $midPeriods = $this->activeReminderPeriods(PerformancePhase::Midterm);
+        $endPeriods = $this->activeReminderPeriods(PerformancePhase::Endterm);
+        $supervisorIds = $this->candidateSupervisorIdsForPhase(PerformancePhase::Ppa, $ppaPeriods)
+            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Midterm, $midPeriods))
+            ->merge($this->candidateSupervisorIdsForPhase(PerformancePhase::Endterm, $endPeriods))
             ->unique()
             ->values();
+
+        $allowedPeriods = array_values(array_unique([...$ppaPeriods, ...$midPeriods, ...$endPeriods]));
 
         foreach ($supervisorIds as $supervisorId) {
             if (! $this->staffHasAllowedContract($supervisorId)) {
                 continue;
             }
-            $pending = $this->allPendingApprovalsForSupervisor($supervisorId);
+            $pending = $this->allPendingApprovalsForSupervisor((int) $supervisorId, $allowedPeriods);
             if ($pending === []) {
                 continue;
             }
@@ -512,12 +517,18 @@ class PerformanceReminderService
     }
 
     /**
+     * @param  list<string>|null  $allowedPeriods
      * @return list<array<string, mixed>>
      */
-    protected function allPendingApprovalsForSupervisor(int $supervisorId): array
+    protected function allPendingApprovalsForSupervisor(int $supervisorId, ?array $allowedPeriods = null): array
     {
         $portal = (string) config('jobs.schedule.portal_base_url');
         $out = [];
+        $allowedPeriods ??= [
+            ...$this->activeReminderPeriods(PerformancePhase::Ppa),
+            ...$this->activeReminderPeriods(PerformancePhase::Midterm),
+            ...$this->activeReminderPeriods(PerformancePhase::Endterm),
+        ];
 
         foreach ($this->approval->pendingActionsFor($supervisorId) as $row) {
             $type = (string) ($row->approval_type ?? 'ppa');
@@ -528,13 +539,17 @@ class PerformanceReminderService
             if (str_contains(strtolower((string) ($row->overall_status ?? '')), 'consent')) {
                 continue;
             }
-            if (! $this->staffHasAllowedContract((int) $row->staff_id, (string) ($row->performance_period ?? ''))) {
+            $period = (string) ($row->performance_period ?? '');
+            if ($allowedPeriods !== [] && ! in_array($period, $allowedPeriods, true)) {
+                continue;
+            }
+            if (! $this->staffHasAllowedContract((int) $row->staff_id, $period)) {
                 continue;
             }
             $out[] = [
                 'staff_name' => $row->staff_name ?? ('#'.$row->staff_id),
                 'approval_type' => $type,
-                'period' => $row->performance_period ?? '',
+                'period' => $period,
                 'status' => (string) ($row->overall_status ?? 'Pending approval'),
                 'submitted_at' => $row->updated_at ?? $row->created_at ?? $row->midterm_updated_at ?? $row->endterm_updated_at ?? null,
                 'review_url' => $portal.'performance/form/'.$type.'/'.$row->entry_id.'/'.$row->staff_id,
@@ -624,18 +639,34 @@ class PerformanceReminderService
     }
 
     /**
-     * Current + previous calendar periods (covers in-cycle and close-out reminders).
+     * Legacy helper: current calendar year only (previous year caused stale PPA/midterm mail).
      *
      * @return list<string>
      */
     public function reminderPeriods(): array
     {
+        return $this->activeReminderPeriods(PerformancePhase::Ppa);
+    }
+
+    /**
+     * Periods that may still receive reminders for a phase.
+     * PPA/midterm: current year only. Endterm: CI close-out window (prev year before Oct).
+     *
+     * @return list<string>
+     */
+    public function activeReminderPeriods(PerformancePhase $phase): array
+    {
+        return match ($phase) {
+            PerformancePhase::Endterm => [$this->endtermPeriodKey()],
+            default => [$this->currentPeriodKey()],
+        };
+    }
+
+    public function currentPeriodKey(): string
+    {
         $y = (int) date('Y');
 
-        return [
-            "January-{$y}-to-December-{$y}",
-            'January-'.($y - 1).'-to-December-'.($y - 1),
-        ];
+        return "January-{$y}-to-December-{$y}";
     }
 
     public function previousPeriodKey(): string
@@ -651,6 +682,20 @@ class PerformanceReminderService
         $y = (int) date('n') < 10 ? ((int) date('Y') - 1) : (int) date('Y');
 
         return "January-{$y}-to-December-{$y}";
+    }
+
+    /**
+     * Period keys that are still valid for any performance reminder (used to abandon stale queue).
+     *
+     * @return list<string>
+     */
+    public function allActiveReminderPeriodKeys(): array
+    {
+        return array_values(array_unique([
+            ...$this->activeReminderPeriods(PerformancePhase::Ppa),
+            ...$this->activeReminderPeriods(PerformancePhase::Midterm),
+            ...$this->activeReminderPeriods(PerformancePhase::Endterm),
+        ]));
     }
 
     protected function deadlineLabel(PerformancePhase $phase): string
@@ -685,27 +730,40 @@ class PerformanceReminderService
         return trim(($staff->title ?? '').' '.($staff->fname ?? '').' '.($staff->lname ?? ''));
     }
 
+    /**
+     * Staff must currently hold an active eligible contract, and when a performance
+     * period is given they must also have had an eligible contract covering that period.
+     */
     public function staffHasAllowedContract(int $staffId, ?string $period = null): bool
     {
-        $latestId = DB::table('staff_contracts')->where('staff_id', $staffId)->max('staff_contract_id');
-        if (! $latestId) {
+        $latest = DB::table('staff_contracts')
+            ->where('staff_id', $staffId)
+            ->orderByDesc('staff_contract_id')
+            ->first(['staff_contract_id', 'status_id', 'contract_type_id']);
+
+        if (! $latest) {
             return false;
         }
-        $statusId = (int) DB::table('staff_contracts')->where('staff_contract_id', $latestId)->value('status_id');
+
+        $statusId = (int) ($latest->status_id ?? 0);
+        $typeId = (int) ($latest->contract_type_id ?? 0);
         if (! in_array($statusId, $this->allowedStatuses, true)) {
+            return false;
+        }
+        if (in_array($typeId, $this->excludedContractTypes, true)) {
             return false;
         }
         if ($period === null || $period === '') {
             return true;
         }
-        if (! preg_match('/(\d{4}).*?(\d{4})/', $period, $m) && ! preg_match('/(\d{4})/', $period, $m)) {
+
+        [$from, $to] = $this->periodDateBounds($period);
+        if ($from === null || $to === null) {
             return true;
         }
-        $y1 = (int) $m[1];
-        $y2 = isset($m[2]) ? (int) $m[2] : $y1;
-        $from = sprintf('%04d-01-01', $y1);
-        $to = sprintf('%04d-12-31', $y2);
 
+        // Eligible contract that overlapped the performance year (even if that
+        // specific row later expired — latest row already proved they are active now).
         return DB::table('staff_contracts')
             ->where('staff_id', $staffId)
             ->whereNotIn('contract_type_id', $this->excludedContractTypes)
@@ -716,5 +774,22 @@ class PerformanceReminderService
                     ->orWhere('end_date', '<', '1900-01-01');
             })
             ->exists();
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string} [from, to] Y-m-d
+     */
+    public function periodDateBounds(string $period): array
+    {
+        if (preg_match('/(\d{4}).*?(\d{4})/', $period, $m)) {
+            return [sprintf('%04d-01-01', (int) $m[1]), sprintf('%04d-12-31', (int) $m[2])];
+        }
+        if (preg_match('/(\d{4})/', $period, $m)) {
+            $y = (int) $m[1];
+
+            return [sprintf('%04d-01-01', $y), sprintf('%04d-12-31', $y)];
+        }
+
+        return [null, null];
     }
 }

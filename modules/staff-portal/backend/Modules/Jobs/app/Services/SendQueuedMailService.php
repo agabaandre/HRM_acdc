@@ -23,6 +23,7 @@ class SendQueuedMailService
     {
         $this->notifications->purgeTestRecipients();
         $today = date('Y-m-d');
+        $this->abandonStalePerformanceReminders($today);
         $this->reclaimOverdueDispatchDates($today);
 
         $messages = DB::table('email_notifications')
@@ -45,6 +46,7 @@ class SendQueuedMailService
     public function sendInstant(bool $sleep = false): array
     {
         $today = date('Y-m-d');
+        $this->abandonStalePerformanceReminders($today);
         $this->reclaimOverdueDispatchDates($today);
 
         // Reclaim locks stuck > 15 minutes.
@@ -88,16 +90,62 @@ class SendQueuedMailService
     }
 
     /**
-     * Missed days leave status=0 with a past next_dispatch; bump performance-related
-     * rows to today so the dispatcher can retry without flooding the queue with
-     * unrelated historic contract/birthday mail.
+     * Cancel unsent PPA/midterm/endterm reminders for closed periods or inactive staff
+     * so reclaim cannot resurrect last year's queue.
+     */
+    protected function abandonStalePerformanceReminders(string $today): void
+    {
+        $activePeriods = app(PerformanceReminderService::class)->allActiveReminderPeriodKeys();
+        $cutoff = Carbon::parse($today)->subDays(3)->startOfDay()->toDateTimeString();
+
+        $base = DB::table('email_notifications')
+            ->where(function ($q) {
+                $q->whereNull('status')
+                    ->orWhere('status', 0)
+                    ->orWhere('status', '0');
+            })
+            ->where(function ($q) {
+                $q->where('subject', 'like', '%PPA%')
+                    ->orWhere('subject', 'like', '%Midterm%')
+                    ->orWhere('subject', 'like', '%Endterm%')
+                    ->orWhere('subject', 'like', '%Consent%')
+                    ->orWhere('subject', 'like', '%performance approval%')
+                    ->orWhere('subject', 'like', '%Pending performance%');
+            });
+
+        // Older than 3 days: never retry (daily jobs re-queue fresh rows when still needed).
+        (clone $base)->where('created_at', '<', $cutoff)->update(['status' => 1]);
+
+        // Any still-open row that names a closed performance period.
+        $periodRows = (clone $base)
+            ->where('subject', 'like', '%January-%-to-December-%')
+            ->get(['id', 'subject']);
+        $staleIds = [];
+        foreach ($periodRows as $row) {
+            if (preg_match('/January-\d{4}-to-December-\d{4}/', (string) $row->subject, $m)
+                && ! in_array($m[0], $activePeriods, true)) {
+                $staleIds[] = (int) $row->id;
+            }
+        }
+        if ($staleIds !== []) {
+            foreach (array_chunk($staleIds, 500) as $chunk) {
+                DB::table('email_notifications')->whereIn('id', $chunk)->update(['status' => 1]);
+            }
+        }
+    }
+
+    /**
+     * Retry only recent (≤2 days) performance reminders that missed today's dispatcher.
      */
     protected function reclaimOverdueDispatchDates(string $today): void
     {
+        $createdSince = Carbon::parse($today)->subDays(2)->startOfDay()->toDateTimeString();
+
         // status is numeric in production; avoid empty-string comparisons (MySQL truncates).
         DB::table('email_notifications')
             ->whereNotNull('next_dispatch')
             ->where('next_dispatch', '<', $today.' 00:00:00')
+            ->where('created_at', '>=', $createdSince)
             ->where(function ($q) {
                 $q->whereNull('status')
                     ->orWhere('status', 0)
@@ -128,7 +176,18 @@ class SendQueuedMailService
         $skipped = 0;
         $counter = 0;
 
+        $reminders = app(PerformanceReminderService::class);
+        $activePeriods = $reminders->allActiveReminderPeriodKeys();
+
         foreach ($messages as $message) {
+            if ($this->isPerformanceReminderSubject((string) $message->subject)
+                && $this->shouldSkipPerformanceReminder($message, $reminders, $activePeriods)) {
+                DB::table('email_notifications')->where('id', $message->id)->update(['status' => 1]);
+                $skipped++;
+
+                continue;
+            }
+
             $locked = DB::table('email_notifications')
                 ->where('id', $message->id)
                 ->whereNotIn('status', ['1', '2', 1, 2])
@@ -191,6 +250,41 @@ class SendQueuedMailService
         }
 
         return compact('sent', 'failed', 'skipped');
+    }
+
+    protected function isPerformanceReminderSubject(string $subject): bool
+    {
+        return stripos($subject, 'PPA') !== false
+            || stripos($subject, 'Midterm') !== false
+            || stripos($subject, 'Endterm') !== false
+            || stripos($subject, 'Consent') !== false
+            || stripos($subject, 'performance approval') !== false
+            || stripos($subject, 'Pending performance') !== false;
+    }
+
+    /**
+     * @param  list<string>  $activePeriods
+     */
+    protected function shouldSkipPerformanceReminder(
+        object $message,
+        PerformanceReminderService $reminders,
+        array $activePeriods,
+    ): bool {
+        $subject = (string) ($message->subject ?? '');
+        $period = null;
+        if (preg_match('/January-\d{4}-to-December-\d{4}/', $subject, $m)) {
+            $period = $m[0];
+            if (! in_array($period, $activePeriods, true)) {
+                return true;
+            }
+        }
+
+        $staffId = (int) ($message->staff_id ?? 0);
+        if ($staffId < 1) {
+            return false;
+        }
+
+        return ! $reminders->staffHasAllowedContract($staffId, $period);
     }
 
     /**
