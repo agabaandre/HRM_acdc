@@ -36,7 +36,7 @@ class CbpModulesNavService
             : [];
         $ttl = max(60, (int) config('helpdesk.reference_data_cache_ttl', 300));
         $permKey = $permissionIds !== [] ? md5(implode(',', $permissionIds)) : 'db';
-        $cacheKey = 'helpdesk_cbp_modules_v4_'.$staffId.'_'.$permKey;
+        $cacheKey = 'helpdesk_cbp_modules_v5_'.$staffId.'_'.$permKey;
 
         try {
             $data = Cache::remember(

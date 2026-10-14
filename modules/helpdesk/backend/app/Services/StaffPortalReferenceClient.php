@@ -109,7 +109,16 @@ class StaffPortalReferenceClient
         }
 
         $payload = $this->client()->getJson($this->endpoint('cbp_modules'), $query);
-        if (empty($payload['success'])) {
+
+        // StaffShareHttp::decodeJsonArray unwraps { success, data } → data only.
+        if (is_array($payload['home'] ?? null)) {
+            return [
+                'home' => $payload['home'],
+                'modules' => is_array($payload['modules'] ?? null) ? array_values($payload['modules']) : [],
+            ];
+        }
+
+        if (array_key_exists('success', $payload) && empty($payload['success'])) {
             $err = is_string($payload['error'] ?? null) ? $payload['error'] : 'Staff API returned success=false for cbp_modules.';
             throw new RuntimeException($err);
         }

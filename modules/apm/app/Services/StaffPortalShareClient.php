@@ -53,10 +53,22 @@ class StaffPortalShareClient
         }
 
         $payload = $this->client()->getJson($this->endpoint('cbp_modules'), $query);
-        if (empty($payload['success'])) {
+
+        // StaffShareHttp::decodeJsonArray unwraps { success, data } → data only.
+        // Accept either the unwrapped nav payload or the full envelope.
+        if (is_array($payload['home'] ?? null)) {
+            /** @var array{home: array<string, mixed>, modules?: list<array<string, mixed>>} $payload */
+            return [
+                'home' => $payload['home'],
+                'modules' => is_array($payload['modules'] ?? null) ? array_values($payload['modules']) : [],
+            ];
+        }
+
+        if (array_key_exists('success', $payload) && empty($payload['success'])) {
             $err = is_string($payload['error'] ?? null) ? $payload['error'] : 'Staff API returned success=false for cbp_modules.';
             throw new RuntimeException($err);
         }
+
         $data = $payload['data'] ?? null;
         if (! is_array($data) || ! is_array($data['home'] ?? null)) {
             throw new RuntimeException('Staff API cbp_modules response is missing data.home.');
