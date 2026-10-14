@@ -6,6 +6,7 @@ if (is_file($__staffRootEnv)) {
 }
 
 use App\Support\RrSettingsBag;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -60,6 +61,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'home/launch_module',
         ]);
         $middleware->statefulApi();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $hours = max(1, (int) config('azure_sap.poll_hours', 4));
+        $schedule->command('finance:fetch-azure-sap-dumps')
+            ->cron('0 */'.$hours.' * * *')
+            ->withoutOverlapping(55)
+            ->name('finance-fetch-azure-sap-dumps');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         ModuleCriticalErrorAlerts::register(

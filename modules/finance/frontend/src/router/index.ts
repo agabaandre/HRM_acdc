@@ -109,6 +109,12 @@ const router = createRouter({
       component: () => import('../pages/finance/FinancialYearSettingsPage.vue'),
       meta: { requiresAuth: true, title: 'Financial year', module: 'settings' },
     },
+    {
+      path: '/settings/azure-sap-storage',
+      name: 'settings-azure-sap-storage',
+      component: () => import('../pages/finance/AzureSapStorageSettingsPage.vue'),
+      meta: { requiresAuth: true, title: 'Azure SAP storage', module: 'settings' },
+    },
   ],
 })
 

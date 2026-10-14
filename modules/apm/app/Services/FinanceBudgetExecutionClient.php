@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -187,8 +188,9 @@ final class FinanceBudgetExecutionClient
     }
 
     /**
-     * Write the same key Finance AuthenticateRiskSession reads via Cache::get('risk_api_token:…').
-     * Redis connection prefix = Finance REDIS_PREFIX; cache prefix = Finance CACHE_PREFIX.
+     * Register the Bearer token where Finance AuthenticateRiskSession can read it.
+     * 1) Shared Redis (FINANCE_REDIS_* / FINANCE_CACHE_PREFIX)
+     * 2) HTTP bridge into Finance's own Cache (FINANCE_APM_BRIDGE_SECRET / STAFF_API_TOKEN)
      *
      * @param  array<string, mixed>  $payload
      */
@@ -197,6 +199,9 @@ final class FinanceBudgetExecutionClient
         $ttl = max(60, (int) config('services.finance_api.token_ttl', 3600));
         $cachePrefix = (string) config('services.finance_api.cache_prefix', 'risk_register');
         $logicalKey = 'risk_api_token:'.$token;
+        $redisOk = false;
+        $bridgeOk = false;
+        $errors = [];
 
         try {
             $store = Cache::store('finance_tokens');
@@ -206,28 +211,77 @@ final class FinanceBudgetExecutionClient
             }
             $store->put($logicalKey, $payload, $ttl);
 
-            // Verify round-trip so misconfigured Redis fails fast with a clear message.
             $read = $store->get($logicalKey);
             if (! is_array($read) || (int) ($read['staff_id'] ?? 0) < 1) {
-                // Fallback: write exactly as Finance RedisStore does (prefix + serialize).
                 Redis::connection('finance_cache')->setex(
                     $cachePrefix.$logicalKey,
                     $ttl,
                     serialize($payload)
                 );
             }
+            $redisOk = true;
         } catch (Throwable $e) {
-            Log::error('Failed to mint Finance API token in Redis', [
+            $errors[] = 'redis: '.$e->getMessage();
+            Log::warning('Finance API token Redis mint failed; trying HTTP bridge', [
                 'error' => $e->getMessage(),
                 'redis_host' => config('database.redis.finance_cache.host'),
                 'redis_db' => config('database.redis.finance_cache.database'),
                 'redis_prefix' => config('database.redis.finance_cache.options.prefix'),
                 'cache_prefix' => $cachePrefix,
             ]);
+        }
+
+        // Always also register via Finance HTTP bridge so production works even when
+        // Redis prefixes/DBs diverge between APM and Finance.
+        try {
+            $bridgeOk = $this->registerTokenViaFinanceBridge($token, $payload, $ttl);
+        } catch (Throwable $e) {
+            $errors[] = 'bridge: '.$e->getMessage();
+            Log::warning('Finance API token HTTP bridge failed', ['error' => $e->getMessage()]);
+        }
+
+        if ($redisOk || $bridgeOk) {
+            return;
+        }
+
+        throw new RuntimeException(
+            'Could not prepare Finance API session. '
+            .'Set matching FINANCE_REDIS_* / FINANCE_CACHE_PREFIX=risk_register, '
+            .'or FINANCE_APM_BRIDGE_SECRET (same as Finance) / STAFF_API_TOKEN. '
+            .implode('; ', $errors)
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function registerTokenViaFinanceBridge(string $token, array $payload, int $ttl): bool
+    {
+        $secret = trim((string) config('services.finance_api.bridge_secret', ''));
+        if ($secret === '') {
+            return false;
+        }
+
+        $url = rtrim($this->baseUrl(), '/').'/api/v1/internal/apm-session';
+        $response = Http::withHeaders([
+            'X-Finance-Bridge-Token' => $secret,
+            'Accept' => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+            ->timeout((int) config('services.finance_api.timeout', 60))
+            ->post($url, [
+                'token' => $token,
+                'payload' => $payload,
+                'ttl' => $ttl,
+            ]);
+
+        if (! $response->successful() || ! (bool) $response->json('success')) {
             throw new RuntimeException(
-                'Could not prepare Finance API session (Redis unavailable or misconfigured): '.$e->getMessage()
+                'HTTP '.$response->status().': '.(string) ($response->json('message') ?? $response->body())
             );
         }
+
+        return true;
     }
 
     private function baseUrl(): string
@@ -265,23 +319,31 @@ final class FinanceBudgetExecutionClient
         }
 
         try {
-            if (\App\Models\Division::query()->where('finance_officer', $staffId)->exists()) {
+            if (Schema::hasColumn('divisions', 'finance_officer')
+                && \App\Models\Division::query()->where('finance_officer', $staffId)->exists()) {
                 return true;
             }
 
-            $today = now()->toDateString();
+            if (! Schema::hasColumn('divisions', 'finance_officer_oic_id')) {
+                return false;
+            }
 
-            return \App\Models\Division::query()
-                ->where('finance_officer_oic_id', $staffId)
-                ->where(function ($q) use ($today) {
-                    $q->whereNull('finance_officer_oic_start_date')
+            $today = now()->toDateString();
+            $q = \App\Models\Division::query()->where('finance_officer_oic_id', $staffId);
+            if (Schema::hasColumn('divisions', 'finance_officer_oic_start_date')) {
+                $q->where(function ($inner) use ($today) {
+                    $inner->whereNull('finance_officer_oic_start_date')
                         ->orWhereDate('finance_officer_oic_start_date', '<=', $today);
-                })
-                ->where(function ($q) use ($today) {
-                    $q->whereNull('finance_officer_oic_end_date')
+                });
+            }
+            if (Schema::hasColumn('divisions', 'finance_officer_oic_end_date')) {
+                $q->where(function ($inner) use ($today) {
+                    $inner->whereNull('finance_officer_oic_end_date')
                         ->orWhereDate('finance_officer_oic_end_date', '>=', $today);
-                })
-                ->exists();
+                });
+            }
+
+            return $q->exists();
         } catch (Throwable) {
             return false;
         }

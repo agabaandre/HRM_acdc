@@ -125,6 +125,11 @@ if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
   source "$STAFF_ROOT/scripts/setup/secrets.sh"
   JWT_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$ENV_FILE" JWT_SECRET)"
   SESSION_SECRET="$(dotenv_ensure_shared_secret "$STAFF_ENV" "$SETUP_ENV" "$ENV_FILE" SESSION_SECRET)"
+  # APM ↔ Finance session bridge — generate early so it survives later non-fatal failures.
+  APM_ENV_FILE="${STAFF_ROOT:-}/modules/apm/.env"
+  FINANCE_APM_BRIDGE_SECRET="$(dotenv_ensure_paired_secret FINANCE_APM_BRIDGE_SECRET \
+    "$SETUP_ENV" "$ENV_FILE" "$APM_ENV_FILE")"
+  export FINANCE_APM_BRIDGE_SECRET
 fi
 
 if [[ ! -w "$ENV_FILE" ]]; then
@@ -138,6 +143,10 @@ for key in \
     APP_ENV APP_DEBUG DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
     APM_DB_HOST APM_DB_PORT APM_DB_DATABASE APM_DB_USERNAME APM_DB_PASSWORD \
     STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN \
+    FINANCE_APM_BRIDGE_SECRET \
+    AZURE_SAP_CONNECTION_STRING AZURE_SAP_ACCOUNT_NAME AZURE_SAP_ACCOUNT_KEY \
+    AZURE_SAP_CONTAINER AZURE_SAP_PREFIX AZURE_SAP_TIMEOUT \
+    AZURE_SAP_POLL_HOURS AZURE_SAP_DELETE_AFTER_FETCH \
     SESSION_PATH FINANCE_SSO_PERMISSION_ID; do
     apply_from_setup "$key"
 done
@@ -148,10 +157,11 @@ fi
 dotenv_apply_if_missing "$ENV_FILE" SESSION_PATH "$SESSION_PATH" "$ENV_PREEXISTED"
 
 if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "sqlite" ]]; then
-    mkdir -p "$FINANCE_ROOT/database"
-    touch "$FINANCE_ROOT/database/database.sqlite"
+    mkdir -p "$FINANCE_ROOT/database" 2>/dev/null || true
+    touch "$FINANCE_ROOT/database/database.sqlite" 2>/dev/null \
+      || echo "Warning: could not create $FINANCE_ROOT/database/database.sqlite (permissions)." >&2
     dotenv_apply_if_missing "$ENV_FILE" DB_DATABASE \
-        "$(cd "$FINANCE_ROOT/database" && pwd)/database.sqlite" "$ENV_PREEXISTED"
+        "$(cd "$FINANCE_ROOT/database" 2>/dev/null && pwd)/database.sqlite" "$ENV_PREEXISTED" || true
 fi
 
 # API backend (modules/finance/backend) is the live Laravel app — keep its DB_* in sync.
@@ -160,13 +170,33 @@ BACKEND_PREEXISTED=0
 if [[ -f "$FINANCE_ROOT/backend/.env.example" ]]; then
     [[ -f "$BACKEND_ENV" ]] || cp "$FINANCE_ROOT/backend/.env.example" "$BACKEND_ENV"
 fi
+
+# Sync bridge secret into Finance backend .env (generated earlier with APM).
+if [[ -f "$BACKEND_ENV" ]] && [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+  # shellcheck source=/dev/null
+  source "$STAFF_ROOT/scripts/setup/secrets.sh"
+  APM_ENV_FILE="${STAFF_ROOT:-}/modules/apm/.env"
+  FINANCE_APM_BRIDGE_SECRET="$(dotenv_ensure_paired_secret FINANCE_APM_BRIDGE_SECRET \
+    "$SETUP_ENV" "$ENV_FILE" "$BACKEND_ENV" "$APM_ENV_FILE")"
+  export FINANCE_APM_BRIDGE_SECRET
+fi
+
 if [[ -f "$BACKEND_ENV" ]]; then
     for key in DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
                APM_DB_HOST APM_DB_PORT APM_DB_DATABASE APM_DB_USERNAME APM_DB_PASSWORD \
-               APP_ENV APP_DEBUG APP_URL BASE_URL STAFF_API_TOKEN SESSION_PATH; do
+               APP_ENV APP_DEBUG APP_URL BASE_URL STAFF_API_TOKEN SESSION_PATH \
+               FINANCE_APM_BRIDGE_SECRET \
+               AZURE_SAP_CONNECTION_STRING AZURE_SAP_ACCOUNT_NAME AZURE_SAP_ACCOUNT_KEY \
+               AZURE_SAP_CONTAINER AZURE_SAP_PREFIX AZURE_SAP_TIMEOUT \
+               AZURE_SAP_POLL_HOURS AZURE_SAP_DELETE_AFTER_FETCH; do
         val="${!key:-}"
         [[ -z "$val" ]] && val="$(dotenv_get "$ENV_FILE" "$key" 2>/dev/null || true)"
         [[ -z "$val" ]] && val="$(dotenv_get "$SETUP_ENV" "$key" 2>/dev/null || true)"
+        # Force-sync bridge secret so Finance backend always matches APM / root .env.
+        if [[ "$key" == "FINANCE_APM_BRIDGE_SECRET" ]] && dotenv_value_present "$val"; then
+            dotenv_set "$BACKEND_ENV" "$key" "$val"
+            continue
+        fi
         dotenv_apply_if_missing "$BACKEND_ENV" "$key" "$val" "$BACKEND_PREEXISTED"
     done
     # Never leave the API on staff when setup.env / root .env say finance.

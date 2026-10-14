@@ -27,8 +27,13 @@ final class SapExportParser
      */
     public function parse(string $path): array
     {
-        $reader = $this->reader ?? new XlsxSheetReader;
-        $raw = $reader->readFirstSheetRows($path);
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($ext, ['csv', 'txt'], true) || $this->looksLikeCsv($path)) {
+            $raw = $this->readCsvRows($path);
+        } else {
+            $reader = $this->reader ?? new XlsxSheetReader;
+            $raw = $reader->readFirstSheetRows($path);
+        }
         if ($raw === []) {
             throw new RuntimeException('SAP export is empty.');
         }
@@ -117,8 +122,63 @@ final class SapExportParser
         $header = str_replace("\xEF\xBB\xBF", '', $header);
         $header = trim($header);
         $header = preg_replace('/\s+/', ' ', $header) ?? $header;
+        $header = strtolower($header);
 
-        return strtolower($header);
+        return match ($header) {
+            'g/l account', 'gl account.', 'g l account' => 'gl account',
+            'fund center description', 'fund center desc.', 'fund center desc' => 'fund center text',
+            'commitment amount', 'commitments' => 'commitment',
+            'cy expediture', 'cy expenditure' => 'actual expenditure',
+            default => $header,
+        };
+    }
+
+    private function looksLikeCsv(string $path): bool
+    {
+        if (! is_file($path)) {
+            return false;
+        }
+        $fh = fopen($path, 'rb');
+        if ($fh === false) {
+            return false;
+        }
+        $line = fgets($fh) ?: '';
+        fclose($fh);
+
+        return str_contains($line, ',') && (stripos($line, 'Fund Center') !== false || stripos($line, 'G/L') !== false);
+    }
+
+    /**
+     * @return list<array{row:int,cells:array<int,string>}>
+     */
+    private function readCsvRows(string $path): array
+    {
+        if (! is_file($path)) {
+            throw new RuntimeException('CSV file not found: '.$path);
+        }
+        $fh = fopen($path, 'rb');
+        if ($fh === false) {
+            throw new RuntimeException('Unable to open CSV: '.$path);
+        }
+        $out = [];
+        $rowNum = 0;
+        try {
+            while (($cells = fgetcsv($fh)) !== false) {
+                if ($cells === [null] || $cells === false) {
+                    continue;
+                }
+                $rowNum++;
+                $normalized = [];
+                foreach ($cells as $i => $cell) {
+                    $normalized[(int) $i] = (string) $cell;
+                }
+                $out[] = ['row' => $rowNum, 'cells' => $normalized];
+            }
+        } finally {
+            fclose($fh);
+        }
+
+        return $out;
     }
 
     private function decimal(mixed $value): float
@@ -130,4 +190,4 @@ final class SapExportParser
 
         return (float) $clean;
     }
-};
+}

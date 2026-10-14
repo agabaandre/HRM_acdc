@@ -27,6 +27,7 @@ export const PORTAL_PAGE_ICONS: Record<string, string> = {
   '/settings/geography': 'fa-solid fa-earth-africa',
   '/settings/afef-categories': 'fa-solid fa-shield-heart',
   '/settings/financial-year': 'fa-solid fa-calendar-days',
+  '/settings/azure-sap-storage': 'fa-brands fa-microsoft',
 }
 
 export function pageIconForPath(path: string): string {
@@ -169,6 +170,15 @@ export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
     match: ['/settings/financial-year'],
     group: 'more',
     icon: 'fa-solid fa-calendar-days',
+    module: 'settings',
+  },
+  {
+    label: 'Azure SAP storage',
+    i18nKey: 'finance.azure_sap_storage',
+    to: '/settings/azure-sap-storage',
+    match: ['/settings/azure-sap-storage'],
+    group: 'more',
+    icon: 'fa-brands fa-microsoft',
     module: 'settings',
   },
 ]

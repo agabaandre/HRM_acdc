@@ -63,6 +63,49 @@ dotenv_ensure_secret() {
   printf '%s' "$val"
 }
 
+# Ensure the same KEY exists in every listed dotenv file (generate once if all blank).
+# Usage: dotenv_ensure_paired_secret KEY file1 [file2 ...]
+# Echoes the resolved value. Requires dotenv_get / dotenv_set in scope.
+dotenv_ensure_paired_secret() {
+  local key="$1"
+  shift
+  local files=("$@")
+  local val="" file cur
+
+  for file in "${files[@]}"; do
+    [[ -f "$file" ]] || continue
+    cur="$(dotenv_get "$file" "$key" 2>/dev/null || true)"
+    if ! setup_secret_is_placeholder "$cur"; then
+      val="$cur"
+      break
+    fi
+  done
+
+  if setup_secret_is_placeholder "$val"; then
+    val="$(setup_rand_hex 32)"
+    if [[ -z "$val" ]]; then
+      echo "error: could not generate $key (openssl/urandom unavailable)" >&2
+      return 1
+    fi
+    echo "    generated $key" >&2
+  fi
+
+  for file in "${files[@]}"; do
+    [[ -n "$file" ]] || continue
+    mkdir -p "$(dirname "$file")" 2>/dev/null || true
+    touch "$file" 2>/dev/null || true
+    if [[ -w "$file" ]]; then
+      cur="$(dotenv_get "$file" "$key" 2>/dev/null || true)"
+      if setup_secret_is_placeholder "$cur"; then
+        dotenv_set "$file" "$key" "$val"
+        echo "    wrote $key → $file" >&2
+      fi
+    fi
+  done
+
+  printf '%s' "$val"
+}
+
 # Propagate shared secret using dotenv_get/dotenv_set (module configure scripts).
 # Writes to staff root .env (+ setup.env). Module app .env files do NOT store
 # JWT_SECRET / SESSION_SECRET — they inherit at runtime via shared/load-staff-root-env.php.

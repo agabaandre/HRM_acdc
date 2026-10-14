@@ -56,4 +56,13 @@ return [
         'password' => env('STAFF_API_PASSWORD'),
     ],
 
+    /*
+    | APM → Finance session bridge (budget-execution proxy).
+    | Prefer FINANCE_APM_BRIDGE_SECRET; falls back to STAFF_API_TOKEN when shared.
+    */
+    'apm_bridge' => [
+        'secret' => env('FINANCE_APM_BRIDGE_SECRET', env('STAFF_API_TOKEN', '')),
+        'token_ttl' => (int) env('FINANCE_API_TOKEN_TTL', 3600),
+    ],
+
 ];

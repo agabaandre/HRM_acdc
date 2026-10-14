@@ -345,8 +345,9 @@ function contractToForm(contract: StaffContractRow | null, mode: 'create' | 'edi
 
 function validateForm(): boolean {
   const errors: FieldErrors = {}
-  const requireText = (field: string, value: string, label: string) => {
-    if (!value.trim()) addError(errors, field, `${label} is required.`)
+  // Autocomplete item-value may bind numbers (e.g. grade_id); always coerce before trim.
+  const requireText = (field: string, value: unknown, label: string) => {
+    if (!String(value ?? '').trim()) addError(errors, field, `${label} is required.`)
   }
   const requireChoice = (field: string, value: number | string | '' | null, label: string) => {
     if (value === '' || value == null) addError(errors, field, `${label} is required.`)
@@ -645,7 +646,7 @@ async function submitContract() {
     const payload: StaffContractPayload = {
       job_id: Number(form.job_id),
       job_acting_id: nullableNumber(form.job_acting_id),
-      grade_id: form.grade_id,
+      grade_id: String(form.grade_id ?? ''),
       contracting_institution_id: Number(form.contracting_institution_id),
       funder_id: Number(form.funder_id),
       first_supervisor: Number(form.first_supervisor),
@@ -655,10 +656,10 @@ async function submitContract() {
       division_id: Number(form.division_id),
       unit_id: nullableNumber(form.unit_id),
       other_associated_divisions: (form.other_associated_divisions ?? []).map(Number),
-      start_date: form.start_date,
-      end_date: form.end_date,
+      start_date: String(form.start_date ?? ''),
+      end_date: String(form.end_date ?? ''),
       status_id: Number(form.status_id),
-      comments: form.comments?.trim() ?? '',
+      comments: String(form.comments ?? '').trim(),
     }
 
     const pdf = selectedContractFile()

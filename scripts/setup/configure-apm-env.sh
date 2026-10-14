@@ -6,12 +6,21 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=env-upsert.sh
 source "$ROOT/scripts/setup/env-upsert.sh"
+# shellcheck source=secrets.sh
+source "$ROOT/scripts/setup/secrets.sh"
 
 APM_DIR="$ROOT/modules/apm"
 ENV_FILE="$APM_DIR/.env"
 EXAMPLE="$APM_DIR/.env.example"
+FINANCE_ENV="$ROOT/modules/finance/.env"
+FINANCE_BACKEND_ENV="$ROOT/modules/finance/backend/.env"
+FINANCE_SETUP_ENV="$ROOT/modules/finance/setup.env"
 
 env_ensure_file "$ENV_FILE" "$EXAMPLE"
+
+# dotenv_* wrappers so secrets.sh paired helper works with env_get/env_set.
+dotenv_get() { env_get "$@"; }
+dotenv_set() { env_set "$@"; }
 
 apply() {
   local key="$1" val="${2:-}"
@@ -48,6 +57,13 @@ apply STAFF_API_USERNAME "${STAFF_API_USERNAME:-}"
 apply STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}"
 apply STAFF_API_TOKEN "${STAFF_API_TOKEN:-}"
 apply STAFF_API_INTERNAL_BASE_URL "${STAFF_API_INTERNAL_BASE_URL:-}"
+
+# Shared APM ↔ Finance budget-execution session bridge secret (generate if missing).
+FINANCE_APM_BRIDGE_SECRET="$(dotenv_ensure_paired_secret FINANCE_APM_BRIDGE_SECRET \
+  "$ENV_FILE" "$FINANCE_SETUP_ENV" "$FINANCE_ENV" "$FINANCE_BACKEND_ENV")"
+export FINANCE_APM_BRIDGE_SECRET
+apply FINANCE_API_BASE_URL "${FINANCE_API_BASE_URL:-}"
+apply FINANCE_CACHE_PREFIX "${FINANCE_CACHE_PREFIX:-risk_register}"
 
 # Per-app OAuth callback paths only (credentials are centralized in /staff/.env)
 apply MICROSOFT_REDIRECT_URI "${MICROSOFT_REDIRECT_URI_APM:-}"

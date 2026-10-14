@@ -115,6 +115,8 @@ return [
         'warm_staff_id' => (int) env('FINANCE_WARM_STAFF_ID', 1),
         'cache_prefix' => (string) env('FINANCE_CACHE_PREFIX', 'risk_register'),
         'redis_prefix' => (string) env('FINANCE_REDIS_PREFIX', 'laravel-database-'),
+        // Prefer FINANCE_APM_BRIDGE_SECRET; falls back to STAFF_API_TOKEN when shared with Finance.
+        'bridge_secret' => (string) env('FINANCE_APM_BRIDGE_SECRET', env('STAFF_API_TOKEN', '')),
     ],
 
 ];

@@ -22,6 +22,8 @@ use App\Http\Controllers\Api\V1\GeographyController;
 use App\Http\Controllers\Api\V1\GrantController;
 use App\Http\Controllers\Api\V1\BudgetExecutionController;
 use App\Http\Controllers\Api\V1\PortfolioController;
+use App\Http\Controllers\Api\V1\ApmSessionBridgeController;
+use App\Http\Controllers\Api\V1\AzureSapStorageSettingsController;
 use App\Http\Controllers\Api\V1\SapImportController;
 use App\Http\Middleware\AuthenticateRiskSession;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +32,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/health', fn () => response()->json(['ok' => true, 'app' => 'risk-register']));
     // Public: login + shell need logo/copyright without a session.
     Route::get('/branding', \App\Http\Controllers\Api\V1\BrandingController::class);
+    // APM mints Finance Bearer tokens into Finance Cache (shared bridge secret).
+    Route::post('/internal/apm-session', [ApmSessionBridgeController::class, 'store']);
 
     Route::middleware([AuthenticateRiskSession::class])->group(function () {
         Route::get('/me', MeController::class);
@@ -70,6 +74,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/sap/import', [SapImportController::class, 'store']);
         Route::get('/sap/imports/latest', [SapImportController::class, 'latest']);
         Route::get('/sap/imports/history', [SapImportController::class, 'history']);
+        Route::get('/sap/dump/files', [SapImportController::class, 'dumpList']);
+        Route::get('/sap/dump/download', [SapImportController::class, 'dumpDownload']);
+        Route::get('/sap/dump/preview', [SapImportController::class, 'dumpPreview']);
+        Route::post('/sap/dump/import', [SapImportController::class, 'dumpImport']);
+        Route::post('/sap/dump/fetch', [SapImportController::class, 'dumpFetch']);
         Route::get('/sap/fund-centers/{fundCenter}/expenses', [SapImportController::class, 'fundCenterExpenses'])
             ->where('fundCenter', '[A-Za-z0-9._\-]+');
         Route::post('/sap/imports/{id}/retry-sync', [SapImportController::class, 'retrySync'])->whereNumber('id');
@@ -90,6 +99,10 @@ Route::prefix('v1')->group(function () {
         Route::put('/settings/afef-categories', [AfefCategoryController::class, 'update']);
         Route::get('/settings/financial-year', [FinanceYearSettingsController::class, 'show']);
         Route::put('/settings/financial-year', [FinanceYearSettingsController::class, 'update']);
+        Route::get('/settings/azure-sap-storage', [AzureSapStorageSettingsController::class, 'show']);
+        Route::put('/settings/azure-sap-storage', [AzureSapStorageSettingsController::class, 'update']);
+        Route::post('/settings/azure-sap-storage/test', [AzureSapStorageSettingsController::class, 'test']);
+        Route::post('/settings/azure-sap-storage/fetch-now', [AzureSapStorageSettingsController::class, 'fetchNow']);
 
         Route::get('/settings/geography', [GeographyController::class, 'show']);
         Route::put('/settings/geography/aliases', [GeographyController::class, 'saveAliases']);
