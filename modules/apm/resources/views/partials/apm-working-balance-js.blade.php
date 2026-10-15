@@ -10,7 +10,7 @@
         'originalSubtotals' => new \stdClass(),
     ], $apmBalanceConfig ?? []);
 @endphp
-<script src="{{ asset('js/apm-working-balance.js') }}"></script>
+<script src="{{ asset('js/apm-working-balance.js') }}?v=3"></script>
 <script>
 (function () {
     window.ApmWorkingBalanceConfig = @json($apmBalanceConfig);

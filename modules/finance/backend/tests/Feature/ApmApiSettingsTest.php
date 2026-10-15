@@ -25,6 +25,8 @@ class ApmApiSettingsTest extends TestCase
             'apm.email' => 'env-user@africacdc.org',
             'apm.password' => 'env-secret',
             'apm.timeout' => 10,
+            // Default off so password-path tests stay isolated; bridge covered separately.
+            'services.apm_bridge.secret' => '',
         ]);
         DB::purge();
         DB::reconnect();
@@ -199,5 +201,74 @@ class ApmApiSettingsTest extends TestCase
         $this->assertSame('tok-from-staff', $auth['access_token']);
         $this->assertSame('andrewa@africacdc.org', $auth['email']);
         $this->assertSame('staff_api', $auth['label']);
+    }
+
+    public function test_login_prefers_bridge_over_password(): void
+    {
+        config([
+            'apm.email' => 'stale-sync@africacdc.org',
+            'apm.password' => 'wrong-secret',
+            'apm.base_url' => 'http://apm.bridge',
+            'services.apm_bridge.secret' => 'shared-bridge-secret',
+        ]);
+
+        Http::fake([
+            'http://apm.bridge/api/apm/v1/internal/finance-session' => Http::response([
+                'success' => true,
+                'data' => [
+                    'access_token' => 'tok-from-bridge',
+                    'token_type' => 'bearer',
+                    'expires_in' => 3600,
+                    'email' => 'stale-sync@africacdc.org',
+                ],
+            ], 200),
+            'http://apm.bridge/api/apm/v1/auth/login' => Http::response([
+                'message' => 'should not be called',
+            ], 500),
+        ]);
+
+        $auth = ApmApiCredentials::login();
+        $this->assertSame('tok-from-bridge', $auth['access_token']);
+        $this->assertSame('stale-sync@africacdc.org', $auth['email']);
+        $this->assertSame('bridge', $auth['label']);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'http://apm.bridge/api/apm/v1/internal/finance-session'
+                && $request->header('X-Finance-Bridge-Token')[0] === 'shared-bridge-secret'
+                && data_get($request->data(), 'email') === 'stale-sync@africacdc.org';
+        });
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), '/auth/login');
+        });
+    }
+
+    public function test_probe_uses_bridge_when_secret_configured(): void
+    {
+        config([
+            'apm.email' => 'bridge-user@africacdc.org',
+            'apm.password' => 'unused',
+            'apm.base_url' => 'http://apm.probe-bridge',
+            'services.apm_bridge.secret' => 'probe-secret',
+        ]);
+
+        Http::fake([
+            'http://apm.probe-bridge/api/apm/v1/internal/finance-session' => Http::response([
+                'success' => true,
+                'data' => [
+                    'access_token' => 'tok-probe',
+                    'email' => 'bridge-user@africacdc.org',
+                ],
+            ], 200),
+            'http://apm.probe-bridge/api/apm/v1/fund-codes*' => Http::response([
+                'success' => true,
+                'data' => [],
+                'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 1, 'total' => 7],
+            ], 200),
+        ]);
+
+        $probe = ApmApiCredentials::probe();
+        $this->assertTrue($probe['success']);
+        $this->assertStringContainsString('bridge', $probe['message']);
+        $this->assertTrue(collect($probe['details'])->contains(fn ($line) => str_contains((string) $line, 'bridge: OK')));
     }
 }

@@ -108,11 +108,10 @@ class ActivityController extends Controller
         // Eager load division
         $matrix->load('division');
 
-        // Single-memo creation for in-workflow / returned / on-hold envelope / finalized matrices is division-wide.
+        // Single-memo creation for in-workflow / returned / on-hold envelope / finalized matrices is division-wide
+        // (primary + secondary/associated members after switching from home).
         if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
-            $sid = (int) (user_session('staff_id') ?? 0);
-            $userDivisionId = (int) (user_session('division_id') ?? 0);
-            if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
+            if (! user_can_add_single_memo_to_matrix($matrix)) {
                 abort(403, 'Only staff from this matrix division can add single memos for this matrix.');
             }
             if (! matrix_is_current_quarter($matrix)) {
@@ -235,9 +234,7 @@ class ActivityController extends Controller
         return DB::transaction(function () use ($request, $matrix, $userStaffId) {
             try {
                 if (in_array($matrix->overall_status, ['approved', 'pending', 'returned', 'onhold'], true)) {
-                    $sid = (int) (user_session('staff_id') ?? 0);
-                    $userDivisionId = (int) (user_session('division_id') ?? 0);
-                    if ($sid === 0 || $userDivisionId === 0 || $userDivisionId !== (int) $matrix->division_id) {
+                    if (! user_can_add_single_memo_to_matrix($matrix)) {
                         if ($request->ajax()) {
                             return response()->json([
                                 'success' => false,
@@ -655,13 +652,11 @@ class ActivityController extends Controller
         'division_id' => 'required|exists:divisions,id',
     ]);
 
-    $balanceService = app(FundCodeWorkingBalanceService::class);
-    $exclude = array_filter([
-        'activity_id' => $request->integer('exclude_activity_id') ?: null,
-        'non_travel_memo_id' => $request->integer('exclude_non_travel_memo_id') ?: null,
-        'special_memo_id' => $request->integer('exclude_special_memo_id') ?: null,
-        'change_request_id' => $request->integer('exclude_change_request_id') ?: null,
-    ]);
+    // Commitments are reflected in SAP; use fund_codes.budget_balance as synced from Finance.
+    $fundCodeColumns = ['id', 'code', 'activity', 'budget_balance', 'approved_budget', 'uploaded_budget', 'funder_id'];
+    if (\Illuminate\Support\Facades\Schema::hasColumn('fund_codes', 'sap_synced_at')) {
+        $fundCodeColumns[] = 'sap_synced_at';
+    }
 
     $budgetCodes = FundCode::with('funder:id,name,show_activity_code,activity_code_label')
         ->where('fund_type_id', $request->fund_type_id)
@@ -671,29 +666,25 @@ class ActivityController extends Controller
                   ->orWhereNull('division_id')
                   ->orWhere('division_id', '');
         })
-        ->get(['id', 'code', 'activity', 'budget_balance', 'approved_budget', 'funder_id']);
+        ->get($fundCodeColumns);
 
-    $snapshots = $balanceService->snapshotsFor(
-        $budgetCodes->pluck('id')->map(fn ($id) => (int) $id)->all(),
-        $exclude
-    );
-
-    $result = $budgetCodes->map(function ($code) use ($snapshots) {
-        $snap = $snapshots[(int) $code->id] ?? [
-            'approved_budget' => 0.0,
-            'committed_total' => 0.0,
-            'working_balance' => 0.0,
-        ];
+    $result = $budgetCodes->map(function ($code) {
+        $financeBalance = (float) str_replace(',', '', (string) ($code->budget_balance ?? 0));
+        $approved = (float) str_replace(',', '', (string) ($code->approved_budget ?? 0));
+        $sapSyncedAt = $code->sap_synced_at;
 
         return [
             'id' => $code->id,
             'code' => $code->code,
             'activity' => $code->activity,
-            'approved_budget' => $snap['approved_budget'],
-            'committed_total' => $snap['committed_total'],
-            'working_balance' => $snap['working_balance'],
-            'budget_balance' => $snap['working_balance'],
-            'legacy_budget_balance' => (float) ($code->budget_balance ?? 0),
+            'approved_budget' => $approved,
+            'committed_total' => 0.0,
+            'working_balance' => $financeBalance,
+            'budget_balance' => $financeBalance,
+            'finance_budget_balance' => $financeBalance,
+            'legacy_budget_balance' => $financeBalance,
+            'sap_synced_at' => $sapSyncedAt ? $sapSyncedAt->format('d M Y H:i') : null,
+            'sap_synced_at_iso' => $sapSyncedAt ? $sapSyncedAt->toIso8601String() : null,
             'funder_id' => $code->funder_id,
             'funder_name' => optional($code->funder)->name,
             'show_activity_code' => (bool) (optional($code->funder)->show_activity_code ?? false),

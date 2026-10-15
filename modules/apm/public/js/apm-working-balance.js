@@ -1,5 +1,6 @@
 /**
- * APM fund-code working balance — poll server cache and update budget UIs.
+ * APM fund-code Budget Balance (Finance/SAP synced) — poll and update budget UIs.
+ * Commitments are handled in SAP; we use fund_codes.budget_balance only.
  */
 (function (window, $) {
     'use strict';
@@ -11,12 +12,20 @@
     const timers = {};
     const DEFAULT_POLL_MS = 15000;
     const FINANCE_EXCEED_WARNING =
-        'Budget exceeds the available fund code balance. You may still submit — Finance will validate your request, and if the overage is confirmed the memo will be returned.';
+        'This line exceeds the Budget Balance synced from Finance (SAP). You may still submit — Finance will validate, and if the overage is confirmed the memo will be returned.';
 
     function formatMoney(amount) {
         const n = parseFloat(amount) || 0;
         return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+
+    function formatBudgetCodeLabel(code, funder, financeBalance, sapSyncedAt) {
+        const money = formatMoney(financeBalance);
+        const sync = sapSyncedAt ? ` | last SAP sync: ${sapSyncedAt}` : '';
+        return `${code} | ${funder || 'No Funder'} | $${money}${sync}`;
+    }
+
+    window.ApmBudgetCodeLabel = { format: formatBudgetCodeLabel, formatMoney: formatMoney };
 
     function config(config) {
         return config || window.ApmWorkingBalanceConfig || {};
@@ -35,33 +44,31 @@
         return $(`${selectSelector} option[value="${codeId}"]`);
     }
 
-    function fundCodeBaseBalance(codeId, cfg) {
+    /** SAP/Finance Budget Balance from fund_codes.budget_balance. */
+    function fundCodeFinanceBalance(codeId, cfg) {
         const $option = fundCodeOption(codeId, cfg);
         if (!$option.length) {
             return 0;
         }
-        let initial = parseFloat($option.data('initial-balance'));
-        if (Number.isNaN(initial)) {
-            initial = parseFloat($option.data('balance')) || 0;
-            $option.data('initial-balance', initial);
+        let finance = parseFloat($option.data('finance-balance'));
+        if (Number.isNaN(finance)) {
+            finance = parseFloat($option.attr('data-finance-balance'));
         }
-        return initial;
+        if (Number.isNaN(finance)) {
+            finance = parseFloat($option.data('balance'));
+        }
+        if (Number.isNaN(finance)) {
+            finance = parseFloat($option.data('initial-balance'));
+        }
+        return Number.isNaN(finance) ? 0 : finance;
+    }
+
+    function fundCodeBaseBalance(codeId, cfg) {
+        return fundCodeFinanceBalance(codeId, cfg);
     }
 
     function fundCodeAvailableBalance(codeId, cfg) {
-        const configObj = cfg || config();
-        let available = fundCodeBaseBalance(codeId, configObj);
-        if (hasExcludeContext(configObj)) {
-            return available;
-        }
-
-        const $option = fundCodeOption(codeId, configObj);
-        let currentActivityBudget = parseFloat($option.data('current-activity-budget')) || 0;
-        if (!currentActivityBudget && configObj.currentActivityBudgets && configObj.currentActivityBudgets[codeId]) {
-            currentActivityBudget = parseFloat(configObj.currentActivityBudgets[codeId]) || 0;
-        }
-
-        return available + currentActivityBudget;
+        return fundCodeFinanceBalance(codeId, cfg);
     }
 
     function collectFundCodeIds(selectSelector) {
@@ -79,13 +86,16 @@
         if (!snap) {
             return 0;
         }
-        if (snap.working_balance !== undefined && snap.working_balance !== null) {
-            return parseFloat(snap.working_balance) || 0;
+        if (snap.finance_budget_balance !== undefined && snap.finance_budget_balance !== null) {
+            return parseFloat(snap.finance_budget_balance) || 0;
         }
         if (snap.budget_balance !== undefined && snap.budget_balance !== null) {
             return parseFloat(snap.budget_balance) || 0;
         }
-        return parseFloat(snap.workingBalance ?? 0) || 0;
+        if (snap.working_balance !== undefined && snap.working_balance !== null) {
+            return parseFloat(snap.working_balance) || 0;
+        }
+        return 0;
     }
 
     function applyBalancesToOptions(balances, selectSelector) {
@@ -100,14 +110,21 @@
             $(this).attr('data-balance', displayBalance);
             $(this).data('balance', displayBalance);
             $(this).data('initial-balance', displayBalance);
+            $(this).attr('data-finance-balance', displayBalance);
+            $(this).data('finance-balance', displayBalance);
             $(this).attr('data-approved-budget', snap.approved_budget ?? 0);
-            $(this).attr('data-committed-total', snap.committed_total ?? 0);
+            $(this).attr('data-committed-total', 0);
 
-            const parts = ($(this).text() || '').split('|');
-            if (parts.length >= 3) {
-                const code = parts[0].trim();
-                const funder = parts[1].trim();
-                $(this).text(`${code} | ${funder} | $${formatMoney(displayBalance)}`);
+            if (snap.sap_synced_at) {
+                $(this).attr('data-sap-synced-at', snap.sap_synced_at);
+                $(this).data('sap-synced-at', snap.sap_synced_at);
+            }
+
+            const code = ($(this).data('code') || ($(this).text() || '').split('|')[0] || '').toString().trim();
+            const funder = ($(this).data('funder-name') || ($(this).text() || '').split('|')[1] || 'No Funder').toString().trim();
+            const sapSyncedAt = $(this).data('sap-synced-at') || '';
+            if (code) {
+                $(this).text(formatBudgetCodeLabel(code, funder, displayBalance, sapSyncedAt));
             }
 
             $(`.budget-body[data-code="${id}"]`).closest('.card').find('.fund-code-header-balance').each(function () {
@@ -159,7 +176,7 @@
 
     function updateCardRemainingBalance(codeId, subtotal, cfg) {
         const configObj = cfg || config();
-        const initial = fundCodeAvailableBalance(codeId, configObj);
+        const initial = fundCodeFinanceBalance(codeId, configObj);
         const remaining = initial - (parseFloat(subtotal) || 0);
         const $card = $(`.budget-body[data-code="${codeId}"]`).closest('.card');
         const $budgetCard = $(`.budget-card[data-code="${codeId}"]`);
@@ -188,21 +205,21 @@
             return false;
         }
 
-        const available = fundCodeAvailableBalance(codeId, cfg);
+        const budgetBalance = fundCodeFinanceBalance(codeId, cfg);
 
         if (cfg.changeRequestMode) {
             const original = (cfg.originalSubtotals && cfg.originalSubtotals[codeId]) || 0;
             const delta = subtotal - original;
-            return delta > 0 && delta > available + 0.009;
+            return delta > 0 && subtotal > budgetBalance + 0.009;
         }
 
-        return subtotal > available + 0.009;
+        return subtotal > budgetBalance + 0.009;
     }
 
     function showBudgetWarning($card, available, isChangeRequest) {
         const msg = isChangeRequest
-            ? `New items exceed available budget! Available: $${formatMoney(available)}. ${FINANCE_EXCEED_WARNING}`
-            : FINANCE_EXCEED_WARNING;
+            ? `New items exceed Budget Balance! Budget Balance: $${formatMoney(available)}. ${FINANCE_EXCEED_WARNING}`
+            : `Budget exceeds Budget Balance ($${formatMoney(available)}). ${FINANCE_EXCEED_WARNING}`;
         let $warning = $card.find('.budget-warning');
         if ($warning.length) {
             $warning.removeClass('alert-danger').addClass('alert-warning');
@@ -254,6 +271,7 @@
         updateCardRemainingBalance,
         fundCodeBaseBalance,
         fundCodeAvailableBalance,
+        fundCodeFinanceBalance,
         hasExcludeContext,
         formatMoney,
         FINANCE_EXCEED_WARNING,

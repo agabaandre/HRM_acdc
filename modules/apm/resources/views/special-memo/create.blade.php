@@ -670,9 +670,13 @@ $(document).on('change', '.participant-start, .participant-end', function () {
         if (data.length) {
             data.forEach(code => {
                 const balance = parseFloat(code.budget_balance ?? 0);
-                const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${balance.toLocaleString()}`;
+                const financeBalance = parseFloat(code.finance_budget_balance ?? code.legacy_budget_balance ?? balance);
+                const sapSync = code.sap_synced_at || '';
+                const label = (window.ApmBudgetCodeLabel && window.ApmBudgetCodeLabel.format)
+                    ? window.ApmBudgetCodeLabel.format(code.code, code.funder_name, financeBalance, sapSync)
+                    : `${code.code} | ${code.funder_name || 'No Funder'} | $${financeBalance.toLocaleString()}${sapSync ? ` | last SAP sync: ${sapSync}` : ''}`;
                 budgetCodesSelect.append(
-                    `<option value="${code.id}" data-balance="${balance}" data-initial-balance="${balance}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="${code.committed_total ?? ''}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                    `<option value="${code.id}" data-code="${code.code}" data-funder-name="${(code.funder_name || 'No Funder').replace(/"/g, '&quot;')}" data-balance="${financeBalance}" data-initial-balance="${financeBalance}" data-finance-balance="${financeBalance}" data-sap-synced-at="${sapSync.replace(/"/g, '&quot;')}" data-approved-budget="${code.approved_budget ?? ''}" data-committed-total="0" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                 );
             });
             budgetCodesSelect.prop('disabled', false);
@@ -721,15 +725,19 @@ $(document).on('change', '.participant-start, .participant-end', function () {
     selected.each(function () {
         const codeId = $(this).val();
         const label = $(this).text();
-        const balance = parseFloat($(this).data('balance')) || 0;
-        $(this).data('initial-balance', balance);
+        const workingBalance = parseFloat($(this).data('balance')) || 0;
+        let financeBalance = parseFloat($(this).data('finance-balance'));
+        if (Number.isNaN(financeBalance)) {
+            financeBalance = workingBalance;
+        }
+        $(this).data('initial-balance', workingBalance);
 
         const cardHtml = `
             <div class="card mt-4">
                 <div class="card-header bg-light">
                     <h6 class="fw-semibold">
                         Budget for: ${label}
-                        <span class="float-end text-muted">Balance: $<span class="fund-code-remaining-balance text-success">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
+                        <span class="float-end text-muted">Budget Balance: $<span class="fund-code-remaining-balance text-success">${financeBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
                     </h6>
                 </div>
                 <div class="card-body">
@@ -855,7 +863,7 @@ $(document).on('change', '.participant-start, .participant-end', function () {
             if (exceeded) {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
                     .addClass('text-danger fw-bold');
-                const available = window.ApmWorkingBalance.fundCodeBaseBalance(code);
+                const available = window.ApmWorkingBalance.fundCodeFinanceBalance(code);
                 window.ApmWorkingBalance.showBudgetWarning($(this).closest('.card'), available, false);
             } else {
                 $(`.subtotal[data-code="${code}"]`).text(subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))

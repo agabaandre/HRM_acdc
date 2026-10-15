@@ -5,7 +5,9 @@
     $currentStaffIdForQm = (int) (user_session('staff_id') ?? 0);
     $isMatrixQm = $matrixQmStaffId > 0 && $currentStaffIdForQm === $matrixQmStaffId;
     $currentDivisionId = (int) (user_session('division_id') ?? 0);
-    $canDivisionAddSingleMemo = $currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id;
+    $canDivisionAddSingleMemo = function_exists('user_can_add_single_memo_to_matrix')
+        ? user_can_add_single_memo_to_matrix($matrix)
+        : ($currentDivisionId > 0 && $currentDivisionId === (int) $matrix->division_id);
     $matrixIsCurrentQuarter = matrix_is_current_quarter($matrix);
     $isStrictAdmin = user_session('role') == 10;
     $effectiveHodId = effective_division_head_staff_id($matrix->division);

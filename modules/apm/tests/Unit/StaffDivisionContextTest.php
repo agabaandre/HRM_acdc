@@ -146,3 +146,21 @@ test('user_session division_id prefers active_division_id when switchable', func
     expect((int) user_session('division_id'))->toBe(910420);
     expect((string) user_session('division_name'))->toBe('Associated Div');
 });
+
+test('secondary member can add single memo after switching from home', function () {
+    seedDivisionForContext(910510, 'Home Div');
+    seedDivisionForContext(910520, 'Matrix Div');
+    seedStaffForContext(910506, 910510, [910520]);
+
+    session(['user' => ['staff_id' => 910506, 'division_id' => 910510, 'division_name' => 'Home Div']]);
+
+    $matrix = (object) ['division_id' => 910520];
+    // Secondary membership alone is enough (associated_divisions).
+    expect(user_can_add_single_memo_to_matrix($matrix))->toBeTrue();
+
+    expect(StaffDivisionContext::setActive(910520, 910506))->toBeTrue();
+    expect(user_can_add_single_memo_to_matrix($matrix))->toBeTrue();
+
+    $otherMatrix = (object) ['division_id' => 999999];
+    expect(user_can_add_single_memo_to_matrix($otherMatrix))->toBeFalse();
+});

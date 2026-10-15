@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ApmFundCodeController;
 use App\Http\Controllers\Api\ApmDirectorateController;
 use App\Http\Controllers\Api\ApmDivisionController;
 use App\Http\Controllers\Api\ApmActivityReportController;
+use App\Http\Controllers\Api\FinanceSessionBridgeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SignatureVerificationController;
 use Illuminate\Http\Request;
@@ -41,6 +42,9 @@ Route::prefix('apm/v1')->group(function () {
     Route::post('auth/microsoft', [ApmAuthController::class, 'microsoftLogin']);
     // Logout is outside auth middleware so it can be called with or without token (always returns 200)
     Route::post('auth/logout', [ApmAuthController::class, 'logout']);
+
+    // Finance SAP import → mint APM JWT via shared bridge secret (no password).
+    Route::post('internal/finance-session', [FinanceSessionBridgeController::class, 'store']);
 
     /**
      * Refresh must NOT use auth:api middleware: Laravel would reject expired access tokens before

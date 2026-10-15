@@ -942,10 +942,15 @@ $(document).ready(function () {
             if (data.length) {
                 const currentActivityBudgets = @if(isset($editing) && $editing && isset($currentActivityBudgets)) @json($currentActivityBudgets) @else {} @endif;
                 data.forEach(code => {
-                    const label = `${code.code} | ${code.funder_name || 'No Funder'} | $${parseFloat(code.budget_balance).toLocaleString()}`;
+                    const balance = parseFloat(code.budget_balance ?? 0);
+                    const financeBalance = parseFloat(code.finance_budget_balance ?? code.legacy_budget_balance ?? balance);
+                    const sapSync = code.sap_synced_at || '';
+                    const label = (window.ApmBudgetCodeLabel && window.ApmBudgetCodeLabel.format)
+                        ? window.ApmBudgetCodeLabel.format(code.code, code.funder_name, financeBalance, sapSync)
+                        : `${code.code} | ${code.funder_name || 'No Funder'} | $${financeBalance.toLocaleString()}${sapSync ? ` | last SAP sync: ${sapSync}` : ''}`;
                     const currentActivityBudget = currentActivityBudgets[code.id] || 0;
                     budgetCodesSelect.append(
-                        `<option value="${code.id}" data-balance="${code.budget_balance}" data-current-activity-budget="${currentActivityBudget}" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
+                        `<option value="${code.id}" data-code="${code.code}" data-funder-name="${(code.funder_name || 'No Funder').replace(/"/g, '&quot;')}" data-balance="${financeBalance}" data-initial-balance="${financeBalance}" data-finance-balance="${financeBalance}" data-sap-synced-at="${sapSync.replace(/"/g, '&quot;')}" data-current-activity-budget="0" data-funder-id="${code.funder_id || ''}" data-show-activity-code="${code.show_activity_code ? 1 : 0}" data-activity-code-label="${(code.activity_code_label || 'Activity Code *').replace(/"/g, '&quot;')}">${label}</option>`
                     );
                 });
                 budgetCodesSelect.prop('disabled', false);
@@ -1226,41 +1231,21 @@ $(document).ready(function () {
                 });
             }
             
-            // Get the budget balance for this code
+            // Ceiling = Finance/SAP Budget Balance (not APM working balance).
             const balanceElement = $(`#budget_codes option[value="${code}"]`);
-            const budgetBalance = parseFloat(balanceElement.data('balance')) || 0;
-            
-            let availableBalance = budgetBalance;
-            if (window.ApmWorkingBalance) {
-                availableBalance = window.ApmWorkingBalance.fundCodeAvailableBalance(code, window.ApmWorkingBalanceConfig || {});
-            } else {
-                @if(isset($editing) && $editing && isset($fundCodes))
-                const currentActivityBudget = parseFloat(balanceElement.data('current-activity-budget')) || 0;
-                availableBalance = budgetBalance + currentActivityBudget;
-                @endif
+            let availableBalance = parseFloat(balanceElement.data('finance-balance'));
+            if (Number.isNaN(availableBalance)) {
+                availableBalance = parseFloat(balanceElement.data('balance')) || 0;
             }
-            
-            // For change requests: only check if NEW items would cause balance to go negative
-            // For regular edits: check if total exceeds available balance
+            if (window.ApmWorkingBalance && window.ApmWorkingBalance.fundCodeFinanceBalance) {
+                availableBalance = window.ApmWorkingBalance.fundCodeFinanceBalance(code, window.ApmWorkingBalanceConfig || {});
+            }
+
             let shouldCheckBudget = false;
             if (isChangeRequest) {
-                // Calculate the difference (new items added)
                 const newItemsTotal = subtotal - originalSubtotal;
-                // Only check if new items would cause the balance to go to 0 or negative
-                // The original items' budget is already allocated, so we only care about new additions
-                if (newItemsTotal > 0) {
-                    // Check if adding new items would exceed the available balance
-                    // budgetBalance is the current balance (excluding this activity's budget)
-                    // We need to check if the new items would cause the balance to go negative
-                    // Formula: budgetBalance - newItemsTotal < 0
-                    const balanceAfterNewItems = budgetBalance - newItemsTotal;
-                    shouldCheckBudget = balanceAfterNewItems < 0;
-                } else {
-                    // If no new items or items were removed, no need to check
-                    shouldCheckBudget = false;
-                }
+                shouldCheckBudget = newItemsTotal > 0 && subtotal > availableBalance;
             } else {
-                // Regular edit: check if total exceeds available balance
                 shouldCheckBudget = subtotal > availableBalance;
             }
             

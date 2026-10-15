@@ -28,6 +28,7 @@ class FundCode extends Model
         'budget_balance',
         'approved_budget',
         'uploaded_budget',
+        'sap_synced_at',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class FundCode extends Model
         'budget_balance' => 'string',
         'approved_budget' => 'string',
         'uploaded_budget' => 'string',
+        'sap_synced_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

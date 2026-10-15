@@ -193,6 +193,45 @@ if (! function_exists('user_session')) {
                 && (string) ($matrix->quarter ?? '') === current_apm_quarter();
         }
 
+        /**
+         * Whether the current user may add a single memo on this matrix.
+         * Allows primary division staff and secondary (associated / switchable) members
+         * after switching from home — same set as StaffDivisionContext::listDivisionIds.
+         */
+        function user_can_add_single_memo_to_matrix($matrix): bool
+        {
+            if ($matrix === null) {
+                return false;
+            }
+
+            $staffId = (int) (function_exists('resolved_session_staff_id')
+                ? (resolved_session_staff_id() ?? 0)
+                : (user_session('staff_id') ?? 0));
+            if ($staffId <= 0) {
+                return false;
+            }
+
+            $matrixDivisionId = (int) ($matrix->division_id ?? 0);
+            if ($matrixDivisionId <= 0) {
+                return false;
+            }
+
+            $activeDivisionId = (int) (user_session('division_id') ?? 0);
+            if ($activeDivisionId > 0 && $activeDivisionId === $matrixDivisionId) {
+                return true;
+            }
+
+            if (class_exists(\App\Support\StaffDivisionContext::class)) {
+                return in_array(
+                    $matrixDivisionId,
+                    \App\Support\StaffDivisionContext::listDivisionIds($staffId),
+                    true
+                );
+            }
+
+            return false;
+        }
+
         function isfocal_person()
         {
             $staff_id = resolved_session_staff_id();

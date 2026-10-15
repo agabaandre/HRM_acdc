@@ -8,10 +8,11 @@ use Staff\Shared\StaffApiCredentials;
 use Throwable;
 
 /**
- * Resolve APM API credentials for SAP fund-code sync: DB → env → Staff Share API.
+ * Resolve APM API credentials for SAP fund-code sync.
  *
- * Staff Share username/password are the same portal users synced into apm_api_users
- * (users:sync), so they can authenticate against POST /api/apm/v1/auth/login.
+ * Auth order: shared bridge secret (FINANCE_APM_BRIDGE_SECRET / STAFF_API_TOKEN)
+ * mints an APM JWT without password — same pattern as budget-execution —
+ * then falls back to APM / Staff Share email+password login.
  */
 final class ApmApiCredentials
 {
@@ -148,14 +149,127 @@ final class ApmApiCredentials
     }
 
     /**
+     * Emails usable for Finance→APM bridge mint (password not required).
+     *
+     * @return list<string>
+     */
+    public static function bridgeIdentityEmails(?ModuleSettingsBag $bag = null): array
+    {
+        $bag ??= new RrSettingsBag;
+        $emails = [];
+
+        if ($bag->has(self::KEY_EMAIL)) {
+            $v = trim((string) $bag->get(self::KEY_EMAIL));
+            if ($v !== '') {
+                $emails[] = $v;
+            }
+        }
+
+        $envEmail = trim((string) config('apm.email', ''));
+        if ($envEmail === '' && function_exists('env')) {
+            $e = env('APM_API_EMAIL');
+            if (is_string($e) && trim($e) !== '') {
+                $envEmail = trim($e);
+            }
+        }
+        if ($envEmail !== '') {
+            $emails[] = $envEmail;
+        }
+
+        $staff = StaffApiCredentials::resolve($bag);
+        if ($staff['username'] !== '') {
+            $emails[] = $staff['username'];
+        }
+
+        $unique = [];
+        foreach ($emails as $email) {
+            $key = strtolower($email);
+            if (! isset($unique[$key])) {
+                $unique[$key] = $email;
+            }
+        }
+
+        return array_values($unique);
+    }
+
+    /**
+     * Mint APM JWT via shared bridge secret (same approach as budget-execution).
+     *
+     * @return array{access_token: string, email: string, label: string}|null
+     */
+    public static function loginViaBridge(?ModuleSettingsBag $bag = null): ?array
+    {
+        $secret = trim((string) config('services.apm_bridge.secret', ''));
+        if ($secret === '') {
+            return null;
+        }
+
+        $bag ??= new RrSettingsBag;
+        $resolved = self::resolve($bag);
+        $baseUrl = rtrim((string) $resolved['base_url'], '/');
+        if ($baseUrl === '') {
+            return null;
+        }
+
+        $prefix = rtrim((string) $resolved['api_prefix'], '/');
+        if ($prefix === '') {
+            $prefix = '/api/apm/v1';
+        }
+        $url = $baseUrl.$prefix.'/internal/finance-session';
+        $timeout = max(10, (int) $resolved['timeout']);
+
+        foreach (self::bridgeIdentityEmails($bag) as $email) {
+            try {
+                $response = Http::timeout($timeout)
+                    ->withHeaders([
+                        'X-Finance-Bridge-Token' => $secret,
+                        'Accept' => 'application/json',
+                        'X-Requested-With' => 'XMLHttpRequest',
+                    ])
+                    ->post($url, ['email' => $email]);
+            } catch (Throwable) {
+                continue;
+            }
+
+            if (! $response->successful()) {
+                continue;
+            }
+
+            $token = data_get($response->json(), 'data.access_token');
+            if (! is_string($token) || $token === '') {
+                continue;
+            }
+
+            $mintedEmail = (string) (data_get($response->json(), 'data.email') ?: $email);
+
+            return [
+                'access_token' => $token,
+                'email' => $mintedEmail,
+                'label' => 'bridge',
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{access_token: string, email: string, label: string}
      */
     public static function login(?ModuleSettingsBag $bag = null): array
     {
+        $bag ??= new RrSettingsBag;
+
+        // Prefer shared bridge secret (budget-execution style) — no password / allow_email_login.
+        $bridged = self::loginViaBridge($bag);
+        if ($bridged !== null) {
+            return $bridged;
+        }
+
         $candidates = self::loginCandidates($bag);
         if ($candidates === []) {
             throw new \RuntimeException(
-                'APM API email and password must be configured (Settings → API credentials / Staff Share, or APM_API_* / STAFF_API_*).'
+                'APM API bridge secret or email/password must be configured '
+                .'(FINANCE_APM_BRIDGE_SECRET / STAFF_API_TOKEN, or Settings → API credentials).'
             );
         }
 
@@ -287,17 +401,25 @@ final class ApmApiCredentials
             return self::probeWithCreds($resolved, 'override');
         }
 
+        $bridgeProbe = self::probeViaBridge($bag);
+        if ($bridgeProbe['success']) {
+            return $bridgeProbe;
+        }
+
         $candidates = self::loginCandidates($bag);
         if ($candidates === []) {
+            $details = $bridgeProbe['details'];
+            $details[] = 'no password login candidates';
+
             return [
                 'success' => false,
-                'message' => 'FAILED — set APM API email/password, or Staff Share username/password (shared synced users).',
-                'details' => ['no login candidates'],
+                'message' => 'FAILED — set FINANCE_APM_BRIDGE_SECRET (or STAFF_API_TOKEN), or APM API email/password.',
+                'details' => $details,
             ];
         }
 
-        $details = [];
-        $lastFail = null;
+        $details = $bridgeProbe['details'];
+        $lastFail = $bridgeProbe;
         foreach ($candidates as $creds) {
             $result = self::probeWithCreds($creds, $creds['label']);
             $details = array_merge($details, $result['details']);
@@ -314,6 +436,105 @@ final class ApmApiCredentials
         return [
             'success' => false,
             'message' => $lastFail['message'] ?? 'FAILED — APM login rejected.',
+            'details' => $details,
+        ];
+    }
+
+    /**
+     * @return array{success: bool, message: string, details: list<string>}
+     */
+    private static function probeViaBridge(?ModuleSettingsBag $bag = null): array
+    {
+        $secret = trim((string) config('services.apm_bridge.secret', ''));
+        if ($secret === '') {
+            return [
+                'success' => false,
+                'message' => 'FAILED — bridge secret not configured.',
+                'details' => ['bridge: secret unset'],
+            ];
+        }
+
+        $bag ??= new RrSettingsBag;
+        $resolved = self::resolve($bag);
+        $baseUrl = rtrim((string) $resolved['base_url'], '/');
+        if ($baseUrl === '') {
+            return [
+                'success' => false,
+                'message' => 'FAILED — APM base URL is not configured.',
+                'details' => ['bridge: base_url unset'],
+            ];
+        }
+
+        $emails = self::bridgeIdentityEmails($bag);
+        if ($emails === []) {
+            return [
+                'success' => false,
+                'message' => 'FAILED — no APM identity email for bridge mint.',
+                'details' => ['bridge: no identity email'],
+            ];
+        }
+
+        $prefix = rtrim((string) $resolved['api_prefix'], '/');
+        if ($prefix === '') {
+            $prefix = '/api/apm/v1';
+        }
+        $url = $baseUrl.$prefix.'/internal/finance-session';
+        $details = [];
+
+        foreach ($emails as $email) {
+            $details[] = 'trying: bridge ('.$email.')';
+            try {
+                $response = Http::timeout(20)
+                    ->withHeaders([
+                        'X-Finance-Bridge-Token' => $secret,
+                        'Accept' => 'application/json',
+                        'X-Requested-With' => 'XMLHttpRequest',
+                    ])
+                    ->post($url, ['email' => $email]);
+            } catch (Throwable $e) {
+                $details[] = 'bridge: error '.$e->getMessage();
+
+                continue;
+            }
+
+            if (! $response->successful()) {
+                $hint = trim((string) data_get($response->json(), 'message', ''));
+                $details[] = 'bridge: FAIL HTTP '.$response->status()
+                    .($hint !== '' ? ' — '.$hint : '');
+
+                continue;
+            }
+
+            $token = data_get($response->json(), 'data.access_token');
+            if (! is_string($token) || $token === '') {
+                $details[] = 'bridge: FAIL (missing access_token)';
+
+                continue;
+            }
+
+            $details[] = 'bridge: OK ('.$email.')';
+            $codesUrl = $baseUrl.$prefix.'/fund-codes';
+            $list = Http::timeout(20)
+                ->withToken($token)
+                ->acceptJson()
+                ->get($codesUrl, ['year' => (int) date('Y'), 'per_page' => 1]);
+            if ($list->successful()) {
+                $total = (int) data_get($list->json(), 'pagination.total', 0);
+                $details[] = 'fund-codes: OK (year '.date('Y').', total '.$total.')';
+            } else {
+                $details[] = 'fund-codes: FAIL HTTP '.$list->status();
+            }
+
+            return [
+                'success' => true,
+                'message' => 'CONNECTED to APM as '.$email.' (bridge)',
+                'details' => $details,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'FAILED — APM bridge mint rejected.',
             'details' => $details,
         ];
     }

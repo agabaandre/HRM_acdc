@@ -673,10 +673,14 @@ class FundCodeController extends Controller
 
             DB::beginTransaction();
             foreach ($balancesByFundCenter as $fundCenter => $balanceTotal) {
+                $update = ['budget_balance' => number_format($balanceTotal, 2, '.', '')];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('fund_codes', 'sap_synced_at')) {
+                    $update['sap_synced_at'] = now();
+                }
                 $affected = FundCode::where('code', $fundCenter)
                     ->where('year', $currentYear)
                     ->where('is_active', 1)
-                    ->update(['budget_balance' => number_format($balanceTotal, 2, '.', '')]);
+                    ->update($update);
                 if ($affected > 0) {
                     $updated += $affected;
                 } else {

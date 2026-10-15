@@ -131,6 +131,9 @@ class ApmFundCodeController extends Controller
         ]);
 
         $validated['is_active'] = $validated['is_active'] ?? true;
+        if ($this->touchesSapBalance($validated) && \Illuminate\Support\Facades\Schema::hasColumn('fund_codes', 'sap_synced_at')) {
+            $validated['sap_synced_at'] = now();
+        }
         $fundCode = FundCode::create($validated);
         $fundCode->load(['funder:id,name', 'partner:id,name']);
 
@@ -168,7 +171,18 @@ class ApmFundCodeController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        if ($this->touchesSapBalance($validated) && \Illuminate\Support\Facades\Schema::hasColumn('fund_codes', 'sap_synced_at')) {
+            $validated['sap_synced_at'] = now();
+        }
+
         $fundCode->update($validated);
+        if ($this->touchesSapBalance($validated)) {
+            try {
+                app(\App\Services\FundCodeWorkingBalanceService::class)->bust((int) $fundCode->id);
+            } catch (\Throwable) {
+                // Cache bust is best-effort after Finance sync.
+            }
+        }
         $fundCode->load(['funder:id,name', 'partner:id,name']);
 
         return response()->json([
@@ -176,5 +190,19 @@ class ApmFundCodeController extends Controller
             'message' => 'Fund code updated.',
             'data' => $fundCode,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function touchesSapBalance(array $payload): bool
+    {
+        foreach (['budget_balance', 'approved_budget', 'uploaded_budget'] as $key) {
+            if (array_key_exists($key, $payload)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
