@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+#
+# Finance — production deploy script (beside running Staff at /staff/finance/).
+#
+# First time on a server:
+#   cp setup.env.example setup.env
+#   nano setup.env          # production URLs, DB_* (JWT_SECRET blank → auto-generated / inherited)
+#   ./setup-production.sh
+#
+# Re-deploy after git pull:
+#   ./setup-production.sh
+#
+# Options:
+#   --skip-migrate    Skip php artisan migrate
+#   --skip-build      Skip npm run build
+#   --skip-optimize   Skip config/route/view cache
+#   -h, --help        Show help
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+# shellcheck source=scripts/lib/paths.sh
+source "$ROOT/scripts/lib/paths.sh"
+staff_paths_resolve_from_module "$ROOT"
+
+SETUP_ENV="$ROOT/setup.env"
+ENV_FILE="$ROOT/.env"
+
+SKIP_MIGRATE=0
+SKIP_BUILD=0
+SKIP_OPTIMIZE=0
+
+usage() {
+    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-migrate) SKIP_MIGRATE=1 ;;
+        --skip-build) SKIP_BUILD=1 ;;
+        --skip-optimize) SKIP_OPTIMIZE=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+    esac
+    shift
+done
+
+# shellcheck source=scripts/lib/dotenv.sh
+source "$ROOT/scripts/lib/dotenv.sh"
+
+log() { printf '==> %s\n' "$*"; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+verify_finance_app_root() {
+    local f missing=()
+    for f in composer.json artisan package.json public/index.php bootstrap/app.php; do
+        [[ -f "$ROOT/$f" ]] || missing+=("$f")
+    done
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        return 0
+    fi
+    die "Finance Laravel app is incomplete at $ROOT (missing: ${missing[*]}).
+
+Deploy the full finance/ directory from the staff git repository, not just .env or storage/:
+  cd ${STAFF_ROOT:-$ROOT/..}
+  git pull
+  test -f finance/composer.json && echo OK
+
+If finance/ was created by hand, restore from git (keeps .env):
+  cd $ROOT && ./restore-from-git.sh
+
+Or from the staff repo root:
+  cd ${STAFF_ROOT:-$ROOT/..}
+  git fetch origin && git checkout HEAD -- finance/
+  test -f finance/composer.json && echo OK"
+}
+
+verify_finance_app_root
+
+if [[ ! -f "$SETUP_ENV" ]]; then
+    if [[ -f "$ROOT/setup.env.example" ]]; then
+        cp "$ROOT/setup.env.example" "$SETUP_ENV"
+        die "Created $SETUP_ENV — set DB_DATABASE and re-run: ./setup-production.sh"
+    fi
+    die "Missing $SETUP_ENV — copy setup.env.example and configure it first."
+fi
+
+export FINANCE_SETUP_ENV="$SETUP_ENV"
+export FINANCE_PRODUCTION_SETUP=1
+chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/fix-storage-permissions.sh" "$ROOT/restore-from-git.sh" 2>/dev/null || true
+
+log "Configuring .env from setup.env (production URLs auto-resolved when localhost)"
+"$ROOT/scripts/configure-env.sh"
+
+if [[ -n "$(dotenv_get "$ENV_FILE" APP_URL 2>/dev/null || true)" ]]; then
+    printf '    APP_URL=%s\n' "$(dotenv_get "$ENV_FILE" APP_URL)"
+    printf '    BASE_URL=%s\n' "$(dotenv_get "$ENV_FILE" BASE_URL 2>/dev/null || true)"
+fi
+
+dotenv_load_file "$SETUP_ENV"
+FINANCE_USER="${FINANCE_USER:-www-data}"
+FINANCE_GROUP="${FINANCE_GROUP:-www-data}"
+export FINANCE_USER FINANCE_GROUP
+PHP_BIN="${PHP_BIN:-/usr/bin/php}"
+
+if [[ ! -x "$PHP_BIN" ]]; then
+    PHP_BIN="$(command -v php || true)"
+fi
+[[ -n "$PHP_BIN" ]] || die "PHP not found — set PHP_BIN in setup.env"
+
+# Host composer, or Compose wrapper when DEPLOY_MODE=docker / STAFF_COMPOSER_VIA_DOCKER=1.
+# shellcheck source=/dev/null
+source "$(cd "$ROOT/../.." && pwd)/scripts/setup/enable-docker-composer-path.sh" "$ROOT"
+command -v composer >/dev/null 2>&1 || die "composer not found on PATH (or set DEPLOY_MODE=docker)"
+command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
+
+log "Preparing storage permissions (fix root-owned files from prior sudo runs)"
+chmod +x "$ROOT/fix-storage-permissions.sh"
+"$ROOT/fix-storage-permissions.sh" || warn "Run: sudo chown -R \$(whoami):${FINANCE_GROUP} storage bootstrap/cache"
+
+jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
+if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
+    if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "$STAFF_ROOT/scripts/setup/secrets.sh"
+        jwt="$(dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$ENV_FILE" JWT_SECRET)"
+    fi
+fi
+if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
+    die "JWT_SECRET is not set and could not be generated. Check openssl and write access to $ENV_FILE."
+fi
+
+# Ensure SESSION_SECRET exists for production (generate if blank).
+if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$STAFF_ROOT/scripts/setup/secrets.sh"
+    dotenv_ensure_shared_secret "${STAFF_ENV:-$STAFF_ROOT/.env}" "$SETUP_ENV" "$ENV_FILE" SESSION_SECRET >/dev/null || true
+fi
+
+log "Installing PHP dependencies (production)"
+[[ -f "$ROOT/composer.json" ]] || die "composer.json missing in $ROOT — deploy full finance/ from git before running setup."
+composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT"
+
+# Supervisor + SSO use modules/finance/backend (separate Laravel app).
+if [[ -f "$ROOT/backend/composer.json" ]]; then
+    log "Installing finance API backend PHP dependencies (backend/)"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        export COMPOSER_ALLOW_SUPERUSER=1
+    fi
+    composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT/backend"
+    if [[ ! -f "$ROOT/backend/vendor/autoload.php" ]]; then
+        die "backend/vendor/autoload.php missing after composer install — fix Composer, then re-run."
+    fi
+    if [[ ! -f "$ROOT/backend/.env" && -f "$ROOT/backend/.env.example" ]]; then
+        cp "$ROOT/backend/.env.example" "$ROOT/backend/.env"
+        warn "Created backend/.env from example — set DB_* to match production"
+    fi
+    if [[ -f "$ROOT/backend/.env" ]]; then
+        if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
+            log "Generating finance API APP_KEY"
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction)
+        fi
+        if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
+            log "Running finance API database migrations"
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan migrate --force --no-interaction) \
+                || warn "finance/backend migrate failed — check backend/.env DB_*"
+        fi
+    fi
+fi
+
+if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
+    log "Generating Laravel APP_KEY"
+    "$PHP_BIN" artisan key:generate --no-interaction
+fi
+
+if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
+    log "Running database migrations"
+    "$PHP_BIN" artisan migrate --force --no-interaction
+    STAFF_PORTAL_BACKEND="$(cd "$ROOT/../staff-portal/backend" 2>/dev/null && pwd || true)"
+    if [[ -n "${STAFF_PORTAL_BACKEND:-}" && -f "$STAFF_PORTAL_BACKEND/artisan" ]]; then
+        log "Seeding Staff Portal manage_funding_portfolio permission"
+        (cd "$STAFF_PORTAL_BACKEND" && "$PHP_BIN" artisan migrate --path=database/migrations/2026_10_13_150000_seed_manage_funding_portfolio_permission.php --force --no-interaction) \
+            || warn "staff-portal funding portfolio permission migrate failed — continuing"
+    fi
+    if [[ -f "$ROOT/backend/artisan" && -f "$ROOT/backend/.env" ]]; then
+        log "Seeding Finance grants catalogue"
+        (cd "$ROOT/backend" && "$PHP_BIN" artisan db:seed --class=Database\\Seeders\\FinanceGrantsSeeder --force --no-interaction) \
+            || warn "FinanceGrantsSeeder failed — continuing"
+    fi
+else
+    log "Skipping migrations (--skip-migrate)"
+fi
+
+if [[ "$SKIP_BUILD" -eq 0 ]]; then
+    log "Building frontend assets (Vite production)"
+    if [[ -f package-lock.json ]]; then
+        npm ci --legacy-peer-deps --cache ./.npm-cache
+    else
+        npm install --legacy-peer-deps --cache ./.npm-cache
+    fi
+    npm run build
+    [[ -d "$ROOT/public/build" ]] || die "Frontend build failed — missing public/build/"
+else
+    log "Skipping frontend build (--skip-build)"
+fi
+
+if [[ "$SKIP_OPTIMIZE" -eq 0 ]]; then
+    log "Caching Laravel config / routes / views"
+    "$PHP_BIN" artisan config:cache --no-interaction
+    "$PHP_BIN" artisan route:cache --no-interaction
+    "$PHP_BIN" artisan view:cache --no-interaction
+fi
+
+log "Fixing storage permissions (deploy user + web group ${FINANCE_GROUP})"
+"$ROOT/fix-storage-permissions.sh" || die "Storage not writable — run: sudo ./fix-storage-permissions.sh"
+
+APP_URL_VAL="$(dotenv_get "$ENV_FILE" APP_URL 2>/dev/null || true)"
+log "Smoke test"
+if [[ -n "$APP_URL_VAL" ]]; then
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${APP_URL_VAL}/" 2>/dev/null || echo '000')"
+    if [[ "$code" == "200" || "$code" == "302" ]]; then
+        printf '    Finance OK: %s/ (HTTP %s)\n' "$APP_URL_VAL" "$code"
+    else
+        warn "Finance returned HTTP $code for ${APP_URL_VAL}/ — confirm Apache serves finance/.htaccess"
+    fi
+fi
+
+echo ""
+echo "Finance production setup complete."
+echo "  App:     ${APP_URL_VAL:-/staff/finance}"
+echo "  Staff:   ${FINANCE_STAFF_PORTAL_URL:-/staff} (Finance tile: permission 92; portfolio edit: 124)"
+echo ""
+echo "Re-deploy after git pull:  ./setup-production.sh"

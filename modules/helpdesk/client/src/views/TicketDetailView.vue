@@ -1022,7 +1022,7 @@ watch(canReopenWithComment, (can) => {
 
             <UFormField
               v-if="assetLinkEnabled"
-              label="Related IT asset (optional)"
+              label="Related ITSM (optional)"
               name="linkedAsset"
               description="Search the requester’s assigned assets by serial, tag, name, brand, or model."
             >
@@ -1040,7 +1040,7 @@ watch(canReopenWithComment, (can) => {
                   v-if="assetPickerOpen && !selectedAsset && (assetResults.length || assetLoading || assetSearch.trim())"
                   class="asset-results"
                   role="listbox"
-                  aria-label="Requester IT assets"
+                  aria-label="Requester ITSM"
                 >
                   <li v-if="assetLoading" class="asset-empty">Searching…</li>
                   <li

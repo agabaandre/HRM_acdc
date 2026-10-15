@@ -18,7 +18,7 @@ Welcome to the **Africa CDC Service Desk**. This guide walks every audience thro
 8. [Resolving a ticket (agents)](#resolving-a-ticket-agents)
 9. [Support groups](#support-groups)
 10. [Reassigning a ticket](#reassigning-a-ticket-permission-required)
-11. [Tools (IT Assets & software)](#tools-it-assets--software)
+11. [Tools (ITSM & software)](#tools-it-assets--software)
 12. [Knowledge base](#knowledge-base)
 13. [Reports](#reports)
 14. [TV / lobby dashboard](#tv--lobby-dashboard)
@@ -202,7 +202,7 @@ From the ticket detail page or the agent desk resolve flow:
 
 1. Write **resolution notes** in the rich text editor (screenshots and formatting supported).
 2. Confirm resolve. Optionally **publish to the knowledge base** if you have permission.
-3. If the ticket’s Business Unit has **Allow Asset** enabled, you may optionally **link an IT asset** assigned to the requester — search by **serial number**, asset tag, name, brand, or model.
+3. If the ticket’s Business Unit has **Allow Asset** enabled, you may optionally **link an ITSM** assigned to the requester — search by **serial number**, asset tag, name, brand, or model.
 4. If the Business Unit has **Allow Information System on resolve** (IT & MIS by default), you may optionally **link an information system** — search by name or version.
 5. The requester is emailed; they can close the ticket when satisfied or reopen if needed.
 
@@ -247,13 +247,13 @@ Reassignment is **only** allowed on `open`, `pending`, or `in_progress` tickets 
 
 ---
 
-## Tools (IT Assets & software)
+## Tools (ITSM & software)
 
 Staff with the right permissions see **Tools** in navigation:
 
 | Tool | What it does |
 |------|----------------|
-| **IT Assets** | Inventory with depreciation: assign staff from the directory, choose brand/category, search by serial/tag/assignee. Brands and categories are managed under **Settings → IT Assets**. |
+| **ITSM** | Inventory with depreciation: assign staff from the directory, choose brand/category, search by serial/tag/assignee. Brands and categories are managed under **Settings → ITSM**. |
 | **Licenses** | Software license tracking with responsible person from the directory. |
 | **Information Systems** | Africa CDC systems inventory: status, modules, focals, manuals/profile links. |
 | **Software requests** | Submit/approve software needs (rich text problem / solution / justification). |
@@ -325,7 +325,7 @@ The **Settings** area (`/settings`) is gated to `role = admin`. Use the **[Admin
 | **AI models & provider** | `/settings/ai` | OpenAI / Gemini / custom, encrypted API key, AI assignment |
 | **Agents & support groups** | `/settings/agents` | Groups, roster, categories, permissions, routing disable |
 | **Issue categories** | `/settings/categories` | Business units (mailbox, Allow Asset, email intake) + categories |
-| **IT Assets** | `/settings/it-assets` | Brands and hardware categories |
+| **ITSM** | `/settings/it-assets` | Brands and hardware categories |
 | **Jobs** | `/settings/jobs` | SLA rules, directory sync, FAQ ingest |
 | **WhatsApp & Teams** | `/settings/integrations` | Webhook URLs and encrypted credentials |
 | **Software requests** | `/settings/software-requests` | Notify groups and review board |
@@ -349,7 +349,7 @@ Every settings save writes an entry to the audit log with the actor, IP, user-ag
 | You can't see the **Reassign** button | Either the ticket isn't in `open` / `pending` / `in_progress`, or you don't have `can_reassign_tickets`. Admins set this on **Settings → Agents**. |
 | Resolution email never arrives | Check `MAIL_*` / Exchange Graph vars; see [ADMIN_GUIDE → Mail](./ADMIN_GUIDE.md#mail--branded-notifications). |
 | Email to helpdesk never becomes a ticket | Admin must enable intake on the Business Unit mailbox and Graph Mail.ReadWrite; see [ADMIN_GUIDE → Inbound email intake](./ADMIN_GUIDE.md#inbound-email-intake). |
-| Cannot link an asset on resolve | Business Unit needs **Allow Asset**; asset must be assigned to the ticket requester in IT Assets. |
+| Cannot link an asset on resolve | Business Unit needs **Allow Asset**; asset must be assigned to the ticket requester in ITSM. |
 | Cannot link an information system on resolve | Business Unit needs **Allow Information System on resolve**; system must not be decommissioned. |
 | Reopen checkbox missing | **Settings → General → Requester follow-up** may be off, or ticket is not closed. |
 | Agent not emailed on comment | Same toggle; ticket must have an assigned agent with a valid email. |

@@ -25,20 +25,34 @@ export function stripStaffSsoTokenFromUrl(): void {
   window.history.replaceState({}, document.title, path)
 }
 
-export function staffPortalHomeUrl(): string {
+function portalHomePath(): string {
+  const fromEnv = (import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined)?.trim()
+  if (fromEnv?.startsWith('/')) {
+    return fromEnv.endsWith('/') ? fromEnv : `${fromEnv}/`
+  }
   if (typeof window !== 'undefined') {
-    const { protocol, hostname, host } = window.location
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${host}/staff/`
-    }
-    const fromEnv = import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined
-    if (fromEnv?.startsWith('/')) {
-      return `${protocol}//${host}${fromEnv}`
+    const stripped = window.location.pathname.replace(
+      /\/(helpdesk|finance|apm|risk-register)(\/.*)?$/,
+      '',
+    )
+    if (stripped && stripped !== '/') {
+      return stripped.endsWith('/') ? stripped : `${stripped}/`
     }
   }
-  const fromEnv = import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined
-  if (fromEnv && fromEnv.trim() !== '') {
-    return fromEnv.trim()
+  return '/staff/'
+}
+
+export function staffPortalHomeUrl(): string {
+  const fromEnv = (import.meta.env.VITE_STAFF_PORTAL_HOME_URL as string | undefined)?.trim()
+  if (fromEnv && /^https?:\/\//i.test(fromEnv)) {
+    return fromEnv.endsWith('/') ? fromEnv : `${fromEnv}/`
+  }
+  if (typeof window !== 'undefined') {
+    const { protocol, host } = window.location
+    return `${protocol}//${host}${portalHomePath()}`
+  }
+  if (fromEnv) {
+    return fromEnv
   }
   return 'http://localhost/staff/'
 }
@@ -56,19 +70,19 @@ export function redirectToStaffPortalHome(): void {
 
 /** Base Staff portal URL (no trailing home path) for shared assets, e.g. logo — same pattern as Finance. */
 export function staffPortalBaseUrl(): string {
+  const explicit = (import.meta.env.VITE_STAFF_BASE_URL as string | undefined)?.trim()
+  if (explicit && /^https?:\/\//i.test(explicit)) {
+    return explicit.replace(/\/$/, '')
+  }
   if (typeof window !== 'undefined') {
-    const { protocol, hostname, host } = window.location
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${host}/staff`
-    }
-    const explicit = import.meta.env.VITE_STAFF_BASE_URL as string | undefined
+    const { protocol, host } = window.location
     if (explicit?.startsWith('/')) {
       return `${protocol}//${host}${explicit.replace(/\/$/, '')}`
     }
+    return `${protocol}//${host}${portalHomePath().replace(/\/$/, '')}`
   }
-  const explicit = import.meta.env.VITE_STAFF_BASE_URL as string | undefined
-  if (explicit?.trim()) {
-    return explicit.trim().replace(/\/$/, '')
+  if (explicit) {
+    return explicit.replace(/\/$/, '')
   }
   const home = staffPortalHomeUrl()
   const stripped = home.replace(/\/home\/index\/?$/i, '').replace(/\/$/, '')

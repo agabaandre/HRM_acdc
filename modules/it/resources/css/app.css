@@ -1,0 +1,30 @@
+/* Finance Inertia shell — layout chrome comes from APM theme CSS in app.blade.php */
+body {
+    font-family: Roboto, Arial, sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    color: #1a1a1a;
+    background: #f8f9fa;
+}
+
+.wrapper {
+    min-height: 100vh;
+}
+
+.page-wrapper {
+    min-height: calc(100vh - 120px);
+}
+
+.page-content {
+    padding: 1.25rem 1.5rem 2rem;
+}
+
+.page-content .card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.finance-page-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}

@@ -1,11 +1,8 @@
 <?php
 
-use App\Http\Controllers\Api\V1\Tools\ItAssetController;
-use App\Http\Controllers\Api\V1\Tools\LicenseController;
 use App\Http\Controllers\Api\V1\Tools\SoftwareRequestController;
 use App\Http\Controllers\Api\V1\Tools\HostingRequestController;
 use App\Http\Controllers\Api\V1\Tools\InnovationRequestController;
-use App\Http\Controllers\Api\V1\Tools\InformationSystemController;
 use App\Http\Controllers\Api\V1\Admin\AdminAuditLogController;
 use App\Http\Controllers\Api\V1\Admin\AdminDivisionAgentController;
 use App\Http\Controllers\Api\V1\Admin\AdminFaqIngestController;
@@ -169,46 +166,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/admin/email-ticket-cleanup', [AdminEmailTicketCleanupController::class, 'destroy']);
         Route::get('/admin/audit-logs', [AdminAuditLogController::class, 'index']);
         Route::post('/admin/audit-logs/{auditLog}/reverse', [AdminAuditLogController::class, 'reverse']);
-
-        // Tools — IT Assets, Licenses, Software requests
-        Route::get('/tools/it-assets/summary', [ItAssetController::class, 'summary']);
-        Route::get('/tools/it-assets/export', [ItAssetController::class, 'export']);
-        Route::get('/tools/it-assets/export-pdf', [ItAssetController::class, 'exportPdf']);
-        Route::get('/tools/it-assets/categories', [ItAssetController::class, 'categories']);
-        Route::post('/tools/it-assets/categories', [ItAssetController::class, 'storeCategory']);
-        Route::put('/tools/it-assets/categories/{category}', [ItAssetController::class, 'updateCategory']);
-        Route::delete('/tools/it-assets/categories/{category}', [ItAssetController::class, 'destroyCategory']);
-        Route::get('/tools/it-assets/brands', [ItAssetController::class, 'brands']);
-        Route::post('/tools/it-assets/brands', [ItAssetController::class, 'storeBrand']);
-        Route::put('/tools/it-assets/brands/{brand}', [ItAssetController::class, 'updateBrand']);
-        Route::delete('/tools/it-assets/brands/{brand}', [ItAssetController::class, 'destroyBrand']);
-        Route::get('/tools/it-assets', [ItAssetController::class, 'index']);
-        Route::post('/tools/it-assets', [ItAssetController::class, 'store']);
-        Route::put('/tools/it-assets/{asset}', [ItAssetController::class, 'update']);
-        Route::delete('/tools/it-assets/{asset}', [ItAssetController::class, 'destroy']);
-
-        Route::get('/tools/licenses/summary', [LicenseController::class, 'summary']);
-        Route::get('/tools/licenses/export', [LicenseController::class, 'export']);
-        Route::get('/tools/licenses/export-pdf', [LicenseController::class, 'exportPdf']);
-        Route::get('/tools/licenses', [LicenseController::class, 'index']);
-        Route::post('/tools/licenses', [LicenseController::class, 'store']);
-        Route::put('/tools/licenses/{license}', [LicenseController::class, 'update']);
-        Route::delete('/tools/licenses/{license}', [LicenseController::class, 'destroy']);
-
-        Route::get('/tools/information-systems/languages', [InformationSystemController::class, 'languages']);
-        Route::post('/tools/information-systems/languages', [InformationSystemController::class, 'storeLanguage']);
-        Route::get('/tools/information-systems/summary', [InformationSystemController::class, 'summary']);
-        Route::get('/tools/information-systems/export', [InformationSystemController::class, 'export']);
-        Route::get('/tools/information-systems/export-pdf', [InformationSystemController::class, 'exportPdf']);
-        Route::get('/tools/information-systems/reports/trends', [InformationSystemController::class, 'trends']);
-        Route::get('/tools/information-systems', [InformationSystemController::class, 'index']);
-        Route::post('/tools/information-systems', [InformationSystemController::class, 'store']);
-        Route::get('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'show']);
-        Route::put('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'update']);
-        Route::delete('/tools/information-systems/{informationSystem}', [InformationSystemController::class, 'destroy']);
-        Route::post('/tools/information-systems/{informationSystem}/modules', [InformationSystemController::class, 'storeModule']);
-        Route::put('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'updateModule']);
-        Route::delete('/tools/information-systems/{informationSystem}/modules/{module}', [InformationSystemController::class, 'destroyModule']);
 
         Route::get('/tools/software-requests/summary', [SoftwareRequestController::class, 'summary']);
         Route::get('/tools/software-requests/export', [SoftwareRequestController::class, 'export']);

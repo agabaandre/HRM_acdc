@@ -109,7 +109,7 @@ class ItAssetController extends Controller
         return $this->pdfTableDownload(
             $request,
             $pdf,
-            'IT assets inventory',
+            'ITSM inventory',
             ['Tag', 'Name', 'Category', 'Brand', 'Model', 'Status', 'Assigned', 'Location', 'Purchased', 'Cost', 'Current value'],
             $rows,
             'it-assets-'.now()->format('Y-m-d').'.pdf',

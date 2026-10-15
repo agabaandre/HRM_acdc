@@ -9,7 +9,7 @@ trait AuthorizesHelpdeskTools
     protected function ensureItAssetManager(Request $request): void
     {
         $p = $request->user()?->helpdeskProfile;
-        abort_unless($p && $p->canManageItAssets(), 403, 'You need IT Assets management permission.');
+        abort_unless($p && $p->canManageItAssets(), 403, 'You need ITSM management permission.');
     }
 
     protected function ensureLicenseManager(Request $request): void

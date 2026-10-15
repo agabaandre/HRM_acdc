@@ -19,7 +19,7 @@ import { useAuthStore } from './stores/auth'
 import { persistStaffSsoToken } from './lib/cbpSystems'
 import { getStoredToken } from './lib/api'
 import { dismissBootPreloader, showInitialContentPreloader } from './lib/appPreloader'
-import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalHomeUrl } from './lib/sso'
+import { getStaffSsoTokenFromUrl, redirectToStaffPortalHome, stripStaffSsoTokenFromUrl, staffPortalBaseUrl, staffPortalHomeUrl } from './lib/sso'
 
 type SsoFailure = {
   code: 'network' | 'forbidden' | 'unauthorized' | 'invalid' | 'config' | 'unknown'
@@ -31,10 +31,7 @@ function syncFaviconWithApm(): void {
   const link = document.getElementById('app-favicon') as HTMLLinkElement | null
   if (!link) return
 
-  const protocol = window.location.protocol
-  const hostNoPort = window.location.hostname
-  // Match APM's favicon source: /staff/apm/assets/images/au_emblem.png
-  link.href = `${protocol}//${hostNoPort}/staff/apm/assets/images/au_emblem.png`
+  link.href = `${staffPortalBaseUrl()}/apm/assets/images/au_emblem.png`
   link.type = 'image/png'
 }
 

@@ -58,7 +58,7 @@ class HelpdeskAskTest extends TestCase
         HelpdeskKbArticle::query()->create([
             'category_id' => $category->id,
             'question' => 'How do I request a new laptop?',
-            'answer' => 'Submit an IT assets request form.',
+            'answer' => 'Submit an ITSM request form.',
             'sort_order' => 1,
             'is_active' => true,
             'search_keywords' => 'laptop hardware',

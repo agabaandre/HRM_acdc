@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-22  
 **Status:** Approved; implementation plan written  
-**Approach:** Mirror IT Assets / Licenses tools pattern (Approach 1)  
+**Approach:** Mirror ITSM / Licenses tools pattern (Approach 1)  
 **Plan:** `docs/superpowers/plans/2026-07-22-information-systems-module.md`
 
 ## Problem
@@ -24,11 +24,11 @@ Africa CDC maintains an inventory of information systems in a spreadsheet (`Afri
 6. Import/seed the current Excel file into the database.
 7. Permission `can_manage_information_systems` in Agents settings; Staff portal **role 10** / helpdesk admins get it by default. Nav + APIs gated by this permission only (no public view).
 8. Reports: summary, by status, by division, missing focals, Excel export, and **status-change trends** over time.
-9. Optional **link Information System on ticket resolve**, same UX pattern as IT asset link — enabled per Business Unit; **IT & MIS on by default**.
+9. Optional **link Information System on ticket resolve**, same UX pattern as ITSM link — enabled per Business Unit; **IT & MIS on by default**.
 
 ## Non-goals (this iteration)
 
-- Linking systems to IT assets / licenses inventory records.
+- Linking systems to ITSM / licenses inventory records.
 - Linking a nested system-*module* on resolve (system-level link only for v1).
 - Uploading profile/manual files into Helpdesk storage (links only; content lives elsewhere).
 - Multi-version release history beyond a single `version` string + status events.
@@ -44,7 +44,7 @@ Africa CDC maintains an inventory of information systems in a spreadsheet (`Afri
 | Reports scope | **C** — summary + export + by-division + status history trends |
 | Access | **A** — permission-gated only; role 10 / helpdesk admin default manage |
 | Implementation shape | **Approach 1** — tools CRUD + Reports tab section |
-| Ticket resolve link | Optional system link on resolve (same pattern as IT assets); IT & MIS flag on by default |
+| Ticket resolve link | Optional system link on resolve (same pattern as ITSM); IT & MIS flag on by default |
 | Programming / DB stack | **Normalized catalogue** of languages/tech tags (many-to-many); Excel free text split + normalized on import |
 | Division | **Staff/APM directory `division_id`** (via helpdesk reference-data); empty / “All” / unmatched → **All** (`division_id` null) |
 | Docs (profile + manuals) | Stored as **external URL links**; preview with APM special-memo style modal (img / PDF iframe / Google Docs viewer) |
@@ -152,7 +152,7 @@ Default grant when:
 - Helpdesk profile `isHelpdeskAdmin()` / Staff portal role in `HELPDESK_SSO_STAFF_ROLE_IDS_ADMIN` (default `10`), on SSO sync or via existing permission bootstrap patterns used for tools flags.
 - Agents settings UI can toggle for any agent profile.
 
-### Ticket resolve linkage (mirror IT assets)
+### Ticket resolve linkage (mirror ITSM)
 
 Same pattern as `allows_asset_link_on_resolve` / `linked_it_asset_id`:
 
@@ -234,7 +234,7 @@ Staff search for focals: reuse existing staff directory search endpoints used by
 
 ### Agents settings
 
-`AgentsManagementPanel`: checkbox/toggle **Information systems** next to IT assets / Licenses.
+`AgentsManagementPanel`: checkbox/toggle **Information systems** next to ITSM / Licenses.
 
 ### Page `InformationSystemsView.vue`
 

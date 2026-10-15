@@ -123,6 +123,7 @@ url_detect_web_server_name() {
         /etc/nginx/conf.d/*.conf
     )
     eval "$old_nullglob"
+    if [[ ${#files[@]} -gt 0 ]]; then
     for f in "${files[@]}"; do
         case "$(basename "$f")" in
             *ssl*|*443*|*le-ssl*) ;;
@@ -133,6 +134,7 @@ url_detect_web_server_name() {
     for f in "${files[@]}"; do
         name="$(url_first_public_server_name_in_file "$f")" && { printf '%s' "$name"; return 0; }
     done
+    fi
     if command -v apache2ctl >/dev/null 2>&1; then
         while IFS= read -r h; do
             h="$(url_trim "$h")"

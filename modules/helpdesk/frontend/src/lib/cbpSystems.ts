@@ -38,12 +38,7 @@ function resolveFinanceUrl(): string {
   if (fromEnv?.trim()) {
     return fromEnv.trim().replace(/\/$/, '')
   }
-  const host = window.location.hostname
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return 'http://localhost:3002'
-  }
-  const scheme = window.location.protocol === 'https:' ? 'https' : 'http'
-  return `${scheme}://${window.location.host}/staff/finance`
+  return `${staffPortalBaseUrl()}/finance`
 }
 
 function resolveApmUrl(staffBase: string): string {

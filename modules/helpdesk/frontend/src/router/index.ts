@@ -95,12 +95,6 @@ const routes: RouteRecordRaw[] = [
         meta: { settingsTitle: 'Issue categories' },
       },
       {
-        path: 'it-assets',
-        name: 'settings-it-assets',
-        component: () => import('../components/settings/ItAssetsSettingsPanel.vue'),
-        meta: { settingsTitle: 'IT Assets' },
-      },
-      {
         path: 'risk-matrix',
         name: 'settings-risk-matrix',
         component: () => import('../components/settings/RiskMatrixManagementPanel.vue'),
@@ -193,18 +187,6 @@ const routes: RouteRecordRaw[] = [
     redirect: '/tools/software-requests',
     children: [
       {
-        path: 'it-assets',
-        name: 'tools-it-assets',
-        component: () => import('../views/tools/ItAssetsView.vue'),
-        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_it_assets' as ToolsPermissionKey },
-      },
-      {
-        path: 'licenses',
-        name: 'tools-licenses',
-        component: () => import('../views/tools/LicensesView.vue'),
-        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_licenses' as ToolsPermissionKey },
-      },
-      {
         path: 'software-requests',
         name: 'tools-software-requests',
         component: () => import('../views/tools/SoftwareRequestsView.vue'),
@@ -221,12 +203,6 @@ const routes: RouteRecordRaw[] = [
         name: 'tools-innovation-requests',
         component: () => import('../views/tools/InnovationRequestsView.vue'),
         meta: { requiresAuth: true },
-      },
-      {
-        path: 'information-systems',
-        name: 'tools-information-systems',
-        component: () => import('../views/tools/InformationSystemsView.vue'),
-        meta: { requiresAuth: true, requiresToolsPermission: 'can_manage_information_systems' as ToolsPermissionKey },
       },
     ],
   },

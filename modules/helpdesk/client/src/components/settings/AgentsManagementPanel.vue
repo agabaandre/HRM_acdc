@@ -128,7 +128,7 @@ const STAFF_OVERRIDE_OPTIONS = [
   { key: 'can_reassign_tickets', label: 'Reassign tickets' },
   { key: 'can_delete_request_attachments', label: 'Delete attachments' },
   { key: 'can_change_ticket_category', label: 'Change category' },
-  { key: 'can_manage_it_assets', label: 'IT assets' },
+  { key: 'can_manage_it_assets', label: 'ITSM' },
   { key: 'can_manage_licenses', label: 'Licenses' },
   { key: 'can_manage_information_systems', label: 'Information systems' },
   { key: 'can_submit_software_requests', label: 'SW requests (submit)' },

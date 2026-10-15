@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Africa CDC Staff Share API
+  description: |
+    CI3-compatible Share endpoints for APM (and other CBP consumers).
+
+    **Payload shapes match** `/staff/share/*` from CodeIgniter.
+
+    ### Authentication (any one)
+    1. **HTTP Basic** — portal user `work_email` + password (same as CI `api_login`)
+    2. **Bearer JWT** — from `POST /share/token`, or a valid Staff SSO JWT (`JWT_SECRET`)
+    3. **Static API token** — `Authorization: Bearer {STAFF_API_TOKEN}` or path `/{STAFF_API_TOKEN}`
+  version: 2.0.0
+  contact:
+    name: Africa CDC CBP
+
+servers:
+  - url: /staff/staff-portal/backend
+    description: Local staff-portal Laravel
+  - url: /staff
+    description: Legacy CI host (when rewritten / proxied)
+
+tags:
+  - name: Auth
+  - name: Reference
+  - name: Docs
+
+paths:
+  /share/token:
+    post:
+      tags: [Auth]
+      summary: Issue Share API JWT
+      description: Exchange HTTP Basic credentials for a Bearer JWT (aud=share-api).
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  aud:
+                    type: string
+                    example: share-api
+        '401':
+          description: Invalid or missing Basic Auth
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+
+  /share/get_current_staff:
+    get:
+      tags: [Reference]
+      summary: Current staff (APM staff:sync)
+      description: |
+        Returns a **JSON array** of staff rows with latest contract fields
+        (same shape as CI `Share::get_current_staff`). Includes `associated_divisions`.
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Start'
+        - name: staff_id
+          in: query
+          schema:
+            type: integer
+        - name: division_id
+          in: query
+          schema:
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
+      responses:
+        '200':
+          description: Array of staff records (not wrapped)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffRow'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/get_current_staff/{token}:
+    get:
+      tags: [Reference]
+      summary: Current staff (legacy path token)
+      description: Same as `/share/get_current_staff` with `{token}` = `STAFF_API_TOKEN` (APM URL style).
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      parameters:
+        - $ref: '#/components/parameters/PathToken'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Start'
+      responses:
+        '200':
+          description: Array of staff records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffRow'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/divisions:
+    get:
+      tags: [Reference]
+      summary: Divisions (APM divisions:sync)
+      description: Raw `divisions` table rows as a JSON array (CI parity).
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      responses:
+        '200':
+          description: Array of division rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/divisions/{token}:
+    get:
+      tags: [Reference]
+      summary: Divisions (legacy path token)
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      parameters:
+        - $ref: '#/components/parameters/PathToken'
+      responses:
+        '200':
+          description: Array of division rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/directorates:
+    get:
+      tags: [Reference]
+      summary: Directorates (APM directorates:sync)
+      description: |
+        Directorate rows plus optional nested `director` object
+        (`id`, `fname`, `lname`, `title`, `name`) — CI parity.
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      responses:
+        '200':
+          description: Array of directorate rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirectorateRow'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/directorates/{token}:
+    get:
+      tags: [Reference]
+      summary: Directorates (legacy path token)
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+        - apiToken: []
+      parameters:
+        - $ref: '#/components/parameters/PathToken'
+      responses:
+        '200':
+          description: Array of directorate rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DirectorateRow'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /share/openapi.yaml:
+    get:
+      tags: [Docs]
+      summary: OpenAPI 3 specification
+      security: []
+      responses:
+        '200':
+          description: YAML OpenAPI document
+          content:
+            application/yaml:
+              schema:
+                type: string
+
+  /share/docs:
+    get:
+      tags: [Docs]
+      summary: Swagger UI
+      security: []
+      responses:
+        '200':
+          description: HTML Swagger UI
+          content:
+            text/html:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Portal user work_email + password
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT from POST /share/token or Staff SSO JWT
+    apiToken:
+      type: http
+      scheme: bearer
+      description: Static STAFF_API_TOKEN value
+
+  parameters:
+    PathToken:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+      description: STAFF_API_TOKEN (legacy APM path segment)
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+      description: Max rows
+    Start:
+      name: start
+      in: query
+      schema:
+        type: integer
+      description: Offset
+
+  responses:
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthError'
+
+  schemas:
+    AuthError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Authentication Failed! Invalid Request
+
+    StaffRow:
+      type: object
+      additionalProperties: true
+      properties:
+        staff_id:
+          type: integer
+        fname:
+          type: string
+        lname:
+          type: string
+        work_email:
+          type: string
+        division_id:
+          type: integer
+          nullable: true
+        division_name:
+          type: string
+          nullable: true
+        associated_divisions:
+          type: array
+          items:
+            type: integer
+        other_associated_divisions:
+          nullable: true
+
+    DirectorateRow:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        is_active:
+          type: integer
+        director_id:
+          type: integer
+          nullable: true
+        director:
+          nullable: true
+          type: object
+          properties:
+            id:
+              type: integer
+            fname:
+              type: string
+            lname:
+              type: string
+            title:
+              type: string
+              nullable: true
+            name:
+              type: string

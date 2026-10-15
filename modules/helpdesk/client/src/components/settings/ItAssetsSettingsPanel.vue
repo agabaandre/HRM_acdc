@@ -159,7 +159,7 @@ async function load() {
     brands.value = Array.isArray(bRes.data.data) ? bRes.data.data : []
     categories.value = Array.isArray(cRes.data.data) ? cRes.data.data : []
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to load IT asset settings.'))
+    notifyError(apiErrorMessage(e, 'Failed to load ITSM settings.'))
   }
 }
 
@@ -261,9 +261,9 @@ onMounted(() => {
 
 <template>
   <section class="panel" aria-labelledby="it-assets-settings-heading">
-    <h2 id="it-assets-settings-heading">IT Assets · brands &amp; categories</h2>
+    <h2 id="it-assets-settings-heading">ITSM · brands &amp; categories</h2>
     <p class="hint">
-      Brands appear in the IT Assets form dropdown. Categories (including SIM cards) group inventory and set default useful life for depreciation.
+      Brands appear in the ITSM form dropdown. Categories (including SIM cards) group inventory and set default useful life for depreciation.
       {{ brandCountLabel }} · {{ catCountLabel }}.
     </p>
 

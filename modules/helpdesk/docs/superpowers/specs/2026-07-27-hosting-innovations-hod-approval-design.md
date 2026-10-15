@@ -220,7 +220,7 @@ Clone Software requests list/detail/new tabs pattern:
 
 ### Agents settings
 
-New columns/toggles: process Hosting, process Innovations (alongside existing SW / IT Assets flags).
+New columns/toggles: process Hosting, process Innovations (alongside existing SW / ITSM flags).
 
 ## Testing
 

@@ -19,18 +19,6 @@ export interface ToolsNavItem {
 
 export const TOOLS_NAV_DROPDOWN_ITEMS: ToolsNavItem[] = [
   {
-    path: '/tools/it-assets',
-    label: 'IT Assets',
-    icon: 'bx bx-laptop',
-    permission: 'can_manage_it_assets',
-  },
-  {
-    path: '/tools/licenses',
-    label: 'Licenses',
-    icon: 'bx bx-key',
-    permission: 'can_manage_licenses',
-  },
-  {
     path: '/tools/software-requests',
     label: 'Software requests',
     icon: 'bx bx-file-blank',
@@ -48,12 +36,6 @@ export const TOOLS_NAV_DROPDOWN_ITEMS: ToolsNavItem[] = [
     label: 'Innovations',
     icon: 'bx bx-bulb',
     publicToAuth: true,
-  },
-  {
-    path: '/tools/information-systems',
-    label: 'Information Systems',
-    icon: 'bx bx-server',
-    permission: 'can_manage_information_systems',
   },
 ]
 

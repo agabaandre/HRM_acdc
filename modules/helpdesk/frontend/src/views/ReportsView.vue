@@ -485,7 +485,7 @@ async function loadItAssets() {
     const { data } = await api.get<{ data: ItAssetsSummary }>('/api/v1/tools/it-assets/summary')
     itSummary.value = data.data
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to load IT assets report'))
+    notifyError(apiErrorMessage(e, 'Failed to load ITSM report'))
     itSummary.value = null
   } finally {
     itLoading.value = false
@@ -855,39 +855,6 @@ watch(
           @click="switchTab('monthly')"
         >
           Monthly agent report
-        </button>
-        <button
-          v-if="canManageInformationSystems"
-          type="button"
-          role="tab"
-          class="report-tab"
-          :class="{ 'report-tab--on': tab === 'infosystems' }"
-          :aria-selected="tab === 'infosystems'"
-          @click="switchTab('infosystems')"
-        >
-          Information systems
-        </button>
-        <button
-          v-if="canManageItAssets"
-          type="button"
-          role="tab"
-          class="report-tab"
-          :class="{ 'report-tab--on': tab === 'itassets' }"
-          :aria-selected="tab === 'itassets'"
-          @click="switchTab('itassets')"
-        >
-          IT assets
-        </button>
-        <button
-          v-if="canManageLicenses"
-          type="button"
-          role="tab"
-          class="report-tab"
-          :class="{ 'report-tab--on': tab === 'licenses' }"
-          :aria-selected="tab === 'licenses'"
-          @click="switchTab('licenses')"
-        >
-          Licenses
         </button>
         <button
           v-if="canManageSoftwareRequests"
@@ -1516,7 +1483,7 @@ watch(
           Preview PDF
         </UButton>
       </div>
-      <div v-if="itLoading" class="muted">Loading IT assets…</div>
+      <div v-if="itLoading" class="muted">Loading ITSM…</div>
       <template v-else-if="itSummary">
         <div class="kpi-row">
           <div class="kpi"><div class="kpi-label">Assets</div><div class="kpi-value">{{ itSummary.asset_count }}</div></div>

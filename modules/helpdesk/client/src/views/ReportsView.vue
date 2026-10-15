@@ -485,7 +485,7 @@ async function loadItAssets() {
     const { data } = await api.get<{ data: ItAssetsSummary }>('/api/v1/tools/it-assets/summary')
     itSummary.value = data.data
   } catch (e: unknown) {
-    notifyError(apiErrorMessage(e, 'Failed to load IT assets report'))
+    notifyError(apiErrorMessage(e, 'Failed to load ITSM report'))
     itSummary.value = null
   } finally {
     itLoading.value = false
@@ -876,7 +876,7 @@ watch(
           :aria-selected="tab === 'itassets'"
           @click="switchTab('itassets')"
         >
-          IT assets
+          ITSM
         </button>
         <button
           v-if="canManageLicenses"
@@ -1516,7 +1516,7 @@ watch(
           Preview PDF
         </UButton>
       </div>
-      <div v-if="itLoading" class="muted">Loading IT assets…</div>
+      <div v-if="itLoading" class="muted">Loading ITSM…</div>
       <template v-else-if="itSummary">
         <div class="kpi-row">
           <div class="kpi"><div class="kpi-label">Assets</div><div class="kpi-value">{{ itSummary.asset_count }}</div></div>

@@ -1,0 +1,30 @@
+<?php
+
+namespace Modules\Auth\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Modules\Auth\Models\PortalUser;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Keeps session user payload (especially permissions) in sync with the database.
+ */
+class RefreshPortalSession
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+        if ($user instanceof PortalUser) {
+            $fresh = $user->toSessionArray();
+            $existing = session('user', []);
+            // Preserve impersonation flag while an original_user session is active.
+            if (session()->has('original_user') || ! empty($existing['is_impersonated'])) {
+                $fresh['is_impersonated'] = true;
+            }
+            session(['user' => array_merge($existing, $fresh)]);
+        }
+
+        return $next($request);
+    }
+}

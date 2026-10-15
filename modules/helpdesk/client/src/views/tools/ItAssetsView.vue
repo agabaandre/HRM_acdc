@@ -179,7 +179,7 @@ async function load() {
     const paginated = assetRes.data as { data?: Asset[] }
     assets.value = Array.isArray(paginated.data) ? paginated.data : []
   } catch (e) {
-    notifyError(apiErrorMessage(e, 'Failed to load IT assets.'))
+    notifyError(apiErrorMessage(e, 'Failed to load ITSM.'))
   } finally {
     loading.value = false
   }
@@ -302,14 +302,14 @@ onMounted(async () => {
 
 <template>
   <div>
-    <CbpPageHeading title="IT Assets" back-to="/" back-label="← Overview">
+    <CbpPageHeading title="ITSM" back-to="/" back-label="← Overview">
       <template #lede>
-        Track hardware inventory and straight-line depreciation. Assign staff from the directory; manage brands and categories under Settings → IT Assets.
+        Track hardware inventory and straight-line depreciation. Assign staff from the directory; manage brands and categories under Settings → ITSM.
       </template>
     </CbpPageHeading>
 
     <section class="tools-page">
-      <div class="tabs" role="tablist" aria-label="IT assets sections">
+      <div class="tabs" role="tablist" aria-label="ITSM sections">
         <button
           type="button"
           role="tab"

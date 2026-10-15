@@ -15,7 +15,7 @@ export const SETTINGS_SECTION_LABELS: Record<SettingsSectionId, string> = {
   ai: 'AI models & provider',
   agents: 'Agents & support groups',
   categories: 'Issue categories',
-  'it-assets': 'IT Assets',
+  'it-assets': 'ITSM',
   'risk-matrix': 'Priority matrix',
   jobs: 'Jobs',
   integrations: 'WhatsApp & Teams',

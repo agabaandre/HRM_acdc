@@ -14,7 +14,7 @@ Screenshots for each settings area live in [`screenshots/`](./screenshots/) (reg
 4. [AI models & provider](#ai-models--provider)
 5. [Agents & support groups](#agents--support-groups)
 6. [Issue categories & business units](#issue-categories--business-units)
-7. [IT Assets settings](#it-assets-settings)
+7. [ITSM settings](#it-assets-settings)
 8. [Jobs (SLA & directory sync)](#jobs-sla--directory-sync)
 9. [WhatsApp & Teams integrations](#whatsapp--teams-integrations)
 10. [Audit & ISO logging](#audit--iso-logging)
@@ -48,7 +48,7 @@ Grant Helpdesk access via Staff permissions **85** (APM), **92** (Finance), or *
 | **AI models & provider** | `/settings/ai` | OpenAI / Gemini / custom LLM, agent routing |
 | **Agents & support groups** | `/settings/agents` | Roster, support groups, category routing, permissions, agent disable |
 | **Issue categories** | `/settings/categories` | Business units + issue categories |
-| **IT Assets** | `/settings/it-assets` | Hardware brands and asset categories (SIM cards, laptops, etc.) |
+| **ITSM** | `/settings/it-assets` | Hardware brands and asset categories (SIM cards, laptops, etc.) |
 | **Jobs** | `/settings/jobs` | SLA rules, Staff directory sync, FAQ ingest |
 | **WhatsApp & Teams** | `/settings/integrations` | Channel webhooks & credentials |
 | **Software requests** | `/settings/software-requests` | Notify groups and review board |
@@ -187,24 +187,24 @@ Business units group categories (IT & MIS, Knowledge Management, HR, Finance, In
 |-------|---------|
 | **Name / slug / description / order / active** | Identity and request-form copy |
 | **Allow anonymous reports** | e.g. Internal Oversight |
-| **Allow Asset** | Optional IT asset link when resolving tickets for this unit |
+| **Allow Asset** | Optional ITSM link when resolving tickets for this unit |
 | **Support mailbox** | Exchange mailbox for this unit (IT & MIS defaults to `helpdesk@africacdc.org`) |
 | **Enable email intake** | Poll that mailbox every minute (see [Inbound email intake](#inbound-email-intake)) |
 
 ---
 
-## IT Assets settings
+## ITSM settings
 
-**Path:** Settings → IT Assets
+**Path:** Settings → ITSM
 
-Manage the catalogues used by **Tools → IT Assets**:
+Manage the catalogues used by **Tools → ITSM**:
 
 | Tab | Purpose |
 |-----|---------|
 | **Brands** | Dell, Apple, HP, Safaricom, … — shown as a dropdown on the asset form |
 | **Categories** | Laptops, SIM cards, printers, accessories, etc., plus default useful life for depreciation |
 
-Staff with IT Assets permission (or Helpdesk admins) maintain inventory under **Tools → IT Assets**: assignee from the **Staff directory**, brand dropdown, filters (category / brand / status / search including serial).
+Staff with ITSM permission (or Helpdesk admins) maintain inventory under **Tools → ITSM**: assignee from the **Staff directory**, brand dropdown, filters (category / brand / status / search including serial).
 
 When a Business Unit has **Allow Asset** enabled, agents resolving a ticket can optionally link an asset **assigned to the requester** (search by serial, tag, name, brand, model).
 
@@ -462,7 +462,7 @@ After `git pull`, run from `helpdesk/`:
 ./setup-production.sh
 ```
 
-That script migrates (agent disable, BU mailbox intake, IT assets, Protocol BU), seeds categories (including Protocol), builds the SPA, caches config, restarts systemd workers, and runs:
+That script migrates (agent disable, BU mailbox intake, ITSM, Protocol BU), seeds categories (including Protocol), builds the SPA, caches config, restarts systemd workers, and runs:
 
 ```bash
 php artisan helpdesk:verify-production
@@ -472,7 +472,7 @@ php artisan helpdesk:verify-production
 |---------|----------------------------------|
 | Agent disable / routing | Migration `is_agent_disabled` applied; queue worker running |
 | Multi-BU + Protocol | Protocol BU + categories present (seeded); SPA rebuilt |
-| IT assets on resolve | Brands/assets migrations applied; IT & MIS `allows_asset_link_on_resolve` |
+| ITSM on resolve | Brands/assets migrations applied; IT & MIS `allows_asset_link_on_resolve` |
 | Information systems | Migration applied; import run if needed; IT & MIS `allows_information_system_link_on_resolve` |
 | Inbound email tickets | Scheduler timer active; queue listens `default,helpdesk,helpdesk-ai`; Graph **Mail.ReadWrite**; Settings → General **Allow email submission** ON; per-BU mailbox + intake |
 | Branding | Tile/SPA/mail say **Service Desk**; `HELPDESK_MAIL_BRAND_NAME=Africa CDC Service Desk` |

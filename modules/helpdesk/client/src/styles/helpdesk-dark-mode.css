@@ -262,7 +262,7 @@ html.helpdesk-theme-dark .is-table td {
   color: var(--hd-text-secondary);
 }
 
-/* ── Tools pages (licenses, IS, IT assets, software requests) ───── */
+/* ── Tools pages (licenses, IS, ITSM, software requests) ───── */
 html.helpdesk-theme-dark .tools-page .tabs {
   border-bottom-color: rgba(148, 163, 184, 0.25) !important;
 }

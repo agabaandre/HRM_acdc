@@ -1,0 +1,1 @@
+import{u as a,j as e}from"./app-BCFhUA4B.js";import{A as s}from"./AppLayout-4CDJF-PS.js";/* empty css            */function m({pageTitle:t}){const{auth:r}=a().props;return e.jsx(s,{title:t,user:r?.user,children:e.jsx("p",{className:"text-muted mb-0",children:"This screen is being migrated from the legacy React app to Laravel Inertia."})})}export{m as default};

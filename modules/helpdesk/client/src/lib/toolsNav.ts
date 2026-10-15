@@ -20,7 +20,7 @@ export interface ToolsNavItem {
 export const TOOLS_NAV_DROPDOWN_ITEMS: ToolsNavItem[] = [
   {
     path: '/tools/it-assets',
-    label: 'IT Assets',
+    label: 'ITSM',
     icon: 'bx bx-laptop',
     permission: 'can_manage_it_assets',
   },

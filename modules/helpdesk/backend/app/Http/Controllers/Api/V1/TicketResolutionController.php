@@ -72,7 +72,7 @@ class TicketResolutionController extends Controller
             }
             if (! $assetQuery->exists()) {
                 throw ValidationException::withMessages([
-                    'linked_it_asset_id' => 'Choose an IT asset assigned to the ticket requester.',
+                    'linked_it_asset_id' => 'Choose an ITSM record assigned to the ticket requester.',
                 ]);
             }
             $ticket->linked_it_asset_id = $assetId;

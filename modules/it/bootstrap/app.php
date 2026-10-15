@@ -1,0 +1,34 @@
+<?php
+
+$__staffRootEnv = dirname(__DIR__, 3) . '/shared/load-staff-root-env.php';
+if (is_file($__staffRootEnv)) {
+    require_once $__staffRootEnv;
+}
+
+use App\Http\Middleware\EnsureFinanceSession;
+use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            HandleInertiaRequests::class,
+        ]);
+        $middleware->alias([
+            'finance.session' => EnsureFinanceSession::class,
+        ]);
+        // Staff portal SSO auto-POST does not include Laravel's _token.
+        $middleware->validateCsrfTokens(except: [
+            'sso/accept',
+        ]);
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        //
+    })->create();

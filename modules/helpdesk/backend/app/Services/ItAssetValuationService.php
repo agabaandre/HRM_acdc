@@ -5,7 +5,7 @@ namespace App\Services;
 use Carbon\Carbon;
 
 /**
- * Straight-line depreciation for IT assets — current value recalculated on every read.
+ * Straight-line depreciation for ITSM — current value recalculated on every read.
  */
 final class ItAssetValuationService
 {

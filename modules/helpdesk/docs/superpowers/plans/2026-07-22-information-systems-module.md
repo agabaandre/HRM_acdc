@@ -4,7 +4,7 @@
 
 **Goal:** Add a Helpdesk Modules inventory for Africa CDC information systems (Excel import, nested modules, shared lifecycle statuses, staff-directory focals, permission-gated CRUD, reports with trends, and optional system link on ticket resolve for IT & MIS).
 
-**Architecture:** Mirror IT Assets/Licenses: Laravel models + `/api/v1/tools/information-systems` CRUD, status-change events for trends, artisan Excel import, Vue tools page + Reports tab, Agents permission flag. Ticket resolve reuses the asset-link pattern with a BU flag and `linked_information_system_id`.
+**Architecture:** Mirror ITSM/Licenses: Laravel models + `/api/v1/tools/information-systems` CRUD, status-change events for trends, artisan Excel import, Vue tools page + Reports tab, Agents permission flag. Ticket resolve reuses the asset-link pattern with a BU flag and `linked_information_system_id`.
 
 **Tech Stack:** Laravel 11, PhpSpreadsheet, PHPUnit feature tests, Vue 3 + Vuetify (existing helpdesk frontend), staff directory lookup via existing Staff API clients.
 

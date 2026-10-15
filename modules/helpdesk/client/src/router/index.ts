@@ -98,7 +98,7 @@ const routes: RouteRecordRaw[] = [
         path: 'it-assets',
         name: 'settings-it-assets',
         component: () => import('../components/settings/ItAssetsSettingsPanel.vue'),
-        meta: { settingsTitle: 'IT Assets' },
+        meta: { settingsTitle: 'ITSM' },
       },
       {
         path: 'risk-matrix',

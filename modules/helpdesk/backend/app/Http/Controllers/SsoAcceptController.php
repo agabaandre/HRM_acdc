@@ -53,8 +53,7 @@ class SsoAcceptController extends Controller
                 throw new \RuntimeException('Missing API token in SSO response');
             }
 
-            $spaPath = trim((string) env('HELPDESK_SPA_PATH', 'staff/helpdesk'), '/');
-            $redirect = '/'.$spaPath.'/';
+            $redirect = '/'.$this->spaPath().'/';
 
             return response()->view('sso-bridge', [
                 'token' => (string) $data['token'],
@@ -80,14 +79,26 @@ class SsoAcceptController extends Controller
 
     private function redirectStaffHome(string $reason): RedirectResponse
     {
-        $host = request()->getHost();
-        $scheme = request()->getScheme();
-        if ($host !== '' && (str_contains($host, 'localhost') || str_contains($host, '127.0.0.1'))) {
-            return redirect($scheme.'://'.$host.'/staff/?helpdesk_error=sso&helpdesk_error_reason='.urlencode($reason));
+        $configured = rtrim((string) config('staff-portal.spa_url', env('HELPDESK_STAFF_PORTAL_URL', '')), '/');
+        $path = parse_url($configured, PHP_URL_PATH);
+        $home = is_string($path) && $path !== '' && $path !== '/' ? rtrim($path, '/') : '';
+
+        return redirect($home.'/?helpdesk_error=sso&helpdesk_error_reason='.urlencode($reason));
+    }
+
+    /**
+     * Public mount of the Helpdesk SPA, from HELPDESK_FRONTEND_URL so a nested
+     * install is not sent to /staff/helpdesk.
+     */
+    private function spaPath(): string
+    {
+        $path = parse_url(rtrim((string) config('helpdesk.frontend_url', ''), '/'), PHP_URL_PATH);
+        if (is_string($path) && $path !== '' && $path !== '/') {
+            return trim($path, '/');
         }
 
-        $base = rtrim((string) env('BASE_URL', 'http://localhost/staff/'), '/');
+        $fromEnv = trim((string) env('HELPDESK_SPA_PATH', 'staff/helpdesk'), '/');
 
-        return redirect()->away(rtrim($base, '/').'/?helpdesk_error=sso&helpdesk_error_reason='.urlencode($reason));
+        return $fromEnv !== '' ? $fromEnv : 'staff/helpdesk';
     }
 }

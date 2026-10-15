@@ -1,0 +1,115 @@
+/**
+ * Portal fields — Helpdesk float behaviour + APM outline chrome.
+ * Empty fields keep the label inside; filled/focused fields float on the notch.
+ * Borders/labels follow APM single-memos filters (apm-vuetify-like-forms).
+ */
+
+:root {
+  --portal-field-border: rgba(0, 0, 0, 0.24);
+  --portal-field-border-hover: rgba(0, 0, 0, 0.42);
+  --portal-field-border-focus: #119a48;
+  --portal-field-radius: 4px;
+  /* Floated notch labels: 15px, weight 525, dark grey */
+  --portal-label-size: 0.9375rem; /* 15px */
+  --portal-label-weight: 525;
+  --portal-label-color: #555555;
+  --portal-label-focus: #0d7a3a;
+  --portal-label-bg: #ffffff;
+}
+
+.cbp-page-content .v-field--variant-outlined .v-field__outline,
+.v-overlay-container .v-field--variant-outlined .v-field__outline,
+.portal-staff-filters .v-field--variant-outlined .v-field__outline,
+.rr-filters .v-field--variant-outlined .v-field__outline {
+  --v-field-border-opacity: 1;
+  --v-field-border-width: 1px;
+  color: var(--portal-field-border) !important;
+  opacity: 1 !important;
+}
+
+.cbp-page-content .v-field--variant-outlined:hover .v-field__outline,
+.v-overlay-container .v-field--variant-outlined:hover .v-field__outline,
+.portal-staff-filters .v-field--variant-outlined:hover .v-field__outline,
+.rr-filters .v-field--variant-outlined:hover .v-field__outline {
+  color: var(--portal-field-border-hover) !important;
+}
+
+.cbp-page-content .v-field--variant-outlined.v-field--focused .v-field__outline,
+.v-overlay-container .v-field--variant-outlined.v-field--focused .v-field__outline,
+.portal-staff-filters .v-field--variant-outlined.v-field--focused .v-field__outline,
+.rr-filters .v-field--variant-outlined.v-field--focused .v-field__outline {
+  color: var(--portal-field-border-focus) !important;
+}
+
+.cbp-page-content .v-field--variant-outlined,
+.v-overlay-container .v-field--variant-outlined,
+.portal-staff-filters .v-field--variant-outlined,
+.rr-filters .v-field--variant-outlined {
+  border-radius: var(--portal-field-radius);
+  background-color: #ffffff;
+}
+
+/* Floated notch labels — readable size (APM-inspired, bumped up) */
+.cbp-page-content .v-field-label.v-field-label--floating,
+.cbp-page-content .v-label.v-field-label--floating,
+.v-overlay-container .v-field-label.v-field-label--floating,
+.v-overlay-container .v-label.v-field-label--floating,
+.portal-staff-filters .v-field-label.v-field-label--floating,
+.portal-staff-filters .v-label.v-field-label--floating,
+.rr-filters .v-field-label.v-field-label--floating,
+.rr-filters .v-label.v-field-label--floating {
+  font-size: var(--portal-label-size) !important;
+  font-weight: var(--portal-label-weight) !important;
+  color: var(--portal-label-color) !important;
+  letter-spacing: 0.009375em;
+  line-height: 1.25 !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  background-color: var(--portal-label-bg) !important;
+  background: var(--portal-label-bg) !important;
+  padding-inline: 0.35rem !important;
+}
+
+.cbp-page-content .v-field--focused .v-field-label.v-field-label--floating,
+.cbp-page-content .v-field--focused .v-label.v-field-label--floating,
+.v-overlay-container .v-field--focused .v-field-label.v-field-label--floating,
+.v-overlay-container .v-field--focused .v-label.v-field-label--floating,
+.portal-staff-filters .v-field--focused .v-field-label.v-field-label--floating,
+.rr-filters .v-field--focused .v-field-label.v-field-label--floating {
+  color: var(--portal-label-focus) !important;
+  font-weight: 600 !important;
+}
+
+/* Resting (in-field) labels — same larger size when empty */
+.cbp-page-content .v-field-label:not(.v-field-label--floating),
+.cbp-page-content .v-label.v-field-label:not(.v-field-label--floating),
+.portal-staff-filters .v-field-label:not(.v-field-label--floating),
+.rr-filters .v-field-label:not(.v-field-label--floating) {
+  font-size: calc(0.9375rem + 1px) !important;
+  font-weight: 420;
+  color: #555555;
+}
+
+/* Soft filter card chrome like APM memo filters */
+.portal-staff-filters,
+.rr-card.rr-filters {
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+
+html.helpdesk-theme-dark {
+  --portal-field-border: rgba(148, 163, 184, 0.35);
+  --portal-field-border-hover: rgba(148, 163, 184, 0.55);
+  --portal-field-border-focus: #4ade80;
+  --portal-label-color: rgba(226, 232, 240, 0.75);
+  --portal-label-focus: #4ade80;
+  --portal-label-bg: #1e293b;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined,
+.v-theme--dark .cbp-page-content .v-field--variant-outlined {
+  background-color: #1e293b !important;
+}
