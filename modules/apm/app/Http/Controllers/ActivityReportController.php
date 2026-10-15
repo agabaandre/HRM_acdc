@@ -15,6 +15,7 @@ use App\Services\ActivityReport\ActivityReportFormSchema;
 use App\Services\ActivityReport\ActivityReportRelatedSearchService;
 use App\Services\ActivityReport\ActivityReportService;
 use App\Support\ActivityReportPermission;
+use App\Support\ActivityReportingModule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,13 @@ class ActivityReportController extends Controller
         private ActivityReportAutofillService $autofill,
         private ActivityReportRelatedSearchService $relatedSearch,
         private ActivityReportFormSchema $formSchema,
-    ) {}
+    ) {
+        $this->middleware(static function ($request, $next) {
+            ActivityReportingModule::assertEnabled();
+
+            return $next($request);
+        });
+    }
 
     public function open(Request $request): RedirectResponse|View
     {

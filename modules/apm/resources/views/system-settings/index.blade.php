@@ -43,6 +43,7 @@
                     <option value="general">Other</option>
                     <option value="branding">Branding</option>
                     <option value="app">Application</option>
+                    <option value="modules">Module control</option>
                     <option value="locale">Locale</option>
                     <option value="ui">UI</option>
                     <option value="approvals">Approvals &amp; reminders</option>
@@ -63,10 +64,12 @@
     @method('PUT')
 
     @php
-        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'approvals' => 'fa-bell', 'budget' => 'fa-wallet', 'service_requests' => 'fa-concierge-bell', 'general' => 'fa-list'];
+        $groupIcons = ['branding' => 'fa-palette', 'app' => 'fa-cog', 'modules' => 'fa-toggle-on', 'locale' => 'fa-globe', 'ui' => 'fa-desktop', 'approvals' => 'fa-bell', 'budget' => 'fa-wallet', 'service_requests' => 'fa-concierge-bell', 'general' => 'fa-list'];
         $typeLabels = ['text' => 'Text', 'password' => 'Password', 'number' => 'Number', 'boolean' => 'Yes/No', 'color' => 'Color'];
         $typeClass = ['text' => 'secondary', 'password' => 'warning', 'number' => 'info', 'boolean' => 'primary', 'color' => 'success'];
         $keyDescriptions = [
+            'module_activity_reporting_enabled' => 'Enable APM Activity Reporting / Reporting Registry. Off by default — the module moved to another platform.',
+            'module_activity_reporting_notifications_enabled' => 'Send overdue activity-report reminder emails (end date + 7 days). Requires the module to be enabled. Off by default.',
             'budget_draft_max_age_months' => 'Draft memos not updated for this many months stop committing budget (0 = no age limit). Default: 2.',
             'budget_committed_activity_statuses' => 'Activity / single-memo overall_status values that commit fund codes (comma-separated).',
             'budget_committed_memo_statuses' => 'Special & non-travel memo statuses that commit fund codes (comma-separated).',

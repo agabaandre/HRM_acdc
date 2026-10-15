@@ -14,6 +14,7 @@
         <p class="text-muted mb-3 mt-2 small">Select a report to view.</p>
 
         <div class="row g-3">
+            @if(activity_reporting_module_enabled())
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white report-card">
                     <div class="card-body py-2 px-3">
@@ -28,6 +29,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <div class="col-md-6 col-lg-4">
                 <div class="card shadow-sm h-100 border-0 bg-white report-card">

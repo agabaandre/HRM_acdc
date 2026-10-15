@@ -18,6 +18,7 @@ class SystemSettingsController extends Controller
     private const GROUP_LABELS = [
         'branding'   => 'Branding',
         'app'        => 'Application',
+        'modules'    => 'Module control',
         'locale'     => 'Locale & format',
         'ui'         => 'UI',
         'approvals'  => 'Approvals & reminders',
@@ -37,7 +38,7 @@ class SystemSettingsController extends Controller
             abort(403, 'Unauthorized access to app settings');
         }
         $grouped = SystemSetting::getGroupedForEditing();
-        $order = ['branding', 'app', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'whatsapp', 'general'];
+        $order = ['branding', 'app', 'modules', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'whatsapp', 'general'];
         $groups = [];
         foreach ($order as $g) {
             $groups[$g] = [
@@ -107,7 +108,7 @@ class SystemSettingsController extends Controller
         $valid = $request->validate([
             'key'   => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_\.\-]+$/', Rule::unique('system_settings', 'key')],
             'value' => ['nullable', 'string'],
-            'group' => ['required', 'string', 'max:50', Rule::in(['branding', 'app', 'locale', 'ui', 'approvals', 'general'])],
+            'group' => ['required', 'string', 'max:50', Rule::in(['branding', 'app', 'modules', 'locale', 'ui', 'approvals', 'budget', 'service_requests', 'whatsapp', 'pra', 'general'])],
             'type'  => ['required', 'string', Rule::in(SystemSetting::TYPES)],
         ], [
             'key.regex'   => 'Key may only contain letters, numbers, underscores, dots and hyphens.',
@@ -181,6 +182,8 @@ class SystemSettingsController extends Controller
             'whatsapp_bot_admin_password' => 'whatsapp',
             'whatsapp_primary_group_jid' => 'whatsapp',
             'whatsapp_primary_group_name' => 'whatsapp',
+            'module_activity_reporting_enabled' => 'modules',
+            'module_activity_reporting_notifications_enabled' => 'modules',
         ];
         return $map[$key] ?? 'general';
     }

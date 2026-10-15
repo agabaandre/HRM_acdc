@@ -9,6 +9,7 @@ use App\Models\SpecialMemo;
 use App\Services\ActivityReport\ActivityReportRegistryService;
 use App\Services\ActivityReport\ActivityReportService;
 use App\Support\ActivityReportPermission;
+use App\Support\ActivityReportingModule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -18,7 +19,13 @@ class ReportingRegistryController extends Controller
     public function __construct(
         private ActivityReportRegistryService $registry,
         private ActivityReportService $reports,
-    ) {}
+    ) {
+        $this->middleware(static function ($request, $next) {
+            ActivityReportingModule::assertEnabled();
+
+            return $next($request);
+        });
+    }
 
     public function index(): View
     {

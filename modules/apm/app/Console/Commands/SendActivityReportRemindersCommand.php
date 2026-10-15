@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\ActivityReport\ActivityReportReminderService;
+use App\Support\ActivityReportingModule;
 use Illuminate\Console\Command;
 
 class SendActivityReportRemindersCommand extends Command
@@ -13,6 +14,12 @@ class SendActivityReportRemindersCommand extends Command
 
     public function handle(ActivityReportReminderService $reminders): int
     {
+        if (! ActivityReportingModule::notificationsEnabled()) {
+            $this->info('Skipped — activity reporting notifications are disabled (App settings → Module control).');
+
+            return self::SUCCESS;
+        }
+
         $dry = (bool) $this->option('test');
         if ($dry) {
             $this->info('Dry run — counting eligible reminders only.');

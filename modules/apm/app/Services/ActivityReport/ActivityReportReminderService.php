@@ -8,6 +8,7 @@ use App\Models\ActivityReport;
 use App\Models\NonTravelMemo;
 use App\Models\SpecialMemo;
 use App\Models\Staff;
+use App\Support\ActivityReportingModule;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -109,6 +110,12 @@ class ActivityReportReminderService
      */
     public function notifyEligible(bool $dryRun = false): int
     {
+        if (! ActivityReportingModule::notificationsEnabled()) {
+            Log::info('Activity report reminders skipped — module/notifications disabled in Module control settings.');
+
+            return 0;
+        }
+
         $eligible = $this->eligibleSources();
         $queued = 0;
 

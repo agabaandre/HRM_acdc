@@ -367,6 +367,17 @@ if (! function_exists('user_session')) {
         }
     }
 
+    if (! function_exists('activity_reporting_module_enabled')) {
+        /**
+         * Whether APM Activity Reporting / Reporting Registry is enabled (App settings → Module control).
+         * Off by default — the feature moved to another platform.
+         */
+        function activity_reporting_module_enabled(): bool
+        {
+            return \App\Support\ActivityReportingModule::isEnabled();
+        }
+    }
+
     if (! function_exists('approver_timing_report_can_view_all')) {
         /**
          * Whether the current user may view approval timing for **any** approver (all staff filters, exports).
