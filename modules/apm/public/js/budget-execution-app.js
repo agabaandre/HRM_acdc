@@ -112,38 +112,34 @@
 
                 const divisionItems = computed(() => {
                     const opts = catalog.value.divisions || [];
-                    return [
-                        { title: 'All divisions', value: '' },
-                        ...opts.map((o) => ({
-                            title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
-                            value: String(o.id),
-                        })),
-                    ];
+                    // No "All …" row — empty/cleared value means all; placeholder stays searchable.
+                    return opts.map((o) => ({
+                        title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
+                        value: String(o.id),
+                    }));
                 });
 
                 const fundCenterItems = computed(() => {
-                    const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value);
+                    const divId = filterDivisionId.value === '' || filterDivisionId.value == null
+                        ? null
+                        : Number(filterDivisionId.value);
                     const centers = (catalog.value.fund_centers || []).filter(
                         (fc) => divId == null || fc.division_id === divId,
                     );
-                    return [
-                        { title: 'All fund centers', value: '' },
-                        ...centers.map((fc) => ({ title: fc.code, value: fc.code })),
-                    ];
+                    return centers.map((fc) => ({ title: fc.code, value: fc.code }));
                 });
 
                 const fundItems = computed(() => {
-                    const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value);
+                    const divId = filterDivisionId.value === '' || filterDivisionId.value == null
+                        ? null
+                        : Number(filterDivisionId.value);
                     const center = String(filterFundCenter.value || '').trim().toUpperCase();
                     const funds = (catalog.value.funds || []).filter((f) => {
                         if (divId != null && !(f.division_ids || []).includes(divId)) return false;
                         if (center && !(f.fund_centers || []).includes(center)) return false;
                         return true;
                     });
-                    return [
-                        { title: 'All funds', value: '' },
-                        ...funds.map((f) => ({ title: f.code, value: f.code })),
-                    ];
+                    return funds.map((f) => ({ title: f.code, value: f.code }));
                 });
 
                 const fyLabel = computed(() =>
@@ -477,17 +473,17 @@
                     <v-row class="mb-3" dense>
                       <v-col cols="12" md="3">
                         <v-autocomplete v-model="filterDivisionId" :items="divisionItems" item-title="title" item-value="value"
-                          label="Division" hide-details clearable auto-select-first
+                          label="Division" placeholder="Division" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onDivisionChange" />
                       </v-col>
                       <v-col cols="12" md="3">
                         <v-autocomplete v-model="filterFundCenter" :items="fundCenterItems" item-title="title" item-value="value"
-                          label="Fund center" hide-details clearable auto-select-first
+                          label="Fund center" placeholder="Fund center" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onFundCenterChange" />
                       </v-col>
                       <v-col cols="12" md="3">
                         <v-autocomplete v-model="filterFund" :items="fundItems" item-title="title" item-value="value"
-                          label="Fund" hide-details clearable auto-select-first
+                          label="Fund" placeholder="Fund" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onFundChange" />
                       </v-col>
                       <v-col cols="12" md="3" class="d-flex align-center ga-2">

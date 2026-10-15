@@ -163,38 +163,34 @@ const scopeLabel = computed(() => {
 
 const divisionSelectItems = computed(() => {
   const opts = catalog.value.divisions || []
-  return [
-    { title: 'All divisions', value: '' as number | '' },
-    ...opts.map((o) => ({
-      title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
-      value: o.id as number | '',
-    })),
-  ]
+  // No "All …" row — empty/cleared value means all; placeholder stays searchable.
+  return opts.map((o) => ({
+    title: o.short_name ? `${o.short_name} — ${o.name}` : o.name,
+    value: o.id as number | '',
+  }))
 })
 
 const fundCenterSelectItems = computed(() => {
-  const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value)
+  const divId = filterDivisionId.value === '' || filterDivisionId.value == null
+    ? null
+    : Number(filterDivisionId.value)
   const centers = (catalog.value.fund_centers || []).filter(
     (fc) => divId == null || fc.division_id === divId,
   )
-  return [
-    { title: 'All fund centers', value: '' },
-    ...centers.map((fc) => ({ title: fc.code, value: fc.code })),
-  ]
+  return centers.map((fc) => ({ title: fc.code, value: fc.code }))
 })
 
 const fundSelectItems = computed(() => {
-  const divId = filterDivisionId.value === '' ? null : Number(filterDivisionId.value)
-  const center = filterFundCenter.value.trim().toUpperCase()
+  const divId = filterDivisionId.value === '' || filterDivisionId.value == null
+    ? null
+    : Number(filterDivisionId.value)
+  const center = String(filterFundCenter.value || '').trim().toUpperCase()
   const funds = (catalog.value.funds || []).filter((f) => {
     if (divId != null && !f.division_ids.includes(divId)) return false
     if (center && !f.fund_centers.includes(center)) return false
     return true
   })
-  return [
-    { title: 'All funds', value: '' },
-    ...funds.map((f) => ({ title: f.code, value: f.code })),
-  ]
+  return funds.map((f) => ({ title: f.code, value: f.code }))
 })
 
 /** Server already applies chained filters to the full dashboard payload. */
@@ -544,6 +540,9 @@ function syncChildFilters() {
 }
 
 function onDivisionChange() {
+  if (filterDivisionId.value == null) {
+    filterDivisionId.value = ''
+  }
   filterFundCenter.value = ''
   filterFund.value = ''
   void load()
@@ -564,8 +563,11 @@ async function load() {
   error.value = null
   try {
     syncChildFilters()
+    if (filterDivisionId.value == null) {
+      filterDivisionId.value = ''
+    }
     const params: Record<string, string | number> = {}
-    if (filterDivisionId.value !== '') {
+    if (filterDivisionId.value !== '' && filterDivisionId.value != null) {
       params.division_id = Number(filterDivisionId.value)
     }
     if (filterFundCenter.value) {
@@ -671,8 +673,8 @@ onUnmounted(() => {
         hide-details
         clearable
         auto-select-first
-        :label="narrowFilters ? undefined : 'Division'"
-        :placeholder="narrowFilters ? 'Division' : undefined"
+        label="Division"
+        placeholder="Division"
         class="be__select"
         @update:model-value="onDivisionChange"
       />
@@ -686,8 +688,8 @@ onUnmounted(() => {
         hide-details
         clearable
         auto-select-first
-        :label="narrowFilters ? undefined : 'Fund center'"
-        :placeholder="narrowFilters ? 'Fund center' : undefined"
+        label="Fund center"
+        placeholder="Fund center"
         class="be__select"
         @update:model-value="onFundCenterChange"
       />
@@ -701,14 +703,14 @@ onUnmounted(() => {
         hide-details
         clearable
         auto-select-first
-        :label="narrowFilters ? undefined : 'Fund'"
-        :placeholder="narrowFilters ? 'Fund' : undefined"
+        label="Fund"
+        placeholder="Fund"
         class="be__select"
         @update:model-value="onFundChange"
       />
       <button type="button" class="be__apply" @click="applyFilter">Apply</button>
       <button
-        v-if="filterDivisionId !== '' || filterFundCenter || filterFund"
+        v-if="(filterDivisionId !== '' && filterDivisionId != null) || filterFundCenter || filterFund"
         type="button"
         class="be__clear"
         @click="clearFilters"
