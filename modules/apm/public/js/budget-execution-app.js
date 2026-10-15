@@ -476,15 +476,18 @@
 
                     <v-row class="mb-3" dense>
                       <v-col cols="12" md="3">
-                        <v-select v-model="filterDivisionId" :items="divisionItems" label="Division" hide-details
+                        <v-autocomplete v-model="filterDivisionId" :items="divisionItems" item-title="title" item-value="value"
+                          label="Division" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onDivisionChange" />
                       </v-col>
                       <v-col cols="12" md="3">
-                        <v-select v-model="filterFundCenter" :items="fundCenterItems" label="Fund center" hide-details clearable
+                        <v-autocomplete v-model="filterFundCenter" :items="fundCenterItems" item-title="title" item-value="value"
+                          label="Fund center" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onFundCenterChange" />
                       </v-col>
                       <v-col cols="12" md="3">
-                        <v-select v-model="filterFund" :items="fundItems" label="Fund" hide-details clearable
+                        <v-autocomplete v-model="filterFund" :items="fundItems" item-title="title" item-value="value"
+                          label="Fund" hide-details clearable auto-select-first
                           variant="outlined" density="comfortable" @update:model-value="onFundChange" />
                       </v-col>
                       <v-col cols="12" md="3" class="d-flex align-center ga-2">

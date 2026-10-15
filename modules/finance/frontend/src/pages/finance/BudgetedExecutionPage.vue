@@ -661,38 +661,48 @@ onUnmounted(() => {
     </header>
 
     <div class="be__filters" :class="{ 'be__filters--narrow': narrowFilters }">
-      <v-select
+      <v-autocomplete
         v-model="filterDivisionId"
         :items="divisionSelectItems"
+        item-title="title"
+        item-value="value"
         :density="narrowFilters ? 'compact' : 'comfortable'"
         variant="outlined"
         hide-details
+        clearable
+        auto-select-first
         :label="narrowFilters ? undefined : 'Division'"
         :placeholder="narrowFilters ? 'Division' : undefined"
         class="be__select"
         @update:model-value="onDivisionChange"
       />
-      <v-select
+      <v-autocomplete
         v-model="filterFundCenter"
         :items="fundCenterSelectItems"
+        item-title="title"
+        item-value="value"
         :density="narrowFilters ? 'compact' : 'comfortable'"
         variant="outlined"
         hide-details
+        clearable
+        auto-select-first
         :label="narrowFilters ? undefined : 'Fund center'"
         :placeholder="narrowFilters ? 'Fund center' : undefined"
-        clearable
         class="be__select"
         @update:model-value="onFundCenterChange"
       />
-      <v-select
+      <v-autocomplete
         v-model="filterFund"
         :items="fundSelectItems"
+        item-title="title"
+        item-value="value"
         :density="narrowFilters ? 'compact' : 'comfortable'"
         variant="outlined"
         hide-details
+        clearable
+        auto-select-first
         :label="narrowFilters ? undefined : 'Fund'"
         :placeholder="narrowFilters ? 'Fund' : undefined"
-        clearable
         class="be__select"
         @update:model-value="onFundChange"
       />
