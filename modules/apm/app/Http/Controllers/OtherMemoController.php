@@ -147,16 +147,15 @@ class OtherMemoController extends Controller
     private function resolveOtherMemoYearString(Request $request): string
     {
         $currentYear = (int) date('Y');
-        $year = $request->get('year');
-        if ($year === null || $year === '') {
-            $year = (string) $currentYear;
+        if (! $request->has('year')) {
+            return (string) $currentYear;
         }
-        $year = (string) $year;
-        if ($year !== 'all' && is_numeric($year) && (int) $year === 0) {
-            $year = (string) $currentYear;
+        $year = $request->get('year');
+        if ($year === null || $year === '' || $year === 'all' || (is_numeric($year) && (int) $year === 0)) {
+            return 'all';
         }
 
-        return $year;
+        return (string) $year;
     }
 
     public function staffLookup(Request $request): JsonResponse

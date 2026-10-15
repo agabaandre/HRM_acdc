@@ -8,7 +8,6 @@
     const REGISTRY = {};
 
     const STATUS_OPTIONS = [
-        { title: 'All', value: '' },
         { title: 'Draft', value: 'draft' },
         { title: 'Pending', value: 'pending' },
         { title: 'Approved', value: 'approved' },
@@ -218,6 +217,7 @@
             item-title="label"
             item-value="value"
             :label="cfg.staffLabel || 'Staff'"
+            placeholder="Staff"
             prepend-inner-icon="mdi-account"
             clearable
           ></v-autocomplete>
@@ -229,7 +229,9 @@
             item-title="label"
             item-value="value"
             label="Year"
+            placeholder="Year"
             prepend-inner-icon="mdi-calendar"
+            clearable
           ></v-select>
         </v-col>
         <v-col v-if="cfg.showQuarter" cols="12" sm="8" md="6" lg="2">
@@ -239,7 +241,9 @@
             item-title="label"
             item-value="value"
             label="Quarter"
+            placeholder="Quarter"
             prepend-inner-icon="mdi-clock-outline"
+            clearable
           ></v-select>
         </v-col>
         <v-col v-if="cfg.showDivision" cols="12" sm="12" md="8" lg="4">
@@ -249,6 +253,7 @@
             item-title="label"
             item-value="value"
             label="Division"
+            placeholder="Division"
             prepend-inner-icon="mdi-office-building"
             clearable
           ></v-autocomplete>
@@ -258,7 +263,9 @@
             v-model="model.status"
             :items="STATUS_OPTIONS"
             :label="cfg.statusLabel || 'Status'"
+            placeholder="Status"
             prepend-inner-icon="mdi-information-outline"
+            clearable
           ></v-select>
         </v-col>
         <v-col v-if="cfg.showOverallStatus" cols="12" sm="6" md="4" lg="2">
@@ -266,7 +273,9 @@
             v-model="model.overall_status"
             :items="STATUS_OPTIONS"
             label="Status"
+            placeholder="Status"
             prepend-inner-icon="mdi-information-outline"
+            clearable
           ></v-select>
         </v-col>
         <v-col v-if="cfg.showFundType" cols="12" sm="6" md="4" lg="2">
@@ -276,6 +285,7 @@
             item-title="label"
             item-value="value"
             label="Fund type"
+            placeholder="Fund type"
             prepend-inner-icon="mdi-wallet"
             clearable
           ></v-select>
@@ -287,6 +297,7 @@
             item-title="label"
             item-value="value"
             label="Request type"
+            placeholder="Request type"
             prepend-inner-icon="mdi-tag"
             clearable
           ></v-select>
@@ -298,6 +309,7 @@
             item-title="label"
             item-value="value"
             label="Memo type"
+            placeholder="Memo type"
             prepend-inner-icon="mdi-file-tree"
             clearable
           ></v-select>
@@ -309,6 +321,7 @@
             item-title="label"
             item-value="value"
             label="Service type"
+            placeholder="Service type"
             prepend-inner-icon="mdi-briefcase"
             clearable
           ></v-select>

@@ -42,8 +42,13 @@ class MatrixController extends Controller
 
         $selectedYear = $request->get('year', '');
         $selectedQuarter = $request->get('quarter', '');
-        $selectedStatus = $request->get('status', 'active');
+        $selectedStatus = $request->has('status')
+            ? (string) $request->get('status')
+            : 'active';
 
+        if ($selectedYear === 'all') {
+            $selectedYear = '';
+        }
         if (empty($selectedYear) && ! $request->has('year')) {
             $selectedYear = $currentYear;
         }
@@ -153,10 +158,15 @@ class MatrixController extends Controller
             $tab = $request->get('tab', 'myDivision');
             $selectedYear = $request->get('year', '');
             $selectedQuarter = $request->get('quarter', '');
-            $selectedStatus = $request->get('status', 'active');
+            $selectedStatus = $request->has('status')
+                ? (string) $request->get('status')
+                : 'active';
             $page = max(1, (int) $request->get('page', 1));
             $pageSize = min(100, max(1, (int) $request->get('pageSize', 24)));
 
+            if ($selectedYear === 'all') {
+                $selectedYear = '';
+            }
             if ($selectedYear === '' && ! $request->has('year')) {
                 $selectedYear = now()->year;
             }
@@ -237,12 +247,12 @@ class MatrixController extends Controller
         $divisions = \App\Services\ApmPageCache::rememberLookups('matrix_divisions', fn () => Division::all());
         $focalPersons = \App\Services\ApmPageCache::rememberLookups('matrix_focal_persons', fn () => Staff::active()->get());
 
-        $yearOptions = [['title' => 'All years', 'value' => '']];
+        $yearOptions = [];
         foreach (range($currentYear + 1, $currentYear - 5) as $year) {
             $yearOptions[] = ['title' => (string) $year, 'value' => (string) $year];
         }
 
-        $divisionOptions = [['title' => 'All divisions', 'value' => '']];
+        $divisionOptions = [];
         foreach ($divisions as $division) {
             $divisionId = $division->id ?? $division->division_id ?? null;
             if ($divisionId === null) {
@@ -254,7 +264,7 @@ class MatrixController extends Controller
             ];
         }
 
-        $focalOptions = [['title' => 'All focal persons', 'value' => '']];
+        $focalOptions = [];
         foreach ($focalPersons as $person) {
             $staffId = $person->staff_id ?? $person->id ?? null;
             if ($staffId === null) {
@@ -269,6 +279,9 @@ class MatrixController extends Controller
         $defaultYear = $request->has('year')
             ? (string) $request->get('year', '')
             : (string) ($selectedYear ?: $currentYear);
+        if ($defaultYear === 'all') {
+            $defaultYear = '';
+        }
 
         return [
             'currentYear' => $currentYear,
@@ -278,7 +291,7 @@ class MatrixController extends Controller
                 'quarter' => (string) ($selectedQuarter ?? ''),
                 'division' => (string) $request->get('division', ''),
                 'focal_person' => (string) $request->get('focal_person', ''),
-                'status' => (string) ($selectedStatus ?: 'active'),
+                'status' => (string) (in_array((string) $selectedStatus, ['', 'all'], true) ? '' : ($selectedStatus ?: 'active')),
                 'tab' => ($myDivisionMatricesCount > 0) ? 'myDivision' : 'allMatrices',
             ],
             'counts' => [
@@ -290,7 +303,6 @@ class MatrixController extends Controller
             'perPage' => 24,
             'yearOptions' => $yearOptions,
             'quarterOptions' => [
-                ['title' => 'All quarters', 'value' => ''],
                 ['title' => 'Q1', 'value' => 'Q1'],
                 ['title' => 'Q2', 'value' => 'Q2'],
                 ['title' => 'Q3', 'value' => 'Q3'],
@@ -301,7 +313,6 @@ class MatrixController extends Controller
             'statusOptions' => [
                 ['title' => 'Active only', 'value' => 'active'],
                 ['title' => 'Archived only', 'value' => 'archived'],
-                ['title' => 'All', 'value' => 'all'],
             ],
             'routes' => [
                 'ajax' => route('matrices.ajax'),

@@ -75,7 +75,7 @@ trait ServiceRequestListIndexResponses
             'currentYear' => $currentYear,
             'defaults' => [
                 'tab' => $tab,
-                'year' => $this->resolveServiceRequestYearString($request),
+                'year' => (($__y = $this->resolveServiceRequestYearString($request)) === 'all' ? '' : $__y),
                 'division_id' => (string) $request->get('division_id', ''),
                 'staff_id' => (string) $request->get('staff_id', ''),
                 'status' => (string) ($request->get('status') ?: $request->get('overall_status', '')),
@@ -248,9 +248,12 @@ trait ServiceRequestListIndexResponses
     protected function resolveServiceRequestYearString(Request $request): string
     {
         $currentYear = (int) date('Y');
+        if (! $request->has('year')) {
+            return (string) $currentYear;
+        }
         $year = $request->get('year');
-        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-            $year = (string) $currentYear;
+        if ($year === null || $year === '' || $year === 'all' || (is_numeric($year) && (int) $year === 0)) {
+            return 'all';
         }
 
         return (string) $year;
@@ -266,7 +269,7 @@ trait ServiceRequestListIndexResponses
      */
     protected function buildServiceRequestYearSelectOptions(int $currentYear, int $minYear): array
     {
-        $options = [['title' => 'All years', 'value' => 'all']];
+        $options = [];
         foreach (range($currentYear, $minYear) as $year) {
             $options[] = ['title' => (string) $year, 'value' => (string) $year];
         }
@@ -279,7 +282,7 @@ trait ServiceRequestListIndexResponses
      */
     protected function buildServiceRequestDivisionSelectOptions(iterable $divisions): array
     {
-        $options = [['title' => 'All divisions', 'value' => '']];
+        $options = [];
         foreach ($divisions as $division) {
             $divisionId = $division->id ?? $division->division_id ?? null;
             if ($divisionId === null) {
@@ -296,7 +299,7 @@ trait ServiceRequestListIndexResponses
      */
     protected function buildServiceRequestStaffSelectOptions(iterable $staff): array
     {
-        $options = [['title' => 'All staff', 'value' => '']];
+        $options = [];
         foreach ($staff as $member) {
             $staffId = $member->staff_id ?? $member->id ?? null;
             if ($staffId === null) {
@@ -315,7 +318,6 @@ trait ServiceRequestListIndexResponses
     protected function buildServiceRequestStatusSelectOptions(): array
     {
         return [
-            ['title' => 'All statuses', 'value' => ''],
             ['title' => 'Draft', 'value' => 'draft'],
             ['title' => 'Pending', 'value' => 'pending'],
             ['title' => 'Approved', 'value' => 'approved'],
@@ -330,7 +332,7 @@ trait ServiceRequestListIndexResponses
      */
     protected function buildServiceRequestFundTypeSelectOptions(): array
     {
-        $options = [['title' => 'All fund types', 'value' => '']];
+        $options = [];
         foreach (MemoFundTypeFilter::options() as $id => $label) {
             $options[] = ['title' => $label, 'value' => (string) $id];
         }
@@ -344,7 +346,6 @@ trait ServiceRequestListIndexResponses
     protected function buildServiceRequestServiceTypeSelectOptions(): array
     {
         return [
-            ['title' => 'All types', 'value' => ''],
             ['title' => 'IT Support', 'value' => 'IT Support'],
             ['title' => 'Maintenance', 'value' => 'Maintenance'],
             ['title' => 'Other', 'value' => 'Other'],

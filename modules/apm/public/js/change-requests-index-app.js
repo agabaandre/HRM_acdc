@@ -21,10 +21,10 @@
 
         return {
             tab: pick('tab', defaults.tab || 'myChangeRequests'),
-            year: pick('year', String(defaults.year ?? cfg.currentYear ?? '')),
+            year: (() => { const y = pick('year', String(defaults.year ?? cfg.currentYear ?? '')); return y === 'all' ? '' : y; })(),
             division_id: pick('division_id', defaults.division_id ?? ''),
             staff_id: pick('staff_id', defaults.staff_id ?? ''),
-            status: pick('status', defaults.status ?? 'all'),
+            status: (() => { const s = pick('status', defaults.status ?? ''); return s === 'all' ? '' : s; })(),
             document_number: pick('document_number', defaults.document_number ?? ''),
             search: pick('search', defaults.search ?? ''),
             memo_type: pick('memo_type', defaults.memo_type ?? ''),
@@ -37,10 +37,10 @@
         const current = new URL(window.location.href);
         ['tab', 'page', 'fragment', 'overall_status', ...FILTER_KEYS].forEach((k) => current.searchParams.delete(k));
 
-        if (filters.year) current.searchParams.set('year', filters.year);
+        current.searchParams.set('year', filters.year || 'all');
         if (filters.division_id) current.searchParams.set('division_id', filters.division_id);
         if (filters.staff_id) current.searchParams.set('staff_id', filters.staff_id);
-        if (filters.status) current.searchParams.set('status', filters.status);
+        current.searchParams.set('status', filters.status || 'all');
         if (filters.document_number) current.searchParams.set('document_number', filters.document_number);
         if (filters.search) current.searchParams.set('search', filters.search);
         if (filters.memo_type) current.searchParams.set('memo_type', filters.memo_type);
@@ -298,22 +298,22 @@
             <v-text-field v-model="filters.document_number" label="Document #" prepend-inner-icon="mdi-pound" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.year" :items="cfg.yearOptions || []" item-title="title" item-value="value" label="Year" prepend-inner-icon="mdi-calendar" />
+            <v-select v-model="filters.year" :items="cfg.yearOptions || []" item-title="title" item-value="value" label="Year" prepend-inner-icon="mdi-calendar" placeholder="Year" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="2">
-            <v-autocomplete v-model="filters.division_id" :items="cfg.divisionOptions || []" item-title="title" item-value="value" label="Division" prepend-inner-icon="mdi-office-building" clearable />
+            <v-autocomplete v-model="filters.division_id" :items="cfg.divisionOptions || []" item-title="title" item-value="value" label="Division" prepend-inner-icon="mdi-office-building" placeholder="Division" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="3">
-            <v-autocomplete v-model="filters.staff_id" :items="cfg.staffOptions || []" item-title="title" item-value="value" label="Staff" prepend-inner-icon="mdi-account" clearable />
+            <v-autocomplete v-model="filters.staff_id" :items="cfg.staffOptions || []" item-title="title" item-value="value" label="Staff" prepend-inner-icon="mdi-account" placeholder="Staff" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.status" :items="cfg.statusOptions || []" item-title="title" item-value="value" label="Status" prepend-inner-icon="mdi-filter-outline" />
+            <v-select v-model="filters.status" :items="cfg.statusOptions || []" item-title="title" item-value="value" label="Status" prepend-inner-icon="mdi-filter-outline" placeholder="Status" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.memo_type" :items="cfg.memoTypeOptions || []" item-title="title" item-value="value" label="Memo type" prepend-inner-icon="mdi-file-tree" />
+            <v-select v-model="filters.memo_type" :items="cfg.memoTypeOptions || []" item-title="title" item-value="value" label="Memo type" prepend-inner-icon="mdi-file-tree" placeholder="Memo type" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.fund_type_id" :items="cfg.fundTypeOptions || []" item-title="title" item-value="value" label="Fund type" prepend-inner-icon="mdi-cash" />
+            <v-select v-model="filters.fund_type_id" :items="cfg.fundTypeOptions || []" item-title="title" item-value="value" label="Fund type" prepend-inner-icon="mdi-cash" placeholder="Fund type" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2" class="d-flex align-center gap-2">
             <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" block @click="applyFilters">Filter</v-btn>

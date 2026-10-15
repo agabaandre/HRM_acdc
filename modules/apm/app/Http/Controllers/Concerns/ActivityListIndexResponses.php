@@ -634,7 +634,7 @@ trait ActivityListIndexResponses
      */
     protected function buildDivisionSelectOptions(iterable $divisions): array
     {
-        $options = [['title' => 'All divisions', 'value' => '']];
+        $options = [];
         foreach ($divisions as $division) {
             $divisionId = $division->division_id ?? $division->id ?? null;
             if ($divisionId === null) {
@@ -654,7 +654,7 @@ trait ActivityListIndexResponses
      */
     protected function buildStaffSelectOptions(iterable $staff): array
     {
-        $options = [['title' => 'All staff', 'value' => '']];
+        $options = [];
         foreach ($staff as $member) {
             $staffId = $member->staff_id ?? $member->id ?? null;
             if ($staffId === null) {
@@ -675,7 +675,6 @@ trait ActivityListIndexResponses
     protected function buildMemoStatusSelectOptions(): array
     {
         return [
-            ['title' => 'All statuses', 'value' => ''],
             ['title' => 'Draft', 'value' => 'draft'],
             ['title' => 'Pending', 'value' => 'pending'],
             ['title' => 'Approved', 'value' => 'approved'],
@@ -690,7 +689,7 @@ trait ActivityListIndexResponses
      */
     protected function buildFundTypeSelectOptions(): array
     {
-        $options = [['title' => 'All fund types', 'value' => '']];
+        $options = [];
         foreach (MemoFundTypeFilter::options() as $id => $label) {
             $options[] = ['title' => $label, 'value' => (string) $id];
         }

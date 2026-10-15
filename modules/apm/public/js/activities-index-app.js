@@ -23,7 +23,7 @@
 
         return {
             tab: pick('tab', cfg.defaults?.tab || 'my-division'),
-            year: pick('year', String(cfg.defaults?.year ?? cfg.currentYear ?? '')),
+            year: (() => { const y = pick('year', String(cfg.defaults?.year ?? cfg.currentYear ?? '')); return y === 'all' ? '' : y; })(),
             quarter: pick('quarter', cfg.defaults?.quarter ?? ''),
             division_id: pick('division_id', cfg.defaults?.division_id ?? ''),
             document_number: pick('document_number', cfg.defaults?.document_number ?? ''),
@@ -289,7 +289,8 @@
               item-value="value"
               label="Year"
               prepend-inner-icon="mdi-calendar"
-            />
+              placeholder="Year"
+                          />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <v-select
@@ -299,7 +300,8 @@
               item-value="value"
               label="Quarter"
               prepend-inner-icon="mdi-clock-outline"
-            />
+              placeholder="Quarter"
+                          />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="3">
             <v-autocomplete
@@ -308,6 +310,7 @@
               item-title="title"
               item-value="value"
               label="Division"
+              placeholder="Division"
               prepend-inner-icon="mdi-office-building"
               clearable
             />
@@ -319,6 +322,7 @@
               item-title="title"
               item-value="value"
               label="Responsible staff"
+              placeholder="Responsible staff"
               prepend-inner-icon="mdi-account"
               clearable
             />
@@ -331,6 +335,8 @@
               item-value="value"
               label="Status"
               prepend-inner-icon="mdi-flag-outline"
+              placeholder="Status"
+              clearable
             />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
@@ -341,6 +347,8 @@
               item-value="value"
               label="Fund type"
               prepend-inner-icon="mdi-cash"
+              placeholder="Fund type"
+              clearable
             />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2" class="d-flex align-center">

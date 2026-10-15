@@ -77,10 +77,10 @@ trait ChangeRequestListIndexResponses
             'currentYear' => $currentYear,
             'defaults' => [
                 'tab' => $tab,
-                'year' => $this->resolveChangeRequestYearString($request),
+                'year' => (($__y = $this->resolveChangeRequestYearString($request)) === 'all' ? '' : $__y),
                 'division_id' => (string) $request->get('division_id', ''),
                 'staff_id' => (string) $request->get('staff_id', ''),
-                'status' => (string) ($request->get('status') ?: 'all'),
+                'status' => (string) (in_array((string) $request->get('status', ''), ['', 'all'], true) ? '' : $request->get('status')),
                 'document_number' => (string) $request->get('document_number', ''),
                 'search' => (string) $request->get('search', ''),
                 'memo_type' => (string) $request->get('memo_type', ''),
@@ -279,9 +279,12 @@ trait ChangeRequestListIndexResponses
     protected function resolveChangeRequestYearString(Request $request): string
     {
         $currentYear = (int) date('Y');
+        if (! $request->has('year')) {
+            return (string) $currentYear;
+        }
         $year = $request->get('year');
-        if ($year === null || $year === '' || (is_numeric($year) && (int) $year === 0)) {
-            $year = (string) $currentYear;
+        if ($year === null || $year === '' || $year === 'all' || (is_numeric($year) && (int) $year === 0)) {
+            return 'all';
         }
 
         return (string) $year;
@@ -297,7 +300,7 @@ trait ChangeRequestListIndexResponses
      */
     protected function buildChangeRequestYearSelectOptions(int $currentYear, int $minYear): array
     {
-        $options = [['title' => 'All years', 'value' => 'all']];
+        $options = [];
         foreach (range($currentYear, $minYear) as $year) {
             $options[] = ['title' => (string) $year, 'value' => (string) $year];
         }
@@ -310,7 +313,7 @@ trait ChangeRequestListIndexResponses
      */
     protected function buildChangeRequestDivisionSelectOptions(iterable $divisions): array
     {
-        $options = [['title' => 'All divisions', 'value' => '']];
+        $options = [];
         foreach ($divisions as $division) {
             $divisionId = $division->id ?? $division->division_id ?? null;
             if ($divisionId === null) {
@@ -327,7 +330,7 @@ trait ChangeRequestListIndexResponses
      */
     protected function buildChangeRequestStaffSelectOptions(iterable $staff): array
     {
-        $options = [['title' => 'All staff', 'value' => '']];
+        $options = [];
         foreach ($staff as $member) {
             $staffId = $member->staff_id ?? $member->id ?? null;
             if ($staffId === null) {
@@ -346,7 +349,6 @@ trait ChangeRequestListIndexResponses
     protected function buildChangeRequestStatusSelectOptions(): array
     {
         return [
-            ['title' => 'All statuses', 'value' => 'all'],
             ['title' => 'Draft', 'value' => 'draft'],
             ['title' => 'Submitted', 'value' => 'submitted'],
             ['title' => 'Pending', 'value' => 'pending'],
@@ -362,7 +364,6 @@ trait ChangeRequestListIndexResponses
     protected function buildChangeRequestMemoTypeSelectOptions(): array
     {
         return [
-            ['title' => 'All memo types', 'value' => ''],
             ['title' => 'Activity', 'value' => 'App\Models\Activity'],
             ['title' => 'Special memo', 'value' => 'App\Models\SpecialMemo'],
             ['title' => 'Non-travel memo', 'value' => 'App\Models\NonTravelMemo'],
@@ -376,7 +377,7 @@ trait ChangeRequestListIndexResponses
      */
     protected function buildChangeRequestFundTypeSelectOptions(): array
     {
-        $options = [['title' => 'All fund types', 'value' => '']];
+        $options = [];
         foreach (MemoFundTypeFilter::options() as $id => $label) {
             $options[] = ['title' => $label, 'value' => (string) $id];
         }

@@ -140,7 +140,9 @@
             item-title="label"
             item-value="value"
             label="Year"
+            placeholder="Year"
             prepend-inner-icon="mdi-calendar"
+            clearable
           ></v-select>
         </v-col>
         <v-col cols="12" sm="6" md="4" lg="2">
@@ -150,7 +152,9 @@
             item-title="label"
             item-value="value"
             label="Quarter"
+            placeholder="Quarter"
             prepend-inner-icon="mdi-clock-outline"
+            clearable
           ></v-select>
         </v-col>
         <v-col cols="12" sm="6" md="6" lg="3">
@@ -160,6 +164,7 @@
             item-title="label"
             item-value="value"
             label="Division"
+            placeholder="Division"
             prepend-inner-icon="mdi-office-building"
             clearable
           ></v-autocomplete>
@@ -171,6 +176,7 @@
             item-title="label"
             item-value="value"
             label="Focal Person"
+            placeholder="Focal Person"
             prepend-inner-icon="mdi-account-tie"
             clearable
           ></v-autocomplete>
@@ -182,7 +188,9 @@
             item-title="label"
             item-value="value"
             label="Matrix Status"
+            placeholder="Matrix Status"
             prepend-inner-icon="mdi-filter-outline"
+            clearable
           ></v-select>
         </v-col>
       </v-row>

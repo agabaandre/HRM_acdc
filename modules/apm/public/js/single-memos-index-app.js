@@ -15,7 +15,7 @@
 
         return {
             tab: pick('tab', defaults.tab || 'mySubmitted'),
-            year: pick('year', String(defaults.year ?? cfg.apmCurrentYear ?? '')),
+            year: (() => { const y = pick('year', String(defaults.year ?? cfg.apmCurrentYear ?? '')); return y === 'all' ? '' : y; })(),
             quarter: pick('quarter', defaults.quarter ?? cfg.apmCurrentQuarter ?? ''),
             division_id: pick('division_id', defaults.division_id ?? ''),
             staff_id: pick('staff_id', defaults.staff_id ?? ''),
@@ -492,7 +492,8 @@
               item-value="value"
               label="Year"
               prepend-inner-icon="mdi-calendar"
-            />
+              placeholder="Year"
+                          />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <v-select
@@ -502,7 +503,8 @@
               item-value="value"
               label="Quarter"
               prepend-inner-icon="mdi-clock-outline"
-            />
+              placeholder="Quarter"
+                          />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="3">
             <v-autocomplete
@@ -511,6 +513,7 @@
               item-title="title"
               item-value="value"
               label="Division"
+              placeholder="Division"
               prepend-inner-icon="mdi-office-building"
               clearable
             />
@@ -522,6 +525,7 @@
               item-title="title"
               item-value="value"
               label="Staff / responsible person"
+              placeholder="Staff / responsible person"
               prepend-inner-icon="mdi-account"
               clearable
             />
@@ -534,6 +538,8 @@
               item-value="value"
               label="Status"
               prepend-inner-icon="mdi-filter-outline"
+              placeholder="Status"
+              clearable
             />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
@@ -561,6 +567,8 @@
               item-value="value"
               label="Fund type"
               prepend-inner-icon="mdi-cash"
+              placeholder="Fund type"
+              clearable
             />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2" class="d-flex align-center gap-2">
@@ -743,7 +751,7 @@
           <div class="d-flex flex-wrap align-center gap-2 mb-3">
             <v-select
               v-model="praPicker.quarterFilter"
-              :items="[{ title: 'All quarters', value: '' }, { title: 'Q1', value: 'Q1' }, { title: 'Q2', value: 'Q2' }, { title: 'Q3', value: 'Q3' }, { title: 'Q4', value: 'Q4' }]"
+              :items="[{ title: 'Q1', value: 'Q1' }, { title: 'Q2', value: 'Q2' }, { title: 'Q3', value: 'Q3' }, { title: 'Q4', value: 'Q4' }]"
               item-title="title"
               item-value="value"
               label="Filter by quarter"
@@ -751,6 +759,8 @@
               hide-details
               variant="outlined"
               style="min-width: 150px; max-width: 170px;"
+              placeholder="Filter by quarter"
+              clearable
             />
             <v-text-field
               v-model="praPicker.search"

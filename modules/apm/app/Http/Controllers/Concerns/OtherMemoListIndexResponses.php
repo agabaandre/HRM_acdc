@@ -75,7 +75,7 @@ trait OtherMemoListIndexResponses
             'currentYear' => $currentYear,
             'defaults' => [
                 'tab' => $tab,
-                'year' => $this->resolveOtherMemoYearString($request),
+                'year' => (($__y = $this->resolveOtherMemoYearString($request)) === 'all' ? '' : $__y),
                 'division_id' => (string) $request->get('division_id', ''),
                 'staff_id' => (string) $request->get('staff_id', ''),
                 'status' => (string) $request->get('status', ''),
@@ -190,7 +190,7 @@ trait OtherMemoListIndexResponses
      */
     protected function buildOtherMemoYearSelectOptions(int $currentYear, int $minYear): array
     {
-        $options = [['title' => 'All years', 'value' => 'all']];
+        $options = [];
         foreach (range($currentYear, $minYear) as $year) {
             $options[] = ['title' => (string) $year, 'value' => (string) $year];
         }
@@ -203,7 +203,7 @@ trait OtherMemoListIndexResponses
      */
     protected function buildOtherMemoDivisionSelectOptions(iterable $divisions): array
     {
-        $options = [['title' => 'All divisions', 'value' => '']];
+        $options = [];
         foreach ($divisions as $division) {
             $divisionId = $division->id ?? $division->division_id ?? null;
             if ($divisionId === null) {
@@ -223,7 +223,7 @@ trait OtherMemoListIndexResponses
      */
     protected function buildOtherMemoStaffSelectOptions(iterable $staff): array
     {
-        $options = [['title' => 'All staff', 'value' => '']];
+        $options = [];
         foreach ($staff as $member) {
             $staffId = $member->staff_id ?? $member->id ?? null;
             if ($staffId === null) {
@@ -246,7 +246,6 @@ trait OtherMemoListIndexResponses
     protected function buildOtherMemoStatusSelectOptions(): array
     {
         return [
-            ['title' => 'All statuses', 'value' => ''],
             ['title' => 'Draft', 'value' => 'draft'],
             ['title' => 'Pending', 'value' => 'pending'],
             ['title' => 'Approved', 'value' => 'approved'],

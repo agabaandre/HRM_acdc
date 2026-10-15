@@ -12,11 +12,11 @@
 
         return {
             tab: pick('tab', cfg.defaults?.tab || 'myDivision'),
-            year: pick('year', String(cfg.defaults?.year ?? cfg.currentYear ?? '')),
+            year: (() => { const y = pick('year', String(cfg.defaults?.year ?? cfg.currentYear ?? '')); return y === 'all' ? '' : y; })(),
             quarter: pick('quarter', cfg.defaults?.quarter ?? ''),
             division: pick('division', cfg.defaults?.division ?? ''),
             focal_person: pick('focal_person', cfg.defaults?.focal_person ?? ''),
-            status: pick('status', cfg.defaults?.status ?? 'active'),
+            status: (() => { const s = pick('status', cfg.defaults?.status ?? 'active'); return s === 'all' ? '' : s; })(),
             page: Math.max(1, parseInt(pick('page', '1'), 10) || 1),
         };
     }
@@ -42,10 +42,11 @@
             current.searchParams.delete(k);
         });
         if (filters.year) current.searchParams.set('year', filters.year);
+        else current.searchParams.set('year', '');
         if (filters.quarter) current.searchParams.set('quarter', filters.quarter);
         if (filters.division) current.searchParams.set('division', filters.division);
         if (filters.focal_person) current.searchParams.set('focal_person', filters.focal_person);
-        if (filters.status) current.searchParams.set('status', filters.status);
+        current.searchParams.set('status', filters.status || 'all');
         if (tab) current.searchParams.set('tab', tab);
         if (page > 1) current.searchParams.set('page', String(page));
         window.history.replaceState({}, '', current.toString());
@@ -145,7 +146,6 @@
                 ];
 
                 const praQuarterFilterOptions = [
-                    { title: 'All quarters', value: '' },
                     { title: 'Q1', value: 'Q1' },
                     { title: 'Q2', value: 'Q2' },
                     { title: 'Q3', value: 'Q3' },
@@ -609,19 +609,19 @@
       <v-card-text>
         <v-row>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.year" :items="cfg.yearOptions || []" item-title="title" item-value="value" label="Year" prepend-inner-icon="mdi-calendar" />
+            <v-select v-model="filters.year" :items="cfg.yearOptions || []" item-title="title" item-value="value" label="Year" prepend-inner-icon="mdi-calendar" placeholder="Year" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.quarter" :items="cfg.quarterOptions || []" item-title="title" item-value="value" label="Quarter" prepend-inner-icon="mdi-clock-outline" />
+            <v-select v-model="filters.quarter" :items="cfg.quarterOptions || []" item-title="title" item-value="value" label="Quarter" prepend-inner-icon="mdi-clock-outline" placeholder="Quarter" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="3">
-            <v-autocomplete v-model="filters.division" :items="cfg.divisionOptions || []" item-title="title" item-value="value" label="Division" prepend-inner-icon="mdi-office-building" clearable />
+            <v-autocomplete v-model="filters.division" :items="cfg.divisionOptions || []" item-title="title" item-value="value" label="Division" prepend-inner-icon="mdi-office-building" placeholder="Division" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="6" lg="3">
-            <v-autocomplete v-model="filters.focal_person" :items="cfg.focalOptions || []" item-title="title" item-value="value" label="Focal person" prepend-inner-icon="mdi-account-tie" clearable />
+            <v-autocomplete v-model="filters.focal_person" :items="cfg.focalOptions || []" item-title="title" item-value="value" label="Focal person" prepend-inner-icon="mdi-account-tie" placeholder="Focal person" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
-            <v-select v-model="filters.status" :items="cfg.statusOptions || []" item-title="title" item-value="value" label="Matrix status" prepend-inner-icon="mdi-filter-outline" />
+            <v-select v-model="filters.status" :items="cfg.statusOptions || []" item-title="title" item-value="value" label="Matrix status" prepend-inner-icon="mdi-filter-outline" placeholder="Matrix status" clearable />
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2" class="d-flex align-center">
             <v-btn color="primary" variant="flat" prepend-icon="mdi-magnify" block @click="applyFilters">Filter</v-btn>
@@ -943,7 +943,7 @@
               </template>
               <template #no-data>
                 <v-alert type="warning" variant="tonal" class="ma-4">
-                  No RBM activities match this filter. Try “All quarters” or refresh after mapping your division.
+                  No RBM activities match this filter. Clear the quarter filter or refresh after mapping your division.
                 </v-alert>
               </template>
             </v-data-table>
