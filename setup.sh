@@ -1188,6 +1188,8 @@ write_it_env() {
     env_set "$f" APM_DB_USERNAME "${DB_USERNAME:-${DB_USER:-}}" || return 1
     env_set "$f" APM_DB_PASSWORD "${DB_PASSWORD:-${DB_PASS:-}}" || return 1
     apply_storage_to_file "$f" || return 1
+    # Same host layout as Helpdesk: {STAFF_DATA_ROOT}/it
+    env_set "$f" STAFF_IT_FILES_ROOT "$STAFF_IT_FILES_ROOT" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -1257,6 +1259,8 @@ write_registry_env() {
     env_set "$f" APM_DB_USERNAME "${DB_USERNAME:-${DB_USER:-}}" || return 1
     env_set "$f" APM_DB_PASSWORD "${DB_PASSWORD:-${DB_PASS:-}}" || return 1
     apply_storage_to_file "$f" || return 1
+    # Same host layout as Helpdesk: {STAFF_DATA_ROOT}/registry
+    env_set "$f" STAFF_REGISTRY_FILES_ROOT "$STAFF_REGISTRY_FILES_ROOT" || return 1
     apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
     apply_redis_to_file "$f" || return 1
   done
@@ -1553,6 +1557,7 @@ setup_run_module_production() {
 if [[ "$RUN_INSTALL" == "1" ]]; then
   export STAFF_SITE_ID STAFF_DATA_ROOT STAFF_HOST_DATA_ROOT STAFF_USE_HOST_STORAGE
   export STAFF_PORTAL_UPLOADS_ROOT STAFF_APM_FILES_ROOT STAFF_HELPDESK_FILES_ROOT
+  export STAFF_IT_FILES_ROOT STAFF_REGISTRY_FILES_ROOT
   export STAFF_PORTAL_MODULE_FILES_ROOT BASE_URL SITE_KIND WEB_ROOT
   export VITE_STAFF_PORTAL_BASE_PATH VITE_STAFF_PORTAL_API_BASE_URL
   if [[ "$DEPLOY_MODE" == "docker" ]]; then

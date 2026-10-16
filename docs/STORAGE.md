@@ -1,6 +1,6 @@
 # Staff ecosystem file storage
 
-Uploads and generated files for **CodeIgniter staff**, **APM**, **Helpdesk**, and **staff-portal** should live **outside the git repository** so `git pull` and deployments do not overwrite user content.
+Uploads and generated files for **CodeIgniter staff**, **APM**, **Helpdesk**, **IT**, **Registry**, and **staff-portal** should live **outside the git repository** so `git pull` and deployments do not overwrite user content.
 
 This document covers host-side storage, migration scripts, permissions, and the Knowledge Hub admin UI.
 
@@ -33,6 +33,8 @@ This document covers host-side storage, migration scripts, permissions, and the 
 │   └── uploads/                   memo attachments, activities, summernote, …
 ├── helpdesk/                      ← STAFF_HELPDESK_FILES_ROOT
 │   └── helpdesk/                  ticket attachments, rich-text images
+├── it/                            ← STAFF_IT_FILES_ROOT
+├── registry/                      ← STAFF_REGISTRY_FILES_ROOT
 ├── staff-portal/                  ← STAFF_PORTAL_MODULE_FILES_ROOT
 └── backups/files/                 ← staff file backups (Knowledge Hub UI)
 
@@ -40,6 +42,8 @@ Legacy in-repo paths (default for local dev):
   uploads/                         CI3 FCPATH uploads
   apm/storage/app/public/          APM attachments
   helpdesk/backend/storage/app/public/
+  modules/it/backend/storage/app/public/
+  modules/registry/backend/storage/app/public/
   staff-portal/backend/storage/app/public/
 ```
 
@@ -78,6 +82,8 @@ STAFF_USE_HOST_STORAGE=true            # alternative to STAFF_DATA_ROOT alone
 STAFF_PORTAL_UPLOADS_ROOT=/var/staffdata/localhost-staff/ci
 STAFF_APM_FILES_ROOT=/var/staffdata/localhost-staff/apm
 STAFF_HELPDESK_FILES_ROOT=/var/staffdata/localhost-staff/helpdesk
+STAFF_IT_FILES_ROOT=/var/staffdata/localhost-staff/it
+STAFF_REGISTRY_FILES_ROOT=/var/staffdata/localhost-staff/registry
 STAFF_PORTAL_MODULE_FILES_ROOT=/var/staffdata/localhost-staff/staff-portal
 
 # Knowledge Hub integration (on the Knowledge Hub server)
@@ -94,6 +100,8 @@ STAFF_FILES_BACKUP_RETENTION_DAYS=30
 | **CI3** | `staff_uploads_root()` / `staff_uploads_path()` → `STAFF_PORTAL_UPLOADS_ROOT` or `{STAFF_DATA_ROOT}/ci` |
 | **APM** | `config('staff_portal.uploads_root')` + `filesystems` public disk → `STAFF_APM_FILES_ROOT` |
 | **Helpdesk** | `config('helpdesk.staff_uploads_root')` + public disk → `STAFF_HELPDESK_FILES_ROOT` |
+| **IT** | public disk → `STAFF_IT_FILES_ROOT` (`StaffStorage::itPublicRoot`) |
+| **Registry** | public disk → `STAFF_REGISTRY_FILES_ROOT` (`StaffStorage::registryPublicRoot`) |
 | **staff-portal** | `config('staff-portal.uploads_root')` + public disk → shared `ci/` for photos/contracts |
 
 ---

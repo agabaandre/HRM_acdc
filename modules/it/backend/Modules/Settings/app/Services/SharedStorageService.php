@@ -100,6 +100,8 @@ class SharedStorageService
             'STAFF_PORTAL_UPLOADS_ROOT' => $paths['ci'],
             'STAFF_APM_FILES_ROOT' => $paths['apm'],
             'STAFF_HELPDESK_FILES_ROOT' => $paths['helpdesk'],
+            'STAFF_IT_FILES_ROOT' => $paths['it'] ?? ($paths['data_root'].DIRECTORY_SEPARATOR.'it'),
+            'STAFF_REGISTRY_FILES_ROOT' => $paths['registry'] ?? ($paths['data_root'].DIRECTORY_SEPARATOR.'registry'),
             'STAFF_PORTAL_MODULE_FILES_ROOT' => $paths['staff_portal'],
         ], "Migration completed for {$module}.", "Migration failed for {$module}.");
     }

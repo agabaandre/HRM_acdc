@@ -26,7 +26,7 @@ run_priv() {
 host_storage_ok() {
   local root="$1" d
   [[ -d "$root" && -w "$root" ]] || return 1
-  for d in ci apm helpdesk staff-portal backups/files; do
+  for d in ci apm helpdesk it registry staff-portal backups/files; do
     [[ -d "${root}/${d}" && -w "${root}/${d}" ]] || return 1
   done
   return 0
@@ -36,6 +36,8 @@ DIRS=(
   "${STAFF_DATA_ROOT}/ci"
   "${STAFF_DATA_ROOT}/apm"
   "${STAFF_DATA_ROOT}/helpdesk"
+  "${STAFF_DATA_ROOT}/it"
+  "${STAFF_DATA_ROOT}/registry"
   "${STAFF_DATA_ROOT}/staff-portal"
   "${STAFF_DATA_ROOT}/backups/files"
 )

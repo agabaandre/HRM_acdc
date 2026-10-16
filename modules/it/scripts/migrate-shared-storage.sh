@@ -50,6 +50,8 @@ export STAFF_USE_HOST_STORAGE=true
 export STAFF_PORTAL_UPLOADS_ROOT="${STAFF_PORTAL_UPLOADS_ROOT:-${STAFF_DATA_ROOT}/ci}"
 export STAFF_APM_FILES_ROOT="${STAFF_APM_FILES_ROOT:-${STAFF_DATA_ROOT}/apm}"
 export STAFF_HELPDESK_FILES_ROOT="${STAFF_HELPDESK_FILES_ROOT:-${STAFF_DATA_ROOT}/helpdesk}"
+export STAFF_IT_FILES_ROOT="${STAFF_IT_FILES_ROOT:-${STAFF_DATA_ROOT}/it}"
+export STAFF_REGISTRY_FILES_ROOT="${STAFF_REGISTRY_FILES_ROOT:-${STAFF_DATA_ROOT}/registry}"
 export STAFF_PORTAL_MODULE_FILES_ROOT="${STAFF_PORTAL_MODULE_FILES_ROOT:-${STAFF_DATA_ROOT}/staff-portal}"
 
 apply_storage_keys() {
@@ -82,10 +84,19 @@ if [[ "${MIGRATE_STAFF_PORTAL_STORAGE:-true}" == "true" ]]; then
 fi
 
 apply_storage_keys "$STAFF_ROOT/.env" STAFF_PORTAL_UPLOADS_ROOT
-apply_storage_keys "$PORTAL_ROOT/backend/.env" STAFF_PORTAL_UPLOADS_ROOT STAFF_PORTAL_MODULE_FILES_ROOT
+apply_storage_keys "$PORTAL_ROOT/backend/.env" STAFF_PORTAL_UPLOADS_ROOT STAFF_PORTAL_MODULE_FILES_ROOT STAFF_IT_FILES_ROOT
 apply_storage_keys "$STAFF_ROOT/modules/apm/.env" STAFF_APM_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
 if [[ -f "$STAFF_ROOT/modules/helpdesk/backend/.env" ]]; then
   apply_storage_keys "$STAFF_ROOT/modules/helpdesk/backend/.env" STAFF_HELPDESK_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
+fi
+if [[ -f "$STAFF_ROOT/modules/it/backend/.env" ]]; then
+  apply_storage_keys "$STAFF_ROOT/modules/it/backend/.env" STAFF_IT_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
+fi
+if [[ -f "$STAFF_ROOT/modules/it/.env" ]]; then
+  apply_storage_keys "$STAFF_ROOT/modules/it/.env" STAFF_IT_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
+fi
+if [[ -f "$STAFF_ROOT/modules/registry/backend/.env" ]]; then
+  apply_storage_keys "$STAFF_ROOT/modules/registry/backend/.env" STAFF_REGISTRY_FILES_ROOT STAFF_PORTAL_UPLOADS_ROOT
 fi
 
 if [[ -f "$STAFF_ROOT/modules/apm/artisan" ]]; then

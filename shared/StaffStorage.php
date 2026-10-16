@@ -11,6 +11,8 @@ namespace Staff\Shared;
  *   {STAFF_DATA_ROOT}/ci/            — legacy CI uploads tree (staff photos, summernote, …)
  *   {STAFF_DATA_ROOT}/apm/           — APM public disk (memo attachments, …)
  *   {STAFF_DATA_ROOT}/helpdesk/      — Helpdesk public disk (tickets, rich-text images)
+ *   {STAFF_DATA_ROOT}/it/            — IT module public disk
+ *   {STAFF_DATA_ROOT}/registry/      — Registry module public disk
  *   {STAFF_DATA_ROOT}/staff-portal/  — staff-portal module public files
  *   {STAFF_DATA_ROOT}/backups/files/ — file backups (managed from Knowledge Hub UI)
  */
@@ -22,6 +24,10 @@ final class StaffStorage
 
     public const MODULE_HELPDESK = 'helpdesk';
 
+    public const MODULE_IT = 'it';
+
+    public const MODULE_REGISTRY = 'registry';
+
     public const MODULE_STAFF_PORTAL = 'staff-portal';
 
     /** @var array<string, string> */
@@ -29,6 +35,8 @@ final class StaffStorage
         self::MODULE_CI => 'STAFF_PORTAL_UPLOADS_ROOT',
         self::MODULE_APM => 'STAFF_APM_FILES_ROOT',
         self::MODULE_HELPDESK => 'STAFF_HELPDESK_FILES_ROOT',
+        self::MODULE_IT => 'STAFF_IT_FILES_ROOT',
+        self::MODULE_REGISTRY => 'STAFF_REGISTRY_FILES_ROOT',
         self::MODULE_STAFF_PORTAL => 'STAFF_PORTAL_MODULE_FILES_ROOT',
     ];
 
@@ -130,6 +138,16 @@ final class StaffStorage
         return self::moduleRoot(self::MODULE_HELPDESK, $helpdeskBasePath);
     }
 
+    public static function itPublicRoot(?string $itBasePath = null): string
+    {
+        return self::moduleRoot(self::MODULE_IT, $itBasePath);
+    }
+
+    public static function registryPublicRoot(?string $registryBasePath = null): string
+    {
+        return self::moduleRoot(self::MODULE_REGISTRY, $registryBasePath);
+    }
+
     public static function staffPortalModuleRoot(?string $staffPortalBasePath = null): string
     {
         return self::moduleRoot(self::MODULE_STAFF_PORTAL, $staffPortalBasePath);
@@ -180,6 +198,8 @@ final class StaffStorage
             'ci' => $root.DIRECTORY_SEPARATOR.self::MODULE_CI,
             'apm' => $root.DIRECTORY_SEPARATOR.self::MODULE_APM,
             'helpdesk' => $root.DIRECTORY_SEPARATOR.self::MODULE_HELPDESK,
+            'it' => $root.DIRECTORY_SEPARATOR.self::MODULE_IT,
+            'registry' => $root.DIRECTORY_SEPARATOR.self::MODULE_REGISTRY,
             'staff_portal' => $root.DIRECTORY_SEPARATOR.self::MODULE_STAFF_PORTAL,
             'backups_files' => $root.DIRECTORY_SEPARATOR.'backups'.DIRECTORY_SEPARATOR.'files',
         ];
@@ -209,6 +229,16 @@ final class StaffStorage
                 'destination' => self::hostDataRoot().DIRECTORY_SEPARATOR.self::MODULE_HELPDESK,
             ],
             [
+                'module' => self::MODULE_IT,
+                'source' => $repoRoot.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'it'.DIRECTORY_SEPARATOR.'backend'.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+                'destination' => self::hostDataRoot().DIRECTORY_SEPARATOR.self::MODULE_IT,
+            ],
+            [
+                'module' => self::MODULE_REGISTRY,
+                'source' => $repoRoot.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'registry'.DIRECTORY_SEPARATOR.'backend'.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+                'destination' => self::hostDataRoot().DIRECTORY_SEPARATOR.self::MODULE_REGISTRY,
+            ],
+            [
                 'module' => self::MODULE_STAFF_PORTAL,
                 'source' => $repoRoot.DIRECTORY_SEPARATOR.'staff-portal'.DIRECTORY_SEPARATOR.'backend'.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
                 'destination' => self::hostDataRoot().DIRECTORY_SEPARATOR.self::MODULE_STAFF_PORTAL,
@@ -224,6 +254,8 @@ final class StaffStorage
             self::MODULE_CI => $repoRoot.DIRECTORY_SEPARATOR.'uploads',
             self::MODULE_APM => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'apm').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
             self::MODULE_HELPDESK => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'helpdesk'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+            self::MODULE_IT => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'it'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+            self::MODULE_REGISTRY => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'modules'.DIRECTORY_SEPARATOR.'registry'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
             self::MODULE_STAFF_PORTAL => ($appBasePath ?? $repoRoot.DIRECTORY_SEPARATOR.'staff-portal'.DIRECTORY_SEPARATOR.'backend').DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
             default => $repoRoot.DIRECTORY_SEPARATOR.'uploads',
         };

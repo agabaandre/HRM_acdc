@@ -2,17 +2,8 @@
 
 use Staff\Shared\StaffStorage;
 
-// env() here so config:cache bakes host paths from .env (StaffStorage uses getenv, which
-// is empty once configuration is cached).
-$staffPublicRoot = env('STAFF_PORTAL_MODULE_FILES_ROOT');
-if (! is_string($staffPublicRoot) || $staffPublicRoot === '') {
-    $dataRoot = env('STAFF_DATA_ROOT');
-    if (is_string($dataRoot) && $dataRoot !== '') {
-        $staffPublicRoot = rtrim($dataRoot, '/\\').'/staff-portal';
-    } else {
-        $staffPublicRoot = StaffStorage::staffPortalModuleRoot(base_path());
-    }
-}
+// Same host-storage pattern as Helpdesk: {STAFF_DATA_ROOT}/registry via STAFF_REGISTRY_FILES_ROOT.
+$staffPublicRoot = StaffStorage::registryPublicRoot(base_path());
 
 return [
 
