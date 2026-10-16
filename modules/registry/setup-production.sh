@@ -177,10 +177,9 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
         warn "Created backend/.env from example — set DB_* to match production"
     fi
     if [[ -f "$ROOT/backend/.env" ]]; then
-        if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
-            log "Generating Registry API APP_KEY"
-            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force) || true
-        fi
+        # shellcheck source=/dev/null
+        source "${STAFF_ROOT:-$ROOT/../..}/scripts/setup/ensure-app-key.sh"
+        PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT/backend" || warn "Registry API APP_KEY missing"
         if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
             log "Running Registry API database migrations"
             (cd "$ROOT/backend" && "$PHP_BIN" artisan migrate --force --no-interaction) \
@@ -189,32 +188,14 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
     fi
 fi
 
-if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
-    log "Generating Laravel APP_KEY"
-    "$PHP_BIN" artisan key:generate --no-interaction --force
-fi
-# Backend key again after env sync (configure-env may have created an empty APP_KEY=).
-if [[ -f "$ROOT/backend/.env" ]] \
-    && [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]] \
-    && [[ -f "$ROOT/backend/vendor/autoload.php" ]]; then
-    log "Generating Registry API APP_KEY (missing)"
-    (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force)
-fi
+# shellcheck source=/dev/null
+source "${STAFF_ROOT:-$ROOT/../..}/scripts/setup/ensure-app-key.sh"
+PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT" || warn "module APP_KEY missing"
+PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT/backend" || true
 
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
-    "$PHP_BIN" artisan migrate --force --no-interaction
-    STAFF_PORTAL_BACKEND="$(cd "$ROOT/../staff-portal/backend" 2>/dev/null && pwd || true)"
-    if [[ -n "${STAFF_PORTAL_BACKEND:-}" && -f "$STAFF_PORTAL_BACKEND/artisan" ]]; then
-        log "Seeding Staff Portal manage_funding_portfolio permission"
-        (cd "$STAFF_PORTAL_BACKEND" && "$PHP_BIN" artisan migrate --path=database/migrations/2026_10_13_150000_seed_manage_funding_portfolio_permission.php --force --no-interaction) \
-            || warn "staff-portal funding portfolio permission migrate failed — continuing"
-    fi
-    if [[ -f "$ROOT/backend/artisan" && -f "$ROOT/backend/.env" ]]; then
-        log "Seeding Finance grants catalogue"
-        (cd "$ROOT/backend" && "$PHP_BIN" artisan db:seed --class=Database\\Seeders\\FinanceGrantsSeeder --force --no-interaction) \
-            || warn "FinanceGrantsSeeder failed — continuing"
-    fi
+    "$PHP_BIN" artisan migrate --force --no-interaction || warn "module-root migrate skipped/failed"
 else
     log "Skipping migrations (--skip-migrate)"
 fi

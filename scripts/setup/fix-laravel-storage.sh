@@ -2,48 +2,18 @@
 # shellcheck shell=bash
 # Laravel storage dirs, permissions, and public/storage unlink+relink for all apps.
 
-# Generate APP_KEY in dir/.env when missing (no-op if artisan/.env absent).
-# Prefer artisan; if bootstrap fails (e.g. DB not ready), write a key directly.
+# Generate APP_KEY in dir/.env when missing (ensures APP_KEY= line exists first).
 setup_ensure_laravel_app_key() {
   local dir="$1"
-  local envf="$dir/.env"
-  local key=""
-  [[ -d "$dir" && -f "$envf" ]] || return 0
-  if declare -F env_get >/dev/null 2>&1; then
-    key="$(env_get "$envf" APP_KEY 2>/dev/null || true)"
-  else
-    key="$(grep -E '^APP_KEY=' "$envf" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '[:space:]"')"
+  local helper="${ROOT:-}/scripts/setup/ensure-app-key.sh"
+  if [[ ! -f "$helper" ]]; then
+    helper="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ensure-app-key.sh"
   fi
-  if [[ -n "$key" ]]; then
-    return 0
+  # shellcheck source=ensure-app-key.sh
+  source "$helper"
+  if ! ensure_app_key_in_env "$dir"; then
+    setup_warn "could not generate APP_KEY in $dir"
   fi
-  echo "    generating APP_KEY → $dir"
-  rm -f "$dir/bootstrap/cache/config.php" 2>/dev/null || true
-  if [[ -f "$dir/artisan" && -f "$dir/vendor/autoload.php" ]]; then
-    if (cd "$dir" && php artisan key:generate --no-interaction --force) >/dev/null 2>&1; then
-      return 0
-    fi
-  fi
-  # Fallback: write base64 key without booting Laravel (avoids DB bootstrap failures).
-  if command -v php >/dev/null 2>&1; then
-    if php -r '
-      $env = $argv[1];
-      $key = "base64:" . base64_encode(random_bytes(32));
-      $raw = file_get_contents($env);
-      if ($raw === false) { fwrite(STDERR, "read failed\n"); exit(1); }
-      if (preg_match("/^APP_KEY=.*/m", $raw)) {
-        $raw = preg_replace("/^APP_KEY=.*/m", "APP_KEY=" . $key, $raw, 1);
-      } else {
-        $raw .= (str_ends_with($raw, "\n") ? "" : "\n") . "APP_KEY=" . $key . "\n";
-      }
-      if (file_put_contents($env, $raw) === false) { exit(1); }
-      echo $key, "\n";
-    ' "$envf" >/dev/null; then
-      echo "    wrote APP_KEY via fallback → $dir"
-      return 0
-    fi
-  fi
-  setup_warn "could not generate APP_KEY in $dir"
 }
 
 setup_ensure_it_registry_keys_and_perms() {

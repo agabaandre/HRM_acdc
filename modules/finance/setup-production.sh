@@ -176,10 +176,9 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
         warn "Created backend/.env from example — set DB_* to match production"
     fi
     if [[ -f "$ROOT/backend/.env" ]]; then
-        if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
-            log "Generating finance API APP_KEY"
-            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction)
-        fi
+        # shellcheck source=/dev/null
+        source "${STAFF_ROOT:-$ROOT/../..}/scripts/setup/ensure-app-key.sh"
+        PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT/backend" || warn "finance API APP_KEY missing"
         if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
             log "Running finance API database migrations"
             (cd "$ROOT/backend" && "$PHP_BIN" artisan migrate --force --no-interaction) \
@@ -188,10 +187,10 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
     fi
 fi
 
-if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
-    log "Generating Laravel APP_KEY"
-    "$PHP_BIN" artisan key:generate --no-interaction
-fi
+# shellcheck source=/dev/null
+source "${STAFF_ROOT:-$ROOT/../..}/scripts/setup/ensure-app-key.sh"
+PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT" || warn "module APP_KEY missing"
+PHP_BIN="$PHP_BIN" ensure_app_key_in_env "$ROOT/backend" || true
 
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
     log "Running database migrations"
