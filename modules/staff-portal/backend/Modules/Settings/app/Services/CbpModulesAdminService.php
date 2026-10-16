@@ -109,6 +109,42 @@ class CbpModulesAdminService
             'target_resolver' => 'staff_app_token',
             'sort_order' => 40,
         ],
+        [
+            'module_key' => 'it',
+            'system_name' => 'IT',
+            'description' => 'IT services, assets, and operational tooling for Africa CDC staff.',
+            'base_url' => 'it',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-cogs',
+            'permission_code' => '125',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 0,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 45,
+        ],
+        [
+            'module_key' => 'registry',
+            'system_name' => 'Registry',
+            'description' => 'Weekly, current-year, and archived registry documents.',
+            'base_url' => 'registry',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-file-alt',
+            'permission_code' => '126',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 0,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 50,
+        ],
     ];
 
     /** @var list<string> */
@@ -219,6 +255,18 @@ class CbpModulesAdminService
         // Ensure Funding Portfolio manage permission exists on finance/admin groups.
         try {
             (new FundingPortfolioPermissionSeeder)->seed();
+        } catch (\Throwable) {
+            // Permissions table may be unavailable during early bootstrap.
+        }
+
+        try {
+            (new ItModulePermissionSeeder)->seed();
+        } catch (\Throwable) {
+            // Permissions table may be unavailable during early bootstrap.
+        }
+
+        try {
+            (new RegistryModulePermissionSeeder)->seed();
         } catch (\Throwable) {
             // Permissions table may be unavailable during early bootstrap.
         }

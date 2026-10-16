@@ -27,7 +27,7 @@ ENV_PREEXISTED=0
 [[ -f "$ENV_FILE" ]] && ENV_PREEXISTED=1
 [[ -f "$ENV_FILE" ]] || cp "$FINANCE_ROOT/.env.example" "$ENV_FILE"
 
-if [[ "${FINANCE_PRODUCTION_SETUP:-}" == "1" ]]; then
+if [[ "${FINANCE_PRODUCTION_SETUP:-}" == "1" || "${REGISTRY_PRODUCTION_SETUP:-}" == "1" ]]; then
     if [[ "$ENV_PREEXISTED" != "1" ]] \
         || ! dotenv_value_present "$(dotenv_get "$ENV_FILE" APP_ENV 2>/dev/null || true)"; then
         APP_ENV=production
@@ -152,9 +152,13 @@ for key in \
 done
 
 if [[ -z "${SESSION_PATH:-}" ]]; then
-    SESSION_PATH=/staff/finance
+    SESSION_PATH="/staff/$(basename "$FINANCE_ROOT")"
 fi
 dotenv_apply_if_missing "$ENV_FILE" SESSION_PATH "$SESSION_PATH" "$ENV_PREEXISTED"
+if [[ -z "${FINANCE_SSO_PERMISSION_ID:-}" ]]; then
+    FINANCE_SSO_PERMISSION_ID=126
+fi
+dotenv_apply_if_missing "$ENV_FILE" FINANCE_SSO_PERMISSION_ID "$FINANCE_SSO_PERMISSION_ID" "$ENV_PREEXISTED"
 
 if [[ "$(dotenv_get "$ENV_FILE" DB_CONNECTION 2>/dev/null || true)" == "sqlite" ]]; then
     mkdir -p "$FINANCE_ROOT/database" 2>/dev/null || true

@@ -262,6 +262,8 @@ else
   export HELPDESK_PRODUCTION_SETUP=1
   export FINANCE_PRODUCTION_SETUP=1
   export RISK_REGISTER_PRODUCTION_SETUP=1
+  export IT_PRODUCTION_SETUP=1
+  export REGISTRY_PRODUCTION_SETUP=1
 fi
 
 INSTALL_TYPE_DEFAULT=1
@@ -1145,6 +1147,145 @@ else
   setup_warn "risk-register env write failed — fix ownership and re-run"
 fi
 
+# ----- it (Finance-shaped sibling SPA + API; SSO via Staff Portal token) -----
+echo
+echo "==> it"
+IT_SETUP="$ROOT/modules/it/setup.env"
+IT_ENV="$ROOT/modules/it/.env"
+env_ensure_file "$IT_SETUP" "$ROOT/modules/it/setup.env.example" \
+  || setup_warn "it setup.env missing/unwritable"
+env_ensure_file "$IT_ENV" "$ROOT/modules/it/.env.example" \
+  || setup_warn "it .env missing/unwritable"
+prompt_value IT_DB "it DB_DATABASE" "$(env_get "$IT_SETUP" DB_DATABASE)"
+IT_DB="${IT_DB:-it}"
+# Clone still reads FINANCE_* keys — force paths to /it.
+write_it_env() {
+  local f
+  for f in "$IT_SETUP" "$IT_ENV" "$ROOT/modules/it/backend/.env"; do
+    if [[ "$f" == "$ROOT/modules/it/backend/.env" ]]; then
+      [[ -d "$ROOT/modules/it/backend" ]] || continue
+      if [[ ! -f "$f" ]]; then
+        env_ensure_file "$f" "$ROOT/modules/it/backend/.env.example" || continue
+      fi
+    fi
+    apply_app_runtime_to_file "$f" || return 1
+    env_set "$f" APP_URL "$IT_APP_URL" || return 1
+    env_set "$f" BASE_URL "$BASE_URL" || return 1
+    env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
+    env_set "$f" VITE_APP_BASE_PATH "$VITE_IT_BASE_PATH" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_IT_BASE_PATH:-${PUBLIC_PATH}/it/}" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_IT_API_BASE_URL:-${PUBLIC_PATH}/it/backend}" || return 1
+    env_set "$f" SESSION_PATH "$IT_SESSION_PATH" || return 1
+    env_set "$f" FINANCE_SSO_PERMISSION_ID "125" || return 1
+    env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
+    env_set "$f" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" || return 1
+    env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
+    env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" || return 1
+    env_set "$f" DB_DATABASE "$IT_DB" || return 1
+    env_set "$f" APM_DB_DATABASE "${APM_DB_DATABASE:-}" || return 1
+    env_set "$f" APM_DB_HOST "${DB_HOST:-}" || return 1
+    env_set "$f" APM_DB_PORT "${DB_PORT:-3306}" || return 1
+    env_set "$f" APM_DB_USERNAME "${DB_USERNAME:-${DB_USER:-}}" || return 1
+    env_set "$f" APM_DB_PASSWORD "${DB_PASSWORD:-${DB_PASS:-}}" || return 1
+    apply_storage_to_file "$f" || return 1
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
+    apply_redis_to_file "$f" || return 1
+  done
+  local fe_prod="$ROOT/modules/it/frontend/.env.production"
+  local fe_local="$ROOT/modules/it/frontend/.env.production.local"
+  env_ensure_file "$fe_prod" "" || true
+  env_ensure_file "$fe_local" "" || true
+  for f in "$fe_prod" "$fe_local"; do
+    [[ -f "$f" ]] || continue
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_IT_BASE_PATH:-${PUBLIC_PATH}/it/}" || true
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_IT_API_BASE_URL:-${PUBLIC_PATH}/it/backend}" || true
+  done
+}
+if write_it_env; then
+  if [[ -x "$ROOT/modules/it/scripts/configure-env.sh" ]]; then
+    if IT_PRODUCTION_SETUP="${IT_PRODUCTION_SETUP:-0}" \
+      FINANCE_PRODUCTION_SETUP="${FINANCE_PRODUCTION_SETUP:-${IT_PRODUCTION_SETUP:-0}}" \
+      "$ROOT/modules/it/scripts/configure-env.sh"; then
+      echo "    configure-env OK"
+    else
+      setup_warn "it configure-env failed"
+    fi
+  fi
+  write_it_env || setup_warn "it force env rewrite failed"
+  echo "    forced URLs/JWT/Redis on setup.env + .env"
+else
+  setup_warn "it env write failed — fix ownership and re-run"
+fi
+
+# ----- registry (Finance-shaped sibling SPA + API; SSO via Staff Portal token) -----
+echo
+echo "==> registry"
+RG_SETUP="$ROOT/modules/registry/setup.env"
+RG_ENV="$ROOT/modules/registry/.env"
+env_ensure_file "$RG_SETUP" "$ROOT/modules/registry/setup.env.example" \
+  || setup_warn "registry setup.env missing/unwritable"
+env_ensure_file "$RG_ENV" "$ROOT/modules/registry/.env.example" \
+  || setup_warn "registry .env missing/unwritable"
+prompt_value RG_DB "registry DB_DATABASE" "$(env_get "$RG_SETUP" DB_DATABASE)"
+RG_DB="${RG_DB:-registry}"
+write_registry_env() {
+  local f
+  for f in "$RG_SETUP" "$RG_ENV" "$ROOT/modules/registry/backend/.env"; do
+    if [[ "$f" == "$ROOT/modules/registry/backend/.env" ]]; then
+      [[ -d "$ROOT/modules/registry/backend" ]] || continue
+      if [[ ! -f "$f" ]]; then
+        env_ensure_file "$f" "$ROOT/modules/registry/backend/.env.example" || continue
+      fi
+    fi
+    apply_app_runtime_to_file "$f" || return 1
+    env_set "$f" APP_URL "$REGISTRY_APP_URL" || return 1
+    env_set "$f" BASE_URL "$BASE_URL" || return 1
+    env_set "$f" FINANCE_STAFF_PORTAL_URL "$STAFF_PORTAL_SPA_URL" || return 1
+    env_set "$f" VITE_APP_BASE_PATH "$VITE_REGISTRY_BASE_PATH" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_REGISTRY_BASE_PATH:-${PUBLIC_PATH}/registry/}" || return 1
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_REGISTRY_API_BASE_URL:-${PUBLIC_PATH}/registry/backend}" || return 1
+    env_set "$f" SESSION_PATH "$REGISTRY_SESSION_PATH" || return 1
+    env_set "$f" FINANCE_SSO_PERMISSION_ID "126" || return 1
+    env_set "$f" STAFF_API_USERNAME "${STAFF_API_USERNAME:-}" || return 1
+    env_set "$f" STAFF_API_PASSWORD "${STAFF_API_PASSWORD:-}" || return 1
+    env_set "$f" STAFF_API_TOKEN "${STAFF_API_TOKEN:-}" || return 1
+    env_set "$f" STAFF_API_INTERNAL_BASE_URL "$STAFF_API_INTERNAL_BASE_URL" || return 1
+    env_set "$f" DB_DATABASE "$RG_DB" || return 1
+    env_set "$f" APM_DB_DATABASE "${APM_DB_DATABASE:-}" || return 1
+    env_set "$f" APM_DB_HOST "${DB_HOST:-}" || return 1
+    env_set "$f" APM_DB_PORT "${DB_PORT:-3306}" || return 1
+    env_set "$f" APM_DB_USERNAME "${DB_USERNAME:-${DB_USER:-}}" || return 1
+    env_set "$f" APM_DB_PASSWORD "${DB_PASSWORD:-${DB_PASS:-}}" || return 1
+    apply_storage_to_file "$f" || return 1
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || return 1
+    apply_redis_to_file "$f" || return 1
+  done
+  local fe_prod="$ROOT/modules/registry/frontend/.env.production"
+  local fe_local="$ROOT/modules/registry/frontend/.env.production.local"
+  env_ensure_file "$fe_prod" "" || true
+  env_ensure_file "$fe_local" "" || true
+  for f in "$fe_prod" "$fe_local"; do
+    [[ -f "$f" ]] || continue
+    env_set "$f" VITE_STAFF_PORTAL_BASE_PATH "${VITE_REGISTRY_BASE_PATH:-${PUBLIC_PATH}/registry/}" || true
+    env_set "$f" VITE_STAFF_PORTAL_API_BASE_URL "${VITE_REGISTRY_API_BASE_URL:-${PUBLIC_PATH}/registry/backend}" || true
+  done
+}
+if write_registry_env; then
+  if [[ -x "$ROOT/modules/registry/scripts/configure-env.sh" ]]; then
+    if REGISTRY_PRODUCTION_SETUP="${REGISTRY_PRODUCTION_SETUP:-0}" \
+      FINANCE_PRODUCTION_SETUP="${FINANCE_PRODUCTION_SETUP:-${REGISTRY_PRODUCTION_SETUP:-0}}" \
+      "$ROOT/modules/registry/scripts/configure-env.sh"; then
+      echo "    configure-env OK"
+    else
+      setup_warn "registry configure-env failed"
+    fi
+  fi
+  write_registry_env || setup_warn "registry force env rewrite failed"
+  echo "    forced URLs/JWT/Redis on setup.env + .env"
+else
+  setup_warn "registry env write failed — fix ownership and re-run"
+fi
+
 # Writable Laravel dirs + public/storage after .env paths are known.
 setup_fix_laravel_storage
 
@@ -1158,7 +1299,11 @@ if [[ "$SITE_KIND" == "production" ]]; then
     "$ROOT/modules/helpdesk/backend" \
     "$ROOT/modules/finance/backend" \
     "$ROOT/modules/finance" \
-    "$ROOT/modules/risk-register/backend"
+    "$ROOT/modules/risk-register/backend" \
+    "$ROOT/modules/it/backend" \
+    "$ROOT/modules/it" \
+    "$ROOT/modules/registry/backend" \
+    "$ROOT/modules/registry"
   do
     [[ -f "$_cfg_dir/artisan" ]] || continue
     [[ -f "$_cfg_dir/vendor/autoload.php" ]] || continue
@@ -1310,6 +1455,8 @@ setup_module_needs_full_install() {
     finance) setup_paths_changed modules/finance ;;
     helpdesk) setup_paths_changed modules/helpdesk ;;
     risk-register) setup_paths_changed modules/risk-register ;;
+    it) setup_paths_changed modules/it ;;
+    registry) setup_paths_changed modules/registry ;;
     apm) setup_paths_changed modules/apm ;;
     *) return 0 ;;
   esac
@@ -1455,11 +1602,25 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
       echo "==> risk-register: unchanged — migrate only"
       setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
     fi
+    if setup_module_needs_full_install it; then
+      setup_run_module_production it "$ROOT/modules/it" "${IT_DB:-it}"
+    else
+      echo "==> it: unchanged — migrate only"
+      setup_migrate_laravel it "$ROOT/modules/it"
+    fi
+    if setup_module_needs_full_install registry; then
+      setup_run_module_production registry "$ROOT/modules/registry" "${RG_DB:-registry}"
+    else
+      echo "==> registry: unchanged — migrate only"
+      setup_migrate_laravel registry "$ROOT/modules/registry"
+    fi
   else
     (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
     (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
     (cd "$ROOT/modules/helpdesk" && ./setup.sh) || echo "warn: helpdesk setup failed" >&2
     (cd "$ROOT/modules/risk-register" && ./setup.sh) || echo "warn: risk-register setup failed" >&2
+    (cd "$ROOT/modules/it" && ./setup.sh) || echo "warn: it setup failed" >&2
+    (cd "$ROOT/modules/registry" && ./setup.sh) || echo "warn: registry setup failed" >&2
   fi
   if [[ -f "$ROOT/modules/apm/artisan" ]]; then
     if setup_module_needs_full_install apm; then
@@ -1487,6 +1648,8 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
   setup_migrate_laravel finance "$ROOT/modules/finance"
   setup_migrate_laravel helpdesk "$ROOT/modules/helpdesk"
   setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
+  setup_migrate_laravel it "$ROOT/modules/it"
+  setup_migrate_laravel registry "$ROOT/modules/registry"
   setup_migrate_laravel apm "$ROOT/modules/apm"
 
   # Remember HEAD so the next setup only full-installs modules that changed.

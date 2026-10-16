@@ -23,6 +23,8 @@ setup_fix_laravel_storage() {
     "$ROOT/modules/helpdesk/fix-storage-permissions.sh" \
     "$ROOT/modules/finance/fix-storage-permissions.sh" \
     "$ROOT/modules/risk-register/fix-storage-permissions.sh" \
+    "$ROOT/modules/it/fix-storage-permissions.sh" \
+    "$ROOT/modules/registry/fix-storage-permissions.sh" \
     "$ROOT/modules/apm/fix-storage-permissions.sh"
   do
     [[ -f "$app_script" ]] || continue

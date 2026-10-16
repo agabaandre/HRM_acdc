@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Finance — production deploy script (beside running Staff at /staff/finance/).
+# Registry — production deploy script (beside running Staff at /staff/registry/).
 #
 # First time on a server:
 #   cp setup.env.example setup.env
@@ -62,20 +62,20 @@ verify_finance_app_root() {
     if [[ ${#missing[@]} -eq 0 ]]; then
         return 0
     fi
-    die "Finance Laravel app is incomplete at $ROOT (missing: ${missing[*]}).
+    die "Registry Laravel app is incomplete at $ROOT (missing: ${missing[*]}).
 
-Deploy the full finance/ directory from the staff git repository, not just .env or storage/:
-  cd ${STAFF_ROOT:-$ROOT/..}
+Deploy the full modules/registry directory from the staff git repository, not just .env or storage/:
+  cd ${STAFF_ROOT:-$ROOT/../..}
   git pull
-  test -f finance/composer.json && echo OK
+  test -f modules/registry/composer.json && echo OK
 
-If finance/ was created by hand, restore from git (keeps .env):
+If registry/ was created by hand, restore from git (keeps .env):
   cd $ROOT && ./restore-from-git.sh
 
 Or from the staff repo root:
-  cd ${STAFF_ROOT:-$ROOT/..}
-  git fetch origin && git checkout HEAD -- finance/
-  test -f finance/composer.json && echo OK"
+  cd ${STAFF_ROOT:-$ROOT/../..}
+  git fetch origin && git checkout HEAD -- modules/registry
+  test -f modules/registry/composer.json && echo OK"
 }
 
 verify_finance_app_root
@@ -90,6 +90,7 @@ fi
 
 export FINANCE_SETUP_ENV="$SETUP_ENV"
 export FINANCE_PRODUCTION_SETUP=1
+export REGISTRY_PRODUCTION_SETUP=1
 chmod +x "$ROOT/scripts/configure-env.sh" "$ROOT/fix-storage-permissions.sh" "$ROOT/restore-from-git.sh" 2>/dev/null || true
 
 log "Configuring .env from setup.env (production URLs auto-resolved when localhost)"
@@ -231,6 +232,6 @@ fi
 echo ""
 echo "Finance production setup complete."
 echo "  App:     ${APP_URL_VAL:-/staff/finance}"
-echo "  Staff:   ${FINANCE_STAFF_PORTAL_URL:-/staff} (Finance tile: permission 92; portfolio edit: 124)"
+echo "  Staff:   ${FINANCE_STAFF_PORTAL_URL:-/staff} (Registry tile: permission 126)"
 echo ""
 echo "Re-deploy after git pull:  ./setup-production.sh"

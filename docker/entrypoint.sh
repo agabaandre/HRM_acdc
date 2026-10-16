@@ -20,6 +20,8 @@ fix_laravel_writable "${STAFF_ROOT}/modules/finance/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/helpdesk/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/staff-portal/backend"
 fix_laravel_writable "${STAFF_ROOT}/modules/risk-register/backend"
+fix_laravel_writable "${STAFF_ROOT}/modules/it/backend"
+fix_laravel_writable "${STAFF_ROOT}/modules/registry/backend"
 
 # Supervisor worker logs (compose profile workers)
 for _log_root in \
@@ -27,7 +29,9 @@ for _log_root in \
     "${STAFF_ROOT}/modules/finance/backend/storage/logs" \
     "${STAFF_ROOT}/modules/helpdesk/backend/storage/logs" \
     "${STAFF_ROOT}/modules/staff-portal/backend/storage/logs" \
-    "${STAFF_ROOT}/modules/risk-register/backend/storage/logs"
+    "${STAFF_ROOT}/modules/risk-register/backend/storage/logs" \
+    "${STAFF_ROOT}/modules/it/backend/storage/logs" \
+    "${STAFF_ROOT}/modules/registry/backend/storage/logs"
 do
     mkdir -p "${_log_root}" 2>/dev/null || true
     chown www-data:www-data "${_log_root}" 2>/dev/null || true

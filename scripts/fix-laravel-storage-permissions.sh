@@ -36,6 +36,10 @@ DEFAULT_APPS=(
   "modules/helpdesk/backend"
   "modules/staff-portal/backend"
   "modules/risk-register/backend"
+  "modules/it"
+  "modules/it/backend"
+  "modules/registry"
+  "modules/registry/backend"
 )
 
 if [[ $# -gt 0 ]]; then

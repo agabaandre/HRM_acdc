@@ -45,6 +45,10 @@ APPS=(
   modules/helpdesk/backend
   modules/finance/backend
   modules/risk-register/backend
+  modules/it/backend
+  modules/it
+  modules/registry/backend
+  modules/registry
   modules/apm
   modules/finance
 )

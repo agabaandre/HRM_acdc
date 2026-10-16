@@ -23,6 +23,8 @@ tar -C "$ROOT" \
   --exclude='modules/staff-portal/frontend/node_modules' \
   --exclude='modules/finance/frontend/node_modules' \
   --exclude='modules/risk-register/frontend/node_modules' \
+  --exclude='modules/it/frontend/node_modules' \
+  --exclude='modules/registry/frontend/node_modules' \
   --exclude='modules/helpdesk/frontend/node_modules' \
   --exclude='modules/helpdesk/client/node_modules' \
   --exclude='modules/apm/node_modules' \

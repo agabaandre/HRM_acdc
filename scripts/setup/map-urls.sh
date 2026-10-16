@@ -10,6 +10,9 @@ setup_normalize_base() {
     */apm) b="${b%/apm}" ;;
     */finance) b="${b%/finance}" ;;
     */helpdesk) b="${b%/helpdesk}" ;;
+    */risk-register) b="${b%/risk-register}" ;;
+    */registry) b="${b%/registry}" ;;
+    */it) b="${b%/it}" ;;
   esac
   b="${b%/}"
   # Host-only → default web-folder name (basename of repo, else staff).
@@ -51,6 +54,8 @@ setup_map_urls() {
   APM_APP_URL="${base}/apm"
   FINANCE_APP_URL="${base}/finance"
   RISK_REGISTER_APP_URL="${base}/risk-register"
+  IT_APP_URL="${base}/it"
+  REGISTRY_APP_URL="${base}/registry"
   HELPDESK_APP_URL="${base}/helpdesk/backend"
   HELPDESK_FRONTEND_URL="${base}/helpdesk"
   VITE_STAFF_PORTAL_API_BASE_URL="${PUBLIC_PATH}/backend"
@@ -59,7 +64,13 @@ setup_map_urls() {
   VITE_FINANCE_API_BASE_URL="${PUBLIC_PATH}/finance/backend"
   VITE_RISK_REGISTER_BASE_PATH="${PUBLIC_PATH}/risk-register/"
   VITE_RISK_REGISTER_API_BASE_URL="${PUBLIC_PATH}/risk-register/backend"
+  VITE_IT_BASE_PATH="${PUBLIC_PATH}/it/"
+  VITE_IT_API_BASE_URL="${PUBLIC_PATH}/it/backend"
+  VITE_REGISTRY_BASE_PATH="${PUBLIC_PATH}/registry/"
+  VITE_REGISTRY_API_BASE_URL="${PUBLIC_PATH}/registry/backend"
   FINANCE_SESSION_PATH="${PUBLIC_PATH}/finance"
+  IT_SESSION_PATH="${PUBLIC_PATH}/it"
+  REGISTRY_SESSION_PATH="${PUBLIC_PATH}/registry"
 
   if [[ "$deploy" == "docker" ]]; then
     SHARE_INTERNAL_BASE="http://web${PUBLIC_PATH}/backend"

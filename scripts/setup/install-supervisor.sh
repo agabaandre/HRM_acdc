@@ -409,6 +409,8 @@ print_cbp_status() {
         *-finance-*) app_rel="modules/finance/backend" ;;
         *-staff-portal-*) app_rel="modules/staff-portal/backend" ;;
         *-risk-register-*) app_rel="modules/risk-register/backend" ;;
+        *-it-*) app_rel="modules/it/backend" ;;
+        *-registry-*) app_rel="modules/registry/backend" ;;
         *-apm-*) app_rel="modules/apm" ;;
         *) continue ;;
       esac
@@ -454,6 +456,8 @@ write_app_programs "staff-portal" "modules/staff-portal/backend" "1"
 write_app_programs "helpdesk" "modules/helpdesk/backend" "1"
 write_app_programs "finance" "modules/finance/backend" "1"
 write_app_programs "risk-register" "modules/risk-register/backend" "1"
+write_app_programs "it" "modules/it/backend" "1"
+write_app_programs "registry" "modules/registry/backend" "1"
 write_app_programs "apm" "modules/apm" "2"
 
 if [[ "$DRY_RUN" == "1" ]]; then
