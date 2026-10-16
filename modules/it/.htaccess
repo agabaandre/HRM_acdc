@@ -8,22 +8,29 @@
     # Laravel API / SSO under …/it/backend/*
     RewriteRule ^backend(/|$) - [L]
 
+    # Compat: old /it/sso/* → /it/backend/sso/* (portal now uses /backend)
     RewriteRule ^sso/(.*)$ /staff/it/backend/sso/$1 [R=307,L,QSA]
     RewriteRule ^api/(.*)$ /staff/it/backend/api/$1 [R=307,L,QSA]
 
+    # Real files at module root (README, etc.) — not directories
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
+    # Vite hashed assets — prefer dist-user (local), then dist-build.
+    # Require the target file exists so a missing build cannot loop (AH00124).
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
     RewriteCond %{DOCUMENT_ROOT}/staff/modules/it/frontend/dist-user/$1 -f
     RewriteRule ^(.*)$ frontend/dist-user/$1 [L]
     RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/it/frontend/dist-build/$1 -f
     RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
 
+    # SPA fallback (same pattern as finance/helpdesk)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{DOCUMENT_ROOT}/staff/modules/it/frontend/dist-user/index.html -f
     RewriteRule ^ frontend/dist-user/index.html [L]
     RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/it/frontend/dist-build/index.html -f
     RewriteRule ^ frontend/dist-build/index.html [L]
 </IfModule>
 
