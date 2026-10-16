@@ -53,10 +53,15 @@ APPS=(
   modules/finance
 )
 
+# shellcheck source=ensure-writable-app-dirs.sh
+source "$STAFF_ROOT/scripts/setup/ensure-writable-app-dirs.sh"
+
 failed=0
 for rel in "${APPS[@]}"; do
   dir="$STAFF_ROOT/$rel"
   [[ -f "$dir/composer.json" ]] || continue
+  # Always ensure vendor is writable — partial/root-owned vendor breaks composer update.
+  ensure_writable_app_dirs "$dir" || true
   if [[ -f "$dir/vendor/autoload.php" ]]; then
     echo "OK  $rel (vendor present)"
     continue
@@ -70,8 +75,16 @@ for rel in "${APPS[@]}"; do
       failed=1
     fi
   else
-    echo "FAIL $rel (composer install exited non-zero)" >&2
-    failed=1
+    echo "    repairing ownership and retrying $rel"
+    ensure_writable_app_dirs "$dir" --gui || true
+    if (cd "$dir" && staff_composer install --no-dev --optimize-autoloader --no-interaction) \
+      && [[ -f "$dir/vendor/autoload.php" ]]; then
+      echo "OK  $rel (after ownership repair)"
+    else
+      echo "FAIL $rel (composer install exited non-zero)" >&2
+      echo "     run: sudo chown -R \$(whoami):www-data $dir/vendor" >&2
+      failed=1
+    fi
   fi
 done
 

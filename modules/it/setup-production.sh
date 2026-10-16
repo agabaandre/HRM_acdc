@@ -122,6 +122,15 @@ log "Preparing storage permissions (fix root-owned files from prior sudo runs)"
 chmod +x "$ROOT/fix-storage-permissions.sh"
 "$ROOT/fix-storage-permissions.sh" || warn "Run: sudo chown -R \$(whoami):${FINANCE_GROUP} storage bootstrap/cache"
 
+# Composer cannot rewrite vendor/ if a prior sudo install left it root-owned.
+# shellcheck source=/dev/null
+source "${STAFF_ROOT:-$ROOT/../..}/scripts/setup/ensure-writable-app-dirs.sh"
+ENSURE_APP_OWNER="$(whoami)"
+ENSURE_APP_GROUP="${FINANCE_GROUP}"
+export ENSURE_APP_OWNER ENSURE_APP_GROUP
+ensure_writable_app_dirs "$ROOT" || true
+ensure_writable_app_dirs "$ROOT/backend" || true
+
 jwt="$(dotenv_get "$ENV_FILE" JWT_SECRET 2>/dev/null || true)"
 if [[ -z "$jwt" || "$jwt" == change-me* ]]; then
     if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
@@ -142,16 +151,24 @@ if [[ -f "${STAFF_ROOT:-}/scripts/setup/secrets.sh" ]]; then
 fi
 
 log "Installing PHP dependencies (production)"
-[[ -f "$ROOT/composer.json" ]] || die "composer.json missing in $ROOT — deploy full finance/ from git before running setup."
-composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT"
+[[ -f "$ROOT/composer.json" ]] || die "composer.json missing in $ROOT — deploy full modules/it from git before running setup."
+ensure_writable_app_dirs "$ROOT" || true
+composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT" \
+  || { ensure_writable_app_dirs "$ROOT" --gui || true; composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT"; }
 
-# Supervisor + SSO use modules/finance/backend (separate Laravel app).
+# Supervisor + SSO use modules/it/backend (separate Laravel app).
 if [[ -f "$ROOT/backend/composer.json" ]]; then
-    log "Installing finance API backend PHP dependencies (backend/)"
+    log "Installing IT API backend PHP dependencies (backend/)"
     if [[ "$(id -u)" -eq 0 ]]; then
         export COMPOSER_ALLOW_SUPERUSER=1
     fi
-    composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT/backend"
+    ensure_writable_app_dirs "$ROOT/backend" || true
+    if ! composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT/backend"; then
+        warn "composer install failed — repairing vendor ownership and retrying"
+        ensure_writable_app_dirs "$ROOT/backend" --gui || true
+        composer install --no-dev --optimize-autoloader --no-interaction --working-dir="$ROOT/backend" \
+          || die "backend composer install failed — run: sudo chown -R \$(whoami):${FINANCE_GROUP} $ROOT/backend/vendor"
+    fi
     if [[ ! -f "$ROOT/backend/vendor/autoload.php" ]]; then
         die "backend/vendor/autoload.php missing after composer install — fix Composer, then re-run."
     fi
@@ -162,12 +179,12 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
     if [[ -f "$ROOT/backend/.env" ]]; then
         if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
             log "Generating IT API APP_KEY"
-            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force)
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force) || true
         fi
         if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
-            log "Running finance API database migrations"
+            log "Running IT API database migrations"
             (cd "$ROOT/backend" && "$PHP_BIN" artisan migrate --force --no-interaction) \
-                || warn "finance/backend migrate failed — check backend/.env DB_*"
+                || warn "it/backend migrate failed — check backend/.env DB_*"
         fi
     fi
 fi
