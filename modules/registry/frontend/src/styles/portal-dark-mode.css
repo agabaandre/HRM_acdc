@@ -1,0 +1,287 @@
+/**
+ * Staff Portal dark mode — loaded last so it beats hardcoded light hex
+ * in portal-shell / portal-fields / portal-datatable.
+ */
+
+html.helpdesk-theme-dark {
+  color-scheme: dark;
+  --portal-dark-page: #0f172a;
+  --portal-dark-surface: #1e293b;
+  --portal-dark-elevated: #243044;
+  --portal-dark-field: #162033;
+  --portal-dark-border: rgba(148, 163, 184, 0.35);
+  --portal-dark-text: #e2e8f0;
+  --portal-dark-text-strong: #f8fafc;
+  --portal-dark-muted: #94a3b8;
+  --portal-label-bg: var(--portal-dark-surface);
+  --portal-label-color: #cbd5e1;
+  --portal-label-focus: #e2e8f0;
+  --portal-field-border: rgba(148, 163, 184, 0.45);
+  --portal-field-text: var(--portal-dark-text);
+  --portal-placeholder: #94a3b8;
+}
+
+/* ── Cards / filter panels / sheets ─────────────────────────────── */
+html.helpdesk-theme-dark .v-application .v-card,
+html.helpdesk-theme-dark .cbp-page-content .v-card,
+html.helpdesk-theme-dark .v-application .v-sheet:not(.v-btn):not(.v-chip):not(.v-toolbar):not(.v-alert):not(.perf-kpi),
+html.helpdesk-theme-dark .cbp-page-content .v-sheet:not(.v-btn):not(.v-chip):not(.v-toolbar):not(.v-alert):not(.perf-kpi),
+html.helpdesk-theme-dark .v-application .v-card--variant-outlined,
+html.helpdesk-theme-dark .cbp-page-content .v-card--variant-outlined,
+html.helpdesk-theme-dark .cbp-page-content .portal-staff-filters,
+html.helpdesk-theme-dark .cbp-page-content .portal-staff-filters.v-card,
+html.helpdesk-theme-dark .cbp-page-content .portal-staff-filters.v-sheet,
+html.helpdesk-theme-dark .portal-staff-filters,
+html.helpdesk-theme-dark .portal-data-table-card {
+  background-color: var(--portal-dark-surface) !important;
+  background: var(--portal-dark-surface) !important;
+  color: var(--portal-dark-text) !important;
+  border-color: var(--portal-dark-border) !important;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-card .v-card-title,
+html.helpdesk-theme-dark .cbp-page-content .v-card .v-card-subtitle,
+html.helpdesk-theme-dark .cbp-page-content .v-card .v-card-text {
+  color: var(--portal-dark-text) !important;
+}
+
+html.helpdesk-theme-dark .portal-staff-filters__hint,
+html.helpdesk-theme-dark .text-medium-emphasis,
+html.helpdesk-theme-dark .text-caption {
+  color: var(--portal-dark-muted) !important;
+}
+
+/* ── Form controls ──────────────────────────────────────────────── */
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined,
+html.helpdesk-theme-dark .portal-staff-filters .v-field,
+html.helpdesk-theme-dark .portal-staff-filters .v-field__overlay,
+html.helpdesk-theme-dark .portal-staff-filters .v-field__field,
+html.helpdesk-theme-dark .cbp-page-content .v-field,
+html.helpdesk-theme-dark .cbp-page-content .v-field__field {
+  background-color: var(--portal-dark-field) !important;
+  background: var(--portal-dark-field) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined .v-field__overlay {
+  background-color: transparent !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field__input,
+html.helpdesk-theme-dark .cbp-page-content .v-select__selection-text,
+html.helpdesk-theme-dark .cbp-page-content .v-autocomplete__selection-text,
+html.helpdesk-theme-dark .cbp-page-content .v-field__input textarea,
+html.helpdesk-theme-dark .portal-staff-filters .v-field__input,
+html.helpdesk-theme-dark .portal-staff-filters .v-select__selection-text {
+  color: var(--portal-dark-text) !important;
+  -webkit-text-fill-color: var(--portal-dark-text) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field__input::placeholder,
+html.helpdesk-theme-dark .portal-staff-filters .v-field__input::placeholder,
+html.helpdesk-theme-dark .cbp-page-content input::placeholder,
+html.helpdesk-theme-dark .cbp-page-content textarea::placeholder {
+  color: var(--portal-dark-muted) !important;
+  opacity: 1 !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined .v-field__outline,
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined:hover .v-field__outline {
+  color: var(--portal-field-border) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field-label--floating,
+html.helpdesk-theme-dark .cbp-page-content .v-label.v-field-label--floating,
+html.helpdesk-theme-dark .portal-staff-filters .v-field-label--floating,
+html.helpdesk-theme-dark .portal-staff-filters .v-label.v-field-label--floating,
+html.helpdesk-theme-dark .cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider)
+  .v-field--variant-outlined
+  .v-label.v-field-label--floating,
+html.helpdesk-theme-dark .cbp-page-content .v-input:not(.v-checkbox):not(.v-switch):not(.v-radio-group):not(.v-slider)
+  .v-field--variant-outlined
+  .v-field-label.v-field-label--floating {
+  background-color: var(--portal-dark-surface) !important;
+  background: var(--portal-dark-surface) !important;
+  color: var(--portal-label-color) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined.v-field--focused .v-label.v-field-label--floating,
+html.helpdesk-theme-dark .cbp-page-content .v-field--variant-outlined.v-field--focused .v-field-label.v-field-label--floating {
+  color: var(--portal-label-focus) !important;
+  background-color: var(--portal-dark-surface) !important;
+  background: var(--portal-dark-surface) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-messages,
+html.helpdesk-theme-dark .cbp-page-content .v-messages__message,
+html.helpdesk-theme-dark .cbp-page-content .v-input__details {
+  color: var(--portal-dark-muted) !important;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+html.helpdesk-theme-dark .portal-data-table-card .v-table,
+html.helpdesk-theme-dark .cbp-page-content .v-table,
+html.helpdesk-theme-dark .cbp-page-content .v-table > .v-table__wrapper {
+  background: transparent !important;
+  color: var(--portal-dark-text) !important;
+}
+
+html.helpdesk-theme-dark .portal-data-table-card .v-table > .v-table__wrapper > table > thead > tr > th,
+html.helpdesk-theme-dark .cbp-page-content .v-table > .v-table__wrapper > table > thead > tr > th,
+html.helpdesk-theme-dark .cbp-page-content table thead th,
+html.helpdesk-theme-dark .cbp-page-content thead th {
+  background: var(--portal-dark-elevated) !important;
+  color: var(--portal-dark-text-strong) !important;
+  border-bottom-color: var(--portal-dark-border) !important;
+}
+
+html.helpdesk-theme-dark .portal-data-table-card .v-table > .v-table__wrapper > table > tbody > tr > td,
+html.helpdesk-theme-dark .cbp-page-content .v-table > .v-table__wrapper > table > tbody > tr > td,
+html.helpdesk-theme-dark .cbp-page-content table tbody td,
+html.helpdesk-theme-dark .cbp-page-content tbody td {
+  color: var(--portal-dark-text) !important;
+  border-bottom-color: var(--portal-dark-border) !important;
+  background: transparent !important;
+}
+
+html.helpdesk-theme-dark .portal-data-table-card .v-table > .v-table__wrapper > table > tbody > tr:hover > td,
+html.helpdesk-theme-dark .cbp-page-content .v-table > .v-table__wrapper > table > tbody > tr:hover > td {
+  background: rgba(74, 222, 128, 0.08) !important;
+}
+
+html.helpdesk-theme-dark .portal-dt-row-num,
+html.helpdesk-theme-dark .portal-table-toolbar__ellipsis,
+html.helpdesk-theme-dark .portal-table-toolbar__total {
+  color: var(--portal-dark-muted) !important;
+}
+
+html.helpdesk-theme-dark .portal-table-toolbar__total strong {
+  color: var(--portal-dark-text-strong) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-btn--variant-outlined,
+html.helpdesk-theme-dark .cbp-page-content .v-btn--variant-text:not(.text-error):not(.text-success):not(.text-warning):not(.text-primary) {
+  color: var(--portal-dark-text) !important;
+}
+
+html.helpdesk-theme-dark .cbp-page-content .v-btn--variant-outlined {
+  border-color: var(--portal-dark-border) !important;
+}
+
+html.helpdesk-theme-dark .users-admin-table__overlay {
+  color: var(--portal-dark-text) !important;
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: var(--portal-dark-border) !important;
+}
+
+/* ── Leave apply / upload ───────────────────────────────────────── */
+html.helpdesk-theme-dark .leave-apply__section-title,
+html.helpdesk-theme-dark .leave-upload__label,
+html.helpdesk-theme-dark .leave-upload__title,
+html.helpdesk-theme-dark .leave-upload__file-name {
+  color: var(--portal-dark-text-strong) !important;
+}
+
+html.helpdesk-theme-dark .leave-upload__hint,
+html.helpdesk-theme-dark .leave-upload__file-size {
+  color: var(--portal-dark-muted) !important;
+}
+
+html.helpdesk-theme-dark .leave-upload {
+  background:
+    linear-gradient(180deg, rgba(22, 32, 51, 0.95) 0%, var(--portal-dark-field) 70%),
+    radial-gradient(circle at top right, rgba(74, 222, 128, 0.12), transparent 45%) !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .leave-upload--filled {
+  background: var(--portal-dark-field) !important;
+  border-color: var(--portal-dark-border) !important;
+}
+
+html.helpdesk-theme-dark .leave-upload--required:not(.leave-upload--filled) {
+  background:
+    linear-gradient(180deg, rgba(120, 53, 15, 0.35) 0%, var(--portal-dark-field) 75%) !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+}
+
+/* ── Menus / overlays ───────────────────────────────────────────── */
+html.helpdesk-theme-dark .v-overlay__content > .v-list,
+html.helpdesk-theme-dark .v-menu > .v-overlay__content,
+html.helpdesk-theme-dark .v-select__content,
+html.helpdesk-theme-dark .v-autocomplete__content,
+html.helpdesk-theme-dark .v-date-picker {
+  background: var(--portal-dark-elevated) !important;
+  color: var(--portal-dark-text) !important;
+}
+
+/* ── Nested dashboard / performance cards ───────────────────────── */
+html.helpdesk-theme-dark .perf-window-row,
+html.helpdesk-theme-dark .perf-kpi--muted,
+html.helpdesk-theme-dark .cbp-page-content .v-sheet.perf-kpi.perf-kpi--muted,
+html.helpdesk-theme-dark .perf-form-card,
+html.helpdesk-theme-dark .perf-trail-card,
+html.helpdesk-theme-dark .perf-trail-card__header,
+html.helpdesk-theme-dark .perf-trail-item,
+html.helpdesk-theme-dark .dash-kpi,
+html.helpdesk-theme-dark .payroll-panel,
+html.helpdesk-theme-dark .leave-plan__row,
+html.helpdesk-theme-dark .settings-card,
+html.helpdesk-theme-dark .permissions-panel {
+  background: var(--portal-dark-elevated) !important;
+  background-color: var(--portal-dark-elevated) !important;
+  color: var(--portal-dark-text) !important;
+  border-color: var(--portal-dark-border) !important;
+  --perf-kpi-bg: var(--portal-dark-elevated) !important;
+}
+
+html.helpdesk-theme-dark .perf-window-row .font-weight-medium,
+html.helpdesk-theme-dark .perf-trail-item .font-weight-medium,
+html.helpdesk-theme-dark .perf-trail-card__title,
+html.helpdesk-theme-dark .payroll-panel__title,
+html.helpdesk-theme-dark .payroll-kpi__value {
+  color: var(--portal-dark-text-strong) !important;
+}
+
+html.helpdesk-theme-dark .perf-window-row .text-medium-emphasis,
+html.helpdesk-theme-dark .perf-trail-item .text-medium-emphasis,
+html.helpdesk-theme-dark .perf-trail-item__comment,
+html.helpdesk-theme-dark .payroll-kpi__label,
+html.helpdesk-theme-dark .payroll-kpi__hint,
+html.helpdesk-theme-dark .payroll-panel__lede {
+  color: var(--portal-dark-muted) !important;
+}
+
+html.helpdesk-theme-dark .perf-kpi--muted .perf-kpi__label,
+html.helpdesk-theme-dark .perf-kpi--muted .perf-kpi__icon {
+  color: var(--portal-dark-muted) !important;
+}
+
+html.helpdesk-theme-dark .perf-kpi--muted .perf-kpi__value {
+  color: var(--portal-dark-text-strong) !important;
+}
+
+html.helpdesk-theme-dark .perf-trail-item.is-pending {
+  background: rgba(74, 222, 128, 0.1) !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
+html.helpdesk-theme-dark .perf-label {
+  color: var(--portal-dark-muted) !important;
+}
+
+html.helpdesk-theme-dark .perf-staff-details__table th,
+html.helpdesk-theme-dark .perf-staff-details__table td {
+  color: var(--portal-dark-text) !important;
+  border-bottom-color: var(--portal-dark-border) !important;
+}
+
+html.helpdesk-theme-dark .perf-trail-check .v-label,
+html.helpdesk-theme-dark .perf-export-btn {
+  color: var(--portal-dark-text) !important;
+}
+
+html.helpdesk-theme-dark .perf-export-btn {
+  background: var(--portal-dark-elevated) !important;
+}

@@ -1,0 +1,4 @@
+# Serve Africa map GeoJSON as a static file.
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>

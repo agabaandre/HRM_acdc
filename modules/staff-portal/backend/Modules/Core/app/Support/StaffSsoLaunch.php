@@ -112,6 +112,9 @@ final class StaffSsoLaunch
             if ($seg === 'it') {
                 return $legacyBase.'/it/backend/sso/accept';
             }
+            if ($seg === 'registry') {
+                return $legacyBase.'/registry/backend/sso/accept';
+            }
             if ($seg === 'helpdesk') {
                 return $legacyBase.'/helpdesk/backend/sso/accept';
             }

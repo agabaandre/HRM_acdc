@@ -1,0 +1,30 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Laravel API / SSO under …/registry/backend/*
+    RewriteRule ^backend(/|$) - [L]
+
+    RewriteRule ^sso/(.*)$ /staff/registry/backend/sso/$1 [R=307,L,QSA]
+    RewriteRule ^api/(.*)$ /staff/registry/backend/api/$1 [R=307,L,QSA]
+
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/registry/frontend/dist-user/$1 -f
+    RewriteRule ^(.*)$ frontend/dist-user/$1 [L]
+    RewriteCond %{REQUEST_URI} (\.\w+$) [NC]
+    RewriteRule ^(.*)$ frontend/dist-build/$1 [L]
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{DOCUMENT_ROOT}/staff/modules/registry/frontend/dist-user/index.html -f
+    RewriteRule ^ frontend/dist-user/index.html [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ frontend/dist-build/index.html [L]
+</IfModule>
+
+ServerSignature Off

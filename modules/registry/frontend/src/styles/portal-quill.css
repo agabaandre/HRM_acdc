@@ -1,0 +1,25 @@
+/* Quill snow theme + Vuetify-safe toolbar/editor sizing (global, not scoped). */
+.portal-rich-field .ql-container {
+  height: auto !important;
+  font-family: inherit;
+}
+
+.portal-rich-field .ql-editor {
+  min-height: var(--portal-rich-editor-min, 104px);
+  height: auto;
+}
+
+.portal-rich-field .ql-toolbar.ql-snow button,
+.portal-rich-field .ql-toolbar.ql-snow .ql-picker-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+}
+
+.portal-rich-field .ql-toolbar.ql-snow button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
