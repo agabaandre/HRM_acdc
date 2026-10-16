@@ -34,14 +34,15 @@ composer install --no-interaction
 # shellcheck source=/dev/null
 source "$ROOT/scripts/lib/dotenv.sh"
 if [[ -z "$(dotenv_get .env APP_KEY 2>/dev/null || true)" ]]; then
-  php artisan key:generate --no-interaction
+  php artisan key:generate --no-interaction --force \
+    || php -r '$e=".env";$k="base64:".base64_encode(random_bytes(32));$r=file_get_contents($e);$r=preg_replace("/^APP_KEY=.*/m","APP_KEY=".$k,$r,1);file_put_contents($e,$r);'
 fi
-php artisan migrate --no-interaction --force
+php artisan migrate --no-interaction --force || true
 ./fix-storage-permissions.sh || echo "Warning: run ./fix-storage-permissions.sh with sudo if Apache cannot write sessions/logs."
 
-# Vue/API app used by /staff/finance/backend (SSO + Supervisor workers).
+# Vue/API app used by /staff/it/backend (SSO + Supervisor workers).
 if [[ -f "$ROOT/backend/composer.json" ]]; then
-  echo "==> Finance API backend (modules/finance/backend)"
+  echo "==> IT API backend (modules/it/backend)"
   if [[ "$(id -u)" -eq 0 ]]; then
     export COMPOSER_ALLOW_SUPERUSER=1
   fi
@@ -52,10 +53,11 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
   fi
   if [[ -f "$ROOT/backend/.env" ]]; then
     if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
-      (cd "$ROOT/backend" && php artisan key:generate --no-interaction)
+      (cd "$ROOT/backend" && php artisan key:generate --no-interaction --force) \
+        || php -r '$e=$argv[1];$k="base64:".base64_encode(random_bytes(32));$r=file_get_contents($e);$r=preg_replace("/^APP_KEY=.*/m","APP_KEY=".$k,$r,1);file_put_contents($e,$r);' "$ROOT/backend/.env"
     fi
     (cd "$ROOT/backend" && php artisan migrate --no-interaction --force) \
-      || echo "Warning: finance/backend migrate failed — continuing" >&2
+      || echo "Warning: it/backend migrate failed — continuing" >&2
   else
     echo "Warning: missing backend/.env — copy from backend/.env.example before Supervisor workers will start" >&2
   fi

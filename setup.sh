@@ -273,12 +273,15 @@ if [[ -f "$SETUP_STATE_FILE" ]]; then
   INSTALL_TYPE_DEFAULT=2
 fi
 prompt_choice INSTALL_TYPE "Install type" "1) New installation  2) Existing installation" "$INSTALL_TYPE_DEFAULT"
-# New install may prompt for sudo when fixing perms; existing installs never block on a password.
+# New install may prompt for sudo when fixing perms. Existing installs also allow
+# elevation when root-owned storage is detected (macOS GUI admin / interactive sudo).
 if [[ "${INSTALL_TYPE}" == "1" ]]; then
   export ALLOW_INTERACTIVE_SUDO=1
 else
   export ALLOW_INTERACTIVE_SUDO=0
 fi
+# Always force ownership repair pass during setup (script no-ops when already OK).
+export FORCE_CHOWN=1
 PREV_DEPLOY_MODE=""
 if [[ -f "$ROOT/.env" ]]; then
   PREV_DEPLOY_MODE="$(env_get "$ROOT/.env" DEPLOY_MODE)"
@@ -1214,6 +1217,8 @@ if write_it_env; then
     fi
   fi
   write_it_env || setup_warn "it force env rewrite failed"
+  setup_ensure_laravel_app_key "$ROOT/modules/it"
+  setup_ensure_laravel_app_key "$ROOT/modules/it/backend"
   echo "    forced URLs/JWT/Redis on setup.env + .env"
 else
   setup_warn "it env write failed — fix ownership and re-run"
@@ -1285,6 +1290,8 @@ if write_registry_env; then
     fi
   fi
   write_registry_env || setup_warn "registry force env rewrite failed"
+  setup_ensure_laravel_app_key "$ROOT/modules/registry"
+  setup_ensure_laravel_app_key "$ROOT/modules/registry/backend"
   echo "    forced URLs/JWT/Redis on setup.env + .env"
 else
   setup_warn "registry env write failed — fix ownership and re-run"
@@ -1292,6 +1299,8 @@ fi
 
 # Writable Laravel dirs + public/storage after .env paths are known.
 setup_fix_laravel_storage
+# Keys may still be empty when vendor was not installed yet — retry after storage fix.
+setup_ensure_it_registry_keys_and_perms
 
 # Drop stale config cache so APP_DEBUG=false takes effect immediately (Ignition).
 if [[ "$SITE_KIND" == "production" ]]; then
@@ -1613,12 +1622,16 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
       echo "==> it: unchanged — migrate only"
       setup_migrate_laravel it "$ROOT/modules/it"
     fi
+    setup_ensure_laravel_app_key "$ROOT/modules/it"
+    setup_ensure_laravel_app_key "$ROOT/modules/it/backend"
     if setup_module_needs_full_install registry; then
       setup_run_module_production registry "$ROOT/modules/registry" "${RG_DB:-registry}"
     else
       echo "==> registry: unchanged — migrate only"
       setup_migrate_laravel registry "$ROOT/modules/registry"
     fi
+    setup_ensure_laravel_app_key "$ROOT/modules/registry"
+    setup_ensure_laravel_app_key "$ROOT/modules/registry/backend"
   else
     (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
     (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
@@ -1626,6 +1639,7 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
     (cd "$ROOT/modules/risk-register" && ./setup.sh) || echo "warn: risk-register setup failed" >&2
     (cd "$ROOT/modules/it" && ./setup.sh) || echo "warn: it setup failed" >&2
     (cd "$ROOT/modules/registry" && ./setup.sh) || echo "warn: registry setup failed" >&2
+    setup_ensure_it_registry_keys_and_perms
   fi
   if [[ -f "$ROOT/modules/apm/artisan" ]]; then
     if setup_module_needs_full_install apm; then
@@ -1666,6 +1680,8 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
 
   # Installers may recreate dirs as root — fix perms and relink again.
   setup_fix_laravel_storage
+  # Vendor exists after installers — ensure IT/Registry APP_KEYs were generated.
+  setup_ensure_it_registry_keys_and_perms
 fi
 
 # ----- Supervisor (queue / scheduler) -----

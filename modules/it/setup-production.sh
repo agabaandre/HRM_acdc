@@ -161,8 +161,8 @@ if [[ -f "$ROOT/backend/composer.json" ]]; then
     fi
     if [[ -f "$ROOT/backend/.env" ]]; then
         if [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]]; then
-            log "Generating finance API APP_KEY"
-            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction)
+            log "Generating IT API APP_KEY"
+            (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force)
         fi
         if [[ "$SKIP_MIGRATE" -eq 0 ]]; then
             log "Running finance API database migrations"
@@ -174,7 +174,14 @@ fi
 
 if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" ]]; then
     log "Generating Laravel APP_KEY"
-    "$PHP_BIN" artisan key:generate --no-interaction
+    "$PHP_BIN" artisan key:generate --no-interaction --force
+fi
+# Backend key again after env sync (configure-env may have created an empty APP_KEY=).
+if [[ -f "$ROOT/backend/.env" ]] \
+    && [[ -z "$(dotenv_get "$ROOT/backend/.env" APP_KEY 2>/dev/null || true)" ]] \
+    && [[ -f "$ROOT/backend/vendor/autoload.php" ]]; then
+    log "Generating IT API APP_KEY (missing)"
+    (cd "$ROOT/backend" && "$PHP_BIN" artisan key:generate --no-interaction --force)
 fi
 
 if [[ "$SKIP_MIGRATE" -eq 0 ]]; then

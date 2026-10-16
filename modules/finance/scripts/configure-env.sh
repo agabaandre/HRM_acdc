@@ -219,10 +219,35 @@ if [[ -f "$BACKEND_ENV" ]]; then
     fi
 fi
 
-if [[ -z "$(dotenv_get "$ENV_FILE" APP_KEY 2>/dev/null || true)" \
-    && -f "$FINANCE_ROOT/vendor/autoload.php" ]]; then
-    (cd "$FINANCE_ROOT" && php artisan key:generate --no-interaction)
-fi
+# Generate APP_KEY when missing (module root and/or backend API).
+ensure_app_key() {
+    local dir="$1" env_file="$2"
+    [[ -f "$env_file" ]] || return 0
+    if [[ -n "$(dotenv_get "$env_file" APP_KEY 2>/dev/null || true)" ]]; then
+        return 0
+    fi
+    echo "Generating APP_KEY in $dir"
+    rm -f "$dir/bootstrap/cache/config.php" 2>/dev/null || true
+    if [[ -f "$dir/artisan" && -f "$dir/vendor/autoload.php" ]] \
+        && (cd "$dir" && php artisan key:generate --no-interaction --force) >/dev/null 2>&1; then
+        return 0
+    fi
+    # Fallback when artisan cannot boot (DB not ready, missing vendor, …).
+    php -r '
+      $env = $argv[1];
+      $key = "base64:" . base64_encode(random_bytes(32));
+      $raw = file_get_contents($env);
+      if ($raw === false) { exit(1); }
+      if (preg_match("/^APP_KEY=.*/m", $raw)) {
+        $raw = preg_replace("/^APP_KEY=.*/m", "APP_KEY=" . $key, $raw, 1);
+      } else {
+        $raw .= (str_ends_with($raw, "\n") ? "" : "\n") . "APP_KEY=" . $key . "\n";
+      }
+      exit(file_put_contents($env, $raw) === false ? 1 : 0);
+    ' "$env_file" || echo "Warning: could not write APP_KEY in $env_file" >&2
+}
+ensure_app_key "$FINANCE_ROOT" "$ENV_FILE"
+ensure_app_key "$FINANCE_ROOT/backend" "$BACKEND_ENV"
 
 mysql_check_file="$ENV_FILE"
 if [[ -f "$BACKEND_ENV" ]] \
