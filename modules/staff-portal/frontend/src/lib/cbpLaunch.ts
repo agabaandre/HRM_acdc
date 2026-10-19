@@ -3,15 +3,11 @@
 import { api } from './api'
 
 function staffMountBaseUrl(): string {
+  const path = String(import.meta.env.BASE_URL || '/staff/').replace(/\/$/, '')
   if (typeof window === 'undefined') {
-    return '/staff'
+    return path || '/staff'
   }
-  const path = window.location.pathname || ''
-  const idx = path.indexOf('/staff/')
-  if (idx >= 0) {
-    return `${window.location.origin}${path.substring(0, idx + 6)}`
-  }
-  return `${window.location.origin}/staff`
+  return `${window.location.origin}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 function postHiddenForm(action: string, fields: Record<string, string>, openInNewTab: boolean): void {
@@ -34,8 +30,20 @@ function postHiddenForm(action: string, fields: Record<string, string>, openInNe
   window.setTimeout(() => form.remove(), 1000)
 }
 
+/** Relative path inside the target module. Rejects absolute and parent paths. */
+export function sanitizeModuleNext(path: string): string {
+  const next = path.trim().replace(/^\/+/, '')
+  if (!next || next.includes('..') || next.includes('://') || next.includes('\\')) {
+    return ''
+  }
+  if (!/^[A-Za-z0-9_./?=&%-]+$/.test(next)) {
+    return ''
+  }
+  return next
+}
+
 /** Launch a CBP module (APM / Finance / Helpdesk) via authenticated API hand-off. */
-export async function launchCbpModule(moduleKey: string, openInNewTab = false): Promise<void> {
+export async function launchCbpModule(moduleKey: string, openInNewTab = false, nextPath = ''): Promise<void> {
   const key = moduleKey.trim()
   if (!key) {
     return
@@ -49,11 +57,13 @@ export async function launchCbpModule(moduleKey: string, openInNewTab = false): 
       label?: string
     }>('/api/v1/cbp-modules/launch', { module_key: key })
 
+    const next = sanitizeModuleNext(nextPath)
     if (data.redirect_url) {
+      const url = next ? `${data.redirect_url.replace(/\/$/, '')}/${next}` : data.redirect_url
       if (openInNewTab) {
-        window.open(data.redirect_url, '_blank', 'noopener,noreferrer')
+        window.open(url, '_blank', 'noopener,noreferrer')
       } else {
-        window.location.assign(data.redirect_url)
+        window.location.assign(url)
       }
       return
     }
@@ -65,7 +75,11 @@ export async function launchCbpModule(moduleKey: string, openInNewTab = false): 
       return
     }
 
-    postHiddenForm(acceptUrl, { staff_sso_jwt: jwt }, openInNewTab)
+    const fields: Record<string, string> = { staff_sso_jwt: jwt }
+    if (next) {
+      fields.next = next
+    }
+    postHiddenForm(acceptUrl, fields, openInNewTab)
   } catch (err: unknown) {
     const axiosErr = err as { response?: { status?: number; data?: { message?: string } }; message?: string }
     const apiMessage = axiosErr.response?.data?.message?.trim()

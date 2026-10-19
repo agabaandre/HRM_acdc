@@ -43,7 +43,7 @@ class CbpModulesController extends Controller
         }
 
         $path = trim((string) $request->query('path', ''), '/');
-        $exclude = trim((string) $request->query('exclude', self::MODULE_KEY));
+        $exclude = trim((string) $request->query('exclude', ''));
         $active = trim((string) $request->query('active', ''));
         if ($active === '') {
             $active = self::MODULE_KEY;

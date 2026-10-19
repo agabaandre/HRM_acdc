@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { microsoftLoginUrl } from '@/lib/auth'
 import { api } from '@/lib/api'
+import { staffWebRoot } from '@/lib/staffWebRoot'
 import { notifyApiError, toast } from '@/features/toast'
 
 const auth = useAuthStore()
@@ -22,12 +23,7 @@ const microsoftEnabled = ref(true)
 const apmBaseUrl = ref('')
 const optionsReady = ref(false)
 
-const staffBase = computed(() => {
-  if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.host}/staff`
-  }
-  return '/staff'
-})
+const staffBase = computed(() => staffWebRoot())
 
 const bgUrl = computed(() => `${staffBase.value}/assets/images/bg_login.jpg`)
 const logoUrl = computed(() => `${staffBase.value}/assets/images/AU_CDC_Logo-800.png`)

@@ -2,9 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 import StatusText from '@/components/atoms/StatusText.vue'
 import PortalPageSkeleton from '@/components/molecules/PortalPageSkeleton.vue'
-import ModuleGrid from '@/components/organisms/ModuleGrid.vue'
+import HomeCatalog from '@/components/organisms/HomeCatalog.vue'
 import { fetchCbpModules, type CbpModuleLink } from '@/lib/cbpModules'
 import { launchCbpModule, moduleLaunchKey } from '@/lib/cbpLaunch'
+import { staffWebRoot } from '@/lib/staffWebRoot'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import { useLocaleStore } from '@/stores/locale'
 
@@ -16,12 +17,7 @@ const error = ref<string | null>(null)
 const query = ref('')
 const launchError = ref<string | null>(null)
 
-const staffBase = computed(() => {
-  if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.host}/staff`
-  }
-  return '/staff'
-})
+const staffBase = computed(() => staffWebRoot())
 
 const bgUrl = computed(() => `${staffBase.value}/assets/images/bg_login.jpg`)
 const apmBase = computed(() => `${staffBase.value}/apm`)
@@ -91,26 +87,28 @@ onMounted(async () => {
             <p>{{ launchError }}</p>
           </div>
 
-          <div class="cbp-home-search">
-            <label for="cbpHomeModuleSearch" class="visually-hidden">{{ locale.t('home.search_modules', 'Search modules') }}</label>
-            <div class="cbp-home-search-input">
-              <span class="cbp-home-search-icon" aria-hidden="true">
-                <i class="fa-solid fa-search" />
-              </span>
-              <input
-                id="cbpHomeModuleSearch"
-                v-model="query"
-                type="search"
-                :placeholder="locale.t('home.search_placeholder', 'Search modules by name or description…')"
-                autocomplete="off"
-                spellcheck="false"
-              />
-            </div>
-          </div>
-
           <PortalPageSkeleton v-if="loading" variant="home" />
           <StatusText v-else-if="error" :message="error" tone="error" />
-          <ModuleGrid v-else :modules="modules" :query="query" :on-module-click="onModuleClick" />
+          <HomeCatalog v-else :modules="modules" :query="query" :on-module-click="onModuleClick">
+            <template #search>
+              <div class="cbp-home-search">
+                <label for="cbpHomeModuleSearch" class="visually-hidden">{{ locale.t('home.search_modules', 'Search modules') }}</label>
+                <div class="cbp-home-search-input">
+                  <span class="cbp-home-search-icon" aria-hidden="true">
+                    <i class="fa-solid fa-search" />
+                  </span>
+                  <input
+                    id="cbpHomeModuleSearch"
+                    v-model="query"
+                    type="search"
+                    :placeholder="locale.t('home.search_placeholder', 'Search modules…')"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+              </div>
+            </template>
+          </HomeCatalog>
 
           <footer class="cbp-home-footer">
             <p>
@@ -209,8 +207,8 @@ onMounted(async () => {
 }
 
 .cbp-home-search {
-  max-width: 32rem;
-  margin: 0 auto 1.75rem;
+  width: 100%;
+  margin: 0;
 }
 
 .cbp-home-search-input {
@@ -276,10 +274,9 @@ onMounted(async () => {
 }
 
 .cbp-home .settings-card {
-  /* Match tallest card in the row (title + up to 3 description lines) */
-  min-height: 8.75rem;
+  min-height: 5.5rem;
   height: 100%;
-  padding: 1rem 1.1rem 1.1rem;
+  padding: 0.7rem 0.75rem 0.75rem;
   transition: var(--cbp-transition);
   font-size: 0.9rem;
   display: flex;
@@ -288,42 +285,52 @@ onMounted(async () => {
   align-items: center;
   text-align: center;
   background: #fff;
-  border: 1px solid var(--cbp-medium-grey);
-  box-shadow: var(--cbp-shadow);
+  border: 2px solid #b7c3d4;
+  box-shadow: none;
   position: relative;
   overflow: hidden;
   width: 100%;
   max-width: 100%;
-  border-radius: 0;
+  border-radius: 12px;
   animation: cbpFadeInUp 0.55s ease forwards;
   box-sizing: border-box;
 }
 
-.cbp-home .settings-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--cbp-primary);
-  transform: scaleX(0);
-  transition: var(--cbp-transition);
-}
-
 .cbp-home .settings-card:hover {
-  box-shadow: var(--cbp-shadow-lg);
+  box-shadow: none;
   transform: translateY(-2px);
   border-color: var(--cbp-primary);
 }
 
-.cbp-home .settings-card:hover::before {
-  transform: scaleX(1);
+.cbp-home .settings-card.cbp-home-card-soon {
+  background: #e8edf2;
+  border-color: #d3dae3;
+  cursor: default;
+}
+
+.cbp-home .settings-card.cbp-home-card-soon h6,
+.cbp-home .settings-card.cbp-home-card-soon p {
+  color: #8b95a5;
+}
+
+.cbp-home .settings-card.cbp-home-card-soon .widgets-icons i {
+  color: rgba(120, 130, 145, 0.35);
+}
+
+.cbp-home .settings-card.cbp-home-card-soon:hover {
+  transform: none;
+  border-color: #d3dae3;
+  box-shadow: none;
+}
+
+.cbp-home .settings-card.cbp-home-card-soon:hover .widgets-icons i {
+  color: rgba(120, 130, 145, 0.35);
+  transform: none;
 }
 
 .cbp-home .settings-card h6 {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.875rem;
   color: var(--cbp-text-dark);
   margin: 0 0 0.4rem;
   line-height: 1.3;
@@ -332,19 +339,18 @@ onMounted(async () => {
 }
 
 .cbp-home .settings-card p {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: var(--cbp-text-muted);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.35;
   flex: 1 1 auto;
   position: relative;
   z-index: 2;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  /* Reserve space for 3 lines so shorter copy still matches taller cards */
-  min-height: calc(1.4em * 3);
+  min-height: calc(1.35em * 2);
 }
 
 .cbp-home .widgets-icons {
@@ -357,9 +363,10 @@ onMounted(async () => {
 }
 
 .cbp-home .widgets-icons i {
-  width: 72px;
-  height: 72px;
-  font-size: 2.5rem;
+  width: 48px;
+  height: 48px;
+  font-size: 1.65rem;
+  font-weight: 900;
   color: rgba(17, 154, 72, 0.1);
   display: flex;
   align-items: center;
@@ -405,7 +412,7 @@ onMounted(async () => {
   }
 
   .cbp-home .settings-card {
-    padding: 0.9rem 1rem 1rem;
+    padding: 0.65rem 0.7rem 0.7rem;
   }
 }
 

@@ -10,12 +10,12 @@ Route::post('/sso/accept', SsoAcceptController::class)
     ->name('sso.accept');
 
 Route::get('/sso/accept', function () {
-    $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/finance'), '/');
-    $host = request()->getHost();
-    $scheme = request()->getScheme() ?: 'http';
-    $url = $scheme.'://'.$host.'/'.$spaPath.'/access-error?reason=post_required';
+    $path = parse_url(rtrim((string) config('app.url', ''), '/'), PHP_URL_PATH);
+    $spaPath = is_string($path) && $path !== '' && $path !== '/'
+        ? trim($path, '/')
+        : trim((string) env('FINANCE_SPA_PATH', env('RISK_REGISTER_SPA_PATH', 'staff/finance')), '/');
 
-    return redirect()->away($url);
+    return redirect('/'.$spaPath.'/access-error?reason=post_required');
 })->name('sso.accept.get');
 
 /*

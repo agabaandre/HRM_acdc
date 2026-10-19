@@ -349,18 +349,21 @@ if [[ -z "$DEFAULT_BASE" ]]; then
 fi
 
 prompt_value PUBLIC_BASE "Public base URL (host; folder name ${DEFAULT_WEB_ROOT} is appended if missing)" "$DEFAULT_BASE"
-# Always adopt the checkout folder name as the public Alias / URL prefix.
+# Keep a nested public path when it already ends with the checkout folder
+# (MAMP: http://localhost:8888/ACDC/2026/cbp). Host-only URLs still get /{folder}.
 _pb_host="$(printf '%s' "${PUBLIC_BASE}" | sed -E 's#^(https?://[^/]+).*#\1#')"
+_pb_path="$(printf '%s' "${PUBLIC_BASE}" | sed -E 's#^https?://[^/]+##; s#^/##; s#/$##')"
 if [[ -n "$_pb_host" && "$_pb_host" == http* ]]; then
-  PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
+  if [[ -z "$_pb_path" ]]; then
+    PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
+  elif [[ "$_pb_path" == "$DEFAULT_WEB_ROOT" || "$_pb_path" == */"$DEFAULT_WEB_ROOT" ]]; then
+    PUBLIC_BASE="${_pb_host}/${_pb_path}"
+  else
+    echo "    Note: URL path /${_pb_path} overridden by folder name /${DEFAULT_WEB_ROOT}"
+    PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
+  fi
 fi
 setup_map_urls
-# Re-assert folder-derived web root (do not trust a mismatched path segment).
-if [[ "$WEB_ROOT" != "$DEFAULT_WEB_ROOT" ]]; then
-  echo "    Note: URL path /${WEB_ROOT} overridden by folder name /${DEFAULT_WEB_ROOT}"
-  PUBLIC_BASE="${_pb_host}/${DEFAULT_WEB_ROOT}"
-  setup_map_urls
-fi
 echo "    Web folder / Alias: /${WEB_ROOT} (from $(basename "$ROOT"))"
 echo "    Portal API APP_URL: ${STAFF_PORTAL_APP_URL}"
 echo "    SPA URL:            ${STAFF_PORTAL_SPA_URL}"
@@ -1558,7 +1561,12 @@ setup_run_module_production() {
   esac
   (
     setup_export_host_db_overrides
-    cd "$dir" && ./setup-production.sh "$@" "${extra[@]}"
+    # macOS bash 3.2 treats "${empty[@]}" as unbound under set -u.
+    if [[ ${#extra[@]} -gt 0 ]]; then
+      cd "$dir" && ./setup-production.sh "$@" "${extra[@]}"
+    else
+      cd "$dir" && ./setup-production.sh "$@"
+    fi
   ) || echo "warn: $name setup-production failed" >&2
   # Finance DatabaseSeeder uses factories (needs faker / --dev) — never run on production setup.
 }

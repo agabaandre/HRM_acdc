@@ -36,13 +36,13 @@ class CbpModulesNavService
             : [];
         $ttl = max(60, (int) config('helpdesk.reference_data_cache_ttl', 300));
         $permKey = $permissionIds !== [] ? md5(implode(',', $permissionIds)) : 'db';
-        $cacheKey = 'helpdesk_cbp_modules_v5_'.$staffId.'_'.$permKey;
+        $cacheKey = 'helpdesk_cbp_modules_v10_'.$staffId.'_'.$permKey;
 
         try {
             $data = Cache::remember(
                 $cacheKey,
                 $ttl,
-                fn () => $client->fetchCbpModules($staffId, 'helpdesk_itsm', 'helpdesk_itsm', $permissionIds)
+                fn () => $client->fetchCbpModules($staffId, '', 'helpdesk_itsm', $permissionIds)
             );
 
             return $this->wrap($data, [

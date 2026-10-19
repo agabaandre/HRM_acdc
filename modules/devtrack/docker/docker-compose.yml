@@ -1,0 +1,163 @@
+# Email Server — production-oriented stack (queue + Redis + tuned MySQL)
+# API :8089 | MySQL host :3309 | Admin UI :3006 | scale workers: docker compose --scale queue=4
+
+x-app-env: &app-env
+  APP_NAME: "Email Server"
+  APP_ENV: ${APP_ENV:-production}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_URL: ${APP_URL:-http://localhost:8089}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3006}
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_DATABASE: email_server
+  DB_USERNAME: email_server
+  DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in docker/.env}
+  QUEUE_CONNECTION: redis
+  REDIS_CLIENT: predis
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_DB: 0
+  REDIS_CACHE_DB: 1
+  REDIS_QUEUE_DB: 2
+  REDIS_QUEUE_CONNECTION: queue
+  CACHE_STORE: redis
+  SESSION_DRIVER: redis
+  MAIL_MAILER: log
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-andrewa@africacdc.org}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in docker/.env}
+  ADMIN_RESET_PASSWORD: ${ADMIN_RESET_PASSWORD:-false}
+  INTEGRATION_CLIENT_SECRET: ${INTEGRATION_CLIENT_SECRET:-}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in docker/.env (>=32 chars)}
+  JWT_TTL: ${JWT_TTL:-60}
+  API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+  CAPTCHA_ENABLED: ${CAPTCHA_ENABLED:-true}
+  CAPTCHA_LENGTH: ${CAPTCHA_LENGTH:-5}
+  CAPTCHA_TTL: ${CAPTCHA_TTL:-600}
+  QUEUE_FAILED_DRIVER: "null"
+  RUN_SEEDER: "false"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: email-server-app:local
+    container_name: email-server-app
+    restart: unless-stopped
+    working_dir: /var/www/backend
+    volumes:
+      - ../backend:/var/www/backend
+      # Persist logs, uploads, framework cache outside the git tree
+      - ${EMAIL_SERVER_DATA_PATH:-/home/email_serverdata}/storage:/var/www/backend/storage
+      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - email-server
+
+  queue:
+    image: email-server-app:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/backend
+    volumes:
+      - ../backend:/var/www/backend
+      - ${EMAIL_SERVER_DATA_PATH:-/home/email_serverdata}/storage:/var/www/backend/storage
+      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+    environment:
+      <<: *app-env
+      CONTAINER_ROLE: queue
+    # Worker command is started by entrypoint.sh (avoids CMD string parsing issues)
+    depends_on:
+      app:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - email-server
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: email-server-nginx
+    restart: unless-stopped
+    ports:
+      - "${API_HOST_PORT:-8089}:80"
+    volumes:
+      - ../backend:/var/www/backend
+      - ${EMAIL_SERVER_DATA_PATH:-/home/email_serverdata}/storage:/var/www/backend/storage
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - email-server
+
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: email-server-frontend
+    restart: unless-stopped
+    ports:
+      - "3006:80"
+    volumes:
+      - ../frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - nginx
+    networks:
+      - email-server
+
+  redis:
+    image: redis:7-alpine
+    container_name: email-server-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - ${EMAIL_SERVER_DATA_PATH:-/home/email_serverdata}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks:
+      - email-server
+
+  mysql:
+    image: mysql:8.4
+    container_name: email-server-mysql
+    restart: unless-stopped
+    # Host publish defaults to 3309 — host :3306 is often already used by another MySQL.
+    # App/queue still connect to mysql:3306 on the compose network (DB_PORT unchanged).
+    ports:
+      - "${MYSQL_HOST_PORT:-3309}:3306"
+    environment:
+      MYSQL_DATABASE: email_server
+      MYSQL_USER: email_server
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in docker/.env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in docker/.env}
+    volumes:
+      - ${EMAIL_SERVER_DATA_PATH:-/home/email_serverdata}/mysql:/var/lib/mysql
+      - ../deploy/configs/mysqld-docker.cnf:/etc/mysql/conf.d/99-email-server.cnf:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uemail_server", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - email-server
+
+networks:
+  email-server:
+    driver: bridge

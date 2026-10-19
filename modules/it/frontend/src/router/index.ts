@@ -18,9 +18,9 @@ const router = createRouter({
       component: () => import('../pages/risks/RiskAccessErrorPage.vue'),
       meta: { guest: true, chrome: false, title: 'Access error' },
     },
-    { path: '/', name: 'home', redirect: { name: 'licenses' } },
-    { path: '/home', redirect: { name: 'licenses' } },
-    { path: '/home/index', redirect: { name: 'licenses' } },
+    { path: '/', name: 'home', redirect: { name: 'dashboard' } },
+    { path: '/home', redirect: { name: 'dashboard' } },
+    { path: '/home/index', redirect: { name: 'dashboard' } },
     {
       path: '/licenses',
       name: 'licenses',
@@ -61,8 +61,8 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      component: () => import('../pages/finance/FundingPortfolioPage.vue'),
-      meta: { requiresAuth: true, title: 'Funding Portfolio', module: 'dashboard' },
+      component: () => import('../pages/it/ItDashboardPage.vue'),
+      meta: { requiresAuth: true, title: 'Dashboard' },
     },
     {
       path: '/performance',

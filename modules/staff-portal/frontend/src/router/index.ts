@@ -31,6 +31,40 @@ const router = createRouter({
       redirect: { name: 'home' },
     },
     {
+      path: '/staff-portal',
+      name: 'staff-portal',
+      component: () => import('../pages/StaffPortalHomePage.vue'),
+      meta: { requiresAuth: true, title: 'Staff Portal' },
+    },
+    {
+      path: '/facilities/apm',
+      name: 'facilities-apm',
+      component: () => import('../pages/OriginalModulePage.vue'),
+      props: { which: 'apm' },
+      meta: { requiresAuth: true, title: 'Approvals Management' },
+    },
+    {
+      path: '/facilities/helpdesk',
+      name: 'facilities-helpdesk',
+      component: () => import('../pages/OriginalModulePage.vue'),
+      props: { which: 'helpdesk' },
+      meta: { requiresAuth: true, title: 'Helpdesk' },
+    },
+    {
+      path: '/facilities/registry',
+      name: 'facilities-registry',
+      component: () => import('../pages/OriginalModulePage.vue'),
+      props: { which: 'registry' },
+      meta: { requiresAuth: true, title: 'Registry' },
+    },
+    {
+      path: '/mis/general',
+      name: 'mis-general',
+      component: () => import('../pages/OriginalModulePage.vue'),
+      props: { which: 'it' },
+      meta: { requiresAuth: true, title: 'IT' },
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('../pages/profile/ProfilePage.vue'),
@@ -242,6 +276,104 @@ const router = createRouter({
       name: 'settings',
       component: () => import('../pages/settings/SettingsHubPage.vue'),
       meta: { requiresAuth: true, permission: 15, title: 'Settings', module: 'settings' },
+    },
+    {
+      path: '/configuration/users',
+      component: () => import('../pages/configuration/ConfigurationLayout.vue'),
+      meta: { requiresAuth: true, anyPermission: [15, 17], title: 'Users & Roles' },
+      children: [
+        { path: '', name: 'configuration-users', component: () => import('../pages/configuration/ConfigurationDashboard.vue') },
+        { path: 'accounts', name: 'configuration-users-accounts', component: () => import('../pages/auth/UsersAdminPage.vue') },
+        { path: 'roles', name: 'configuration-users-roles', component: () => import('../pages/permissions/PermissionsPage.vue') },
+        {
+          path: 'delegations',
+          name: 'configuration-users-delegations',
+          component: () => import('../pages/settings/LookupTablePage.vue'),
+          props: { table: 'jobs_acting' },
+        },
+      ],
+    },
+    {
+      path: '/configuration/organisation',
+      component: () => import('../pages/configuration/ConfigurationLayout.vue'),
+      meta: { requiresAuth: true, anyPermission: [15, 17], title: 'Organisation' },
+      children: [
+        { path: '', name: 'configuration-organisation', component: () => import('../pages/configuration/ConfigurationDashboard.vue') },
+        {
+          path: 'directorates',
+          name: 'configuration-org-directorates',
+          component: () => import('../pages/settings/DirectoratesSettingsPage.vue'),
+        },
+        {
+          path: 'locations',
+          name: 'configuration-org-locations',
+          component: () => import('../pages/settings/LookupTablePage.vue'),
+          props: { table: 'duty_stations' },
+        },
+        {
+          path: 'cost-centres',
+          name: 'configuration-org-cost-centres',
+          component: () => import('../pages/configuration/ConfigurationRecordsPage.vue'),
+          props: { source: 'cost-centres', title: 'Cost Centres' },
+        },
+      ],
+    },
+    {
+      path: '/configuration/workflows',
+      component: () => import('../pages/configuration/ConfigurationLayout.vue'),
+      meta: { requiresAuth: true, anyPermission: [15, 17], title: 'Workflows' },
+      children: [
+        { path: '', name: 'configuration-workflows', component: () => import('../pages/configuration/ConfigurationDashboard.vue') },
+        {
+          path: 'approval-chains',
+          name: 'configuration-workflows-chains',
+          component: () => import('../pages/configuration/ConfigurationRecordsPage.vue'),
+          props: { source: 'approval-chains', title: 'Approval Chains' },
+        },
+        {
+          path: 'notifications',
+          name: 'configuration-workflows-notifications',
+          component: () => import('../pages/settings/EmailServersPage.vue'),
+        },
+        {
+          path: 'forms',
+          name: 'configuration-workflows-forms',
+          component: () => import('../pages/settings/LeaveSettingsPage.vue'),
+        },
+      ],
+    },
+    {
+      path: '/configuration/system',
+      component: () => import('../pages/configuration/ConfigurationLayout.vue'),
+      meta: { requiresAuth: true, anyPermission: [15, 17], title: 'System' },
+      children: [
+        { path: '', name: 'configuration-system', component: () => import('../pages/configuration/ConfigurationDashboard.vue') },
+        {
+          path: 'modules',
+          name: 'configuration-system-modules',
+          component: () => import('../pages/settings/CbpModulesSettingsPage.vue'),
+        },
+        {
+          path: 'integrations',
+          name: 'configuration-system-integrations',
+          component: () => import('../pages/configuration/ConfigurationLinksPage.vue'),
+          props: {
+            title: 'Integrations',
+            links: [
+              { to: '/settings/staff-api', label: 'Staff API', detail: 'Credentials used by the other modules' },
+              { to: '/settings/email-servers', label: 'Email', detail: 'Outbound mail providers' },
+              { to: '/settings/ai-providers', label: 'AI providers', detail: 'Connected AI services' },
+              { to: '/auth/oauth-clients', label: 'OAuth clients', detail: 'Applications allowed to sign in' },
+            ],
+          },
+        },
+        { path: 'audit', name: 'configuration-system-audit', component: () => import('../pages/auth/AuditLogsPage.vue') },
+        {
+          path: 'languages',
+          name: 'configuration-system-languages',
+          component: () => import('../pages/settings/LanguagesSettingsPage.vue'),
+        },
+      ],
     },
     {
       path: '/payroll',

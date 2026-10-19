@@ -62,9 +62,7 @@ class CbpModulesNav
             if ($moduleKey === '') {
                 $moduleKey = 'cbp_module_'.(int) $row->id;
             }
-            if ($excludeModuleKey !== '' && $moduleKey === $excludeModuleKey) {
-                continue;
-            }
+            // Every enabled module stays in the menu, including the one currently open.
 
             // Enabled modules are listed for every authenticated user (Staff Portal parity).
             // permission_code remains for in-module feature RBAC.
@@ -93,6 +91,9 @@ class CbpModulesNav
             $href = $resolved;
             if (! $absolute && ! str_starts_with($href, '/')) {
                 $href = self::spaPathForCiRoute($href, $spaUrl);
+            }
+            if ($moduleKey === 'risk_register' && ! str_ends_with(rtrim($href, '/'), '/risks')) {
+                $href = rtrim($href, '/').'/risks';
             }
 
             $icon = trim((string) ($row->icon_class ?: 'fa-th'));

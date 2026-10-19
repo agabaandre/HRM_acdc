@@ -1,0 +1,40 @@
+.v-input--density-comfortable {
+  --v-input-control-height: 44px;
+}
+
+.v-label {
+  font-size: 0.875rem;
+  opacity: 1;
+}
+
+.v-field__outline {
+  color: rgb(var(--v-theme-inputBorder, 223 229 239)) !important;
+  border-radius: 7px !important;
+  --v-field-border-opacity: 1 !important;
+}
+
+.form-field {
+  width: 100%;
+}
+
+.form-stack > .form-field:last-child {
+  margin-bottom: 0 !important;
+}
+
+.auth-form .v-col {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.authentication::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background: radial-gradient(rgb(210, 241, 223), rgb(211, 215, 250), rgb(186, 216, 244)) 0% 0% / 400% 400%;
+  pointer-events: none;
+}
+
+.authentication {
+  position: relative;
+}

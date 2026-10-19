@@ -6,6 +6,7 @@ use Modules\Settings\Http\Controllers\Api\V1\EmailProvidersController;
 use Modules\Settings\Http\Controllers\Api\V1\OrgStructureController;
 use Modules\Settings\Http\Controllers\Api\V1\OrgUnitsSettingsController;
 use Modules\Settings\Http\Controllers\Api\V1\SharedStorageController;
+use Modules\Settings\Http\Controllers\Api\V1\ConfigurationController;
 use Modules\Settings\Http\Controllers\Api\V1\SettingsApiController;
 use Modules\Settings\Http\Controllers\Api\V1\AppLogsController;
 use Modules\Settings\Http\Controllers\Api\V1\StaffApiSettingsController;
@@ -15,6 +16,9 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function () {
     require module_path('Settings', '/routes/languages.php');
     require module_path('Settings', '/routes/ai.php');
     Route::get('settings/hub', [SettingsApiController::class, 'hub']);
+    Route::get('configuration/summary', [ConfigurationController::class, 'summary']);
+    Route::get('configuration/cost-centres', [ConfigurationController::class, 'costCentres']);
+    Route::get('configuration/approval-chains', [ConfigurationController::class, 'approvalChains']);
     Route::get('settings/staff-jobs', [StaffJobsSettingsController::class, 'show']);
     Route::put('settings/staff-jobs', [StaffJobsSettingsController::class, 'update']);
     Route::post('settings/staff-jobs/run', [StaffJobsSettingsController::class, 'run']);

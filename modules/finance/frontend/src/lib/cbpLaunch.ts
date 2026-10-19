@@ -6,12 +6,8 @@ function staffMountBaseUrl(): string {
   if (typeof window === 'undefined') {
     return '/staff'
   }
-  const path = window.location.pathname || ''
-  const idx = path.indexOf('/staff/')
-  if (idx >= 0) {
-    return `${window.location.origin}${path.substring(0, idx + 6)}`
-  }
-  return `${window.location.origin}/staff`
+  const path = window.location.pathname.replace(/\/(finance|apm|helpdesk|risk-register)(\/.*)?$/, '')
+  return `${window.location.origin}${path || ''}`
 }
 
 function postHiddenForm(action: string, fields: Record<string, string>, openInNewTab: boolean): void {

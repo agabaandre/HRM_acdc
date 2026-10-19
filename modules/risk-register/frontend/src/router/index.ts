@@ -18,9 +18,9 @@ const router = createRouter({
       component: () => import('../pages/risks/RiskAccessErrorPage.vue'),
       meta: { guest: true, chrome: false, title: 'Access error', titleKey: 'rr.access_title' },
     },
-    { path: '/', name: 'home', redirect: { name: 'dashboard' } },
-    { path: '/home', redirect: { name: 'dashboard' } },
-    { path: '/home/index', redirect: { name: 'dashboard' } },
+    { path: '/', name: 'home', redirect: { name: 'risks' } },
+    { path: '/home', redirect: { name: 'risks' } },
+    { path: '/home/index', redirect: { name: 'risks' } },
     {
       path: '/risks',
       name: 'risks',

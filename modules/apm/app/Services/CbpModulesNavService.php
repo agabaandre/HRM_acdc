@@ -36,10 +36,10 @@ class CbpModulesNavService
 
             return Cache::remember(
                 // v2: StaffShareHttp unwraps {success,data}; fetchCbpModules must accept bare nav payload.
-                'apm_cbp_modules_nav_v2_'.$staffId.'_'.$permKey,
+                'apm_cbp_modules_nav_v7_'.$staffId.'_'.$permKey,
                 300,
                 fn () => self::sanitizeNavPayload(
-                    $client->fetchCbpModules($staffId, 'approvals_management', 'approvals_management', $perms)
+                    $client->fetchCbpModules($staffId, '', 'approvals_management', $perms)
                 )
             );
         } catch (\Throwable $e) {

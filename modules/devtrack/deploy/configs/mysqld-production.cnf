@@ -1,0 +1,35 @@
+# MySQL 8 — production (64 GB tier) from enterprise optimisation guide
+# Source: https://github.com/agabaandre/PHP_laravel_Codeigniter_wordpress_server_optimisation_enterprise
+
+[mysqld]
+bind-address = 0.0.0.0
+skip-name-resolve
+
+max_connections = 300
+thread_cache_size = 100
+
+innodb_buffer_pool_size = 16G
+innodb_buffer_pool_instances = 8
+innodb_log_file_size = 1G
+innodb_log_buffer_size = 256M
+
+innodb_flush_method = O_DIRECT
+innodb_flush_log_at_trx_commit = 1
+innodb_file_per_table = 1
+
+innodb_io_capacity = 2000
+innodb_io_capacity_max = 4000
+
+tmp_table_size = 512M
+max_heap_table_size = 512M
+table_open_cache = 8000
+max_allowed_packet = 256M
+
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/mysql-slow.log
+long_query_time = 2
+
+performance_schema = ON
+
+character-set-server = utf8mb4
+collation-server = utf8mb4_unicode_ci

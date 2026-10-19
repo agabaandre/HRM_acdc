@@ -53,7 +53,8 @@ class SsoAcceptController extends Controller
                 throw new \RuntimeException('Missing API token in SSO response');
             }
 
-            $redirect = '/'.$this->spaPath().'/';
+            $next = $this->safeModuleNext($request);
+            $redirect = '/'.$this->spaPath().'/'.($next !== '' ? $next : '');
 
             return response()->view('sso-bridge', [
                 'token' => (string) $data['token'],
@@ -100,5 +101,19 @@ class SsoAcceptController extends Controller
         $fromEnv = trim((string) env('HELPDESK_SPA_PATH', 'staff/helpdesk'), '/');
 
         return $fromEnv !== '' ? $fromEnv : 'staff/helpdesk';
+    }
+
+    /** Relative path posted with SSO. Stays inside this module. */
+    private function safeModuleNext(Request $request): string
+    {
+        $next = ltrim(trim((string) $request->input('next', '')), '/');
+        if ($next === '' || str_contains($next, '..') || str_contains($next, '\\') || str_contains($next, '://')) {
+            return '';
+        }
+        if (! preg_match('#\A[A-Za-z0-9_./?=&%-]+\z#', $next)) {
+            return '';
+        }
+
+        return $next;
     }
 }

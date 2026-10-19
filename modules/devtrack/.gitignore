@@ -1,0 +1,33 @@
+# Dependencies / build
+/vendor
+/node_modules
+.npm-cache/
+frontend/.npm-cache/
+
+# Local env & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+docker/.env
+backend/.env
+
+# Production deploy secrets (copy outside the repo)
+*.secrets.env
+secrets.env
+**/secrets.env
+production.secrets.env
+deploy/production.secrets.env
+/etc-email-server/
+
+# Laravel / runtime
+backend/storage/logs/*
+backend/storage/framework/cache/data/*
+!backend/storage/logs/.gitignore
+backend/bootstrap/cache/*.php
+!backend/bootstrap/cache/.gitignore
+
+# Frontend deps (never commit)
+frontend/node_modules/
+frontend/dist/

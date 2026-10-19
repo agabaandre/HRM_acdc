@@ -9,7 +9,7 @@ const props = defineProps<{
   description?: string
   /**
    * When true, label renders above the control instead of on the Vuetify outline notch.
-   * Project standard is floating outline labels (IT Assets style).
+   * Project standard is floating outline labels (ITSM style).
    * Use stacked only for non-Vuetify controls (rich text, custom radio grids, etc.).
    */
   stackedLabel?: boolean

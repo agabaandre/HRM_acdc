@@ -12,16 +12,18 @@ declare(strict_types=1);
 (static function (): void {
     // Capture group 1 = public web-root segment (staff, demo_staff, …).
     $replacements = [
-        '#^/([^/]+)/modules/apm(?:/public)?#' => '/$1/apm',
-        '#^/([^/]+)/modules/finance(?:/public)?#' => '/$1/finance',
+        '#^((?:/[^/]+)+)/modules/devtrack#' => '$1/devtrack',
+        '#^((?:/[^/]+)+)/modules/apm(?:/public)?#' => '$1/apm',
+        '#^((?:/[^/]+)+)/modules/finance(?:/public)?#' => '$1/finance',
         // Helpdesk Laravel API is mounted at /{root}/helpdesk/backend.
-        '#^/([^/]+)/modules/helpdesk/backend(?:/public)?#' => '/$1/helpdesk/backend',
-        '#^/([^/]+)/modules/staff-portal/backend(?:/public)?#' => '/$1/backend',
+        '#^((?:/[^/]+)+)/modules/helpdesk/backend(?:/public)?#' => '$1/helpdesk/backend',
+        '#^((?:/[^/]+)+)/modules/staff-portal/backend(?:/public)?#' => '$1/backend',
         // Legacy physical path …/staff-portal/backend before modules/ layout.
-        '#^/([^/]+)/staff-portal/backend(?:/public)?#' => '/$1/backend',
+        '#^((?:/[^/]+)+)/staff-portal/backend(?:/public)?#' => '$1/backend',
         // DocumentRoot = checkout (no Alias segment in SCRIPT_NAME).
         '#^/modules/staff-portal/backend(?:/public)?#' => '/backend',
         '#^/modules/helpdesk/backend(?:/public)?#' => '/helpdesk/backend',
+        '#^/modules/devtrack#' => '/devtrack',
         '#^/modules/apm(?:/public)?#' => '/apm',
         '#^/modules/finance(?:/public)?#' => '/finance',
     ];

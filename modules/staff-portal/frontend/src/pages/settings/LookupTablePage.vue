@@ -11,8 +11,9 @@ import {
   type LookupColumnMeta,
 } from '@/lib/settingsApi'
 
+const props = defineProps<{ table?: string }>()
 const route = useRoute()
-const table = computed(() => String(route.params.table || ''))
+const table = computed(() => props.table || String(route.params.table || ''))
 
 const loading = ref(false)
 const saving = ref(false)

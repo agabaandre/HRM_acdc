@@ -1,0 +1,11 @@
+.v-card.elevation-10 {
+  box-shadow:
+    rgba(145, 158, 171, 0.12) 0 12px 24px -4px,
+    rgba(145, 158, 171, 0.2) 0 0 2px 0 !important;
+}
+
+.v-theme--dark .v-card.elevation-10 {
+  box-shadow:
+    rgba(0, 0, 0, 0.28) 0 12px 24px -4px,
+    rgba(0, 0, 0, 0.35) 0 0 2px 0 !important;
+}

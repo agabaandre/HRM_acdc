@@ -107,7 +107,7 @@ Add new settings card: **License expiry alerts** (enable + interval select), pla
 - Feature: settings save/load for new keys.
 - Feature/unit: alert job sends when in window and due by interval; skips when disabled / too soon / no recipients.
 - Feature: license CRUD with `responsible_staff_id` + `warning_days_before`.
-- Manual: date picker on IT assets + licenses; search on licenses; settings cards unequal height.
+- Manual: date picker on ITSM + licenses; search on licenses; settings cards unequal height.
 
 ## Out of scope follow-ups
 

@@ -42,6 +42,13 @@ export function pageIconForPath(path: string): string {
 /** IT module primary navigation. */
 export const PORTAL_NAV_ITEMS: PortalNavItem[] = [
   {
+    label: 'Dashboard',
+    to: '/dashboard',
+    match: ['/dashboard'],
+    group: 'primary',
+    icon: 'fa-solid fa-chart-pie',
+  },
+  {
     label: 'Licenses',
     to: '/licenses',
     match: ['/licenses'],

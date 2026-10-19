@@ -56,7 +56,8 @@ class SsoAcceptController extends Controller
             }
 
             $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
-            $redirect = '/'.$spaPath.'/';
+            $next = $this->safeModuleNext($request);
+            $redirect = '/'.$spaPath.'/'.($next !== '' ? $next : '');
 
             return response()->view('sso-bridge', [
                 'token' => $apiToken,
@@ -75,6 +76,20 @@ class SsoAcceptController extends Controller
 
             return $this->redirectAccessError('unauthorized');
         }
+    }
+
+    /** Relative path posted with SSO. Stays inside this module. */
+    private function safeModuleNext(Request $request): string
+    {
+        $next = ltrim(trim((string) $request->input('next', '')), '/');
+        if ($next === '' || str_contains($next, '..') || str_contains($next, '\\') || str_contains($next, '://')) {
+            return '';
+        }
+        if (! preg_match('#\A[A-Za-z0-9_./?=&%-]+\z#', $next)) {
+            return '';
+        }
+
+        return $next;
     }
 
     private function redirectAccessError(string $reason): RedirectResponse

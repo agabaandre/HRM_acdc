@@ -33,6 +33,11 @@ class AuthController extends Controller
             try {
                 $this->openSessionFromStaffToken($jwt);
 
+                $next = $this->safeModuleNext($request);
+                if ($next !== '') {
+                    return redirect()->to(rtrim((string) config('app.url'), '/').'/'.$next);
+                }
+
                 return redirect()->route('home');
             } catch (\Throwable $e) {
                 try {
@@ -259,6 +264,20 @@ class AuthController extends Controller
                 return response()->json(['success' => false, 'message' => 'Failed to destroy session'], 500);
             }
         }
+    }
+
+    /** Relative path posted with SSO. Stays inside this module. */
+    private function safeModuleNext(Request $request): string
+    {
+        $next = ltrim(trim((string) $request->input('next', '')), '/');
+        if ($next === '' || str_contains($next, '..') || str_contains($next, '\\') || str_contains($next, '://')) {
+            return '';
+        }
+        if (! preg_match('#\A[A-Za-z0-9_./?=&%-]+\z#', $next)) {
+            return '';
+        }
+
+        return $next;
     }
 }
 

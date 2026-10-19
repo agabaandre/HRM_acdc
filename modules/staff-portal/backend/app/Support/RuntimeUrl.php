@@ -65,7 +65,7 @@ final class RuntimeUrl
 
         $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
         $path = parse_url($uri, PHP_URL_PATH) ?? '';
-        if (preg_match('#^(/[^/]+/backend)(?:/|$)#', $path, $m) === 1) {
+        if (preg_match('#^((?:/[^/]+)+/backend)(?:/|$)#', $path, $m) === 1) {
             return $m[1];
         }
 

@@ -55,7 +55,8 @@ class SsoAcceptController extends Controller
                 Log::warning('Finance SSO token cache put failed', ['error' => $e->getMessage()]);
             }
 
-            $redirect = '/'.$this->spaPath().'/';
+            $next = $this->safeModuleNext($request);
+            $redirect = '/'.$this->spaPath().'/'.($next !== '' ? $next : '');
 
             return response()->view('sso-bridge', [
                 'token' => $apiToken,
@@ -95,5 +96,19 @@ class SsoAcceptController extends Controller
         $fromEnv = trim((string) env('FINANCE_SPA_PATH', env('RISK_REGISTER_SPA_PATH', 'staff/finance')), '/');
 
         return $fromEnv !== '' ? $fromEnv : 'staff/finance';
+    }
+
+    /** Relative path posted with SSO. Stays inside this module. */
+    private function safeModuleNext(Request $request): string
+    {
+        $next = ltrim(trim((string) $request->input('next', '')), '/');
+        if ($next === '' || str_contains($next, '..') || str_contains($next, '\\') || str_contains($next, '://')) {
+            return '';
+        }
+        if (! preg_match('#\A[A-Za-z0-9_./?=&%-]+\z#', $next)) {
+            return '';
+        }
+
+        return $next;
     }
 }

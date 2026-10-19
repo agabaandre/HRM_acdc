@@ -23,19 +23,19 @@ setup_normalize_base() {
   printf '%s' "$b"
 }
 
-# First path segment of the public base (staff, cbp, demo_cbp, …).
+# Public path under the host (staff, cbp, or a nested htdocs path such as ACDC/2026/cbp).
 setup_web_root_from_base() {
-  local base path seg
+  local base path
   base="$(setup_normalize_base "$1")"
   path="${base#*://*/}"
   path="${path%%\?*}"
   path="${path%%\#*}"
   path="${path#/}"
-  seg="${path%%/*}"
-  if [[ -z "$seg" || "$seg" == *"("* ]]; then
-    seg="${DEFAULT_WEB_ROOT:-staff}"
+  path="${path%/}"
+  if [[ -z "$path" || "$path" == *"("* ]]; then
+    path="${DEFAULT_WEB_ROOT:-staff}"
   fi
-  printf '%s' "$seg"
+  printf '%s' "$path"
 }
 
 setup_map_urls() {

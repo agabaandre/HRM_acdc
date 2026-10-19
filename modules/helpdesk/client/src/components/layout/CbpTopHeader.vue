@@ -3,9 +3,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import CbpAvatar from '../common/CbpAvatar.vue'
 import { fetchCbpModules, type CbpNavPayload } from '../../lib/cbpModules'
+import { CBP_PROGRAM_COUNT, CBP_PROGRAM_GROUPS, moduleMenuIcon } from '../../lib/cbpProgramMenu'
 import { launchCbpModule, moduleLaunchKey } from '../../lib/cbpLaunch'
 import { apiErrorMessage } from '../../lib/apiErrorMessage'
-import { staffPortalBaseUrl, staffPortalProfileUrl } from '../../lib/sso'
+import { staffPortalBaseUrl, staffPortalHomeUrl, staffPortalProfileUrl } from '../../lib/sso'
 import { useAuthStore } from '../../stores/auth'
 
 defineProps<{
@@ -24,9 +25,11 @@ const nav = ref<CbpNavPayload | null>(null)
 const navLoading = ref(false)
 const navError = ref<string | null>(null)
 
-const portalHome = computed(() => nav.value?.home?.href ?? `${base.value}/`)
-const portalHomeLabel = computed(() => nav.value?.home?.label ?? 'CBP Home')
 const systems = computed(() => nav.value?.modules ?? [])
+const moduleScope = ref<'operations' | 'programs'>('operations')
+const programGroups = CBP_PROGRAM_GROUPS
+const programCount = CBP_PROGRAM_COUNT
+const operationsCount = computed(() => systems.value.length)
 
 const portalToggleActive = computed(() => {
   if (nav.value?.home?.is_active) {
@@ -172,49 +175,74 @@ function onLogoError(e: Event) {
             <span class="cbp-topbar-dd-toggle-label ms-2">CBP Modules</span>
             <span class="cbp-topbar-dd-caret" aria-hidden="true">▼</span>
           </button>
-          <div class="cbp-topbar-dd-panel" role="menu">
-            <a
-              :href="portalHome"
-              class="cbp-topbar-dd-primary"
-              :class="{ 'is-active': nav?.home?.is_active }"
-              role="menuitem"
-              @click="closeMenus"
-            >
-              <span class="cbp-topbar-dd-primary-title">{{ portalHomeLabel }}</span>
-            </a>
-            <template v-if="navLoading">
-              <p class="cbp-topbar-dd-empty" role="status">Loading modules…</p>
-            </template>
-            <template v-else-if="navError">
-              <p class="cbp-topbar-dd-empty" role="alert">{{ navError }}</p>
-            </template>
-            <template v-else-if="systems.length > 0">
-              <p class="cbp-topbar-dd-section">Systems</p>
-              <a
-                v-for="sys in systems"
-                :key="sys.id"
-                :href="sys.sso_launch ? '#' : sys.href"
-                class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon"
-                :class="{ 'is-active': sys.is_active }"
-                role="menuitem"
-                :target="moduleTarget(sys)"
-                :rel="moduleRel(sys)"
-                @click="onModuleNav(sys, $event)"
+          <div class="cbp-topbar-dd-panel cbp-modules-panel" role="menu">
+            <a :href="staffPortalHomeUrl()" class="cbp-topbar-dd-home" role="menuitem" @click="portalOpen = false">CBP HOME</a>
+            <div class="cbp-topbar-dd-scope" role="tablist" aria-label="CBP module groups">
+              <button
+                type="button"
+                role="tab"
+                :class="{ 'is-active': moduleScope === 'operations' }"
+                :aria-selected="moduleScope === 'operations'"
+                @click.stop="moduleScope = 'operations'"
               >
-                <i
-                  v-if="sys.icon"
-                  :class="sys.icon"
-                  class="cbp-topbar-dd-module-icon"
-                  aria-hidden="true"
-                />
-                <span class="cbp-topbar-dd-item-text">
-                  <span class="cbp-topbar-dd-item-label">{{ sys.label }}</span>
-                </span>
-              </a>
+                CBP Operations
+                <span class="cbp-topbar-dd-count">{{ navLoading ? '…' : operationsCount }}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :class="{ 'is-active': moduleScope === 'programs' }"
+                :aria-selected="moduleScope === 'programs'"
+                @click.stop="moduleScope = 'programs'"
+              >
+                CBP Programs
+                <span class="cbp-topbar-dd-count">{{ programCount }}</span>
+              </button>
+            </div>
+            <template v-if="moduleScope === 'operations'">
+              <template v-if="navLoading">
+                <p class="cbp-topbar-dd-empty" role="status">Loading modules…</p>
+              </template>
+              <template v-else-if="navError">
+                <p class="cbp-topbar-dd-empty" role="alert">{{ navError }}</p>
+              </template>
+              <template v-else-if="systems.length > 0">
+                <a
+                  v-for="sys in systems"
+                  :key="sys.module_key || sys.id"
+                  :href="sys.sso_launch ? '#' : sys.href"
+                  class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon"
+                  :class="{ 'is-active': sys.is_active }"
+                  role="menuitem"
+                  :target="moduleTarget(sys)"
+                  :rel="moduleRel(sys)"
+                  @click="onModuleNav(sys, $event)"
+                >
+                  <i :class="moduleMenuIcon(sys.module_key || sys.id, sys.icon)" class="cbp-topbar-dd-module-icon" aria-hidden="true" />
+                  <span class="cbp-topbar-dd-item-text">
+                    <span class="cbp-topbar-dd-item-label">{{ sys.label }}</span>
+                  </span>
+                </a>
+              </template>
+              <p v-else class="cbp-topbar-dd-empty" role="status">
+                No other CBP systems are assigned to your account.
+              </p>
             </template>
-            <p v-else class="cbp-topbar-dd-empty" role="status">
-              No other CBP systems are assigned to your account.
-            </p>
+            <template v-else>
+              <template v-for="group in programGroups" :key="group.title">
+                <p class="cbp-topbar-dd-section">{{ group.title }} <span class="cbp-topbar-dd-count">{{ group.items.length }}</span></p>
+                <span
+                  v-for="item in group.items"
+                  :key="item.label"
+                  class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon is-soon"
+                >
+                  <i :class="moduleMenuIcon(null, item.icon)" class="cbp-topbar-dd-module-icon" aria-hidden="true" />
+                  <span class="cbp-topbar-dd-item-text">
+                    <span class="cbp-topbar-dd-item-label">{{ item.label }}</span>
+                  </span>
+                </span>
+              </template>
+            </template>
           </div>
         </div>
         <slot name="extra" />

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { configModuleFromPath } from '@/lib/configurationModules'
 import { PORTAL_NAV_ITEMS, isNavItemActive, type PortalNavItem } from '@/lib/portalNav'
 import { useAuthStore } from '@/stores/auth'
 import { useLocaleStore } from '@/stores/locale'
@@ -56,6 +57,15 @@ function isChildActive(item: PortalNavItem): boolean {
     const childTab = child.query?.tab || 'dashboard'
     return route.path.startsWith('/performance') && tab === childTab
   })
+}
+
+const configModule = computed(() => configModuleFromPath(route.path))
+
+function configLinkActive(path: string): boolean {
+  const mod = configModule.value
+  if (!mod) return false
+  if (path === '') return route.path === mod.portalPath || route.path === `${mod.portalPath}/`
+  return route.path === `${mod.portalPath}/${path}` || route.path.startsWith(`${mod.portalPath}/${path}/`)
 }
 
 const primaryItems = computed(() =>
@@ -116,7 +126,29 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
         <i class="bx bx-menu" aria-hidden="true" />
       </button>
       <div class="cbp-nav-links" :class="{ 'is-open': navOpen }">
-        <template v-if="auth.isAuthenticated">
+        <template v-if="auth.isAuthenticated && configModule">
+          <RouterLink
+            :to="configModule.portalPath"
+            class="cbp-nav-link"
+            :class="{ 'router-link-active': configLinkActive('') }"
+            @click="closeAll"
+          >
+            <i class="fa-solid fa-chart-pie cbp-nav-link-icon" aria-hidden="true" />
+            <span class="notranslate">Dashboard</span>
+          </RouterLink>
+          <RouterLink
+            v-for="section in configModule.sections"
+            :key="section.path"
+            :to="`${configModule.portalPath}/${section.path}`"
+            class="cbp-nav-link"
+            :class="{ 'router-link-active': configLinkActive(section.path) }"
+            @click="closeAll"
+          >
+            <i :class="`fa-solid ${section.icon} cbp-nav-link-icon`" aria-hidden="true" />
+            <span class="notranslate">{{ section.label }}</span>
+          </RouterLink>
+        </template>
+        <template v-else-if="auth.isAuthenticated">
           <template v-for="item in primaryItems" :key="item.to">
             <div
               v-if="item.children?.length"

@@ -11,13 +11,13 @@ const props = defineProps<{
 
 defineEmits<{ click: [e: MouseEvent] }>()
 
-/** DB icons are often `fa-users`; normalize for Font Awesome 6. */
+/** DB icons are often `fa fa-users` or `fa-users`; Font Awesome 6 needs `fa-solid`. */
 const iconClass = computed(() => {
   const raw = (props.icon || 'fa-th').trim()
-  if (raw.includes('fa-solid') || raw.includes('fas ') || raw.startsWith('fa ')) {
+  if (raw.includes('fa-solid') || raw.includes('fas ')) {
     return raw
   }
-  const name = raw.replace(/^fa-/, '')
+  const name = raw.replace(/^(?:fa\s+)+/, '').replace(/^fa-/, '')
   return `fa-solid fa-${name}`
 })
 </script>

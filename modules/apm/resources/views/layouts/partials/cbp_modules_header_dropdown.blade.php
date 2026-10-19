@@ -15,6 +15,25 @@
     }
     unset($_m);
     $cbpCssBase = rtrim((string) ($staffWebBaseUrl ?? ''), '/');
+    $cbpProgramGroups = [];
+    $cbpProgramDir = base_path();
+    for ($cbpI = 0; $cbpI < 6; $cbpI++) {
+        $cbpCandidate = $cbpProgramDir.'/shared/cbp-program-modules.php';
+        if (is_file($cbpCandidate)) {
+            $cbpProgramGroups = require $cbpCandidate;
+            break;
+        }
+        $cbpParent = dirname($cbpProgramDir);
+        if ($cbpParent === $cbpProgramDir) {
+            break;
+        }
+        $cbpProgramDir = $cbpParent;
+    }
+    $cbpProgramCount = 0;
+    foreach ($cbpProgramGroups as $cbpGroup) {
+        $cbpProgramCount += count($cbpGroup['items'] ?? []);
+    }
+    $cbpOperationsCount = count($cbpModules);
 @endphp
 <link rel="stylesheet" href="{{ asset('assets/css/cbp-modules-nav.css') }}">
 @if ($cbpCssBase !== '')
@@ -36,24 +55,26 @@
         <span class="cbp-modules-dd-caret d-none d-md-inline" aria-hidden="true">▼</span>
     </button>
     <div class="cbp-modules-dd-panel" id="cbp-modules-dd-panel" role="menu" aria-labelledby="cbp-modules-dd-btn">
-        <a
-            href="{{ $cbpHomeHref }}"
-            class="cbp-modules-dd-primary{{ $cbpHomeActive ? ' is-active' : '' }}"
-            role="menuitem"
-        >
-            <span class="cbp-modules-dd-primary-title">{{ $cbpHomeLabel }}</span>
-        </a>
+        <a href="{{ $cbpHomeHref }}" class="cbp-modules-dd-home" role="menuitem">CBP HOME</a>
+        <div class="cbp-modules-dd-scope" role="tablist">
+            <button type="button" class="is-active" data-cbp-scope="operations">
+                CBP Operations <span class="cbp-modules-dd-count">{{ $cbpOperationsCount }}</span>
+            </button>
+            <button type="button" data-cbp-scope="programs">
+                CBP Programs <span class="cbp-modules-dd-count">{{ $cbpProgramCount }}</span>
+            </button>
+        </div>
+        <div data-cbp-pane="operations">
         @if (count($cbpModules) > 0)
-            <p class="cbp-modules-dd-section">Systems</p>
             @foreach ($cbpModules as $mod)
                 @php
                     $href = (string) ($mod['href'] ?? '#');
                     $label = (string) ($mod['label'] ?? 'Module');
                     $icon = trim((string) ($mod['icon'] ?? 'fa-th'));
-                    if ($icon !== '' && !str_starts_with($icon, 'fa ')) {
-                        if (str_starts_with($icon, 'fa-')) {
-                            $icon = 'fa ' . $icon;
-                        }
+                    if (! preg_match('/\b(fa-solid|fa-regular|fa-brands|fas|far|fab)\b/i', $icon)) {
+                        $iconName = preg_replace('/^(?:fa\s+)+/i', '', $icon);
+                        $iconName = preg_replace('/^fa-/', '', (string) $iconName);
+                        $icon = 'fa-solid fa-'.$iconName;
                     }
                     $absolute = !empty($mod['opens_in_new_tab']);
                     $active = !empty($mod['is_active']);
@@ -91,6 +112,23 @@
         @else
             <p class="cbp-modules-dd-empty" role="status">No other CBP systems are assigned to your account.</p>
         @endif
+        </div>
+        <div data-cbp-pane="programs" hidden>
+            @foreach ($cbpProgramGroups as $group)
+                <p class="cbp-modules-dd-section">
+                    {{ $group['title'] }}
+                    <span class="cbp-modules-dd-count">{{ count($group['items'] ?? []) }}</span>
+                </p>
+                @foreach ($group['items'] ?? [] as $item)
+                    <span class="cbp-modules-dd-item is-soon">
+                        <i class="fa-solid {{ $item['icon'] }} cbp-modules-dd-icon" aria-hidden="true"></i>
+                        <span class="cbp-modules-dd-item-text">
+                            <span class="cbp-modules-dd-item-label">{{ $item['label'] }}</span>
+                        </span>
+                    </span>
+                @endforeach
+            @endforeach
+        </div>
     </div>
 </li>
 <script src="{{ rtrim($cbpCssBase !== '' ? $cbpCssBase : ($staffWebBaseUrl ?? ''), '/') }}/assets/js/cbp-sso-launch.js" defer></script>
@@ -112,6 +150,19 @@
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
     btn.addEventListener('click', toggleDd);
+    root.querySelectorAll('[data-cbp-scope]').forEach(function (scopeBtn) {
+        scopeBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var scope = scopeBtn.getAttribute('data-cbp-scope');
+            root.querySelectorAll('[data-cbp-scope]').forEach(function (other) {
+                other.classList.toggle('is-active', other === scopeBtn);
+            });
+            root.querySelectorAll('[data-cbp-pane]').forEach(function (pane) {
+                pane.hidden = pane.getAttribute('data-cbp-pane') !== scope;
+            });
+        });
+    });
     document.addEventListener('click', function (e) {
         if (!root.contains(e.target)) {
             closeDd();

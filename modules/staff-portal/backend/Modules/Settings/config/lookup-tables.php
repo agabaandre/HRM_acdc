@@ -71,6 +71,12 @@ return [
         'columns' => ['job_name' => ['label' => 'Job name', 'required' => true]],
         'order' => 'job_name',
     ],
+    'jobs_acting' => [
+        'label' => 'Delegations',
+        'pk' => 'job_acting_id',
+        'columns' => ['job_acting' => ['label' => 'Acting assignment', 'required' => true]],
+        'order' => 'job_acting',
+    ],
     'funders' => [
         'label' => 'Funders',
         'pk' => 'funder_id',

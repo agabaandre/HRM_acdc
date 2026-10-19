@@ -37,7 +37,7 @@ if ($basePath === '') {
 }
 
 if ($basePath === '' && isset($_SERVER['REQUEST_URI'])
-    && preg_match('#^(/[^/]+/backend)(?:/|$)#', (string) ($_SERVER['REQUEST_URI'] ?? ''), $m) === 1) {
+    && preg_match('#^((?:/[^/]+)+/backend)(?:/|$)#', (string) ($_SERVER['REQUEST_URI'] ?? ''), $m) === 1) {
     $basePath = $m[1];
 }
 

@@ -55,8 +55,7 @@ class SsoAcceptController extends Controller
                 Log::warning('Finance SSO token cache put failed', ['error' => $e->getMessage()]);
             }
 
-            $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/finance'), '/');
-            $redirect = '/'.$spaPath.'/';
+            $redirect = '/'.$this->spaPath().'/';
 
             return response()->view('sso-bridge', [
                 'token' => $apiToken,
@@ -79,11 +78,22 @@ class SsoAcceptController extends Controller
 
     private function redirectAccessError(string $reason): RedirectResponse
     {
-        $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/finance'), '/');
-        $host = request()->getHost() ?: 'localhost';
-        $scheme = request()->getScheme() ?: 'http';
-        $url = $scheme.'://'.$host.'/'.$spaPath.'/access-error?reason='.rawurlencode($reason);
+        return redirect('/'.$this->spaPath().'/access-error?reason='.rawurlencode($reason));
+    }
 
-        return redirect()->away($url);
+    /**
+     * Public mount of the Finance SPA, taken from APP_URL so a nested
+     * install (for example /ACDC/2026/cbp/finance) is not sent to /staff/finance.
+     */
+    private function spaPath(): string
+    {
+        $path = parse_url(rtrim((string) config('app.url', ''), '/'), PHP_URL_PATH);
+        if (is_string($path) && $path !== '' && $path !== '/') {
+            return trim($path, '/');
+        }
+
+        $fromEnv = trim((string) env('FINANCE_SPA_PATH', env('RISK_REGISTER_SPA_PATH', 'staff/finance')), '/');
+
+        return $fromEnv !== '' ? $fromEnv : 'staff/finance';
     }
 }

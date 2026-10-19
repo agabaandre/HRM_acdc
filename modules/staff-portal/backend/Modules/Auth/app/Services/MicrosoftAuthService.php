@@ -69,7 +69,8 @@ class MicrosoftAuthService
     {
         // Align with CI3: store OAuth state without rotating the session id mid-flow.
         // (Session fixation is mitigated by regenerate-after-login in PortalLoginService.)
-        $state = bin2hex(random_bytes(16));
+        // Prefix lets the registered DevTrack callback hand this response back to CBP.
+        $state = 'cbp.'.bin2hex(random_bytes(16));
         $nonce = bin2hex(random_bytes(16));
 
         session([

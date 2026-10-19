@@ -4,7 +4,7 @@ import { api } from './api'
 
 function staffMountBaseUrl(): string {
   if (typeof window === 'undefined') {
-    return '/ACDC/2026/cbp'
+    return '/staff'
   }
   const path = window.location.pathname.replace(/\/(finance|apm|helpdesk|risk-register)(\/.*)?$/, '')
   return `${window.location.origin}${path || ''}`
