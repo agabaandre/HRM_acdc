@@ -59,13 +59,18 @@ export function staffPortalHomeUrl(): string {
 
 let redirectingToStaffPortal = false
 
+/** Staff portal sign-out. It clears the portal session and opens the portal login. */
+export function staffPortalLogoutUrl(): string {
+  return `${staffPortalBaseUrl()}/backend/logout`
+}
+
 /** Send the user back to Staff portal sign-in (session expired / invalid token). */
 export function redirectToStaffPortalHome(): void {
   if (redirectingToStaffPortal) {
     return
   }
   redirectingToStaffPortal = true
-  window.location.href = staffPortalHomeUrl()
+  window.location.href = staffPortalLogoutUrl()
 }
 
 /** Base Staff portal URL (no trailing home path) for shared assets, e.g. logo — same pattern as Finance. */

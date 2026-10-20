@@ -3,7 +3,7 @@ import { getActivePinia } from 'pinia'
 import { profileHasToolsPermission } from '../lib/toolsPermissions'
 import type { ToolsPermissionKey } from '../lib/toolsNav'
 import { getStoredToken } from '../lib/api'
-import { redirectToStaffPortalHome, staffPortalHomeUrl } from '../lib/sso'
+import { redirectToStaffPortalHome, staffPortalLogoutUrl } from '../lib/sso'
 import { parseSettingsSection } from '../settings/settingsSections'
 import { useAuthStore } from '../stores/auth'
 import { finishRoutePreloader, startRoutePreloader } from '../lib/appPreloader'
@@ -256,7 +256,7 @@ router.beforeEach(async (to) => {
     return { path: `/settings/${s}`, replace: true }
   }
   if (to.meta.requiresAuth && !getStoredToken()) {
-    window.location.href = staffPortalHomeUrl()
+    window.location.href = staffPortalLogoutUrl()
     return false
   }
 
@@ -271,7 +271,7 @@ router.beforeEach(async (to) => {
         await auth.fetchMe()
       } catch {
         auth.invalidateSession()
-        window.location.href = staffPortalHomeUrl()
+        window.location.href = staffPortalLogoutUrl()
         return false
       }
     }

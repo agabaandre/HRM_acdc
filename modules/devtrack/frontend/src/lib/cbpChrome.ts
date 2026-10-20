@@ -39,6 +39,14 @@ export function staffPortalBase(): string {
   return '/staff'
 }
 
+/** Staff portal sign-out. It clears the portal session and opens the portal login. */
+export function staffPortalLogoutUrl(): string {
+  const base = staffPortalBase().replace(/\/$/, '')
+  const path = `${base}/backend/logout`
+  if (path.startsWith('http') || typeof window === 'undefined') return path
+  return `${window.location.origin}${path}`
+}
+
 function staffToken(): string | null {
   try {
     return sessionStorage.getItem('staff_portal_api_token') || localStorage.getItem('staff_portal_api_token')

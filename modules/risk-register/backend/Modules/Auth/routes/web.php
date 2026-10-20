@@ -36,9 +36,9 @@ Route::middleware('web')->group(function () use ($spa): void {
             request()->session()->regenerateToken();
         }
 
-        $spa = rtrim((string) config('staff-portal.spa_url', '/staff/staff-portal/'), '/');
+        $spa = rtrim((string) config('staff-portal.spa_url', '/staff/'), '/');
 
-        return redirect()->away($spa.'/login');
+        return redirect()->away($spa.'/backend/logout');
     })->name('auth.logout');
 
     Route::get('sso/callback', [SsoController::class, 'acceptSsoRedirect'])->name('auth.sso.callback');

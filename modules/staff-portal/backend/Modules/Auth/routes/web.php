@@ -36,9 +36,17 @@ Route::middleware('web')->group(function () use ($spa): void {
             request()->session()->regenerateToken();
         }
 
-        $spa = rtrim((string) config('staff-portal.spa_url', '/staff/staff-portal/'), '/');
+        $spa = rtrim((string) config('staff-portal.spa_url', '/staff/'), '/');
+        $login = json_encode($spa.'/login', JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 
-        return redirect()->away($spa.'/login');
+        return response(
+            '<!doctype html><html><head><meta charset="utf-8"><title>Signing out</title></head><body><script>'
+            .'try{["staff_portal_api_token","staff_portal_me_cache_v2","risk_register_api_token","helpdesk_api_token","email_server.token","staff_portal.sso_token","helpdesk.staff_sso_token"].forEach(function(k){sessionStorage.removeItem(k);localStorage.removeItem(k);});}catch(e){}'
+            .'location.replace('.$login.');'
+            .'</script></body></html>',
+            200,
+            ['Cache-Control' => 'no-store'],
+        );
     })->name('auth.logout');
 
     Route::get('sso/callback', [SsoController::class, 'acceptSsoRedirect'])->name('auth.sso.callback');

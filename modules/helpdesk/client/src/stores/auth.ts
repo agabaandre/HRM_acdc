@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, getStoredToken, setStoredToken } from '../lib/api'
-import { staffPortalHomeUrl } from '../lib/sso'
+import { staffPortalLogoutUrl } from '../lib/sso'
 
 export type WorkMode = 'remote' | 'onsite'
 
@@ -87,7 +87,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     applyToken(null)
     me.value = null
-    window.location.href = staffPortalHomeUrl()
+    window.location.href = staffPortalLogoutUrl()
   }
 
   /** Clear token and profile without redirect (e.g. expired session). */

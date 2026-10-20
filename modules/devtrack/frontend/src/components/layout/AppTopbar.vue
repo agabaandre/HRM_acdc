@@ -10,6 +10,7 @@ import {
   launchCbpModule,
   readLocale,
   staffPortalBase,
+  staffPortalLogoutUrl,
   type CbpModuleLink,
   type CbpNavPayload,
   type PortalLanguage,
@@ -102,7 +103,7 @@ async function openModule(mod: CbpModuleLink, event: Event) {
 async function logout() {
   closeMenus()
   await auth.logout()
-  await router.push({ name: 'login' })
+  window.location.assign(staffPortalLogoutUrl())
 }
 
 function onDocClick(event: MouseEvent) {

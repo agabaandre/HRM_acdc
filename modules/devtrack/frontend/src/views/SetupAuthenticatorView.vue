@@ -6,6 +6,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue'
 import AppLogo from '@/components/layout/AppLogo.vue'
 import FormField from '@/components/forms/FormField.vue'
 import { apiErrorMessage } from '@/lib/apiError'
+import { staffPortalLogoutUrl } from '@/lib/cbpChrome'
 import { useAuthStore } from '@/stores/auth'
 import { useBrandingStore } from '@/stores/branding'
 
@@ -64,7 +65,7 @@ async function continueToApp() {
 
 async function logout() {
   await auth.logout()
-  await router.replace({ name: 'login' })
+  window.location.assign(staffPortalLogoutUrl())
 }
 
 onMounted(() => {
