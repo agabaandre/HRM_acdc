@@ -69,7 +69,8 @@ class MicrosoftAuthService
     {
         // Align with CI3: store OAuth state without rotating the session id mid-flow.
         // (Session fixation is mitigated by regenerate-after-login in PortalLoginService.)
-        $state = bin2hex(random_bytes(16));
+        // cbp.risk. is handed back by the registered Entra redirect (AfricaCDCDevTrack/login/redirect).
+        $state = 'cbp.risk.'.bin2hex(random_bytes(16));
         $nonce = bin2hex(random_bytes(16));
 
         session([

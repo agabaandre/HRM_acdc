@@ -127,6 +127,8 @@ class WorkRequestController extends Controller
                 'notes' => 'Converted from intake '.$workRequest->reference,
             ]);
 
+            app(\App\Services\ProjectModuleService::class)->ensurePrimaryModule($project);
+
             return $project;
         });
 

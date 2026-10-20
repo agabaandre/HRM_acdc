@@ -242,7 +242,7 @@ class DashboardController extends Controller
                         ->selectRaw('project_id, COUNT(*) as aggregate')
                         ->whereIn('project_id', $projectIds)
                         ->whereNull('enhancement_id')
-                        ->whereNull('project_module_id')
+                        ->whereNotNull('project_module_id')
                         ->where('status', WorkItemStatus::Completed->value)
                         ->groupBy('project_id')
                         ->pluck('aggregate', 'project_id');
@@ -253,7 +253,7 @@ class DashboardController extends Controller
                         ->selectRaw('project_id, COUNT(*) as aggregate')
                         ->whereIn('project_id', $projectIds)
                         ->whereNull('enhancement_id')
-                        ->whereNull('project_module_id')
+                        ->whereNotNull('project_module_id')
                         ->whereIn('status', $openTaskStatuses)
                         ->groupBy('project_id')
                         ->pluck('aggregate', 'project_id');

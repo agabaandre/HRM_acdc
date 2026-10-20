@@ -165,10 +165,11 @@ onMounted(load)
         >
           Edit
         </v-btn>
-        <v-btn color="primary" @click="taskDialog = true">Assign work</v-btn>
+        <v-btn color="primary" @click="taskDialog = true">Add Task</v-btn>
       </template>
     </PageHeader>
 
+    <v-chip v-if="moduleRow?.is_primary" size="small" color="primary" class="mb-4">Primary module</v-chip>
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" density="compact">{{ error }}</v-alert>
     <v-alert v-if="message" type="success" variant="tonal" class="mb-4" density="compact">{{ message }}</v-alert>
     <v-skeleton-loader v-if="loading" type="article" />
@@ -251,7 +252,7 @@ onMounted(load)
         </v-row>
       </ParentCard>
 
-      <ParentCard title="Module work items" class="mb-4">
+      <ParentCard title="Module tasks" class="mb-4">
         <AppDataTable
           :items="moduleRow.work_items || []"
           :headers="[
@@ -379,13 +380,11 @@ onMounted(load)
 
     <v-dialog v-model="taskDialog" max-width="640">
       <v-card>
-        <v-card-title>Assign module work</v-card-title>
+        <v-card-title>Add task</v-card-title>
         <v-card-text>
           <v-row>
             <v-col cols="12"><FormField label="Title" required><v-text-field v-model="taskForm.title" /></FormField></v-col>
-            <v-col cols="12" md="6"><FormField label="Type"><v-select v-model="taskForm.type" :items="opts(options?.work_item_types)" /></FormField></v-col>
             <v-col cols="12" md="6"><FormField label="Status"><v-select v-model="taskForm.status" :items="opts(options?.work_item_statuses)" /></FormField></v-col>
-            <v-col cols="12" md="6"><FormField label="Priority"><v-select v-model="taskForm.priority" :items="opts(options?.work_item_priorities)" /></FormField></v-col>
             <v-col cols="12" md="6">
               <FormField label="Assignee">
                 <v-select
@@ -406,7 +405,7 @@ onMounted(load)
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="taskDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="savingTask" @click="addTask">Save</v-btn>
+          <v-btn color="primary" :loading="savingTask" @click="addTask">Add Task</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

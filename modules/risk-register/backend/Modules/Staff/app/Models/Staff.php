@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Staff extends Model
 {
+    protected $connection = 'staff';
+
     protected $table = 'staff';
 
     protected $primaryKey = 'staff_id';

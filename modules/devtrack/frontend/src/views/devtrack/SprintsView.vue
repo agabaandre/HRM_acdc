@@ -68,7 +68,7 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHeader title="Sprints" subtitle="Two-week delivery cycles with a goal, capacity and committed work">
+    <PageHeader title="Sprints" subtitle="Two-week delivery cycles with a goal, capacity and committed tasks">
       <template #actions>
         <v-btn color="primary" @click="dialog = true">New sprint</v-btn>
       </template>

@@ -19,21 +19,26 @@ Route::post('/sso/accept', SsoAcceptController::class)->withoutMiddleware([
 // CBP staff-portal sign-in uses this app's registered Entra redirect, then returns home.
 Route::get('/login/redirect', function (Request $request) {
     $state = (string) $request->query('state', '');
+    $query = $request->getQueryString();
+    $suffix = $query ? '?'.$query : '';
+    $appUrl = rtrim((string) config('app.url', ''), '/');
+    $parts = parse_url($appUrl) ?: [];
+    $origin = ($parts['scheme'] ?? 'http').'://'.($parts['host'] ?? 'localhost');
+    if (! empty($parts['port'])) {
+        $origin .= ':'.$parts['port'];
+    }
+    $root = preg_replace('#/devtrack/?$#', '', (string) ($parts['path'] ?? '')) ?: '';
+    $cbpRoot = $origin.rtrim($root, '/');
+    if (str_starts_with($state, 'cbp.risk.')) {
+        return redirect()->away($cbpRoot.'/risk-register/backend/auth/microsoft/callback'.$suffix);
+    }
     if (str_starts_with($state, 'cbp.')) {
         $target = rtrim((string) env('CBP_MICROSOFT_CALLBACK_URL', ''), '/');
         if ($target === '') {
-            $appUrl = rtrim((string) config('app.url', ''), '/');
-            $parts = parse_url($appUrl) ?: [];
-            $origin = ($parts['scheme'] ?? 'http').'://'.($parts['host'] ?? 'localhost');
-            if (! empty($parts['port'])) {
-                $origin .= ':'.$parts['port'];
-            }
-            $root = preg_replace('#/devtrack/?$#', '', (string) ($parts['path'] ?? '')) ?: '';
-            $target = $origin.rtrim($root, '/').'/backend/auth/microsoft/callback';
+            $target = $cbpRoot.'/backend/auth/microsoft/callback';
         }
-        $query = $request->getQueryString();
 
-        return redirect()->away($target.($query ? '?'.$query : ''));
+        return redirect()->away($target.$suffix);
     }
 
     return app(SpaController::class)($request);

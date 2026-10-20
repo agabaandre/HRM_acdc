@@ -21,6 +21,7 @@ class ProjectModule extends Model
 
     protected $fillable = [
         'project_id',
+        'is_primary',
         'code',
         'name',
         'description',
@@ -50,6 +51,7 @@ class ProjectModule extends Model
     protected function casts(): array
     {
         return [
+            'is_primary' => 'boolean',
             'work_class' => WorkClass::class,
             'stage' => ProjectStage::class,
             'rag_status' => RagStatus::class,
@@ -122,6 +124,7 @@ class ProjectModule extends Model
         $base = [
             'id' => $this->id,
             'project_id' => $this->project_id,
+            'is_primary' => (bool) $this->is_primary,
             'code' => $this->code,
             'name' => $this->name,
             'description' => $this->description,

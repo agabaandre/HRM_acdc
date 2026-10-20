@@ -12,6 +12,7 @@ import {
   statusColor,
   type CatalogOption,
   type DevTrackOptions,
+  type ProjectModuleRow,
   type ProjectSummary,
   type TeamMember,
   type WorkItemRow,
@@ -58,8 +59,10 @@ const filters = ref({
   type: '',
 })
 
+const modules = ref<ProjectModuleRow[]>([])
 const form = ref({
   project_id: null as number | null,
+  project_module_id: null as number | null,
   title: '',
   type: 'task',
   status: 'not_started',
@@ -155,7 +158,7 @@ async function load() {
       if (expanded[item.id]) drafts[item.id] = draftFromItem(item)
     }
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not load work items.')
+    error.value = apiErrorMessage(err, 'Could not load tasks.')
   } finally {
     loading.value = false
   }
@@ -172,9 +175,19 @@ function clearFilters() {
   void load()
 }
 
+async function loadModules(projectId: number | null) {
+  modules.value = []
+  form.value.project_module_id = null
+  if (!projectId) return
+  const res = await api.get('/admin/project-modules', { params: { project_id: projectId } })
+  modules.value = res.data.data
+  const primary = modules.value.find((mod) => mod.is_primary) ?? modules.value[0]
+  form.value.project_module_id = primary?.id ?? null
+}
+
 async function save() {
-  if (!form.value.project_id || !form.value.title) {
-    error.value = 'Project and title are required.'
+  if (!form.value.project_id || !form.value.project_module_id || !form.value.title) {
+    error.value = 'Project, module, and title are required.'
     return
   }
   saving.value = true
@@ -186,9 +199,10 @@ async function save() {
       assignee_id: props.mine && !form.value.assignee_id ? auth.user?.id : form.value.assignee_id,
     })
     dialog.value = false
-    message.value = 'Work assigned.'
+    message.value = 'Task added.'
     form.value = {
       ...form.value,
+      project_module_id: form.value.project_module_id,
       title: '',
       description: '',
       acceptance_criteria: '',
@@ -198,7 +212,7 @@ async function save() {
     }
     await load()
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not create work item.')
+    error.value = apiErrorMessage(err, 'Could not add the task.')
   } finally {
     saving.value = false
   }
@@ -219,7 +233,7 @@ async function patch(item: WorkItemRow, field: string, value: unknown) {
     await api.put(`/admin/work-items/${item.id}`, { [field]: value })
     if (field !== 'status') await load()
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not update work item.')
+    error.value = apiErrorMessage(err, 'Could not update the task.')
     await load()
   } finally {
     movingId.value = null
@@ -250,7 +264,7 @@ async function saveEdit(item: WorkItemRow) {
     message.value = 'Task updated.'
     await load()
   } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not update work item.')
+    error.value = apiErrorMessage(err, 'Could not update the task.')
   } finally {
     savingId.value = null
   }
@@ -316,6 +330,13 @@ async function onDrop(event: DragEvent, status: string) {
 }
 
 watch(
+  () => form.value.project_id,
+  (projectId) => {
+    void loadModules(projectId)
+  },
+)
+
+watch(
   () => [filters.value.project_id, filters.value.assignee_id, filters.value.priority, filters.value.type],
   () => {
     void load()
@@ -344,10 +365,10 @@ onMounted(async () => {
 <template>
   <div>
     <PageHeader
-      :title="mine ? 'My work' : 'Assign work'"
+      :title="mine ? 'My tasks' : 'Tasks'"
       :subtitle="mine
         ? 'Your tasks across three status columns — expand a card to edit, drag collapsed cards to move'
-        : 'Assign and track work — expand a card to edit, drag collapsed cards between columns'"
+        : 'Add and track tasks — expand a card to edit, drag collapsed cards between columns'"
     >
       <template #actions>
         <v-btn
@@ -358,7 +379,7 @@ onMounted(async () => {
         >
           {{ anyExpanded ? 'Collapse all' : 'Expand all' }}
         </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="dialog = true">New work item</v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="dialog = true">Add Task</v-btn>
       </template>
     </PageHeader>
 
@@ -645,21 +666,22 @@ onMounted(async () => {
 
     <v-dialog v-model="dialog" max-width="720">
       <v-card>
-        <v-card-title>Assign a work item</v-card-title>
+        <v-card-title>Add task</v-card-title>
         <v-card-text>
           <FormField label="Project" required>
             <v-select v-model="form.project_id" :items="projects.map((p) => ({ title: `${p.code} — ${p.name}`, value: p.id }))" />
+          </FormField>
+          <FormField label="Module" required>
+            <v-select
+              v-model="form.project_module_id"
+              :items="modules.map((mod) => ({ title: mod.is_primary ? `${mod.name} (Primary)` : mod.name, value: mod.id }))"
+              :disabled="!form.project_id"
+            />
           </FormField>
           <FormField label="Title" required>
             <v-text-field v-model="form.title" />
           </FormField>
           <v-row>
-            <v-col cols="12" md="4">
-              <FormField label="Type"><v-select v-model="form.type" :items="opts(options?.work_item_types)" /></FormField>
-            </v-col>
-            <v-col cols="12" md="4">
-              <FormField label="Priority"><v-select v-model="form.priority" :items="opts(options?.work_item_priorities)" /></FormField>
-            </v-col>
             <v-col cols="12" md="4">
               <FormField label="Status"><v-select v-model="form.status" :items="opts(options?.work_item_statuses)" /></FormField>
             </v-col>
@@ -684,7 +706,7 @@ onMounted(async () => {
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="dialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="saving" @click="save">Assign</v-btn>
+          <v-btn color="primary" :loading="saving" @click="save">Add Task</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

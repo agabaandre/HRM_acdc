@@ -100,6 +100,8 @@ class SystemsInventoryImportService
                     $request->status = WorkRequestStatus::Converted;
                     $request->save();
 
+                    app(ProjectModuleService::class)->ensurePrimaryModule($project);
+
                     $stats['created_projects']++;
 
                     continue;

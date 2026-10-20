@@ -118,6 +118,7 @@ export type WorkItemRow = {
 export type ProjectModuleRow = {
   id: number
   project_id: number
+  is_primary?: boolean
   code: string
   name: string
   description: string | null

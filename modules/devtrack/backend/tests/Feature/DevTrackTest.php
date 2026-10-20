@@ -80,7 +80,8 @@ class DevTrackTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.indicator.code', 'WP-2026-SD-99')
             ->assertJsonPath('data.work_request.reference', $request->reference)
-            ->assertJsonPath('data.roles.project_manager.user.id', $assignee->id);
+            ->assertJsonPath('data.roles.project_manager.user.id', $assignee->id)
+            ->assertJsonPath('data.project_modules.0.is_primary', true);
 
         $projectId = $created->json('data.id');
 
@@ -101,8 +102,11 @@ class DevTrackTest extends TestCase
             ->assertJsonPath('data.title', 'Write weekly status report')
             ->assertJsonPath('data.assignee.id', $assignee->id);
 
+        $moduleId = $created->json('data.project_modules.0.id');
+        $this->assertNotNull($moduleId);
         $this->assertDatabaseHas('work_items', [
             'project_id' => $projectId,
+            'project_module_id' => $moduleId,
             'assignee_id' => $assignee->id,
         ]);
     }

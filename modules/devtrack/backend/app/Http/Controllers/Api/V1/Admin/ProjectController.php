@@ -15,6 +15,7 @@ use App\Http\Requests\Api\V1\Admin\StoreProjectRequest;
 use App\Models\Project;
 use App\Models\ProjectModule;
 use App\Models\WorkRequest;
+use App\Services\ProjectModuleService;
 use App\Support\DevTrackReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -337,6 +338,8 @@ class ProjectController extends Controller
      */
     private function detail(Project $project): array
     {
+        app(ProjectModuleService::class)->moveProjectTasksToPrimary($project);
+
         $openTaskStatuses = collect(WorkItemStatus::cases())
             ->filter(fn (WorkItemStatus $status) => $status->isOpen())
             ->map(fn (WorkItemStatus $status) => $status->value)
@@ -377,7 +380,7 @@ class ProjectController extends Controller
         }
 
         $moduleRows = $project->projectModules
-            ->sortBy('name')
+            ->sortBy(fn (ProjectModule $module) => sprintf('%d-%010d', $module->is_primary ? 0 : 1, $module->id))
             ->values()
             ->map->toApiArray();
 
@@ -408,13 +411,6 @@ class ProjectController extends Controller
             'role_list' => $project->roleAssignments->map->toApiArray()->values(),
             'stage_history' => $project->stageEvents->map->toApiArray()->values(),
             'sprints' => $project->sprints()->with('project:id,code,name')->latest('start_date')->get()->map->toApiArray()->values(),
-            'work_items' => $project->coreWorkItems()
-                ->with(['assignee:id,name,email', 'project:id,code,name', 'sprint:id,name'])
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get()
-                ->map->toApiArray()
-                ->values(),
             'raid_items' => $project->raidItems()
                 ->with(['owner:id,name', 'project:id,code,name'])
                 ->latest()

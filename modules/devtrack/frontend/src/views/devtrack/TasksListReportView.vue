@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import FormField from '@/components/forms/FormField.vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import ParentCard from '@/components/shared/ParentCard.vue'
 import { api } from '@/lib/api'
@@ -26,10 +27,17 @@ type TaskRow = {
   attachment_label: string
 }
 
+type FilterOption = { value?: string; id?: number; label: string }
+
 type TasksReport = {
   name: string
   summary: { total_tasks: number }
   tasks: TaskRow[]
+  filter_options?: {
+    statuses: FilterOption[]
+    projects: FilterOption[]
+    assignees: FilterOption[]
+  }
 }
 
 const loading = ref(true)
@@ -37,17 +45,40 @@ const error = ref('')
 const report = ref<TasksReport | null>(null)
 const router = useRouter()
 
+const filters = ref({
+  status: null as string | null,
+  project_id: null as number | null,
+  assignee_id: null as number | null,
+})
+
+function filterParams() {
+  return {
+    status: filters.value.status || undefined,
+    project_id: filters.value.project_id || undefined,
+    assignee_id: filters.value.assignee_id || undefined,
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const res = await api.get('/admin/reports/tasks')
+    const res = await api.get('/admin/reports/tasks', { params: filterParams() })
     report.value = res.data.data
   } catch (err) {
     error.value = apiErrorMessage(err, 'Could not load the tasks report.')
   } finally {
     loading.value = false
   }
+}
+
+function clearFilters() {
+  filters.value = {
+    status: null,
+    project_id: null,
+    assignee_id: null,
+  }
+  void load()
 }
 
 function openTask(item: TaskRow) {
@@ -71,7 +102,7 @@ onMounted(load)
   <div>
     <PageHeader
       title="All Tasks"
-      subtitle="Every work item with the project or module it is attached to"
+      subtitle="Every task with the project or module it is attached to"
     >
       <template #actions>
         <v-btn variant="tonal" :to="{ name: 'reports' }">Back to reports</v-btn>
@@ -80,6 +111,55 @@ onMounted(load)
     </PageHeader>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-4" density="compact">{{ error }}</v-alert>
+
+    <ParentCard title="Filters" class="mb-4">
+      <v-row>
+        <v-col cols="12" md="3">
+          <FormField label="Status">
+            <v-select
+              v-model="filters.status"
+              :items="report?.filter_options?.statuses ?? []"
+              item-title="label"
+              item-value="value"
+              clearable
+              hide-details
+              placeholder="All statuses"
+            />
+          </FormField>
+        </v-col>
+        <v-col cols="12" md="4">
+          <FormField label="Project">
+            <v-select
+              v-model="filters.project_id"
+              :items="report?.filter_options?.projects ?? []"
+              item-title="label"
+              item-value="id"
+              clearable
+              hide-details
+              placeholder="All projects"
+            />
+          </FormField>
+        </v-col>
+        <v-col cols="12" md="3">
+          <FormField label="Assignee">
+            <v-select
+              v-model="filters.assignee_id"
+              :items="report?.filter_options?.assignees ?? []"
+              item-title="label"
+              item-value="id"
+              clearable
+              hide-details
+              placeholder="All assignees"
+            />
+          </FormField>
+        </v-col>
+        <v-col cols="12" md="2" class="d-flex align-end ga-2">
+          <v-btn color="primary" :loading="loading" @click="load">Apply</v-btn>
+          <v-btn variant="tonal" @click="clearFilters">Clear</v-btn>
+        </v-col>
+      </v-row>
+    </ParentCard>
+
     <v-skeleton-loader v-if="loading && !report" type="article" />
 
     <ParentCard v-else-if="report" :title="`${report.summary.total_tasks} tasks`">

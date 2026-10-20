@@ -148,12 +148,12 @@ class Project extends Model
         return $this->hasMany(WorkItem::class);
     }
 
-    /** Original project tasks only (excludes enhancement / module child work). */
+    /** Tasks that live on this project's modules (enhancement tasks stay with the enhancement). */
     public function coreWorkItems(): HasMany
     {
         return $this->hasMany(WorkItem::class)
             ->whereNull('enhancement_id')
-            ->whereNull('project_module_id');
+            ->whereNotNull('project_module_id');
     }
 
     public function projectModules(): HasMany
@@ -191,7 +191,7 @@ class Project extends Model
      */
     public function toSummaryArray(): array
     {
-        // Progress reflects original project work only — enhancement/module tasks stay separate.
+        // Progress rolls up tasks on the project's modules.
         $openTasks = $this->work_items_open_count
             ?? $this->coreWorkItems()->where('status', '!=', WorkItemStatus::Completed->value)->count();
         $doneTasks = $this->work_items_done_count

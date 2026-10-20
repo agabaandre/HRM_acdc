@@ -6,6 +6,7 @@ use App\Enums\WorkItemStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreWorkItemRequest;
 use App\Models\WorkItem;
+use App\Services\ProjectModuleService;
 use App\Support\DevTrackReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ class WorkItemController extends Controller
 
     public function store(StoreWorkItemRequest $request): JsonResponse
     {
-        $data = $request->validated();
+        $data = app(ProjectModuleService::class)->placeOnModule($request->validated());
         $data['key'] = DevTrackReference::next('WI', 'work_items', 'key');
         $data['reporter_id'] = $request->user()?->id;
         $data['status'] = $data['status'] ?? WorkItemStatus::NotStarted->value;
@@ -76,7 +77,12 @@ class WorkItemController extends Controller
 
     public function update(StoreWorkItemRequest $request, WorkItem $workItem): JsonResponse
     {
-        $workItem->update($request->validated());
+        $data = $request->validated();
+        if (array_key_exists('project_module_id', $data) || $workItem->project_module_id === null) {
+            $data['project_id'] = $data['project_id'] ?? $workItem->project_id;
+            $data = app(ProjectModuleService::class)->placeOnModule($data, $workItem->project_id);
+        }
+        $workItem->update($data);
         $workItem->load(['project:id,code,name', 'assignee:id,name,email', 'sprint:id,name']);
 
         return response()->json(['data' => $workItem->toApiArray()]);

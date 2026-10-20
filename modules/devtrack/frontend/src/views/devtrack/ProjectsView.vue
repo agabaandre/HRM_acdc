@@ -42,7 +42,7 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHeader title="Projects" subtitle="Every software project and ongoing work, linked to a workplan indicator">
+    <PageHeader title="Projects" subtitle="Every software project and its tasks, linked to a workplan indicator">
       <template #actions>
         <v-btn color="primary" :to="{ name: 'project-new' }">New project</v-btn>
       </template>
@@ -84,7 +84,7 @@ onMounted(load)
           { title: 'Stage', key: 'stage_label' },
           { title: 'Status', key: 'status_label' },
           { title: 'RAG', key: 'rag_status' },
-          { title: 'Work', key: 'progress_percent' },
+          { title: 'Tasks', key: 'progress_percent' },
         ]"
         item-value="id"
         hover

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class StaffContract extends Model
 {
+    protected $connection = 'staff';
+
     protected $table = 'staff_contracts';
 
     protected $primaryKey = 'staff_contract_id';

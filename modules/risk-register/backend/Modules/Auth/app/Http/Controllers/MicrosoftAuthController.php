@@ -5,10 +5,14 @@ namespace Modules\Auth\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Modules\Auth\Models\PortalUser;
 use Modules\Auth\Services\MicrosoftAuthService;
 use Modules\Auth\Services\PortalLoginService;
 use Modules\Auth\Support\SpaRedirect;
+use Symfony\Component\HttpFoundation\Response;
 
 class MicrosoftAuthController extends Controller
 {
@@ -17,12 +21,13 @@ class MicrosoftAuthController extends Controller
         protected PortalLoginService $portalLogin,
     ) {}
 
-    public function redirect(): RedirectResponse
+    public function redirect(): Response
     {
         // Already signed into the Laravel web session (e.g. after a prior SSO) but
-        // the SPA may not have a Sanctum token yet — hand off instead of bouncing.
-        if (auth()->check()) {
-            return SpaRedirect::afterLogin();
+        // the SPA may not have a token yet — hand off instead of bouncing.
+        $signedIn = auth()->user();
+        if ($signedIn instanceof PortalUser) {
+            return $this->openRiskRegister(request(), $signedIn->toSessionArray());
         }
 
         if (! MicrosoftAuthService::isConfigured()) {
@@ -44,7 +49,7 @@ class MicrosoftAuthController extends Controller
         }
     }
 
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request): Response
     {
         if ($request->filled('error')) {
             $description = (string) $request->input('error_description', '');
@@ -118,6 +123,42 @@ class MicrosoftAuthController extends Controller
 
         $this->portalLogin->login($user, false, 'User logged in successfully using Microsoft SSO');
 
-        return SpaRedirect::afterLogin();
+        return $this->openRiskRegister($request, $user->toSessionArray());
+    }
+
+    /**
+     * Hand the SPA the same bearer the CBP SSO bridge uses.
+     *
+     * @param  array<string, mixed>  $session
+     */
+    private function openRiskRegister(Request $request, array $session): Response
+    {
+        $apiToken = Str::random(64);
+        $sessionPayload = [
+            'staff_id' => (int) ($session['staff_id'] ?? 0),
+            'name' => (string) ($session['name'] ?? ''),
+            'email' => (string) ($session['email'] ?? ''),
+            'permissions' => $session['permissions'] ?? [],
+            'division_id' => (int) ($session['division_id'] ?? 0),
+            'role_id' => (int) ($session['role_id'] ?? $session['role'] ?? 0),
+            'api_token' => $apiToken,
+        ];
+        $request->session()->put('risk_register', $sessionPayload);
+        try {
+            Cache::put('risk_api_token:'.$apiToken, $sessionPayload, now()->addHours(12));
+        } catch (\Throwable $e) {
+            Log::warning('Risk Register Microsoft token cache put failed', ['error' => $e->getMessage()]);
+        }
+
+        $spaPath = trim((string) env('RISK_REGISTER_SPA_PATH', 'staff/risk-register'), '/');
+
+        return response()->view('sso-bridge', [
+            'token' => $apiToken,
+            'redirect' => '/'.$spaPath.'/risks',
+        ], 200)->withHeaders([
+            'Content-Security-Policy' => "default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+            'Referrer-Policy' => 'no-referrer',
+            'X-Frame-Options' => 'DENY',
+        ]);
     }
 }

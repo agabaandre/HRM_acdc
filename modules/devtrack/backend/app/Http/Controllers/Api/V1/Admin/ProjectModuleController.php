@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\StoreProjectModuleRequest;
 use App\Models\Project;
 use App\Models\ProjectModule;
+use App\Services\ProjectModuleService;
 use App\Support\DevTrackReference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,8 @@ class ProjectModuleController extends Controller
         $items = ProjectModule::query()
             ->with(['project:id,code,name', 'businessOwner', 'responsibleDeveloper'])
             ->when($request->filled('project_id'), fn ($q) => $q->where('project_id', $request->query('project_id')))
-            ->orderBy('name')
+            ->orderByDesc('is_primary')
+            ->orderBy('id')
             ->get()
             ->map(fn (ProjectModule $module) => $module->toApiArray())
             ->values();
@@ -32,6 +34,7 @@ class ProjectModuleController extends Controller
         $data['created_by'] = $request->user()?->id;
 
         $module = ProjectModule::query()->create($data);
+        app(ProjectModuleService::class)->ensurePrimaryModule($module->project);
         $this->syncProjectModuleNames($module->project);
 
         return response()->json(['data' => $module->fresh()->toApiArray(true)], 201);

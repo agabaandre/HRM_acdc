@@ -18,7 +18,7 @@ function barHeight(value: number): string {
       <div class="d-sm-flex align-center justify-space-between gap-3">
         <div>
           <h3 class="card-title mb-1">Delivery throughput</h3>
-          <h5 class="card-subtitle">Work items opened vs completed over eight weeks</h5>
+          <h5 class="card-subtitle">Tasks opened vs completed over eight weeks</h5>
         </div>
         <div class="d-flex align-center ga-3">
           <div class="d-flex align-center ga-2">

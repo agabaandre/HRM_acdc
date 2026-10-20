@@ -134,7 +134,7 @@ onMounted(async () => {
   <div>
     <PageHeader
       :title="`Welcome back, ${auth.user?.name ?? 'team'}`"
-      :subtitle="`${branding.branding.app_name} — project status, assigned work and reporting cadence`"
+      :subtitle="`${branding.branding.app_name} — project status, assigned tasks and reporting cadence`"
     >
       <template #actions>
         <v-btn color="primary" variant="tonal" :to="{ name: 'request-new' }">Register request</v-btn>
@@ -427,9 +427,9 @@ onMounted(async () => {
 
       <v-row>
         <v-col cols="12" lg="6">
-          <ParentCard title="My assigned work">
+          <ParentCard title="My assigned tasks">
             <template #action>
-              <v-btn variant="text" color="primary" :to="{ name: 'my-work' }">Open board</v-btn>
+              <v-btn variant="text" color="primary" :to="{ name: 'my-work' }">View tasks</v-btn>
             </template>
             <v-list v-if="data.my_work.length" lines="two">
               <v-list-item v-for="item in data.my_work" :key="item.id" :to="{ name: 'work', query: { q: item.key } }">
@@ -459,7 +459,7 @@ onMounted(async () => {
                 </v-list-item-subtitle>
               </v-list-item>
             </v-list>
-            <div v-else class="text-medium-emphasis py-4">No overdue work items.</div>
+            <div v-else class="text-medium-emphasis py-4">No overdue tasks.</div>
           </ParentCard>
         </v-col>
       </v-row>

@@ -14,6 +14,8 @@ class PortalUser extends Authenticatable
 {
     use HasApiTokens;
 
+    protected $connection = 'staff';
+
     protected $table = 'user';
 
     protected $primaryKey = 'user_id';
@@ -138,17 +140,20 @@ class PortalUser extends Authenticatable
         }
 
         $perms = [];
+        $connection = $this->getConnectionName() ?: (string) config('database.default');
+        $schema = \Illuminate\Support\Facades\Schema::connection($connection);
+        $db = \Illuminate\Support\Facades\DB::connection($connection);
 
-        if (\App\Support\LegacySchema::has('group_permissions')) {
-            $perms = \Illuminate\Support\Facades\DB::table('group_permissions')
+        if ($schema->hasTable('group_permissions')) {
+            $perms = $db->table('group_permissions')
                 ->where('group_id', $this->role)
                 ->pluck('permission_id')
                 ->map(fn ($id) => is_numeric($id) ? (int) $id : (string) $id)
                 ->all();
         }
 
-        if (\App\Support\LegacySchema::has('user_permissions')) {
-            $userPerms = \Illuminate\Support\Facades\DB::table('user_permissions')
+        if ($schema->hasTable('user_permissions')) {
+            $userPerms = $db->table('user_permissions')
                 ->where('user_id', $this->user_id)
                 ->pluck('permission_id')
                 ->map(fn ($id) => is_numeric($id) ? (int) $id : (string) $id)

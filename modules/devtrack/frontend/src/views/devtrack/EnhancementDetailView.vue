@@ -136,7 +136,7 @@ onMounted(load)
         >
           Edit
         </v-btn>
-        <v-btn color="primary" @click="taskDialog = true">Add task</v-btn>
+        <v-btn color="primary" @click="taskDialog = true">Add Task</v-btn>
       </template>
     </PageHeader>
 
@@ -236,9 +236,7 @@ onMounted(load)
         <v-card-text>
           <v-row>
             <v-col cols="12"><FormField label="Title" required><v-text-field v-model="taskForm.title" /></FormField></v-col>
-            <v-col cols="12" md="6"><FormField label="Type"><v-select v-model="taskForm.type" :items="opts(options?.work_item_types)" /></FormField></v-col>
             <v-col cols="12" md="6"><FormField label="Status"><v-select v-model="taskForm.status" :items="opts(options?.work_item_statuses)" /></FormField></v-col>
-            <v-col cols="12" md="6"><FormField label="Priority"><v-select v-model="taskForm.priority" :items="opts(options?.work_item_priorities)" /></FormField></v-col>
             <v-col cols="12" md="6">
               <FormField label="Assignee">
                 <v-select
@@ -260,7 +258,7 @@ onMounted(load)
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="taskDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="savingTask" @click="addTask">Save task</v-btn>
+          <v-btn color="primary" :loading="savingTask" @click="addTask">Add Task</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

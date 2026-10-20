@@ -23,7 +23,6 @@ import {
   type SprintRow,
   type StatusReportRow,
   type TeamMember,
-  type WorkItemRow,
 } from '@/lib/devtrack'
 
 type RoleSlot = {
@@ -80,7 +79,6 @@ type ProjectDetail = {
   roles: Record<string, RoleSlot | null>
   stage_history: Array<{ id: number; to_stage_label: string; notes: string | null; created_at: string }>
   sprints: SprintRow[]
-  work_items: WorkItemRow[]
   raid_items: RaidRow[]
   reports: StatusReportRow[]
   is_archived?: boolean
@@ -103,8 +101,6 @@ const archiving = ref(false)
 const unarchiving = ref(false)
 const options = ref<DevTrackOptions | null>(null)
 const team = ref<TeamMember[]>([])
-const savingTask = ref(false)
-const taskDialog = ref(false)
 const raidDialog = ref(false)
 const savingRaid = ref(false)
 const releaseDialog = ref(false)
@@ -125,18 +121,6 @@ const raidForm = ref({
   owner_id: null as number | null,
   due_date: '',
   mitigation: '',
-  description: '',
-})
-
-const taskForm = ref({
-  title: '',
-  type: 'task',
-  status: 'not_started',
-  priority: 'medium',
-  assignee_id: null as number | null,
-  due_date: null as string | null,
-  estimate_hours: null as number | null,
-  acceptance_criteria: '',
   description: '',
 })
 
@@ -244,28 +228,6 @@ async function saveRelease() {
   }
 }
 
-async function saveTask() {
-  if (!project.value) return
-  savingTask.value = true
-  error.value = ''
-  try {
-    await api.post('/admin/work-items', {
-      ...taskForm.value,
-      project_id: project.value.id,
-      assignee_id: taskForm.value.assignee_id || null,
-      due_date: taskForm.value.due_date || null,
-    })
-    taskDialog.value = false
-    taskForm.value.title = ''
-    message.value = 'Work item assigned.'
-    await load()
-  } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not create work item.')
-  } finally {
-    savingTask.value = false
-  }
-}
-
 async function saveRaid() {
   if (!project.value) return
   savingRaid.value = true
@@ -285,15 +247,6 @@ async function saveRaid() {
     error.value = apiErrorMessage(err, 'Could not save RAID item.')
   } finally {
     savingRaid.value = false
-  }
-}
-
-async function patchTask(item: WorkItemRow, field: string, value: unknown) {
-  try {
-    await api.put(`/admin/work-items/${item.id}`, { [field]: value })
-    await load()
-  } catch (err) {
-    error.value = apiErrorMessage(err, 'Could not update work item.')
   }
 }
 
@@ -377,7 +330,6 @@ onMounted(load)
           >
             Add Module
           </v-btn>
-          <v-btn color="primary" @click="taskDialog = true">Assign work</v-btn>
           <v-btn
             v-if="auth.isAdmin"
             color="error"
@@ -477,7 +429,7 @@ onMounted(load)
               <v-progress-linear :model-value="project.progress_percent" :color="ragColor(project.rag_status)" height="10" rounded class="mt-2" />
               <div class="text-caption mt-2">{{ project.done_tasks }} done · {{ project.open_tasks }} open · {{ project.open_raid }} RAID open</div>
               <div class="text-caption mt-2">Modules: {{ project.project_modules?.length ?? project.modules?.length ?? 0 }}</div>
-              <div class="text-caption mt-1 text-medium-emphasis">Original project progress only</div>
+              <div class="text-caption mt-1 text-medium-emphasis">From tasks on modules</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -528,6 +480,7 @@ onMounted(load)
                   :to="{ name: 'module-detail', params: { id: String(mod.id) } }"
                 >
                   {{ mod.name }}
+                  <v-chip v-if="mod.is_primary" size="x-small" color="primary" class="ms-2">Primary</v-chip>
                 </router-link>
                 <div class="text-body-2">{{ mod.done_tasks }} of {{ mod.total_tasks }} tasks completed</div>
                 <v-progress-linear
@@ -545,7 +498,6 @@ onMounted(load)
 
       <v-tabs v-model="tab" color="primary" class="mb-4">
         <v-tab value="overview">Overview</v-tab>
-        <v-tab value="work">Work</v-tab>
         <v-tab value="enhancements">Enhancements</v-tab>
         <v-tab value="modules">Modules</v-tab>
         <v-tab value="releases">Releases</v-tab>
@@ -597,7 +549,7 @@ onMounted(load)
                   color="primary"
                   :to="{ name: 'module-detail', params: { id: String(mod.id) } }"
                 >
-                  {{ mod.name }}
+                  {{ mod.name }}<span v-if="mod.is_primary"> · Primary</span>
                 </v-chip>
               </div>
               <div v-else class="text-body-2">—</div>
@@ -634,58 +586,7 @@ onMounted(load)
         </ParentCard>
       </div>
 
-      <div v-else-if="tab === 'work'">
-        <ParentCard title="Work items">
-          <AppDataTable
-            :items="project.work_items"
-            :headers="[
-              { title: 'Key', key: 'key', width: 130 },
-              { title: 'Title', key: 'title' },
-              { title: 'Type', key: 'type_label' },
-              { title: 'Status', key: 'status' },
-              { title: 'Assignee', key: 'assignee_id' },
-              { title: 'Due', key: 'due_date' },
-            ]"
-            item-value="id"
-            hover
-          >
-            <template #item.status="{ item }">
-              <v-select
-                :model-value="item.status"
-                :items="opts(options?.work_item_statuses)"
-                density="compact"
-                hide-details
-                variant="outlined"
-                @update:model-value="(v: string) => patchTask(item, 'status', v)"
-              />
-            </template>
-            <template #item.assignee_id="{ item }">
-              <v-select
-                :model-value="item.assignee_id"
-                :items="team.map((m) => ({ title: m.name, value: m.id }))"
-                density="compact"
-                hide-details
-                variant="outlined"
-                clearable
-                @update:model-value="(v: number | null) => patchTask(item, 'assignee_id', v)"
-              />
-            </template>
-            <template #item.due_date="{ item }">
-              <DatePickerField
-                :model-value="item.due_date"
-                density="compact"
-                hide-details
-                :error="!!item.is_overdue"
-                @update:model-value="(v) => {
-                  if ((v || null) !== (item.due_date || null)) patchTask(item, 'due_date', v)
-                }"
-              />
-            </template>
-          </AppDataTable>
-        </ParentCard>
-      </div>
-
-      <div v-else-if="tab === 'enhancements'">
+      <div v-if="tab === 'enhancements'">
         <ParentCard title="Enhancements">
           <template #action>
             <v-btn
@@ -733,6 +634,7 @@ onMounted(load)
             :headers="[
               { title: 'Code', key: 'code', width: 140 },
               { title: 'Name', key: 'name' },
+              { title: 'Primary', key: 'is_primary', width: 110 },
               { title: 'Status', key: 'status_label' },
               { title: 'Stage', key: 'stage_label' },
               { title: 'Progress', key: 'progress' },
@@ -740,6 +642,9 @@ onMounted(load)
             hover
             @click:row="(_e: unknown, row: { item: ProjectModuleRow }) => router.push({ name: 'module-detail', params: { id: String(row.item.id) } })"
           >
+            <template #item.is_primary="{ item }">
+              <v-chip v-if="item.is_primary" size="x-small" color="primary">Primary</v-chip>
+            </template>
             <template #item.progress="{ item }">
               {{ item.done_tasks }} of {{ item.total_tasks }} tasks completed
             </template>
@@ -818,54 +723,6 @@ onMounted(load)
         </ParentCard>
       </div>
     </template>
-
-    <v-dialog v-model="taskDialog" max-width="640">
-      <v-card>
-        <v-card-title>Assign work</v-card-title>
-        <v-card-text>
-          <FormField label="Title" required>
-            <v-text-field v-model="taskForm.title" />
-          </FormField>
-          <v-row>
-            <v-col cols="12" md="4">
-              <FormField label="Type">
-                <v-select v-model="taskForm.type" :items="opts(options?.work_item_types)" />
-              </FormField>
-            </v-col>
-            <v-col cols="12" md="4">
-              <FormField label="Status">
-                <v-select v-model="taskForm.status" :items="opts(options?.work_item_statuses)" />
-              </FormField>
-            </v-col>
-            <v-col cols="12" md="4">
-              <FormField label="Priority">
-                <v-select v-model="taskForm.priority" :items="opts(options?.work_item_priorities)" />
-              </FormField>
-            </v-col>
-            <v-col cols="12" md="6">
-              <FormField label="Assignee">
-                <v-select v-model="taskForm.assignee_id" :items="team.map((m) => ({ title: m.name, value: m.id }))" clearable />
-              </FormField>
-            </v-col>
-            <v-col cols="12" md="6">
-              <FormField label="Due date">
-                <DatePickerField v-model="taskForm.due_date" />
-              </FormField>
-            </v-col>
-            <v-col cols="12">
-              <FormField label="Acceptance criteria">
-                <v-textarea v-model="taskForm.acceptance_criteria" rows="3" />
-              </FormField>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="taskDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="savingTask" @click="saveTask">Assign</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <v-dialog v-model="raidDialog" max-width="640">
       <v-card>
