@@ -51,7 +51,12 @@ class CbpModulesNav
         $launchUrl = $legacyBase.'/home/launch_module';
 
         $rows = DB::table('cbp_modules')
-            ->where('is_enabled', 1)
+            ->where(function ($query) use ($roleId) {
+                $query->where('is_enabled', 1);
+                if ($roleId === 10 && \Illuminate\Support\Facades\Schema::hasColumn('cbp_modules', 'show_for_admin')) {
+                    $query->orWhere('show_for_admin', 1);
+                }
+            })
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -67,8 +72,8 @@ class CbpModulesNav
             // Every enabled module stays in the menu, including the one currently open.
 
             // Enabled modules are available to every authenticated user.
-            // permission_code remains for in-module feature RBAC / admin assignment.
-            if ((int) $row->is_production === 0 && $roleId !== 10) {
+            // show_for_admin keeps a disabled module visible to role 10 only.
+            if (! self::visibleToRole($row, $roleId)) {
                 continue;
             }
 
@@ -128,12 +133,31 @@ class CbpModulesNav
                 'is_active' => $isActive,
                 'opens_in_new_tab' => $absolute && ! $ssoLaunch,
                 'module_key' => $moduleKey,
+                'primary_tab' => trim((string) ($row->primary_tab ?? '')),
+                'home_area' => trim((string) ($row->home_area ?? '')),
                 'sso_launch' => $ssoLaunch,
                 'launch_url' => $ssoLaunch ? $launchUrl : null,
             ];
         }
 
         return ['home' => $home, 'modules' => $modules];
+    }
+
+    /**
+     * Disabled modules stay hidden. Show for Admin opens them for role 10 only.
+     */
+    public static function visibleToRole(object $row, int $roleId): bool
+    {
+        $enabled = ! property_exists($row, 'is_enabled') || (int) $row->is_enabled === 1;
+        $adminPreview = (int) ($row->show_for_admin ?? 0) === 1 && $roleId === 10;
+        if (! $enabled && ! $adminPreview) {
+            return false;
+        }
+        if ((int) ($row->is_production ?? 1) === 0 && $roleId !== 10) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

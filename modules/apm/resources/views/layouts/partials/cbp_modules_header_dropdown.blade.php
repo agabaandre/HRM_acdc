@@ -29,6 +29,24 @@
         }
         $cbpProgramDir = $cbpParent;
     }
+    $cbpProgramKeys = function_exists('cbp_program_module_keys')
+        ? cbp_program_module_keys($cbpProgramGroups)
+        : [];
+    $cbpAllModules = $cbpModules;
+    $cbpModules = array_values(array_filter(
+        $cbpModules,
+        static function ($mod) use ($cbpProgramKeys) {
+            if (function_exists('cbp_module_home_area')) {
+                return cbp_module_home_area($mod, $cbpProgramKeys) === 'operations';
+            }
+            $key = (string) ($mod['module_key'] ?? '');
+
+            return $key === '' || ! isset($cbpProgramKeys[$key]);
+        }
+    ));
+    if (function_exists('cbp_visible_program_groups')) {
+        $cbpProgramGroups = cbp_visible_program_groups($cbpProgramGroups, $cbpAllModules);
+    }
     $cbpProgramCount = 0;
     foreach ($cbpProgramGroups as $cbpGroup) {
         $cbpProgramCount += count($cbpGroup['items'] ?? []);
@@ -114,20 +132,23 @@
         @endif
         </div>
         <div data-cbp-pane="programs" hidden>
-            @foreach ($cbpProgramGroups as $group)
+            @forelse ($cbpProgramGroups as $group)
                 <p class="cbp-modules-dd-section">
                     {{ $group['title'] }}
                     <span class="cbp-modules-dd-count">{{ count($group['items'] ?? []) }}</span>
                 </p>
                 @foreach ($group['items'] ?? [] as $item)
-                    <span class="cbp-modules-dd-item is-soon">
+                    @php $cbpProgramMod = $item['module'] ?? []; @endphp
+                    <a href="{{ $cbpProgramMod['href'] ?? '#' }}" class="cbp-modules-dd-item" role="menuitem">
                         <i class="fa-solid {{ $item['icon'] }} cbp-modules-dd-icon" aria-hidden="true"></i>
                         <span class="cbp-modules-dd-item-text">
                             <span class="cbp-modules-dd-item-label">{{ $item['label'] }}</span>
                         </span>
-                    </span>
+                    </a>
                 @endforeach
-            @endforeach
+            @empty
+                <p class="cbp-modules-dd-empty" role="status">No programs are available.</p>
+            @endforelse
         </div>
     </div>
 </li>

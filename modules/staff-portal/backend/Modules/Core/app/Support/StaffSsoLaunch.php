@@ -74,7 +74,12 @@ final class StaffSsoLaunch
 
         return DB::table('cbp_modules')
             ->where('module_key', $key)
-            ->where('is_enabled', 1)
+            ->where(function ($query) {
+                $query->where('is_enabled', 1);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('cbp_modules', 'show_for_admin')) {
+                    $query->orWhere('show_for_admin', 1);
+                }
+            })
             ->first();
     }
 
@@ -84,13 +89,10 @@ final class StaffSsoLaunch
     public static function userCanAccessModule(array $session, object $row): bool
     {
         // Enabled CBP modules are launchable by any authenticated user.
-        // permission_code is for in-module feature RBAC, not launcher access.
+        // A disabled module with Show for Admin is launchable by role 10 only.
         $roleId = (int) ($session['role_id'] ?? $session['role'] ?? 0);
-        if ((int) ($row->is_production ?? 1) === 0 && $roleId !== 10) {
-            return false;
-        }
 
-        return true;
+        return CbpModulesNav::visibleToRole($row, $roleId);
     }
 
     public static function acceptUrlForModule(object $row): ?string

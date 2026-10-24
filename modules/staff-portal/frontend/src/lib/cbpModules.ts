@@ -9,6 +9,10 @@ export interface CbpModuleLink {
   is_active?: boolean
   opens_in_new_tab?: boolean
   module_key?: string | null
+  /** Home division chip, such as PRA, HR, or Finance. */
+  primary_tab?: string | null
+  /** Top home tab: operations, programs, or configuration. */
+  home_area?: string | null
   sso_launch?: boolean
   launch_url?: string | null
 }

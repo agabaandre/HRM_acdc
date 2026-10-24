@@ -261,6 +261,8 @@ export type CbpModuleAdminRow = {
   id: number
   module_key: string
   system_name: string
+  primary_tab: string
+  home_area: string
   description: string
   base_url: string
   base_url_development: string
@@ -270,6 +272,7 @@ export type CbpModuleAdminRow = {
   uses_staff_portal_token: boolean
   is_production: boolean
   is_enabled: boolean
+  show_for_admin: boolean
   show_in_apm_menu: boolean
   alternate_base_url: string
   alternate_for_role_id: number | null
@@ -280,6 +283,8 @@ export type CbpModuleAdminRow = {
 export type CbpModuleFormPayload = {
   module_key?: string
   system_name: string
+  primary_tab?: string | null
+  home_area?: string | null
   description?: string | null
   base_url?: string
   base_url_development?: string | null
@@ -289,6 +294,7 @@ export type CbpModuleFormPayload = {
   uses_staff_portal_token?: boolean
   is_production?: boolean
   is_enabled?: boolean
+  show_for_admin?: boolean
   show_in_apm_menu?: boolean
   alternate_base_url?: string | null
   alternate_for_role_id?: number | null
@@ -305,6 +311,8 @@ export async function fetchCbpModulesSettings() {
       next_permission_id_hint: number
       icon_options: Record<string, string>
       resolver_options: Record<string, string>
+      primary_tabs?: string[]
+      home_areas?: Record<string, string>
       auto_assign_group_id: number
     }
   }>('/api/v1/settings/cbp-modules')

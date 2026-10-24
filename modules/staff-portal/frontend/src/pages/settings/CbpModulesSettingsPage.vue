@@ -14,6 +14,8 @@ import {
 type FormState = {
   module_key: string
   system_name: string
+  home_area: string
+  primary_tab: string
   description: string
   base_url: string
   base_url_development: string
@@ -23,6 +25,7 @@ type FormState = {
   uses_staff_portal_token: boolean
   is_production: boolean
   is_enabled: boolean
+  show_for_admin: boolean
   show_in_apm_menu: boolean
   alternate_base_url: string
   alternate_for_role_id: number | null
@@ -33,6 +36,8 @@ type FormState = {
 const emptyCreate = (): FormState => ({
   module_key: '',
   system_name: '',
+  home_area: 'operations',
+  primary_tab: '',
   description: '',
   base_url: '',
   base_url_development: '',
@@ -42,6 +47,7 @@ const emptyCreate = (): FormState => ({
   uses_staff_portal_token: false,
   is_production: true,
   is_enabled: true,
+  show_for_admin: false,
   show_in_apm_menu: false,
   alternate_base_url: '',
   alternate_for_role_id: null,
@@ -60,6 +66,8 @@ const nextPermissionHint = ref(1)
 const autoAssignGroupId = ref(10)
 const iconOptions = ref<Record<string, string>>({})
 const resolverOptions = ref<Record<string, string>>({})
+const primaryTabs = ref<string[]>([])
+const homeAreas = ref<Record<string, string>>({})
 
 const drafts = reactive<Record<number, FormState>>({})
 const createForm = reactive<FormState>(emptyCreate())
@@ -75,10 +83,22 @@ const resolverItems = computed(() =>
   Object.entries(resolverOptions.value).map(([value, title]) => ({ title, value })),
 )
 
+const primaryTabItems = computed(() => primaryTabs.value.map((tab) => ({ title: tab, value: tab })))
+const homeAreaItems = computed(() =>
+  Object.entries(homeAreas.value).map(([value, title]) => ({ title, value })),
+)
+
+function homeAreaLabel(value: string | null | undefined): string {
+  const key = (value || '').trim()
+  return homeAreas.value[key] || ''
+}
+
 function rowToForm(row: CbpModuleAdminRow): FormState {
   return {
     module_key: row.module_key,
     system_name: row.system_name,
+    home_area: row.home_area || 'operations',
+    primary_tab: row.primary_tab || '',
     description: row.description || '',
     base_url: row.base_url || '',
     base_url_development: row.base_url_development || '',
@@ -88,6 +108,7 @@ function rowToForm(row: CbpModuleAdminRow): FormState {
     uses_staff_portal_token: !!row.uses_staff_portal_token,
     is_production: !!row.is_production,
     is_enabled: !!row.is_enabled,
+    show_for_admin: !!row.show_for_admin,
     show_in_apm_menu: !!row.show_in_apm_menu,
     alternate_base_url: row.alternate_base_url || '',
     alternate_for_role_id: row.alternate_for_role_id,
@@ -99,6 +120,8 @@ function rowToForm(row: CbpModuleAdminRow): FormState {
 function toPayload(form: FormState, includeKey = false): CbpModuleFormPayload {
   const payload: CbpModuleFormPayload = {
     system_name: form.system_name.trim(),
+    home_area: form.home_area || null,
+    primary_tab: form.primary_tab || null,
     description: form.description,
     base_url: form.base_url,
     base_url_development: form.base_url_development || null,
@@ -108,6 +131,7 @@ function toPayload(form: FormState, includeKey = false): CbpModuleFormPayload {
     uses_staff_portal_token: form.uses_staff_portal_token,
     is_production: form.is_production,
     is_enabled: form.is_enabled,
+    show_for_admin: form.show_for_admin,
     show_in_apm_menu: form.show_in_apm_menu,
     alternate_base_url: form.alternate_base_url || null,
     alternate_for_role_id:
@@ -138,6 +162,8 @@ async function load() {
     autoAssignGroupId.value = res.meta.auto_assign_group_id
     iconOptions.value = res.meta.icon_options || {}
     resolverOptions.value = res.meta.resolver_options || {}
+    primaryTabs.value = res.meta.primary_tabs || []
+    homeAreas.value = res.meta.home_areas || {}
     for (const row of res.data) {
       drafts[row.id] = rowToForm(row)
     }
@@ -163,6 +189,29 @@ async function onSave(id: number) {
     await load()
   } catch (e) {
     notifyApiError(e, 'Could not save module')
+  } finally {
+    savingId.value = null
+  }
+}
+
+async function onToggleShowForAdmin(id: number) {
+  const form = drafts[id]
+  if (!form || savingId.value !== null) return
+  const previous = form.show_for_admin
+  form.show_for_admin = !previous
+  savingId.value = id
+  try {
+    await updateCbpModule(id, toPayload(form))
+    toast.success(
+      form.show_for_admin
+        ? 'Admins can see this module while it is disabled.'
+        : 'Admin override turned off.',
+      'Saved',
+    )
+    await load()
+  } catch (e) {
+    form.show_for_admin = previous
+    notifyApiError(e, 'Could not update Show for Admin')
   } finally {
     savingId.value = null
   }
@@ -213,7 +262,8 @@ onMounted(() => {
     <p class="text-body-2 text-medium-emphasis mb-3">
       Home tiles and optional APM menu links. Use <strong>External system</strong> for APIs on other hosts.
       Enable <strong>Append Staff portal session token</strong> only if that system validates the same token as APM/Finance.
-      <strong>Enabled</strong> modules are available to all signed-in users.
+      <strong>Enabled</strong> modules are available to all signed-in users. A disabled module stays hidden.
+      <strong>Show for Admin</strong> opens that disabled module for administrators only.
       <strong>Permission code</strong> is for in-module feature RBAC (and admin group assignment), not for hiding the home tile.
       <strong>Production visibility</strong>: when unchecked, only role ID 10 sees the tile.
     </p>
@@ -248,6 +298,15 @@ onMounted(() => {
               >
                 {{ row.is_enabled ? 'Enabled' : 'Disabled' }}
               </v-chip>
+              <v-chip v-if="homeAreaLabel(row.home_area)" size="x-small" color="secondary" variant="tonal">
+                {{ homeAreaLabel(row.home_area) }}
+              </v-chip>
+              <v-chip v-if="row.primary_tab" size="x-small" color="primary" variant="tonal">
+                {{ row.primary_tab }}
+              </v-chip>
+              <v-chip v-if="row.show_for_admin" size="x-small" color="primary" variant="tonal">
+                Admins
+              </v-chip>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text v-if="drafts[row.id]">
@@ -258,6 +317,30 @@ onMounted(() => {
                   label="System name *"
                   density="compact"
                   hide-details="auto"
+                  class="bg-white"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="drafts[row.id].home_area"
+                  :items="homeAreaItems"
+                  label="Home area *"
+                  density="compact"
+                  hide-details="auto"
+                  hint="Operations, Programs, or Configuration."
+                  persistent-hint
+                  class="bg-white"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="drafts[row.id].primary_tab"
+                  :items="primaryTabItems"
+                  label="Primary tab"
+                  density="compact"
+                  hide-details="auto"
+                  hint="Home division chip this module belongs to."
+                  persistent-hint
                   class="bg-white"
                 />
               </v-col>
@@ -419,6 +502,16 @@ onMounted(() => {
                   hide-details
                 />
                 <v-checkbox v-model="drafts[row.id].is_enabled" label="Enabled" density="compact" hide-details />
+                <v-btn
+                  size="small"
+                  class="align-self-center"
+                  :color="drafts[row.id].show_for_admin ? 'primary' : undefined"
+                  :variant="drafts[row.id].show_for_admin ? 'flat' : 'outlined'"
+                  :loading="savingId === row.id"
+                  @click="onToggleShowForAdmin(row.id)"
+                >
+                  Show for Admin
+                </v-btn>
                 <v-checkbox
                   v-model="drafts[row.id].show_in_apm_menu"
                   label="Show in APM top menu"
@@ -462,6 +555,30 @@ onMounted(() => {
                 placeholder="e.g. learning_hub"
                 density="compact"
                 hide-details="auto"
+                class="bg-white"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="createForm.home_area"
+                :items="homeAreaItems"
+                label="Home area *"
+                density="compact"
+                hide-details="auto"
+                hint="Operations, Programs, or Configuration."
+                persistent-hint
+                class="bg-white"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="createForm.primary_tab"
+                :items="primaryTabItems"
+                label="Primary tab"
+                density="compact"
+                hide-details="auto"
+                hint="Home division chip this module belongs to."
+                persistent-hint
                 class="bg-white"
               />
             </v-col>
@@ -588,6 +705,15 @@ onMounted(() => {
                 hide-details
               />
               <v-checkbox v-model="createForm.is_enabled" label="Enabled" density="compact" hide-details />
+              <v-btn
+                size="small"
+                class="align-self-center"
+                :color="createForm.show_for_admin ? 'primary' : undefined"
+                :variant="createForm.show_for_admin ? 'flat' : 'outlined'"
+                @click="createForm.show_for_admin = !createForm.show_for_admin"
+              >
+                Show for Admin
+              </v-btn>
               <v-checkbox
                 v-model="createForm.show_in_apm_menu"
                 label="Show in APM top menu"
