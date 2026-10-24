@@ -97,15 +97,80 @@ function resolved(item: HomeCatalogItem): {
 
 const activeTab = computed(() => HOME_CATALOG.find((entry) => entry.id === tab.value) || HOME_CATALOG[0])
 
-const scopedGroups = computed(() =>
-  activeTab.value.groups.map((group) => ({
+const HOME_AREAS = new Set<HomeCatalogTabId>(['operations', 'programs', 'configuration'])
+
+function placementFor(tabId: HomeCatalogTabId, groupTitle: string, item: HomeCatalogItem): {
+  tabId: HomeCatalogTabId
+  groupTitle: string
+} {
+  const live = item.moduleKey ? modulesByKey.value.get(item.moduleKey) || null : null
+  const wanted = (live?.primary_tab || '').trim()
+  const area = (live?.home_area || '').trim() as HomeCatalogTabId
+  const explicitTab = HOME_AREAS.has(area) ? area : null
+  if (!wanted && !explicitTab) return { tabId, groupTitle }
+
+  if (!explicitTab) {
+    const sameTab = HOME_CATALOG.find((entry) => entry.id === tabId)
+    if (wanted && sameTab?.groups.some((group) => group.title === wanted)) {
+      return { tabId, groupTitle: wanted }
+    }
+    const other = HOME_CATALOG.find((entry) => entry.groups.some((group) => group.title === wanted))
+    if (other && wanted) return { tabId: other.id, groupTitle: wanted }
+    return { tabId, groupTitle }
+  }
+
+  if (wanted) return { tabId: explicitTab, groupTitle: wanted }
+  const target = HOME_CATALOG.find((entry) => entry.id === explicitTab)
+  if (target?.groups.some((group) => group.title === groupTitle)) {
+    return { tabId: explicitTab, groupTitle }
+  }
+  return { tabId: explicitTab, groupTitle: target?.groups[0]?.title ?? groupTitle }
+}
+
+/** Catalog groups, with each live module filed under its saved primary tab. */
+const activeGroups = computed(() => {
+  const placed = new Map<string, HomeCatalogItem[]>()
+  for (const entry of HOME_CATALOG) {
+    for (const group of entry.groups) {
+      for (const item of group.items) {
+        const place = placementFor(entry.id, group.title, item)
+        const key = `${place.tabId}::${place.groupTitle}`
+        const list = placed.get(key) || []
+        list.push(item)
+        placed.set(key, list)
+      }
+    }
+  }
+  const groups = activeTab.value.groups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => moduleScope.value === 'total' || isActiveModule(item)),
+    items: placed.get(`${activeTab.value.id}::${group.title}`) || [],
+  }))
+  const known = new Set(activeTab.value.groups.map((group) => group.title))
+  for (const [key, items] of placed) {
+    const sep = key.indexOf('::')
+    const tabId = key.slice(0, sep)
+    const title = key.slice(sep + 2)
+    if (tabId !== activeTab.value.id || known.has(title) || items.length === 0) continue
+    groups.push({ title, items })
+  }
+  return groups
+})
+
+function isShown(item: HomeCatalogItem): boolean {
+  return resolved(item).available
+}
+
+const scopedGroups = computed(() =>
+  activeGroups.value.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (item) => isShown(item) && (moduleScope.value === 'total' || isActiveModule(item)),
+    ),
   })),
 )
 
 const moduleCounts = computed(() => {
-  const items = activeTab.value.groups.flatMap((group) => group.items)
+  const items = activeGroups.value.flatMap((group) => group.items).filter(isShown)
   return {
     total: items.length,
     active: items.filter(isActiveModule).length,
@@ -113,14 +178,18 @@ const moduleCounts = computed(() => {
 })
 
 const frequentItems = computed(() =>
-  FREQUENT_MODULES.filter((item) => moduleScope.value === 'total' || isActiveModule(item)),
+  FREQUENT_MODULES.filter(
+    (item) => isShown(item) && (moduleScope.value === 'total' || isActiveModule(item)),
+  ),
 )
 
 const divisionChips = computed(() => {
-  const groups = scopedGroups.value.map((group) => ({
-    title: group.title,
-    count: group.items.length,
-  }))
+  const groups = scopedGroups.value
+    .filter((group) => group.items.length > 0)
+    .map((group) => ({
+      title: group.title,
+      count: group.items.length,
+    }))
   const total = groups.reduce((sum, group) => sum + group.count, 0)
   return [
     { title: FREQUENT_DIVISION, count: frequentItems.value.length },

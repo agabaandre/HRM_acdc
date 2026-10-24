@@ -3,6 +3,7 @@
 namespace Modules\Core\Support;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * CBP modules nav payload — mirrors CI3 Cbp_modules_mdl::get_api_nav_payload / resolve_href.
@@ -51,7 +52,12 @@ class CbpModulesNav
         $launchUrl = $legacyBase.'/home/launch_module';
 
         $rows = DB::table('cbp_modules')
-            ->where('is_enabled', 1)
+            ->where(function ($query) use ($roleId) {
+                $query->where('is_enabled', 1);
+                if ($roleId === 10 && Schema::hasColumn('cbp_modules', 'show_for_admin')) {
+                    $query->orWhere('show_for_admin', 1);
+                }
+            })
             ->orderBy('sort_order')
             ->get();
 
@@ -114,6 +120,8 @@ class CbpModulesNav
                 'is_active' => $isActive,
                 'opens_in_new_tab' => $absolute && ! $ssoLaunch,
                 'module_key' => $moduleKey,
+                'primary_tab' => trim((string) ($row->primary_tab ?? '')),
+                'home_area' => trim((string) ($row->home_area ?? '')),
                 'sso_launch' => $ssoLaunch,
                 'launch_url' => $ssoLaunch ? $launchUrl : null,
             ];

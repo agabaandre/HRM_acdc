@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import CbpAvatar from '@cbp/common/CbpAvatar.vue'
 import { fetchCbpModules, type CbpModuleLink, type CbpNavPayload } from '@/lib/cbpModules'
-import { CBP_PROGRAM_COUNT, CBP_PROGRAM_GROUPS, moduleMenuIcon } from '@/lib/cbpProgramMenu'
+import { CBP_PROGRAM_GROUPS, CBP_PROGRAM_KEYS, moduleMenuIcon } from '@/lib/cbpProgramMenu'
 import { launchCbpModule, moduleLaunchKey } from '@/lib/cbpLaunch'
 import { staffWebRoot } from '@/lib/staffWebRoot'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
@@ -30,10 +30,48 @@ const navLoading = ref(false)
 const navError = ref<string | null>(null)
 
 const systems = computed(() => nav.value?.modules ?? [])
+
+function homeAreaOf(mod: CbpModuleLink): 'operations' | 'programs' | 'configuration' {
+  const area = (mod.home_area || '').trim()
+  if (area === 'operations' || area === 'programs' || area === 'configuration') return area
+  const key = (mod.module_key || mod.id || '').trim()
+  return CBP_PROGRAM_KEYS.has(key) ? 'programs' : 'operations'
+}
+
+const operationSystems = computed(() => systems.value.filter((mod) => homeAreaOf(mod) === 'operations'))
+const programGroups = computed(() => {
+  const order = CBP_PROGRAM_GROUPS.map((group) => group.title)
+  const catalog = new Map<string, { label: string; icon: string; title: string }>()
+  for (const group of CBP_PROGRAM_GROUPS) {
+    for (const item of group.items) {
+      catalog.set(item.moduleKey, { label: item.label, icon: item.icon, title: group.title })
+    }
+  }
+  const byTitle = new Map<string, { moduleKey: string; label: string; icon: string; live: CbpModuleLink }[]>()
+  for (const mod of systems.value) {
+    if (homeAreaOf(mod) !== 'programs') continue
+    const key = (mod.module_key || mod.id || '').trim()
+    if (!key) continue
+    const known = catalog.get(key)
+    const title = (mod.primary_tab || '').trim() || known?.title || 'Programs'
+    const list = byTitle.get(title) || []
+    list.push({
+      moduleKey: key,
+      label: known?.label || mod.label,
+      icon: known?.icon || mod.icon || 'fa-th',
+      live: mod,
+    })
+    byTitle.set(title, list)
+  }
+  const titles = [
+    ...order.filter((title) => byTitle.has(title)),
+    ...[...byTitle.keys()].filter((title) => !order.includes(title)),
+  ]
+  return titles.map((title) => ({ title, items: byTitle.get(title) || [] }))
+})
 const moduleScope = ref<'operations' | 'programs'>('operations')
-const programGroups = CBP_PROGRAM_GROUPS
-const programCount = CBP_PROGRAM_COUNT
-const operationsCount = computed(() => systems.value.length)
+const programCount = computed(() => programGroups.value.reduce((sum, group) => sum + group.items.length, 0))
+const operationsCount = computed(() => operationSystems.value.length)
 
 const portalToggleActive = computed(() => {
   if (nav.value?.home?.is_active) {
@@ -210,9 +248,9 @@ onUnmounted(() => {
               <template v-else-if="navError">
                 <p class="cbp-topbar-dd-empty" role="alert">{{ navError }}</p>
               </template>
-              <template v-else-if="systems.length > 0">
+              <template v-else-if="operationSystems.length > 0">
                 <a
-                  v-for="sys in systems"
+                  v-for="sys in operationSystems"
                   :key="sys.module_key || sys.id || sys.href"
                   :href="sys.href || '#'"
                   class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon"
@@ -233,18 +271,24 @@ onUnmounted(() => {
               </p>
             </template>
             <template v-else>
+              <p v-if="programGroups.length === 0" class="cbp-topbar-dd-empty" role="status">
+                No programs are available.
+              </p>
               <template v-for="group in programGroups" :key="group.title">
                 <p class="cbp-topbar-dd-section">{{ group.title }} <span class="cbp-topbar-dd-count">{{ group.items.length }}</span></p>
-                <span
+                <a
                   v-for="item in group.items"
-                  :key="item.label"
-                  class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon is-soon"
+                  :key="item.moduleKey"
+                  :href="item.live?.href || '#'"
+                  class="cbp-topbar-dd-item cbp-topbar-dd-item--with-icon"
+                  role="menuitem"
+                  @click="item.live && onModuleNav(item.live, $event)"
                 >
-                  <i :class="moduleMenuIcon(null, item.icon)" class="cbp-topbar-dd-module-icon" aria-hidden="true" />
+                  <i :class="moduleMenuIcon(item.moduleKey, item.icon)" class="cbp-topbar-dd-module-icon" aria-hidden="true" />
                   <span class="cbp-topbar-dd-item-text">
                     <span class="cbp-topbar-dd-item-label">{{ item.label }}</span>
                   </span>
-                </span>
+                </a>
               </template>
             </template>
           </div>

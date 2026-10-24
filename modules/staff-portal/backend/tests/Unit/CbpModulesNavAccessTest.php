@@ -71,4 +71,30 @@ class CbpModulesNavAccessTest extends TestCase
             'role_id' => 10,
         ], $row));
     }
+
+    public function test_disabled_module_stays_hidden(): void
+    {
+        $row = (object) [
+            'is_enabled' => 0,
+            'show_for_admin' => 0,
+            'is_production' => 1,
+        ];
+
+        $this->assertFalse(CbpModulesNav::visibleToRole($row, 10));
+        $this->assertFalse(CbpModulesNav::visibleToRole($row, 17));
+    }
+
+    public function test_show_for_admin_opens_disabled_module_for_role_10_only(): void
+    {
+        $row = (object) [
+            'is_enabled' => 0,
+            'show_for_admin' => 1,
+            'is_production' => 1,
+        ];
+
+        $this->assertTrue(CbpModulesNav::visibleToRole($row, 10));
+        $this->assertFalse(CbpModulesNav::visibleToRole($row, 17));
+        $this->assertTrue(StaffSsoLaunch::userCanAccessModule(['role_id' => 10], $row));
+        $this->assertFalse(StaffSsoLaunch::userCanAccessModule(['role_id' => 17], $row));
+    }
 }

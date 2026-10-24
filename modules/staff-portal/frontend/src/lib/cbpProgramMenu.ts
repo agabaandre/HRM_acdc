@@ -2,6 +2,8 @@
 export interface CbpProgramItem {
   label: string
   icon: string
+  /** cbp_modules.module_key. Shown only when that module is enabled or shown for admins. */
+  moduleKey: string
 }
 
 export interface CbpProgramGroup {
@@ -13,57 +15,59 @@ export const CBP_PROGRAM_GROUPS: CbpProgramGroup[] = [
   {
     title: 'EPR',
     items: [
-      { label: 'Logistics (LOG)', icon: 'fa-truck-medical' },
-      { label: 'ePHEM (EPH)', icon: 'fa-kit-medical' },
-      { label: 'AVHOC (AVH)', icon: 'fa-people-group' },
-      { label: 'FRORP (FRP)', icon: 'fa-flag' },
+      { label: 'Logistics (LOG)', icon: 'fa-truck-medical', moduleKey: 'epr_logistics' },
+      { label: 'ePHEM (EPH)', icon: 'fa-kit-medical', moduleKey: 'ephem' },
+      { label: 'AVHOC (AVH)', icon: 'fa-people-group', moduleKey: 'avhoc' },
+      { label: 'FRORP (FRP)', icon: 'fa-flag', moduleKey: 'frorp' },
     ],
   },
   {
     title: 'SDI',
     items: [
-      { label: 'EMS (EMS)', icon: 'fa-truck-medical' },
-      { label: 'Events Dashboard (EVD)', icon: 'fa-calendar-days' },
-      { label: 'IMST tracker (IMS)', icon: 'fa-virus' },
+      { label: 'EMS (EMS)', icon: 'fa-truck-medical', moduleKey: 'ems' },
+      { label: 'Events Dashboard (EVD)', icon: 'fa-calendar-days', moduleKey: 'events_dashboard' },
+      { label: 'IMST tracker (IMS)', icon: 'fa-virus', moduleKey: 'imst' },
     ],
   },
   {
     title: 'LAB',
     items: [
-      { label: 'NIMS (NIM)', icon: 'fa-flask' },
-      { label: 'Asana (ASN)', icon: 'fa-list-check' },
+      { label: 'NIMS (NIM)', icon: 'fa-flask', moduleKey: 'nims' },
+      { label: 'Asana (ASN)', icon: 'fa-list-check', moduleKey: 'asana' },
     ],
   },
   {
     title: 'Science',
     items: [
-      { label: 'Prioritization (PRI)', icon: 'fa-ranking-star' },
-      { label: 'Knowledge Hub (KH)', icon: 'fa-book' },
-      { label: 'RedCap (RDC)', icon: 'fa-database' },
+      { label: 'Prioritization (PRI)', icon: 'fa-ranking-star', moduleKey: 'prioritization' },
+      { label: 'Knowledge Hub (KH)', icon: 'fa-book', moduleKey: 'knowledge_hub' },
+      { label: 'RedCap (RDC)', icon: 'fa-database', moduleKey: 'redcap' },
     ],
   },
   {
     title: 'Comms',
-    items: [{ label: 'Media Hub (MDH)', icon: 'fa-bullhorn' }],
+    items: [{ label: 'Media Hub (MDH)', icon: 'fa-bullhorn', moduleKey: 'media_hub' }],
   },
   {
     title: 'PHIR',
     items: [
-      { label: 'CUE (CUE)', icon: 'fa-graduation-cap' },
-      { label: 'Learning Management System (LMS)', icon: 'fa-chalkboard-user' },
+      { label: 'CUE (CUE)', icon: 'fa-graduation-cap', moduleKey: 'cue' },
+      { label: 'Learning Management System (LMS)', icon: 'fa-chalkboard-user', moduleKey: 'lms' },
     ],
   },
   {
     title: 'Lusaka Agenda',
-    items: [{ label: 'Scorecard Dashboard (SCD)', icon: 'fa-chart-column' }],
+    items: [{ label: 'Scorecard Dashboard (SCD)', icon: 'fa-chart-column', moduleKey: 'scorecard' }],
   },
   {
     title: 'MIS',
-    items: [{ label: 'StarLink Dashboard (SLD)', icon: 'fa-satellite-dish' }],
+    items: [{ label: 'StarLink Dashboard (SLD)', icon: 'fa-satellite-dish', moduleKey: 'starlink' }],
   },
 ]
 
-export const CBP_PROGRAM_COUNT = CBP_PROGRAM_GROUPS.reduce((sum, group) => sum + group.items.length, 0)
+export const CBP_PROGRAM_KEYS = new Set(
+  CBP_PROGRAM_GROUPS.flatMap((group) => group.items.map((item) => item.moduleKey)),
+)
 
 /** Home-catalog icons for live operations modules, keyed by cbp_modules.module_key. */
 const OPERATION_ICONS: Record<string, string> = {

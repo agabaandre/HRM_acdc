@@ -147,6 +147,163 @@ class CbpModulesAdminService
         ],
     ];
 
+    /**
+     * Catalog modules that are not built yet. Seeded disabled so they stay
+     * out of the menu until enabled, or until Show for Admin is turned on.
+     *
+     * @var list<array{module_key: string, system_name: string, icon_class: string, base_url: string}>
+     */
+    public const PLACEHOLDER_MODULES = [
+        ['module_key' => 'office_seating', 'system_name' => 'Office Seating (OFS)', 'icon_class' => 'fa-chair', 'base_url' => 'office-seating'],
+        ['module_key' => 'room_booking', 'system_name' => 'Room Booking (RMB)', 'icon_class' => 'fa-door-open', 'base_url' => 'room-booking'],
+        ['module_key' => 'access_control', 'system_name' => 'Access Control (ACL)', 'icon_class' => 'fa-key', 'base_url' => 'access-control'],
+        ['module_key' => 'fleet', 'system_name' => 'Fleet Management (FLT)', 'icon_class' => 'fa-car', 'base_url' => 'fleet'],
+        ['module_key' => 'recruitment', 'system_name' => 'Recruitment (REC)', 'icon_class' => 'fa-user-plus', 'base_url' => 'recruitment'],
+        ['module_key' => 'staff_locator', 'system_name' => 'Staff Locator (STL)', 'icon_class' => 'fa-location-dot', 'base_url' => 'staff-locator'],
+        ['module_key' => 'self_service', 'system_name' => 'Self Service (SLS)', 'icon_class' => 'fa-user', 'base_url' => 'self-service'],
+        ['module_key' => 'work_time', 'system_name' => 'Work Time Management (WTM)', 'icon_class' => 'fa-clock', 'base_url' => 'work-time'],
+        ['module_key' => 'budgeting', 'system_name' => 'Budgeting (BDG)', 'icon_class' => 'fa-file-invoice-dollar', 'base_url' => 'budgeting'],
+        ['module_key' => 'accounting', 'system_name' => 'Accounting (ACC)', 'icon_class' => 'fa-calculator', 'base_url' => 'accounting'],
+        ['module_key' => 'procurement_plan', 'system_name' => 'Annual Procurement Plan (APP)', 'icon_class' => 'fa-list-check', 'base_url' => 'procurement-plan'],
+        ['module_key' => 'sourcing', 'system_name' => 'Sourcing (SRC)', 'icon_class' => 'fa-magnifying-glass-dollar', 'base_url' => 'sourcing'],
+        ['module_key' => 'e_procurement', 'system_name' => 'Electronic Procurement (EPR)', 'icon_class' => 'fa-cart-shopping', 'base_url' => 'e-procurement'],
+        ['module_key' => 'contracts', 'system_name' => 'Contracts (CTR)', 'icon_class' => 'fa-file-contract', 'base_url' => 'contracts'],
+        ['module_key' => 'logistics', 'system_name' => 'Logistics (LOG)', 'icon_class' => 'fa-truck', 'base_url' => 'logistics'],
+        ['module_key' => 'assets', 'system_name' => 'Assets (AST)', 'icon_class' => 'fa-boxes-stacked', 'base_url' => 'assets'],
+        ['module_key' => 'travel', 'system_name' => 'Travel (TRV)', 'icon_class' => 'fa-plane', 'base_url' => 'travel'],
+        ['module_key' => 'misdashboard', 'system_name' => 'MIS Dashboard (MSD)', 'icon_class' => 'fa-chart-pie', 'base_url' => 'misdashboard'],
+        ['module_key' => 'epr_logistics', 'system_name' => 'EPR Logistics (LOG)', 'icon_class' => 'fa-truck-medical', 'base_url' => 'epr-logistics'],
+        ['module_key' => 'ephem', 'system_name' => 'ePHEM (EPH)', 'icon_class' => 'fa-kit-medical', 'base_url' => 'ephem'],
+        ['module_key' => 'avhoc', 'system_name' => 'AVHOC (AVH)', 'icon_class' => 'fa-people-group', 'base_url' => 'avhoc'],
+        ['module_key' => 'frorp', 'system_name' => 'FRORP (FRP)', 'icon_class' => 'fa-flag', 'base_url' => 'frorp'],
+        ['module_key' => 'ems', 'system_name' => 'EMS (EMS)', 'icon_class' => 'fa-truck-medical', 'base_url' => 'ems'],
+        ['module_key' => 'events_dashboard', 'system_name' => 'Events Dashboard (EVD)', 'icon_class' => 'fa-calendar-days', 'base_url' => 'events-dashboard'],
+        ['module_key' => 'imst', 'system_name' => 'IMST tracker (IMS)', 'icon_class' => 'fa-virus', 'base_url' => 'imst'],
+        ['module_key' => 'nims', 'system_name' => 'NIMS (NIM)', 'icon_class' => 'fa-flask', 'base_url' => 'nims'],
+        ['module_key' => 'asana', 'system_name' => 'Asana (ASN)', 'icon_class' => 'fa-list-check', 'base_url' => 'asana'],
+        ['module_key' => 'prioritization', 'system_name' => 'Prioritization (PRI)', 'icon_class' => 'fa-ranking-star', 'base_url' => 'prioritization'],
+        ['module_key' => 'knowledge_hub', 'system_name' => 'Knowledge Hub (KH)', 'icon_class' => 'fa-book', 'base_url' => 'knowledge-hub'],
+        ['module_key' => 'redcap', 'system_name' => 'RedCap (RDC)', 'icon_class' => 'fa-database', 'base_url' => 'redcap'],
+        ['module_key' => 'media_hub', 'system_name' => 'Media Hub (MDH)', 'icon_class' => 'fa-bullhorn', 'base_url' => 'media-hub'],
+        ['module_key' => 'cue', 'system_name' => 'CUE (CUE)', 'icon_class' => 'fa-graduation-cap', 'base_url' => 'cue'],
+        ['module_key' => 'lms', 'system_name' => 'Learning Management System (LMS)', 'icon_class' => 'fa-chalkboard-user', 'base_url' => 'lms'],
+        ['module_key' => 'scorecard', 'system_name' => 'Scorecard Dashboard (SCD)', 'icon_class' => 'fa-chart-column', 'base_url' => 'scorecard'],
+        ['module_key' => 'starlink', 'system_name' => 'StarLink Dashboard (SLD)', 'icon_class' => 'fa-satellite-dish', 'base_url' => 'starlink'],
+    ];
+
+    /**
+     * Home division chips. Operations tabs match the home row
+     * (PRA, Admin & Facilities, HR, Finance, SCM, MIS, OIO).
+     * Program chips are the same control on the Programs view.
+     *
+     * @var list<string>
+     */
+    public const PRIMARY_TABS = [
+        'PRA',
+        'Admin & Facilities',
+        'HR',
+        'Finance',
+        'SCM',
+        'MIS',
+        'OIO',
+        'EPR',
+        'SDI',
+        'LAB',
+        'Science',
+        'Comms',
+        'PHIR',
+        'Lusaka Agenda',
+    ];
+
+    /**
+     * Top home tabs. Keys are stored; labels are shown in settings.
+     *
+     * @var array<string, string>
+     */
+    public const HOME_AREAS = [
+        'operations' => 'Operations',
+        'programs' => 'Programs',
+        'configuration' => 'Configuration',
+    ];
+
+    /**
+     * Modules that start on the Programs tab. Every other module starts on Operations.
+     *
+     * @var list<string>
+     */
+    public const PROGRAM_MODULE_KEYS = [
+        'epr_logistics',
+        'ephem',
+        'avhoc',
+        'frorp',
+        'ems',
+        'events_dashboard',
+        'imst',
+        'nims',
+        'asana',
+        'prioritization',
+        'knowledge_hub',
+        'redcap',
+        'media_hub',
+        'cue',
+        'lms',
+        'scorecard',
+        'starlink',
+    ];
+
+    /**
+     * Default chip for each module. Blank rows are filled once; later edits are kept.
+     *
+     * @var array<string, string>
+     */
+    public const PRIMARY_TAB_BY_MODULE = [
+        'pra' => 'PRA',
+        'approvals_management' => 'Admin & Facilities',
+        'helpdesk_itsm' => 'Admin & Facilities',
+        'helpdesk' => 'Admin & Facilities',
+        'registry' => 'Admin & Facilities',
+        'office_seating' => 'Admin & Facilities',
+        'room_booking' => 'Admin & Facilities',
+        'access_control' => 'Admin & Facilities',
+        'fleet' => 'Admin & Facilities',
+        'staff_portal' => 'HR',
+        'recruitment' => 'HR',
+        'staff_locator' => 'HR',
+        'self_service' => 'HR',
+        'work_time' => 'HR',
+        'budgeting' => 'Finance',
+        'finance_management' => 'Finance',
+        'accounting' => 'Finance',
+        'procurement_plan' => 'SCM',
+        'sourcing' => 'SCM',
+        'e_procurement' => 'SCM',
+        'contracts' => 'SCM',
+        'logistics' => 'SCM',
+        'assets' => 'SCM',
+        'travel' => 'SCM',
+        'it' => 'MIS',
+        'devtrack' => 'MIS',
+        'misdashboard' => 'MIS',
+        'risk_register' => 'OIO',
+        'epr_logistics' => 'EPR',
+        'ephem' => 'EPR',
+        'avhoc' => 'EPR',
+        'frorp' => 'EPR',
+        'ems' => 'SDI',
+        'events_dashboard' => 'SDI',
+        'imst' => 'SDI',
+        'nims' => 'LAB',
+        'asana' => 'LAB',
+        'prioritization' => 'Science',
+        'knowledge_hub' => 'Science',
+        'redcap' => 'Science',
+        'media_hub' => 'Comms',
+        'cue' => 'PHIR',
+        'lms' => 'PHIR',
+        'scorecard' => 'Lusaka Agenda',
+        'starlink' => 'MIS',
+    ];
+
     /** @var list<string> */
     public const TARGET_RESOLVERS = ['codeigniter', 'staff_app_token', 'finance_host', 'external_microservice'];
 
@@ -189,6 +346,37 @@ class CbpModulesAdminService
             'fa-envelope' => 'Envelope',
             'fa-key' => 'Key',
             'fa-external-link-alt' => 'External link',
+            'fa-chair' => 'Chair',
+            'fa-door-open' => 'Door',
+            'fa-car' => 'Car',
+            'fa-user-plus' => 'User plus',
+            'fa-location-dot' => 'Location',
+            'fa-clock' => 'Clock',
+            'fa-file-invoice-dollar' => 'Invoice',
+            'fa-calculator' => 'Calculator',
+            'fa-list-check' => 'Checklist',
+            'fa-magnifying-glass-dollar' => 'Search',
+            'fa-cart-shopping' => 'Cart',
+            'fa-file-contract' => 'Contract',
+            'fa-truck' => 'Truck',
+            'fa-boxes-stacked' => 'Boxes',
+            'fa-plane' => 'Plane',
+            'fa-chart-pie' => 'Chart pie',
+            'fa-truck-medical' => 'Medical truck',
+            'fa-kit-medical' => 'Medical kit',
+            'fa-people-group' => 'People',
+            'fa-flag' => 'Flag',
+            'fa-virus' => 'Virus',
+            'fa-flask' => 'Flask',
+            'fa-ranking-star' => 'Ranking',
+            'fa-book' => 'Book',
+            'fa-database' => 'Database',
+            'fa-bullhorn' => 'Bullhorn',
+            'fa-graduation-cap' => 'Graduation cap',
+            'fa-chalkboard-user' => 'Teaching',
+            'fa-chart-column' => 'Chart column',
+            'fa-satellite-dish' => 'Satellite',
+            'fa-calendar-days' => 'Calendar',
         ];
     }
 
@@ -211,6 +399,10 @@ class CbpModulesAdminService
             return ['inserted' => $inserted, 'assigned' => $assigned];
         }
 
+        $this->ensureShowForAdminColumn();
+        $this->ensurePrimaryTabColumn();
+        $this->ensureHomeAreaColumn();
+
         foreach (self::CORE_MODULES as $def) {
             $key = (string) $def['module_key'];
             $existing = DB::table('cbp_modules')->where('module_key', $key)->first();
@@ -231,7 +423,10 @@ class CbpModulesAdminService
                     'uses_staff_portal_token' => (int) ($def['uses_staff_portal_token'] ?? 0),
                     'is_production' => (int) ($def['is_production'] ?? 1),
                     'is_enabled' => (int) ($def['is_enabled'] ?? 1),
+                    'show_for_admin' => (int) ($def['show_for_admin'] ?? 0),
                     'show_in_apm_menu' => (int) ($def['show_in_apm_menu'] ?? 0),
+                    'primary_tab' => self::PRIMARY_TAB_BY_MODULE[$key] ?? null,
+                    'home_area' => $this->defaultHomeArea($key),
                     'alternate_base_url' => $this->nullableString($def['alternate_base_url'] ?? null),
                     'alternate_for_role_id' => $this->nullableUint($def['alternate_for_role_id'] ?? null),
                     'target_resolver' => (string) ($def['target_resolver'] ?? 'codeigniter'),
@@ -249,6 +444,10 @@ class CbpModulesAdminService
                 }
             }
         }
+
+        $inserted = array_values(array_unique(array_merge($inserted, $this->ensurePlaceholderModules())));
+        $this->backfillPrimaryTabs();
+        $this->backfillHomeAreas();
 
         $this->disableDuplicateCoreLaunchTargets();
 
@@ -282,6 +481,176 @@ class CbpModulesAdminService
         }
 
         return ['inserted' => $inserted, 'assigned' => $assigned];
+    }
+
+    /**
+     * Admins can open a disabled module when this flag is on.
+     */
+    public function ensureShowForAdminColumn(): void
+    {
+        if (! $this->tableExists() || Schema::hasColumn('cbp_modules', 'show_for_admin')) {
+            return;
+        }
+
+        Schema::table('cbp_modules', function ($table) {
+            $table->boolean('show_for_admin')->default(false)->after('is_enabled');
+        });
+    }
+
+    /**
+     * Home division chip this module appears under.
+     */
+    public function ensurePrimaryTabColumn(): void
+    {
+        if (! $this->tableExists() || Schema::hasColumn('cbp_modules', 'primary_tab')) {
+            return;
+        }
+
+        Schema::table('cbp_modules', function ($table) {
+            $table->string('primary_tab', 64)->nullable()->after('system_name');
+        });
+    }
+
+    /**
+     * Top home tab: operations, programs, or configuration.
+     */
+    public function ensureHomeAreaColumn(): void
+    {
+        if (! $this->tableExists() || Schema::hasColumn('cbp_modules', 'home_area')) {
+            return;
+        }
+
+        Schema::table('cbp_modules', function ($table) {
+            $table->string('home_area', 32)->nullable()->after('primary_tab');
+        });
+    }
+
+    /**
+     * Fill a blank home area from the catalog. Does not overwrite a saved choice.
+     */
+    public function backfillHomeAreas(): void
+    {
+        if (! $this->tableExists() || ! Schema::hasColumn('cbp_modules', 'home_area')) {
+            return;
+        }
+
+        $rows = DB::table('cbp_modules')
+            ->where(function ($query) {
+                $query->whereNull('home_area')->orWhere('home_area', '');
+            })
+            ->get(['id', 'module_key']);
+
+        foreach ($rows as $row) {
+            DB::table('cbp_modules')->where('id', $row->id)->update([
+                'home_area' => $this->defaultHomeArea((string) $row->module_key),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    public function defaultHomeArea(string $moduleKey): string
+    {
+        return in_array($moduleKey, self::PROGRAM_MODULE_KEYS, true) ? 'programs' : 'operations';
+    }
+
+    public function normalizeHomeArea(mixed $value): ?string
+    {
+        $area = strtolower(trim((string) ($value ?? '')));
+        if ($area === '' || ! array_key_exists($area, self::HOME_AREAS)) {
+            return null;
+        }
+
+        return $area;
+    }
+
+    /**
+     * Fill a blank primary tab from the catalog. Does not overwrite a saved choice.
+     */
+    public function backfillPrimaryTabs(): void
+    {
+        if (! $this->tableExists() || ! Schema::hasColumn('cbp_modules', 'primary_tab')) {
+            return;
+        }
+
+        foreach (self::PRIMARY_TAB_BY_MODULE as $key => $tab) {
+            DB::table('cbp_modules')
+                ->where('module_key', $key)
+                ->where(function ($query) {
+                    $query->whereNull('primary_tab')->orWhere('primary_tab', '');
+                })
+                ->update(['primary_tab' => $tab, 'updated_at' => now()]);
+        }
+    }
+
+    public function normalizePrimaryTab(mixed $value): ?string
+    {
+        $tab = trim((string) ($value ?? ''));
+        if ($tab === '') {
+            return null;
+        }
+        if (! in_array($tab, self::PRIMARY_TABS, true)) {
+            return null;
+        }
+
+        return $tab;
+    }
+
+    /**
+     * Insert catalog modules that have no app yet. Existing rows are left as they are.
+     *
+     * @return list<string>
+     */
+    public function ensurePlaceholderModules(): array
+    {
+        $inserted = [];
+        if (! $this->tableExists()) {
+            return $inserted;
+        }
+
+        $this->ensureShowForAdminColumn();
+        $this->ensurePrimaryTabColumn();
+        $this->ensureHomeAreaColumn();
+        $sort = 200;
+        foreach (self::PLACEHOLDER_MODULES as $def) {
+            $key = (string) $def['module_key'];
+            $sort += 10;
+            if (DB::table('cbp_modules')->where('module_key', $key)->exists()) {
+                continue;
+            }
+
+            $name = (string) $def['system_name'];
+            $permId = 0;
+            try {
+                $permId = $this->createPermissionAndAssignAdmin($key, $name);
+            } catch (\Throwable) {
+                $permId = 0;
+            }
+
+            DB::table('cbp_modules')->insert([
+                'module_key' => $key,
+                'system_name' => mb_substr($name, 0, 191),
+                'description' => 'Not available yet.',
+                'base_url' => (string) $def['base_url'],
+                'base_url_development' => null,
+                'base_url_production' => null,
+                'icon_class' => mb_substr((string) $def['icon_class'], 0, 128),
+                'permission_code' => $permId > 0 ? (string) $permId : '0',
+                'uses_staff_portal_token' => 0,
+                'is_production' => 1,
+                'is_enabled' => 0,
+                'show_for_admin' => 0,
+                'show_in_apm_menu' => 0,
+                'primary_tab' => self::PRIMARY_TAB_BY_MODULE[$key] ?? null,
+                'home_area' => $this->defaultHomeArea($key),
+                'alternate_base_url' => null,
+                'alternate_for_role_id' => null,
+                'target_resolver' => 'codeigniter',
+                'sort_order' => $sort,
+            ]);
+            $inserted[] = $key;
+        }
+
+        return $inserted;
     }
 
     /**
@@ -486,6 +855,9 @@ class CbpModulesAdminService
         if (! $this->tableExists()) {
             return ['ok' => false, 'message' => 'The cbp_modules table is missing. Run the SQL migration.'];
         }
+        $this->ensureShowForAdminColumn();
+        $this->ensurePrimaryTabColumn();
+        $this->ensureHomeAreaColumn();
 
         $key = strtolower(trim((string) ($data['module_key'] ?? '')));
         $key = (string) preg_replace('/[^a-z0-9_]+/', '_', $key);
@@ -500,6 +872,15 @@ class CbpModulesAdminService
         $name = trim((string) ($data['system_name'] ?? ''));
         if ($name === '') {
             return ['ok' => false, 'message' => 'System name is required.'];
+        }
+
+        $primaryTabError = $this->primaryTabError($data);
+        if ($primaryTabError !== null) {
+            return ['ok' => false, 'message' => $primaryTabError];
+        }
+        $homeAreaError = $this->homeAreaError($data);
+        if ($homeAreaError !== null) {
+            return ['ok' => false, 'message' => $homeAreaError];
         }
 
         $validation = $this->validateTargetConfiguration($data);
@@ -536,7 +917,10 @@ class CbpModulesAdminService
                     'uses_staff_portal_token' => $this->boolInt($data['uses_staff_portal_token'] ?? false),
                     'is_production' => $this->boolInt($data['is_production'] ?? true),
                     'is_enabled' => $this->boolInt($data['is_enabled'] ?? true),
+                    'show_for_admin' => $this->boolInt($data['show_for_admin'] ?? false),
                     'show_in_apm_menu' => $this->boolInt($data['show_in_apm_menu'] ?? false),
+                    'primary_tab' => $this->normalizePrimaryTab($data['primary_tab'] ?? null),
+                    'home_area' => $this->normalizeHomeArea($data['home_area'] ?? null),
                     'alternate_base_url' => $this->nullableString($data['alternate_base_url'] ?? null),
                     'alternate_for_role_id' => $this->nullableUint($data['alternate_for_role_id'] ?? null),
                     'target_resolver' => $resolver,
@@ -568,6 +952,9 @@ class CbpModulesAdminService
         if (! $this->tableExists()) {
             return ['ok' => false, 'message' => 'The cbp_modules table is missing.'];
         }
+        $this->ensureShowForAdminColumn();
+        $this->ensurePrimaryTabColumn();
+        $this->ensureHomeAreaColumn();
         if (! DB::table('cbp_modules')->where('id', $id)->exists()) {
             return ['ok' => false, 'message' => 'Module not found.'];
         }
@@ -575,6 +962,15 @@ class CbpModulesAdminService
         $name = trim((string) ($data['system_name'] ?? ''));
         if ($name === '') {
             return ['ok' => false, 'message' => 'System name is required.'];
+        }
+
+        $primaryTabError = $this->primaryTabError($data);
+        if ($primaryTabError !== null) {
+            return ['ok' => false, 'message' => $primaryTabError];
+        }
+        $homeAreaError = $this->homeAreaError($data);
+        if ($homeAreaError !== null) {
+            return ['ok' => false, 'message' => $homeAreaError];
         }
 
         $validation = $this->validateTargetConfiguration($data);
@@ -608,7 +1004,10 @@ class CbpModulesAdminService
             'uses_staff_portal_token' => $this->boolInt($data['uses_staff_portal_token'] ?? false),
             'is_production' => $this->boolInt($data['is_production'] ?? false),
             'is_enabled' => $this->boolInt($data['is_enabled'] ?? false),
+            'show_for_admin' => $this->boolInt($data['show_for_admin'] ?? false),
             'show_in_apm_menu' => $this->boolInt($data['show_in_apm_menu'] ?? false),
+            'primary_tab' => $this->normalizePrimaryTab($data['primary_tab'] ?? null),
+            'home_area' => $this->normalizeHomeArea($data['home_area'] ?? null),
             'alternate_base_url' => $this->nullableString($data['alternate_base_url'] ?? null),
             'alternate_for_role_id' => $this->nullableUint($data['alternate_for_role_id'] ?? null),
             'target_resolver' => $resolver,
@@ -715,6 +1114,34 @@ class CbpModulesAdminService
         $n = (int) $v;
 
         return $n > 0 ? $n : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function primaryTabError(array $data): ?string
+    {
+        $tab = trim((string) ($data['primary_tab'] ?? ''));
+        if ($tab === '') {
+            return null;
+        }
+        if (! in_array($tab, self::PRIMARY_TABS, true)) {
+            return 'Primary tab must be one of the home division chips.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function homeAreaError(array $data): ?string
+    {
+        if ($this->normalizeHomeArea($data['home_area'] ?? null) === null) {
+            return 'Choose Operations, Programs, or Configuration.';
+        }
+
+        return null;
     }
 
     protected function boolInt(mixed $v): int
