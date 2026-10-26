@@ -1,0 +1,4 @@
+{
+  "root_setup": false,
+  "notes": "Standalone email-server deploy; excluded from CBP root ./setup.sh auto-discovery."
+}

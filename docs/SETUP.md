@@ -45,9 +45,9 @@ Defaults mode uses Docker Compose, external MySQL, production installers, SPA re
 | **Auth** | Microsoft Entra (`EXCHANGE_TENANT_ID` / `EXCHANGE_CLIENT_ID` / `EXCHANGE_CLIENT_SECRET`) written to **root `.env` only**; modules inherit via `shared/load-staff-root-env.php` and keep per-app `MICROSOFT_REDIRECT_URI` / `EXCHANGE_REDIRECT_URI`; SPA **password login** (`ALLOW_ALTERNATIVE_LOGIN`, portal only) |
 | **Mail** | Shared `MAIL_TRANSPORT` (**http** preferred · **exchange** · **smtp** · **zoho**); Graph/SMTP/HTTP creds in root `.env`; Staff Portal UI providers + Share hub (`POST /share/mail/send`, `GET /share/mail/active-config`); modules use `STAFF_MAIL_DISPATCH=auto|portal|local` |
 | **URL / web root** | Public Alias is always the **checkout folder name** (`basename` of the install dir). `APP_URL` = `{origin}/{folder}/backend` so post-login never redirects to bare `/auth/spa-bridge`. |
-| Per module | `DB_DATABASE` (+ forced `DB_CONNECTION=mysql`, mapped URLs / storage) for staff-portal, APM, finance, helpdesk, risk-register |
-| Installers | **Always on** (no prompt) · **production** profile — always `artisan migrate` on every module; full `setup-production.sh` only for modules that changed since `.setup-last-head` (or all modules on a new install). Seed only when the target schema has **no tables**. **Docker:** `composer` runs via Compose `web` |
-| **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for **all five** modules (staff-portal, helpdesk, finance, risk-register, APM); host `STAFF_DATA_ROOT` when set |
+| Per module | `DB_DATABASE` (+ forced `DB_CONNECTION=mysql`, mapped URLs / storage) for every **discovered** module under `modules/` |
+| Installers | **Always on** (no prompt) · **production** profile — always `artisan migrate` on every discovered module; full `setup-production.sh` only for modules that changed since `.setup-last-head` (or all modules on a new install). Seed only when the target schema has **no tables**. **Docker:** `composer` runs via Compose `web` |
+| **Storage** | Always: Laravel `storage/` + `bootstrap/cache` for every discovered module; host `STAFF_DATA_ROOT` when set |
 | **Workers** | **Host:** optional Supervisor (default Yes on Linux production). **Docker:** retires host `cbp-*` Supervisor programs, then Compose `--profile workers` (in-container Supervisor; prompted Yes by default). PHP 8.2 + extensions + Composer binary are in the image; `vendor/` is installed via Compose Composer onto the bind mount. |
 
 Folder names containing `demo` default the site role to **Demo**.
@@ -63,8 +63,40 @@ Folder names containing `demo` default the site role to **Demo**.
 | `modules/finance/setup.env` + `.env` (+ `backend/.env` when present) | Finance |
 | `modules/helpdesk/setup.env` + `backend/.env` | Helpdesk |
 | `modules/risk-register/setup.env` + `backend/.env` | Risk Register |
+| `modules/it/…`, `modules/registry/…`, plus any new discovered module | Same pattern via auto-discovery |
 
 Wizard keys (URLs, JWT, Share API, Redis, storage, Microsoft SSO where applicable, and MySQL including `DB_CONNECTION=mysql`) are **force-updated** on all of the above after each module’s `configure-env` (which otherwise only fills missing keys).
+
+## Adding a module (auto-discovery)
+
+Root `./setup.sh` **scans `modules/*/`** via `scripts/setup/discover-modules.sh`. You do **not** need to edit `setup.sh` to register a new app.
+
+A directory is included when it has any of:
+
+- `setup-production.sh` (preferred installer), or
+- `scripts/configure-env.sh`, or
+- root `artisan` + `.env.example` (APM-style), or
+- `backend/artisan` + (`backend/.env.example` or `setup.env.example`), or
+- optional `cbp-module.json` (opt-in / metadata)
+
+Optional `modules/<name>/cbp-module.json`:
+
+```json
+{
+  "db_database": "my_app",
+  "root_setup": true
+}
+```
+
+Set `"root_setup": false` to **exclude** a folder (e.g. a standalone tool that lives under `modules/` but should not run in CBP setup).
+
+For a new CBP module, ship at least:
+
+1. `setup-production.sh` (and usually `setup.sh` for local/demo)
+2. `scripts/configure-env.sh` + `setup.env.example` / `backend/.env.example`
+3. Laravel `artisan` under `backend/` (or module root)
+
+Setup will then: write shared DB/Redis/runtime into its env files, run `setup-production.sh` / migrate, force `APP_DEBUG=false` on production, and clear config cache — without further root-script changes.
 
 | Auth key | Root | staff-portal | APM | helpdesk | finance |
 |----------|------|--------------|-----|----------|---------|

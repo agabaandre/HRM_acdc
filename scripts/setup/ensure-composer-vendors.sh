@@ -40,18 +40,28 @@ else
   fi
 fi
 
-APPS=(
-  modules/staff-portal/backend
-  modules/helpdesk/backend
-  modules/finance/backend
-  modules/risk-register/backend
-  modules/it/backend
-  modules/it
-  modules/registry/backend
-  modules/registry
-  modules/apm
-  modules/finance
-)
+# Auto-discover Laravel apps under modules/ (composer.json + artisan).
+APPS=()
+shopt -s nullglob
+for _mod in "$STAFF_ROOT"/modules/*/; do
+  _name="$(basename "$_mod")"
+  [[ "$_name" == .* ]] && continue
+  if [[ -f "$_mod/cbp-module.json" ]] \
+    && grep -Eq '"root_setup"[[:space:]]*:[[:space:]]*false' "$_mod/cbp-module.json" 2>/dev/null; then
+    continue
+  fi
+  if [[ -f "$_mod/backend/composer.json" && -f "$_mod/backend/artisan" ]]; then
+    APPS+=("modules/$_name/backend")
+  fi
+  if [[ -f "$_mod/composer.json" && -f "$_mod/artisan" ]]; then
+    APPS+=("modules/$_name")
+  fi
+done
+shopt -u nullglob
+unset _mod _name
+if [[ ${#APPS[@]} -eq 0 ]]; then
+  echo "warn: no Laravel apps discovered under modules/" >&2
+fi
 
 # shellcheck source=ensure-writable-app-dirs.sh
 source "$STAFF_ROOT/scripts/setup/ensure-writable-app-dirs.sh"

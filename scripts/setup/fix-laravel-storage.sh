@@ -25,19 +25,23 @@ setup_ensure_it_registry_keys_and_perms() {
 }
 
 setup_laravel_storage_needs_sudo() {
-  local base owner
-  for base in \
-    "$ROOT/modules/apm" \
-    "$ROOT/modules/finance" \
-    "$ROOT/modules/finance/backend" \
-    "$ROOT/modules/helpdesk/backend" \
-    "$ROOT/modules/staff-portal/backend" \
-    "$ROOT/modules/risk-register/backend" \
-    "$ROOT/modules/it" \
-    "$ROOT/modules/it/backend" \
-    "$ROOT/modules/registry" \
-    "$ROOT/modules/registry/backend"
-  do
+  local base owner d
+  local bases=()
+  # Prefer discovery when available; fall back to glob for standalone runs.
+  if declare -F setup_all_discovered_artisan_dirs >/dev/null 2>&1 \
+    && [[ ${#SETUP_DISCOVERED_MODULES[@]} -gt 0 ]]; then
+    while IFS= read -r base; do
+      [[ -n "$base" ]] && bases+=("$base")
+    done < <(setup_all_discovered_artisan_dirs)
+  else
+    shopt -s nullglob
+    for d in "$ROOT"/modules/*/; do
+      [[ -d "$d/storage" ]] && bases+=("${d%/}")
+      [[ -d "$d/backend/storage" ]] && bases+=("${d%/}/backend")
+    done
+    shopt -u nullglob
+  fi
+  for base in "${bases[@]}"; do
     [[ -d "$base/storage" ]] || continue
     if [[ "$(uname -s)" == "Darwin" ]]; then
       owner="$(stat -f '%Su' "$base/storage" 2>/dev/null || true)"
@@ -78,15 +82,8 @@ setup_fix_laravel_storage() {
   fi
 
   # Per-app scripts relink public/storage to host STAFF_* disks when configured.
-  for app_script in \
-    "$ROOT/modules/staff-portal/fix-storage-permissions.sh" \
-    "$ROOT/modules/helpdesk/fix-storage-permissions.sh" \
-    "$ROOT/modules/finance/fix-storage-permissions.sh" \
-    "$ROOT/modules/risk-register/fix-storage-permissions.sh" \
-    "$ROOT/modules/it/fix-storage-permissions.sh" \
-    "$ROOT/modules/registry/fix-storage-permissions.sh" \
-    "$ROOT/modules/apm/fix-storage-permissions.sh"
-  do
+  shopt -s nullglob
+  for app_script in "$ROOT"/modules/*/fix-storage-permissions.sh; do
     [[ -f "$app_script" ]] || continue
     chmod +x "$app_script" 2>/dev/null || true
     if bash "$app_script"; then
@@ -95,6 +92,7 @@ setup_fix_laravel_storage() {
       setup_warn "$(basename "$(dirname "$app_script")") storage fix failed"
     fi
   done
+  shopt -u nullglob
 
   host_script="$ROOT/scripts/storage/fix-staff-storage-permissions.sh"
   if [[ -f "$host_script" && -n "${STAFF_DATA_ROOT:-}" ]]; then

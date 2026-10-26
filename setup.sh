@@ -211,9 +211,14 @@ source "$ROOT/scripts/setup/fix-laravel-storage.sh"
 source "$ROOT/scripts/setup/db-probe.sh"
 # shellcheck source=scripts/setup/docker-compose.sh
 source "$ROOT/scripts/setup/docker-compose.sh"
+# shellcheck source=scripts/setup/discover-modules.sh
+source "$ROOT/scripts/setup/discover-modules.sh"
+
+setup_discover_cbp_modules
 
 echo "=== Africa CDC CBP setup ==="
 echo "Repo: $ROOT"
+setup_print_discovered_modules
 echo
 
 # First question (interactive only): run with wizard/env defaults, or step through.
@@ -276,12 +281,7 @@ if [[ "$SITE_KIND" == "demo" ]]; then
 else
   echo "    Production: APP_DEBUG=false forced on every Laravel module .env"
   # Module configure-env / setup-production honour these (always force debug off).
-  export STAFF_PORTAL_PRODUCTION_SETUP=1
-  export HELPDESK_PRODUCTION_SETUP=1
-  export FINANCE_PRODUCTION_SETUP=1
-  export RISK_REGISTER_PRODUCTION_SETUP=1
-  export IT_PRODUCTION_SETUP=1
-  export REGISTRY_PRODUCTION_SETUP=1
+  setup_export_discovered_production_flags
 fi
 
 INSTALL_TYPE_DEFAULT=1
@@ -1324,6 +1324,102 @@ else
   setup_warn "registry env write failed — fix ownership and re-run"
 fi
 
+# ----- Auto-discovered modules (no custom writer in this script) -----
+# New folders under modules/ with setup-production.sh / configure-env / artisan
+# are configured here without editing setup.sh.
+setup_bootstrap_generic_module() {
+  local name="$1"
+  local dir db_default db_var db_val app_url
+  local setup_env backend_env root_env configure_env prod_flag
+  local files=() f
+
+  dir="$(setup_module_dir "$name")"
+  [[ -d "$dir" ]] || return 0
+
+  echo
+  echo "==> $name (auto-discovered)"
+
+  setup_env="$dir/setup.env"
+  backend_env="$dir/backend/.env"
+  root_env="$dir/.env"
+  configure_env="$dir/scripts/configure-env.sh"
+  prod_flag="$(setup_module_production_flag_name "$name")"
+
+  [[ -f "$dir/setup.env.example" ]] && env_ensure_file "$setup_env" "$dir/setup.env.example" \
+    || true
+  if [[ -f "$dir/backend/.env.example" ]]; then
+    env_ensure_file "$backend_env" "$dir/backend/.env.example" || true
+  fi
+  if [[ -f "$dir/.env.example" ]]; then
+    env_ensure_file "$root_env" "$dir/.env.example" || true
+  fi
+
+  files=()
+  [[ -f "$setup_env" ]] && files+=("$setup_env")
+  [[ -f "$backend_env" ]] && files+=("$backend_env")
+  [[ -f "$root_env" ]] && files+=("$root_env")
+  if [[ ${#files[@]} -eq 0 ]]; then
+    setup_warn "$name: no setup.env / .env to configure — add templates under modules/$name"
+    return 0
+  fi
+
+  db_default="$(setup_module_default_database "$name")"
+  db_val="$(env_get "${files[0]}" DB_DATABASE 2>/dev/null || true)"
+  db_var="DISCOVERED_DB_${name//-/_}"
+  prompt_value "$db_var" "$name DB_DATABASE" "${db_val:-$db_default}"
+  # shellcheck disable=SC2086
+  eval "db_val=\"\${$db_var:-$db_default}\""
+
+  app_url="${PUBLIC_BASE%/}/${name}"
+  if [[ -f "$dir/backend/artisan" ]]; then
+    app_url="${PUBLIC_BASE%/}/${name}/backend"
+  fi
+
+  for f in "${files[@]}"; do
+    apply_app_runtime_to_file "$f" || setup_warn "$name: runtime write failed on $f"
+    env_set "$f" APP_URL "$app_url" 2>/dev/null || true
+    env_set "$f" BASE_URL "${BASE_URL:-}" 2>/dev/null || true
+    env_set "$f" WEB_ROOT "${WEB_ROOT:-}" 2>/dev/null || true
+    env_set "$f" SITE_KIND "${SITE_KIND:-}" 2>/dev/null || true
+    env_set "$f" DB_DATABASE "$db_val" || true
+    apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || true
+    apply_redis_to_file "$f" || true
+    apply_storage_to_file "$f" 2>/dev/null || true
+  done
+
+  if [[ -x "$configure_env" ]]; then
+    # Production flags already exported via setup_export_discovered_production_flags.
+    if (eval "export ${prod_flag}=\${${prod_flag}:-0}"; "$configure_env"); then
+      echo "    configure-env OK"
+    else
+      setup_warn "$name configure-env failed"
+    fi
+    # Re-apply shared runtime/DB after module script (same pattern as known modules).
+    for f in "${files[@]}"; do
+      apply_app_runtime_to_file "$f" || true
+      env_set "$f" DB_DATABASE "$db_val" || true
+      apply_db_to_file "$f" DB_USERNAME DB_PASSWORD || true
+      apply_redis_to_file "$f" || true
+    done
+  fi
+
+  local art_dir
+  while IFS= read -r art_dir; do
+    [[ -n "$art_dir" ]] || continue
+    setup_ensure_laravel_app_key "$art_dir"
+  done < <(setup_module_artisan_dirs "$name")
+
+  echo "    env OK (DB_DATABASE=$db_val APP_URL=$app_url)"
+}
+
+for _disc_mod in "${SETUP_DISCOVERED_MODULES[@]}"; do
+  if setup_module_is_custom_env "$_disc_mod"; then
+    continue
+  fi
+  setup_bootstrap_generic_module "$_disc_mod"
+done
+unset _disc_mod
+
 # Writable Laravel dirs + public/storage after .env paths are known.
 setup_fix_laravel_storage
 # Keys may still be empty when vendor was not installed yet — retry after storage fix.
@@ -1334,51 +1430,29 @@ setup_ensure_it_registry_keys_and_perms
 if setup_is_production_site; then
   echo
   echo "==> Forcing APP_ENV=production APP_DEBUG=false on every module .env"
-  setup_force_production_app_runtime \
-    "$ROOT/.env" \
-    "$ROOT/modules/apm/.env" \
-    "$ROOT/modules/staff-portal/setup.env" \
-    "$ROOT/modules/staff-portal/backend/.env" \
-    "$ROOT/modules/helpdesk/setup.env" \
-    "$ROOT/modules/helpdesk/backend/.env" \
-    "$ROOT/modules/finance/setup.env" \
-    "$ROOT/modules/finance/.env" \
-    "$ROOT/modules/finance/backend/.env" \
-    "$ROOT/modules/risk-register/setup.env" \
-    "$ROOT/modules/risk-register/backend/.env" \
-    "$ROOT/modules/it/setup.env" \
-    "$ROOT/modules/it/.env" \
-    "$ROOT/modules/it/backend/.env" \
-    "$ROOT/modules/registry/setup.env" \
-    "$ROOT/modules/registry/.env" \
-    "$ROOT/modules/registry/backend/.env" \
-    "$ROOT/modules/devtrack/backend/.env" \
-    "$ROOT/modules/devtrack/docker/.env"
-  echo "    APP_DEBUG=false on all module env files"
+  _prod_env_files=()
+  while IFS= read -r _ef; do
+    [[ -n "$_ef" ]] && _prod_env_files+=("$_ef")
+  done < <(setup_all_discovered_env_files | awk 'NF' | sort -u)
+  if [[ ${#_prod_env_files[@]} -gt 0 ]]; then
+    setup_force_production_app_runtime "${_prod_env_files[@]}"
+  fi
+  unset _prod_env_files _ef
+  echo "    APP_DEBUG=false on all discovered module env files"
 fi
 
 # Drop stale config cache so APP_DEBUG=false takes effect immediately (Ignition).
 if setup_is_production_site; then
   echo
   echo "==> Clearing Laravel config cache (production APP_DEBUG=false)"
-  for _cfg_dir in \
-    "$ROOT/modules/apm" \
-    "$ROOT/modules/staff-portal/backend" \
-    "$ROOT/modules/helpdesk/backend" \
-    "$ROOT/modules/finance/backend" \
-    "$ROOT/modules/finance" \
-    "$ROOT/modules/risk-register/backend" \
-    "$ROOT/modules/it/backend" \
-    "$ROOT/modules/it" \
-    "$ROOT/modules/registry/backend" \
-    "$ROOT/modules/registry" \
-    "$ROOT/modules/devtrack/backend"
-  do
+  while IFS= read -r _cfg_dir; do
+    [[ -n "$_cfg_dir" ]] || continue
     [[ -f "$_cfg_dir/artisan" ]] || continue
     [[ -f "$_cfg_dir/vendor/autoload.php" ]] || continue
     (cd "$_cfg_dir" && php artisan config:clear --no-interaction 2>/dev/null) \
       || echo "    warn: config:clear failed in $_cfg_dir" >&2
-  done
+  done < <(setup_all_discovered_artisan_dirs | awk 'NF' | sort -u)
+  unset _cfg_dir
 fi
 
 echo
@@ -1407,6 +1481,7 @@ fi
 echo
 echo "=== Summary ==="
 echo "Site=$SITE_KIND  Deploy=$DEPLOY_MODE  DB=$DB_MODE  Base=$PUBLIC_BASE  WebRoot=/${WEB_ROOT}"
+echo "Modules=${SETUP_DISCOVERED_MODULES[*]}"
 echo "STAFF_SITE_ID=$STAFF_SITE_ID"
 echo "CI3 uploads=$STAFF_PORTAL_UPLOADS_ROOT"
 echo "Microsoft portal redirect=$MICROSOFT_REDIRECT_URI_PORTAL"
@@ -1519,16 +1594,27 @@ setup_module_needs_full_install() {
   if setup_shared_changed; then
     return 0
   fi
-  case "$name" in
-    staff-portal) setup_paths_changed modules/staff-portal ;;
-    finance) setup_paths_changed modules/finance ;;
-    helpdesk) setup_paths_changed modules/helpdesk ;;
-    risk-register) setup_paths_changed modules/risk-register ;;
-    it) setup_paths_changed modules/it ;;
-    registry) setup_paths_changed modules/registry ;;
-    apm) setup_paths_changed modules/apm ;;
-    *) return 0 ;;
-  esac
+  # Any discovered (or future) module: full install when its tree changed.
+  setup_paths_changed "modules/$name"
+}
+
+# Laravel apps without setup-production.sh (e.g. APM): composer + migrate (+ seed if empty).
+setup_run_laravel_bootstrap() {
+  local name="$1" dir="$2" database="$3"
+  local probe_host
+  echo "==> $name: composer + migrate"
+  (
+    setup_export_host_db_overrides
+    cd "$dir"
+    composer install --no-interaction --prefer-dist || true
+    php artisan key:generate --force 2>/dev/null || true
+    php artisan jwt:secret --force 2>/dev/null || true
+    php artisan migrate --force --no-interaction || true
+    probe_host="$(setup_host_reachable_db_host "${DB_HOST:-}")"
+    if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$database"; then
+      php artisan db:seed --force --no-interaction 2>/dev/null || true
+    fi
+  ) || echo "warn: $name bootstrap failed" >&2
 }
 
 # Always attempt pending migrations (new migration files after git pull).
@@ -1652,85 +1738,64 @@ if [[ "$RUN_INSTALL" == "1" ]]; then
     echo "==> No prior setup marker — full installers for all modules"
   fi
 
-  if [[ "$INST_PROFILE" == "2" ]]; then
-    if setup_module_needs_full_install staff-portal; then
-      setup_run_module_production staff-portal "$ROOT/modules/staff-portal" "$SP_DB" --skip-build
-    else
-      echo "==> staff-portal: unchanged — migrate only"
-      setup_migrate_laravel staff-portal "$ROOT/modules/staff-portal"
-    fi
-    if setup_module_needs_full_install finance; then
-      setup_run_module_production finance "$ROOT/modules/finance" "$FN_DB"
-    else
-      echo "==> finance: unchanged — migrate only"
-      setup_migrate_laravel finance "$ROOT/modules/finance"
-    fi
-    if setup_module_needs_full_install helpdesk; then
-      setup_run_module_production helpdesk "$ROOT/modules/helpdesk" "$HD_DB"
-    else
-      echo "==> helpdesk: unchanged — migrate only"
-      setup_migrate_laravel helpdesk "$ROOT/modules/helpdesk"
-    fi
-    if setup_module_needs_full_install risk-register; then
-      setup_run_module_production risk-register "$ROOT/modules/risk-register" "${RR_DB:-risk_register}"
-    else
-      echo "==> risk-register: unchanged — migrate only"
-      setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
-    fi
-    if setup_module_needs_full_install it; then
-      setup_run_module_production it "$ROOT/modules/it" "${IT_DB:-it}"
-    else
-      echo "==> it: unchanged — migrate only"
-      setup_migrate_laravel it "$ROOT/modules/it"
-    fi
-    setup_ensure_laravel_app_key "$ROOT/modules/it"
-    setup_ensure_laravel_app_key "$ROOT/modules/it/backend"
-    if setup_module_needs_full_install registry; then
-      setup_run_module_production registry "$ROOT/modules/registry" "${RG_DB:-registry}"
-    else
-      echo "==> registry: unchanged — migrate only"
-      setup_migrate_laravel registry "$ROOT/modules/registry"
-    fi
-    setup_ensure_laravel_app_key "$ROOT/modules/registry"
-    setup_ensure_laravel_app_key "$ROOT/modules/registry/backend"
-  else
-    (cd "$ROOT/modules/staff-portal" && WEB_ROOT="$WEB_ROOT" ./setup.sh) || echo "warn: staff-portal setup failed" >&2
-    (cd "$ROOT/modules/finance" && ./setup.sh) || echo "warn: finance setup failed" >&2
-    (cd "$ROOT/modules/helpdesk" && ./setup.sh) || echo "warn: helpdesk setup failed" >&2
-    (cd "$ROOT/modules/risk-register" && ./setup.sh) || echo "warn: risk-register setup failed" >&2
-    (cd "$ROOT/modules/it" && ./setup.sh) || echo "warn: it setup failed" >&2
-    (cd "$ROOT/modules/registry" && ./setup.sh) || echo "warn: registry setup failed" >&2
-    setup_ensure_it_registry_keys_and_perms
-  fi
-  if [[ -f "$ROOT/modules/apm/artisan" ]]; then
-    if setup_module_needs_full_install apm; then
-      (
-        setup_export_host_db_overrides
-        cd "$ROOT/modules/apm"
-        composer install --no-interaction --prefer-dist || true
-        php artisan key:generate --force 2>/dev/null || true
-        php artisan jwt:secret --force 2>/dev/null || true
-        php artisan migrate --force --no-interaction || true
-        probe_host="$(setup_host_reachable_db_host "${DB_HOST:-}")"
-        if setup_db_is_empty "$probe_host" "${DB_PORT:-3306}" "$DB_USER" "$DB_PASS" "$APM_DB_DATABASE"; then
-          php artisan db:seed --force --no-interaction 2>/dev/null || true
-        fi
-      ) || echo "warn: APM bootstrap failed" >&2
-    else
-      echo "==> apm: unchanged — migrate only"
-      setup_migrate_laravel apm "$ROOT/modules/apm"
-    fi
-  fi
+  echo "==> Running installers for discovered modules: ${SETUP_DISCOVERED_MODULES[*]}"
+  _inst_name="" _inst_dir="" _inst_db="" _art_dir=""
+  for _inst_name in "${SETUP_DISCOVERED_MODULES[@]}"; do
+    _inst_dir="$(setup_module_dir "$_inst_name")"
+    _inst_db="$(setup_module_db_name "$_inst_name")"
 
-  # Safety net: always try pending migrations on every Laravel app (new files after pull).
-  echo "==> Ensuring pending migrations on all modules"
-  setup_migrate_laravel staff-portal "$ROOT/modules/staff-portal"
-  setup_migrate_laravel finance "$ROOT/modules/finance"
-  setup_migrate_laravel helpdesk "$ROOT/modules/helpdesk"
-  setup_migrate_laravel risk-register "$ROOT/modules/risk-register"
-  setup_migrate_laravel it "$ROOT/modules/it"
-  setup_migrate_laravel registry "$ROOT/modules/registry"
-  setup_migrate_laravel apm "$ROOT/modules/apm"
+    if [[ "$INST_PROFILE" == "2" ]]; then
+      if setup_module_has_production_installer "$_inst_name"; then
+        if setup_module_needs_full_install "$_inst_name"; then
+          if [[ "$_inst_name" == "staff-portal" ]]; then
+            setup_run_module_production "$_inst_name" "$_inst_dir" "$_inst_db" --skip-build
+          else
+            setup_run_module_production "$_inst_name" "$_inst_dir" "$_inst_db"
+          fi
+        else
+          echo "==> $_inst_name: unchanged — migrate only"
+          setup_migrate_laravel "$_inst_name" "$_inst_dir"
+        fi
+      elif [[ -f "$_inst_dir/artisan" ]]; then
+        if setup_module_needs_full_install "$_inst_name"; then
+          setup_run_laravel_bootstrap "$_inst_name" "$_inst_dir" "$_inst_db"
+        else
+          echo "==> $_inst_name: unchanged — migrate only"
+          setup_migrate_laravel "$_inst_name" "$_inst_dir"
+        fi
+      else
+        echo "==> $_inst_name: no setup-production.sh — migrate only"
+        setup_migrate_laravel "$_inst_name" "$_inst_dir"
+      fi
+    else
+      if setup_module_has_dev_installer "$_inst_name"; then
+        if [[ "$_inst_name" == "staff-portal" ]]; then
+          (cd "$_inst_dir" && WEB_ROOT="$WEB_ROOT" ./setup.sh) \
+            || echo "warn: $_inst_name setup failed" >&2
+        else
+          (cd "$_inst_dir" && ./setup.sh) \
+            || echo "warn: $_inst_name setup failed" >&2
+        fi
+      elif [[ -f "$_inst_dir/artisan" ]]; then
+        setup_run_laravel_bootstrap "$_inst_name" "$_inst_dir" "$_inst_db"
+      else
+        setup_migrate_laravel "$_inst_name" "$_inst_dir"
+      fi
+    fi
+
+    while IFS= read -r _art_dir; do
+      [[ -n "$_art_dir" ]] || continue
+      setup_ensure_laravel_app_key "$_art_dir"
+    done < <(setup_module_artisan_dirs "$_inst_name")
+  done
+  unset _inst_name _inst_dir _inst_db _art_dir
+
+  # Safety net: always try pending migrations on every discovered Laravel app.
+  echo "==> Ensuring pending migrations on all discovered modules"
+  for _inst_name in "${SETUP_DISCOVERED_MODULES[@]}"; do
+    setup_migrate_laravel "$_inst_name" "$(setup_module_dir "$_inst_name")"
+  done
+  unset _inst_name
 
   # Remember HEAD so the next setup only full-installs modules that changed.
   if command -v git >/dev/null 2>&1 \
