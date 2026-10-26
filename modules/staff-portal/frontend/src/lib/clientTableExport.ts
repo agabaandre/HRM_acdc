@@ -2,6 +2,14 @@
 
 export type TableExportCell = string | number | null | undefined
 
+export type ExcelExportOptions = {
+  sheetName?: string
+  title?: string
+  subtitle?: string
+  /** Body/header font size in points (default 13). */
+  fontSize?: number
+}
+
 function escapeCsvCell(value: TableExportCell): string {
   const s = value == null ? '' : String(value)
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
@@ -40,38 +48,140 @@ function escapeXml(value: TableExportCell): string {
     .replace(/"/g, '&quot;')
 }
 
+function excelColumnWidths(headers: string[], rows: TableExportCell[][]): number[] {
+  return headers.map((header, col) => {
+    let maxLen = String(header ?? '').length
+    for (const row of rows) {
+      const len = String(row[col] ?? '').length
+      if (len > maxLen) maxLen = len
+    }
+    // SpreadsheetML Width is roughly character units; keep readable bounds.
+    return Math.min(48, Math.max(12, maxLen + 4))
+  })
+}
+
 /**
  * Excel-compatible SpreadsheetML (.xls) — opens in Excel / LibreOffice without extra deps.
+ * Uses Calibri 13 by default with bold header row and light borders.
  */
 export function downloadClientExcel(
   filename: string,
   headers: string[],
   rows: TableExportCell[][],
-  sheetName = 'Sheet1',
+  sheetNameOrOptions: string | ExcelExportOptions = 'Sheet1',
 ): void {
-  const safeSheet = escapeXml(sheetName).slice(0, 31) || 'Sheet1'
-  const headerRow = `<Row>${headers
-    .map((h) => `<Cell><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`)
+  const options: ExcelExportOptions =
+    typeof sheetNameOrOptions === 'string'
+      ? { sheetName: sheetNameOrOptions }
+      : sheetNameOrOptions || {}
+
+  const fontSize = options.fontSize && options.fontSize > 0 ? options.fontSize : 13
+  const safeSheet = escapeXml(options.sheetName || 'Sheet1').slice(0, 31) || 'Sheet1'
+  const widths = excelColumnWidths(headers, rows)
+  const colXml = widths.map((w) => `<Column ss:AutoFitWidth="0" ss:Width="${w * 6}"/>`).join('')
+
+  const titleRows: string[] = []
+  let mergeAcross = Math.max(0, headers.length - 1)
+  if (options.title) {
+    titleRows.push(
+      `<Row ss:Height="${fontSize + 10}"><Cell ss:StyleID="Title" ss:MergeAcross="${mergeAcross}"><Data ss:Type="String">${escapeXml(options.title)}</Data></Cell></Row>`,
+    )
+  }
+  if (options.subtitle) {
+    titleRows.push(
+      `<Row ss:Height="${fontSize + 4}"><Cell ss:StyleID="Subtitle" ss:MergeAcross="${mergeAcross}"><Data ss:Type="String">${escapeXml(options.subtitle)}</Data></Cell></Row>`,
+    )
+  }
+  if (titleRows.length) {
+    titleRows.push('<Row/>')
+  }
+
+  const headerRow = `<Row ss:Height="${fontSize + 6}">${headers
+    .map((h) => `<Cell ss:StyleID="Header"><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`)
     .join('')}</Row>`
+
   const dataRows = rows
     .map((row) => {
-      const cells = row
-        .map((c) => {
+      const cells = headers
+        .map((_, i) => {
+          const c = row[i]
           const isNum = typeof c === 'number' && Number.isFinite(c)
-          return `<Cell><Data ss:Type="${isNum ? 'Number' : 'String'}">${escapeXml(c)}</Data></Cell>`
+          return `<Cell ss:StyleID="Cell"><Data ss:Type="${isNum ? 'Number' : 'String'}">${escapeXml(c)}</Data></Cell>`
         })
         .join('')
-      return `<Row>${cells}</Row>`
+      return `<Row ss:Height="${fontSize + 4}">${cells}</Row>`
     })
     .join('')
+
   const xml = `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="${fontSize}" ss:Color="#1F2933"/>
+  </Style>
+  <Style ss:ID="Title">
+   <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="${fontSize + 3}" ss:Bold="1" ss:Color="#911C39"/>
+  </Style>
+  <Style ss:ID="Subtitle">
+   <Alignment ss:Vertical="Center" ss:WrapText="1"/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="${fontSize}" ss:Color="#52606D"/>
+  </Style>
+  <Style ss:ID="Header">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9AA5B1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9AA5B1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9AA5B1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#9AA5B1"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="${fontSize}" ss:Bold="1" ss:Color="#1F2933"/>
+   <Interior ss:Color="#E4E7EB" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="Cell">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2EC"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2EC"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2EC"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2EC"/>
+   </Borders>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="${fontSize}" ss:Color="#1F2933"/>
+  </Style>
+ </Styles>
  <Worksheet ss:Name="${safeSheet}">
-  <Table>${headerRow}${dataRows}</Table>
+  <Table ss:DefaultRowHeight="${fontSize + 4}">
+   ${colXml}
+   ${titleRows.join('')}
+   ${headerRow}
+   ${dataRows}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Layout x:Orientation="Landscape"/>
+   </PageSetup>
+   <FitToPage/>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <FitHeight>0</FitHeight>
+   </Print>
+   <Selected/>
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>${titleRows.length + 1}</SplitHorizontal>
+   <TopRowBottomPane>${titleRows.length + 1}</TopRowBottomPane>
+   <ActivePane>2</ActivePane>
+  </WorksheetOptions>
  </Worksheet>
 </Workbook>`
+
   const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' })
   const name = filename.replace(/\.(csv|xlsx|xls)$/i, '')
   triggerDownload(blob, `${name}.xls`)

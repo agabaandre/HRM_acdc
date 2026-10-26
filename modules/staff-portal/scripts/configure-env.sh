@@ -33,9 +33,12 @@ ENV_PREEXISTED=0
 # setup.env is a local-dev template (APP_ENV=local, localhost URLs). Production
 # setup must not keep those values — dotenv_load_file above already overwrote
 # any APP_ENV=production exported by setup-production.sh.
-if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
+if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" \
+    || "${SITE_KIND:-}" == "production" \
+    || "${APP_ENV:-}" == "production" ]]; then
     APP_ENV=production
     APP_DEBUG=false
+    export APP_ENV APP_DEBUG
 fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
@@ -104,14 +107,19 @@ for key in \
 done
 
 # Force URL/DB keys from production resolution when set in this shell
-if [[ "${STAFF_PORTAL_PRODUCTION_SETUP:-}" == "1" ]]; then
-    for key in APP_ENV APP_DEBUG APP_URL STAFF_PORTAL_BASE_URL STAFF_PORTAL_SPA_URL BASE_URL APM_BASE_URL; do
+if [[ "${APP_ENV:-}" == "production" ]]; then
+    # Always disable debug on existing .env (apply_if_missing would leave APP_DEBUG=true).
+    dotenv_set "$BACKEND_ENV" APP_ENV "production"
+    dotenv_set "$BACKEND_ENV" APP_DEBUG "false"
+    dotenv_set "$SETUP_ENV" APP_ENV "production"
+    dotenv_set "$SETUP_ENV" APP_DEBUG "false"
+    for key in APP_URL STAFF_PORTAL_BASE_URL STAFF_PORTAL_SPA_URL BASE_URL APM_BASE_URL; do
         val="${!key:-}"
         if dotenv_value_present "$val"; then
             dotenv_set "$BACKEND_ENV" "$key" "$val"
         fi
     done
-    echo "Production URLs: SPA=${STAFF_PORTAL_SPA_URL:-}  API=${APP_URL:-}"
+    echo "Production URLs: SPA=${STAFF_PORTAL_SPA_URL:-}  API=${APP_URL:-}  (APP_DEBUG=false)"
 
     # Redis is optional. A bad REDIS_PASSWORD (AUTH with no server password) breaks
     # migrate / cache and must not block production deploy — fall back to database.

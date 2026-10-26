@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Modules\Auth\Models\PortalUser;
 use Modules\Core\Services\CsvExportService;
 use Modules\Core\Services\PdfService;
+use Modules\Core\Services\WordExportService;
 use Modules\Core\Support\PortalPermission;
 use Modules\Performance\Enums\PerformancePhase;
 use Modules\Performance\Services\CompetencyService;
@@ -201,8 +202,12 @@ class PerformanceFormApiController extends Controller
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
         if (! PerformanceFormAccess::canChangeSupervisors($entry, $phase, $actorStaffId)) {
+            $message = PerformanceFormAccess::phaseIsDraft($entry, $phase)
+                ? 'You do not have permission to change supervisors on this form.'
+                : 'Supervisors can only be changed on draft PPA, midterm, and endterm forms.';
+
             throw ValidationException::withMessages([
-                'supervisors' => ['Supervisors can only be changed on draft PPA, midterm, and endterm forms.'],
+                'supervisors' => [$message],
             ]);
         }
 
@@ -562,6 +567,88 @@ class PerformanceFormApiController extends Controller
         PpaContractService $contracts,
         SupervisorResolver $supervisors,
     ): Response {
+        $print = $this->buildPrintDocument(
+            $entryId,
+            $request,
+            $forms,
+            $workflow,
+            $approval,
+            $contracts,
+            $supervisors,
+        );
+
+        $documentUrl = url('/api/v1/performance/entries/'.$print['entry_id'].'/print.pdf')
+            .'?phase='.urlencode($print['phase']->value)
+            .($print['with_trail'] ? '&with_trail=1' : '');
+
+        return $pdf->inline(
+            $print['html'],
+            $print['file_label'].'-'.$print['entry_id'].($print['with_trail'] ? '-trail' : '').'.pdf',
+            [
+                'title' => $print['title'],
+                'landscape' => false,
+                // Body template already has the CI3 logo/tagline header — skip PdfService header to avoid duplication.
+                'header' => false,
+                'document_url' => $documentUrl,
+                'generated_by' => (string) (session('user.name') ?? ''),
+                'watermark_text' => $print['watermark'] ?? '',
+            ],
+        );
+    }
+
+    public function exportWord(
+        string $entryId,
+        Request $request,
+        PpaFormService $forms,
+        WordExportService $word,
+        PerformanceWorkflowService $workflow,
+        PerformanceApprovalService $approval,
+        PpaContractService $contracts,
+        SupervisorResolver $supervisors,
+    ): Response {
+        $print = $this->buildPrintDocument(
+            $entryId,
+            $request,
+            $forms,
+            $workflow,
+            $approval,
+            $contracts,
+            $supervisors,
+        );
+
+        return $word->download(
+            $print['html'],
+            $print['file_label'].'-'.$print['entry_id'].($print['with_trail'] ? '-trail' : '').'.doc',
+            [
+                'title' => $print['title'],
+                'font_size_pt' => 13,
+                'watermark_text' => $print['watermark'] ?? '',
+            ],
+        );
+    }
+
+    /**
+     * Shared printable document for PDF and Word export (PPA / midterm / endterm).
+     *
+     * @return array{
+     *     entry_id: string,
+     *     phase: PerformancePhase,
+     *     with_trail: bool,
+     *     file_label: string,
+     *     title: string,
+     *     watermark: ?string,
+     *     html: string
+     * }
+     */
+    protected function buildPrintDocument(
+        string $entryId,
+        Request $request,
+        PpaFormService $forms,
+        PerformanceWorkflowService $workflow,
+        PerformanceApprovalService $approval,
+        PpaContractService $contracts,
+        SupervisorResolver $supervisors,
+    ): array {
         PortalPermission::authorize(74);
 
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
@@ -663,19 +750,15 @@ class PerformanceFormApiController extends Controller
             default => 'PPA',
         };
 
-        $documentUrl = url('/api/v1/performance/entries/'.$entryId.'/print.pdf')
-            .'?phase='.urlencode($phase->value)
-            .($withTrail ? '&with_trail=1' : '');
-
-        return $pdf->inline($html, $fileLabel.'-'.$entryId.($withTrail ? '-trail' : '').'.pdf', [
+        return [
+            'entry_id' => $entryId,
+            'phase' => $phase,
+            'with_trail' => $withTrail,
+            'file_label' => $fileLabel,
             'title' => $fileLabel.' — '.$entry->performance_period,
-            'landscape' => false,
-            // Body template already has the CI3 logo/tagline header — skip PdfService header to avoid duplication.
-            'header' => false,
-            'document_url' => $documentUrl,
-            'generated_by' => (string) (session('user.name') ?? ''),
-            'watermark_text' => $watermark ?? '',
-        ]);
+            'watermark' => $watermark,
+            'html' => $html,
+        ];
     }
 
     public function formUrls(PerformanceService $performance): JsonResponse
@@ -758,9 +841,18 @@ class PerformanceFormApiController extends Controller
         $this->ensureOwnerCanEdit($phase, $staffId, $actorStaffId, $settings);
 
         if (! PerformanceFormAccess::canChangeSupervisors($existing, $phase, $actorStaffId)) {
+            $lockedSupervisor1 = $this->phaseSupervisorValue($existing, $phase, true);
+            $lockedSupervisor2 = $this->phaseSupervisorValue($existing, $phase, false);
+            if ($lockedSupervisor1 === null && ! $existing) {
+                $fromContract = $supervisors->fromLatestContract(
+                    (int) ($request->input('staff_id') ?: $actorStaffId)
+                );
+                $lockedSupervisor1 = (int) ($fromContract['supervisor_1'] ?? 0) ?: null;
+                $lockedSupervisor2 = (int) ($fromContract['supervisor_2'] ?? 0) ?: null;
+            }
             $request->merge([
-                'supervisor_id' => $this->phaseSupervisorValue($existing, $phase, true),
-                'supervisor2_id' => $this->phaseSupervisorValue($existing, $phase, false),
+                'supervisor_id' => $lockedSupervisor1,
+                'supervisor2_id' => $lockedSupervisor2,
             ]);
         }
 
@@ -886,6 +978,7 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::Ppa;
         $submissionWindow = $settings->submissionWindowStatus($phase);
         $isOwner = $actorStaffId === $staffId;
+        $canChangeSupervisors = PerformanceFormAccess::canChangeSupervisors(null, $phase, $actorStaffId);
 
         return [
             'phase' => $phase->value,
@@ -922,7 +1015,7 @@ class PerformanceFormApiController extends Controller
                 'supervisor_options' => $this->supervisorCatalog(
                     null,
                     $phase,
-                    $isOwner,
+                    $canChangeSupervisors,
                     (int) ($resolved['supervisor_1'] ?? 0),
                     (int) ($resolved['supervisor_2'] ?? 0),
                 ),
@@ -939,7 +1032,7 @@ class PerformanceFormApiController extends Controller
             'endreadonly' => '',
             'is_owner' => $isOwner,
             'can_save' => $submissionWindow['open'] && $isOwner,
-            'can_change_supervisors' => $isOwner,
+            'can_change_supervisors' => $canChangeSupervisors,
             'can_approve' => false,
             'can_return' => false,
             'return_target' => null,

@@ -208,8 +208,12 @@ class PerformanceFormApiController extends Controller
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
         if (! PerformanceFormAccess::canChangeSupervisors($entry, $phase, $actorStaffId)) {
+            $message = PerformanceFormAccess::phaseIsDraft($entry, $phase)
+                ? 'You do not have permission to change supervisors on this form.'
+                : 'Supervisors can only be changed on draft PPA, midterm, and endterm forms.';
+
             throw ValidationException::withMessages([
-                'supervisors' => ['Supervisors can only be changed on draft PPA, midterm, and endterm forms.'],
+                'supervisors' => [$message],
             ]);
         }
 
@@ -713,9 +717,18 @@ class PerformanceFormApiController extends Controller
         $this->ensureOwnerCanEdit($phase, $staffId, $actorStaffId, $settings);
 
         if (! PerformanceFormAccess::canChangeSupervisors($existing, $phase, $actorStaffId)) {
+            $lockedSupervisor1 = $this->phaseSupervisorValue($existing, $phase, true);
+            $lockedSupervisor2 = $this->phaseSupervisorValue($existing, $phase, false);
+            if ($lockedSupervisor1 === null && ! $existing) {
+                $fromContract = $supervisors->fromLatestContract(
+                    (int) ($request->input('staff_id') ?: $actorStaffId)
+                );
+                $lockedSupervisor1 = (int) ($fromContract['supervisor_1'] ?? 0) ?: null;
+                $lockedSupervisor2 = (int) ($fromContract['supervisor_2'] ?? 0) ?: null;
+            }
             $request->merge([
-                'supervisor_id' => $this->phaseSupervisorValue($existing, $phase, true),
-                'supervisor2_id' => $this->phaseSupervisorValue($existing, $phase, false),
+                'supervisor_id' => $lockedSupervisor1,
+                'supervisor2_id' => $lockedSupervisor2,
             ]);
         }
 
@@ -838,6 +851,7 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::Ppa;
         $submissionWindow = $settings->submissionWindowStatus($phase);
         $isOwner = $actorStaffId === $staffId;
+        $canChangeSupervisors = PerformanceFormAccess::canChangeSupervisors(null, $phase, $actorStaffId);
 
         return [
             'phase' => $phase->value,
@@ -874,7 +888,7 @@ class PerformanceFormApiController extends Controller
                 'supervisor_options' => $this->supervisorCatalog(
                     null,
                     $phase,
-                    $isOwner,
+                    $canChangeSupervisors,
                     (int) ($resolved['supervisor_1'] ?? 0),
                     (int) ($resolved['supervisor_2'] ?? 0),
                 ),
@@ -891,7 +905,7 @@ class PerformanceFormApiController extends Controller
             'endreadonly' => '',
             'is_owner' => $isOwner,
             'can_save' => $submissionWindow['open'] && $isOwner,
-            'can_change_supervisors' => $isOwner,
+            'can_change_supervisors' => $canChangeSupervisors,
             'can_approve' => false,
             'can_return' => false,
             'return_target' => null,

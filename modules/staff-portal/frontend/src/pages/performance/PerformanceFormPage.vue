@@ -8,7 +8,7 @@ import PerformanceApprovalTrail from '@/components/performance/PerformanceApprov
 import PerformanceStaffDetailsCard from '@/components/performance/PerformanceStaffDetailsCard.vue'
 import PpaSections from '@/components/performance/PpaSections.vue'
 import ReviewSections from '@/components/performance/ReviewSections.vue'
-import { openApiPdf } from '@/lib/exportDownload'
+import { downloadApiExport, openApiPdf } from '@/lib/exportDownload'
 import { hasRichTextContent } from '@/lib/richText'
 import { useLocaleStore } from '@/stores/locale'
 import { usePerformancePendingStore } from '@/stores/performancePending'
@@ -36,6 +36,7 @@ const performancePending = usePerformancePendingStore()
 const loading = ref(false)
 const busy = ref(false)
 const pdfLoading = ref(false)
+const wordLoading = ref(false)
 const includeTrail = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -534,6 +535,17 @@ async function consentAction(): Promise<void> {
   }
 }
 
+function printExportParams() {
+  if (!payload.value) {
+    return {}
+  }
+  return {
+    phase: activePhase.value,
+    staff_id: payload.value.entry.staff_id,
+    with_trail: includeTrail.value ? 1 : 0,
+  }
+}
+
 async function openPdf(): Promise<void> {
   if (!payload.value) {
     return
@@ -542,15 +554,37 @@ async function openPdf(): Promise<void> {
   pdfLoading.value = true
   error.value = null
   try {
-    await openApiPdf(`/api/v1/performance/entries/${payload.value.entry.entry_id}/print`, {
-      phase: activePhase.value,
-      staff_id: payload.value.entry.staff_id,
-      with_trail: includeTrail.value ? 1 : 0,
-    })
+    await openApiPdf(
+      `/api/v1/performance/entries/${payload.value.entry.entry_id}/print`,
+      printExportParams(),
+    )
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not open PDF')
   } finally {
     pdfLoading.value = false
+  }
+}
+
+async function downloadWord(): Promise<void> {
+  if (!payload.value) {
+    return
+  }
+
+  wordLoading.value = true
+  error.value = null
+  try {
+    const phaseLabel =
+      activePhase.value === 'midterm' ? 'Midterm' : activePhase.value === 'endterm' ? 'Endterm' : 'PPA'
+    const trail = includeTrail.value ? '-trail' : ''
+    await downloadApiExport(
+      `/api/v1/performance/entries/${payload.value.entry.entry_id}/export/word`,
+      `${phaseLabel}-${payload.value.entry.entry_id}${trail}.doc`,
+      printExportParams(),
+    )
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Could not download Word document')
+  } finally {
+    wordLoading.value = false
   }
 }
 
@@ -601,6 +635,17 @@ watch(
             @click="openPdf"
           >
             PDF
+          </v-btn>
+          <v-btn
+            size="small"
+            variant="tonal"
+            color="primary"
+            class="ms-2 perf-export-btn"
+            prepend-icon="mdi-file-word-box"
+            :loading="wordLoading"
+            @click="downloadWord"
+          >
+            Word
           </v-btn>
         </template>
       </template>

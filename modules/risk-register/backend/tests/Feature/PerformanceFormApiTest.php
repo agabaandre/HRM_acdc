@@ -603,7 +603,7 @@ class PerformanceFormApiTest extends TestCase
         ]);
     }
 
-    public function test_owner_can_change_supervisors_on_draft_ppa_midterm_and_endterm(): void
+    public function test_employee_cannot_change_supervisors_without_permission(): void
     {
         $this->insertPpaEntry([
             'entry_id' => 'ppa-draft-supervisors',
@@ -612,6 +612,8 @@ class PerformanceFormApiTest extends TestCase
             'endterm_draft_status' => 1,
             'midterm_created_at' => now()->toDateTimeString(),
             'endterm_created_at' => now()->toDateTimeString(),
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
             'midterm_supervisor_1' => 50,
             'midterm_supervisor_2' => 51,
             'endterm_supervisor_1' => 50,
@@ -622,21 +624,61 @@ class PerformanceFormApiTest extends TestCase
 
         foreach (['ppa', 'midterm', 'endterm'] as $phase) {
             $payload = $this->showEntry('ppa-draft-supervisors', $phase);
-            $this->assertTrue($payload['can_change_supervisors'], $phase.' should allow supervisor changes while draft');
+            $this->assertFalse($payload['can_change_supervisors'], $phase.' must hide supervisor edits for employees');
+
+            try {
+                $this->callUpdateSupervisors('ppa-draft-supervisors', $phase, 51, 50);
+                $this->fail('Expected employee supervisor changes to be blocked for '.$phase);
+            } catch (ValidationException $e) {
+                $this->assertNotEmpty($e->errors());
+            }
         }
 
-        $this->callUpdateSupervisors('ppa-draft-supervisors', 'ppa', 51, 50);
-        $this->assertSame(51, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->value('supervisor_id'));
-        $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->value('supervisor2_id'));
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->first();
+        $this->assertSame(50, (int) $row->supervisor_id);
+        $this->assertSame(51, (int) $row->supervisor2_id);
+        $this->assertSame(50, (int) $row->midterm_supervisor_1);
+        $this->assertSame(51, (int) $row->midterm_supervisor_2);
+        $this->assertSame(50, (int) $row->endterm_supervisor_1);
+        $this->assertSame(51, (int) $row->endterm_supervisor_2);
+    }
+
+    public function test_hr_with_change_supervisors_permission_can_update_draft_forms(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-draft-supervisors-hr',
+            'draft_status' => 1,
+            'midterm_draft_status' => 1,
+            'endterm_draft_status' => 1,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'endterm_created_at' => now()->toDateTimeString(),
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+        ]);
+
+        session()->put($this->portalSession(999, 22, [74, 83, 127]));
+
+        foreach (['ppa', 'midterm', 'endterm'] as $phase) {
+            $payload = $this->showEntry('ppa-draft-supervisors-hr', $phase);
+            $this->assertTrue($payload['can_change_supervisors'], $phase.' should allow HR supervisor changes while draft');
+        }
+
+        $this->callUpdateSupervisors('ppa-draft-supervisors-hr', 'ppa', 51, 50);
+        $this->assertSame(51, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors-hr')->value('supervisor_id'));
+        $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors-hr')->value('supervisor2_id'));
         $this->assertSame(51, (int) DB::table('staff_contracts')->where('staff_contract_id', 1000)->value('first_supervisor'));
 
-        $this->callUpdateSupervisors('ppa-draft-supervisors', 'midterm', 51, null);
-        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->first();
+        $this->callUpdateSupervisors('ppa-draft-supervisors-hr', 'midterm', 51, null);
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors-hr')->first();
         $this->assertSame(51, (int) $row->midterm_supervisor_1);
         $this->assertNull($row->midterm_supervisor_2);
 
-        $this->callUpdateSupervisors('ppa-draft-supervisors', 'endterm', 50, 51);
-        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors')->first();
+        $this->callUpdateSupervisors('ppa-draft-supervisors-hr', 'endterm', 50, 51);
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-draft-supervisors-hr')->first();
         $this->assertSame(50, (int) $row->endterm_supervisor_1);
         $this->assertSame(51, (int) $row->endterm_supervisor_2);
     }
@@ -655,12 +697,13 @@ class PerformanceFormApiTest extends TestCase
         ]);
         $this->insertPpaEntry([
             'entry_id' => 'ppa-submitted-supervisors',
+            'performance_period' => 'January-2025-to-December-2025',
             'draft_status' => 0,
             'supervisor_id' => 50,
             'supervisor2_id' => 51,
         ]);
 
-        session()->put($this->portalSession(999, 22, [74, 83]));
+        session()->put($this->portalSession(999, 22, [74, 83, 127]));
 
         $this->assertFalse($this->showEntry('ppa-approved-supervisors', 'ppa')['can_change_supervisors']);
         $this->assertFalse($this->showEntry('ppa-approved-supervisors', 'midterm')['can_change_supervisors']);

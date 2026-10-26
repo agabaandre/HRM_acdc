@@ -23,4 +23,6 @@ Route::middleware(['auth:sanctum'])->prefix('v1')->group(function (): void {
     Route::post('performance/entries/{entryId}/consent', [PerformanceFormApiController::class, 'consent']);
     Route::get('performance/entries/{entryId}/print', [PerformanceFormApiController::class, 'printEntry']);
     Route::get('performance/entries/{entryId}/print.pdf', [PerformanceFormApiController::class, 'printEntry']);
+    Route::get('performance/entries/{entryId}/export/word', [PerformanceFormApiController::class, 'exportWord']);
+    Route::get('performance/entries/{entryId}/export.doc', [PerformanceFormApiController::class, 'exportWord']);
 });

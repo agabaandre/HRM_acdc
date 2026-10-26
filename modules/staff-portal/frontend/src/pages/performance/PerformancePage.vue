@@ -110,6 +110,13 @@ const historyMeta = ref<PerformanceApprovalHistoryMeta>({
   last_page: 1,
 })
 const exporting = ref(false)
+const tableSearch = ref('')
+
+function matchesTableSearch(parts: Array<string | number | null | undefined>): boolean {
+  const q = tableSearch.value.trim().toLowerCase()
+  if (!q) return true
+  return parts.some((part) => String(part ?? '').toLowerCase().includes(q))
+}
 
 async function loadApprovalHistory() {
   const res = await fetchPerformanceApprovalHistory({
@@ -220,6 +227,7 @@ function setTab(next: HubTab) {
   page.value = 1
   pendingPage.value = 1
   historyPage.value = 1
+  tableSearch.value = ''
   const query: Record<string, string> = { tab: next }
   if (next === 'analytics') query.phase = analyticsPhase.value
   void router.replace({ query })
@@ -285,19 +293,68 @@ const analyticsPhaseItems = computed<PortalPillNavItem[]>(() => [
   },
 ])
 
-const myTotal = computed(() => data.value?.my_ppas?.meta.total ?? 0)
-const myLastPage = computed(() => data.value?.my_ppas?.meta.last_page ?? 1)
-const myRows = computed(() => data.value?.my_ppas?.data || [])
+const myAllRows = computed(() => data.value?.my_ppas?.data || [])
+const myFilteredRows = computed(() =>
+  myAllRows.value.filter((row) =>
+    matchesTableSearch([
+      row.performance_period,
+      row.phase_label,
+      row.phase,
+      row.status,
+      row.pending_with,
+      row.updated_at,
+    ]),
+  ),
+)
+const myTotal = computed(() =>
+  tableSearch.value.trim() ? myFilteredRows.value.length : (data.value?.my_ppas?.meta.total ?? 0),
+)
+const myLastPage = computed(() =>
+  tableSearch.value.trim()
+    ? Math.max(1, Math.ceil(myFilteredRows.value.length / perPage.value))
+    : (data.value?.my_ppas?.meta.last_page ?? 1),
+)
+const myRows = computed(() => {
+  if (!tableSearch.value.trim()) return myAllRows.value
+  const start = (page.value - 1) * perPage.value
+  return myFilteredRows.value.slice(start, start + perPage.value)
+})
 
 const pendingAll = computed(() => data.value?.pending || [])
-const pendingTotal = computed(() => pendingAll.value.length)
+const pendingFiltered = computed(() =>
+  pendingAll.value.filter((row) =>
+    matchesTableSearch([
+      row.staff_name,
+      row.staff_id,
+      row.approval_type_label,
+      row.approval_type,
+      row.performance_period,
+      row.overall_status,
+    ]),
+  ),
+)
+const pendingTotal = computed(() => pendingFiltered.value.length)
 const pendingLastPage = computed(() =>
   Math.max(1, Math.ceil(pendingTotal.value / pendingPerPage.value)),
 )
 const pendingRows = computed(() => {
   const start = (pendingPage.value - 1) * pendingPerPage.value
-  return pendingAll.value.slice(start, start + pendingPerPage.value)
+  return pendingFiltered.value.slice(start, start + pendingPerPage.value)
 })
+
+const historyFilteredRows = computed(() =>
+  historyRows.value.filter((row) =>
+    matchesTableSearch([
+      row.staff_name,
+      row.staff_id,
+      row.phase_label,
+      row.phase,
+      row.performance_period,
+      row.action,
+      row.acted_at,
+    ]),
+  ),
+)
 
 function onMyPerPage(v: number) {
   perPage.value = v
@@ -397,6 +454,7 @@ function exportPendingPdf() {
 function setAnalyticsPhase(phase: AnalyticsPhase) {
   analyticsPhase.value = phase
   if (phase !== 'endterm') funderId.value = null
+  tableSearch.value = ''
   clearCohort()
   void router.replace({ query: { tab: 'analytics', phase } })
 }
@@ -404,13 +462,10 @@ function setAnalyticsPhase(phase: AnalyticsPhase) {
 function clearCohort() {
   cohortFilter.value = null
   cohort.value = null
+  tableSearch.value = ''
 }
 
-async function openCohort(filter: AnalyticsCohortFilter) {
-  if (cohortFilter.value === filter && cohort.value) {
-    clearCohort()
-    return
-  }
+async function loadCohort(filter: AnalyticsCohortFilter) {
   cohortFilter.value = filter
   cohortLoading.value = true
   error.value = null
@@ -433,6 +488,15 @@ async function openCohort(filter: AnalyticsCohortFilter) {
   }
 }
 
+async function openCohort(filter: AnalyticsCohortFilter) {
+  if (cohortFilter.value === filter && cohort.value) {
+    clearCohort()
+    return
+  }
+  tableSearch.value = ''
+  await loadCohort(filter)
+}
+
 function previewEntry(row: AnalyticsCohortRow) {
   if (!row.entry_id || row.can_preview === false) return
   void openApiPdf(`/api/v1/performance/entries/${row.entry_id}/print`, {
@@ -440,8 +504,8 @@ function previewEntry(row: AnalyticsCohortRow) {
   })
 }
 
-function exportCohortExcel() {
-  const headers = [
+function cohortExportHeaders(): string[] {
+  return [
     'Staff',
     'SAP NO',
     'Division',
@@ -451,22 +515,90 @@ function exportCohortExcel() {
     ...(isEndterm.value ? ['Score'] : []),
     'Updated',
   ]
-  const rows = cohortRows.value.map((row) => [
+}
+
+function cohortExportRows(rows: AnalyticsCohortRow[]): Array<Array<string | number>> {
+  return rows.map((row) => [
     row.staff_name || '',
     row.sapno || '',
     row.division || '',
     row.contract_type || '',
     row.status || '',
     row.pending_with || '',
-    ...(isEndterm.value ? [row.score != null ? row.score : ''] : []),
+    ...(isEndterm.value ? [row.score != null ? Number(row.score) : ''] : []),
     row.updated_at || '',
   ])
+}
+
+function exportCohortExcel() {
+  const phaseLabel = analytics.value?.phase_label || analyticsPhase.value.toUpperCase()
+  const divisionLabel =
+    data.value?.divisions?.find((d) => d.division_id === divisionId.value)?.division_name ||
+    'All divisions'
   downloadClientExcel(
     `performance-${analyticsPhase.value}-${cohortFilter.value || 'cohort'}.xls`,
-    headers,
-    rows,
-    cohort.value?.title || 'Cohort',
+    cohortExportHeaders(),
+    cohortExportRows(filteredCohortRows.value),
+    {
+      sheetName: phaseLabel.slice(0, 31),
+      title: cohort.value?.title || `${phaseLabel} staff list`,
+      subtitle: `${period.value || 'All periods'} · ${divisionLabel} · ${filteredCohortRows.value.length} rows`,
+      fontSize: 13,
+    },
   )
+}
+
+async function exportAnalyticsExcel() {
+  exporting.value = true
+  error.value = null
+  try {
+    const filter = cohortFilter.value || 'total'
+    let rows = filteredCohortRows.value
+    let title = cohort.value?.title || ''
+    if (!cohort.value || cohortFilter.value !== filter) {
+      const { data: res } = await api.get<{ data: AnalyticsCohortPayload }>(
+        '/api/v1/performance/analytics/entries',
+        {
+          params: {
+            filter,
+            ...analyticsExportParams(),
+          },
+        },
+      )
+      rows = (res.data.rows || []).filter((row) =>
+        matchesTableSearch([
+          row.staff_name,
+          row.sapno,
+          row.division,
+          row.contract_type,
+          row.status,
+          row.pending_with,
+          row.updated_at,
+          row.score,
+        ]),
+      )
+      title = res.data.title || title
+    }
+    const phaseLabel = analytics.value?.phase_label || analyticsPhase.value.toUpperCase()
+    const divisionLabel =
+      data.value?.divisions?.find((d) => d.division_id === divisionId.value)?.division_name ||
+      'All divisions'
+    downloadClientExcel(
+      `performance-${analyticsPhase.value}-export.xls`,
+      cohortExportHeaders(),
+      cohortExportRows(rows),
+      {
+        sheetName: phaseLabel.slice(0, 31),
+        title: title || `${phaseLabel} staff list`,
+        subtitle: `${period.value || 'All periods'} · ${divisionLabel} · ${rows.length} rows`,
+        fontSize: 13,
+      },
+    )
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Excel export failed')
+  } finally {
+    exporting.value = false
+  }
 }
 
 async function remindSupervisor(row: AnalyticsCohortRow) {
@@ -506,9 +638,9 @@ function openForm(url: unknown) {
 function analyticsExportParams() {
   return {
     phase: analyticsPhase.value,
-    period: period.value,
-    division_id: divisionId.value,
-    funder_id: analyticsPhase.value === 'endterm' ? funderId.value : undefined,
+    period: period.value || undefined,
+    division_id: divisionId.value || undefined,
+    funder_id: analyticsPhase.value === 'endterm' ? funderId.value || undefined : undefined,
   }
 }
 
@@ -569,6 +701,20 @@ const kpiCards = computed(() => {
 })
 
 const cohortRows = computed(() => cohort.value?.rows || [])
+const filteredCohortRows = computed(() =>
+  cohortRows.value.filter((row) =>
+    matchesTableSearch([
+      row.staff_name,
+      row.sapno,
+      row.division,
+      row.contract_type,
+      row.status,
+      row.pending_with,
+      row.updated_at,
+      row.score,
+    ]),
+  ),
+)
 
 const approvalSeries = computed(() => [
   {
@@ -666,10 +812,18 @@ const formCards = computed(() => {
 
 const filtersReady = ref(false)
 
-watch([tab, analyticsPhase, period, divisionId, funderId, page, perPage], () => {
+watch([tab, analyticsPhase, period, divisionId, funderId, page, perPage], async () => {
   if (!filtersReady.value) return
-  if (tab.value === 'analytics') clearCohort()
-  void load()
+  const openFilter = tab.value === 'analytics' ? cohortFilter.value : null
+  await load()
+  if (openFilter && tab.value === 'analytics') {
+    await loadCohort(openFilter)
+  }
+})
+
+watch(tableSearch, () => {
+  page.value = 1
+  pendingPage.value = 1
 })
 
 watch(
@@ -721,10 +875,21 @@ onMounted(() => {
             size="small"
             variant="outlined"
             prepend-icon="mdi-file-delimited"
+            class="me-2"
             :loading="exporting"
             @click="exportAnalyticsCsv"
           >
             CSV
+          </v-btn>
+          <v-btn
+            size="small"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-file-excel"
+            :loading="exporting"
+            @click="exportAnalyticsExcel"
+          >
+            Excel
           </v-btn>
         </template>
       </template>
@@ -732,32 +897,33 @@ onMounted(() => {
 
     <div class="portal-staff-filters analytics-filters">
       <v-row dense>
-        <v-col cols="12" sm="6" :md="tab === 'analytics' && isEndterm ? 3 : 4">
-        <v-select
-          v-model="period"
-          :items="[
-            { title: 'All periods', value: '' },
-            ...(data?.periods || []).map((p) => ({ title: p, value: p })),
-          ]"
+        <v-col cols="12" sm="6" :md="tab === 'analytics' ? (isEndterm ? 3 : 3) : 4">
+          <v-select
+            v-model="period"
+            :items="[
+              { title: 'All periods', value: '' },
+              ...(data?.periods || []).map((p) => ({ title: p, value: p })),
+            ]"
             label="Performance period"
-          density="compact"
-          hide-details
-          clearable
-        />
-      </v-col>
-        <v-col v-if="tab === 'analytics'" cols="12" sm="6" :md="isEndterm ? 3 : 4">
-        <v-select
-          v-model="divisionId"
+            density="compact"
+            hide-details
+            clearable
+          />
+        </v-col>
+        <v-col v-if="tab === 'analytics'" cols="12" sm="6" :md="isEndterm ? 3 : 3">
+          <v-select
+            v-model="divisionId"
             :items="[
               { title: 'All divisions', value: null },
               ...(data?.divisions || []).map((d) => ({ title: d.division_name, value: d.division_id })),
             ]"
-          label="Division"
-          density="compact"
-          hide-details
-        />
-      </v-col>
-        <v-col v-if="tab === 'analytics' && isEndterm" cols="12" sm="6" md="3">
+            label="Division"
+            density="compact"
+            hide-details
+            clearable
+          />
+        </v-col>
+        <v-col v-if="tab === 'analytics' && isEndterm" cols="12" sm="6" md="2">
           <v-select
             v-model="funderId"
             :items="[
@@ -767,9 +933,26 @@ onMounted(() => {
             label="Funder"
             density="compact"
             hide-details
+            clearable
           />
         </v-col>
-    </v-row>
+        <v-col
+          v-if="tab !== 'dashboard'"
+          cols="12"
+          sm="6"
+          :md="tab === 'analytics' ? (isEndterm ? 4 : 6) : 8"
+        >
+          <v-text-field
+            v-model="tableSearch"
+            label="Search table"
+            density="compact"
+            clearable
+            hide-details
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Name, SAP, division, status…"
+          />
+        </v-col>
+      </v-row>
     </div>
 
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
@@ -811,14 +994,22 @@ onMounted(() => {
           <div>
             <div class="text-subtitle-1 font-weight-medium">{{ cohort?.title || 'Cohort' }}</div>
             <div class="text-caption text-medium-emphasis">
-              {{ cohortRows.length }} staff · {{ analyticsPhase.toUpperCase() }} · {{ period || '—' }}
+              {{ filteredCohortRows.length }}
+              {{ tableSearch.trim() && filteredCohortRows.length !== cohortRows.length ? `of ${cohortRows.length}` : '' }}
+              staff · {{ analyticsPhase.toUpperCase() }} · {{ period || '—' }}
+              <template v-if="divisionId">
+                ·
+                {{ data?.divisions?.find((d) => d.division_id === divisionId)?.division_name || 'Division' }}
+              </template>
             </div>
           </div>
           <div class="d-flex align-center ga-2">
             <v-btn
               size="small"
-              variant="tonal"
-              :disabled="!cohortRows.length || cohortLoading"
+              color="primary"
+              variant="flat"
+              prepend-icon="mdi-file-excel"
+              :disabled="!filteredCohortRows.length || cohortLoading"
               @click="exportCohortExcel"
             >
               Excel
@@ -854,7 +1045,7 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, i) in cohortRows" :key="`${row.entry_id || row.staff_id}-${i}`">
+            <tr v-for="(row, i) in filteredCohortRows" :key="`${row.entry_id || row.staff_id}-${i}`">
               <td><span class="portal-dt-row-num">{{ i + 1 }}</span></td>
               <td>{{ row.staff_name || '—' }}</td>
               <td>{{ row.sapno || '—' }}</td>
@@ -895,9 +1086,9 @@ onMounted(() => {
                 </v-btn>
               </td>
             </tr>
-            <tr v-if="!cohortRows.length">
+            <tr v-if="!filteredCohortRows.length">
               <td :colspan="isEndterm ? 10 : 9" class="text-medium-emphasis text-center py-6">
-                No staff in this group.
+                {{ cohortRows.length && tableSearch.trim() ? 'No matching staff for this search.' : 'No staff in this group.' }}
               </td>
             </tr>
           </tbody>
@@ -1266,7 +1457,7 @@ onMounted(() => {
             </tr>
               <tr v-if="!myRows.length">
                 <td colspan="7" class="text-medium-emphasis text-center py-6">
-                  No performance forms for this period.
+                  {{ myAllRows.length && tableSearch.trim() ? 'No matching forms.' : 'No performance forms for this period.' }}
                 </td>
             </tr>
           </tbody>
@@ -1315,7 +1506,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, i) in historyRows" :key="`${row.entry_id}-${row.acted_at}-${i}`">
+              <tr v-for="(row, i) in historyFilteredRows" :key="`${row.entry_id}-${row.acted_at}-${i}`">
                 <td>
                   <span class="portal-dt-row-num">{{ (historyPage - 1) * historyPerPage + i + 1 }}</span>
                 </td>
@@ -1336,8 +1527,10 @@ onMounted(() => {
                   </v-btn>
                 </td>
               </tr>
-              <tr v-if="!historyRows.length">
-                <td colspan="7" class="text-medium-emphasis text-center py-6">No approval actions yet.</td>
+              <tr v-if="!historyFilteredRows.length">
+                <td colspan="7" class="text-medium-emphasis text-center py-6">
+                  {{ historyRows.length && tableSearch.trim() ? 'No matching approval actions.' : 'No approval actions yet.' }}
+                </td>
               </tr>
             </tbody>
           </v-table>
@@ -1410,7 +1603,9 @@ onMounted(() => {
                 </td>
             </tr>
               <tr v-if="!pendingRows.length">
-                <td colspan="6" class="text-medium-emphasis text-center py-6">No assigned performance forms.</td>
+                <td colspan="6" class="text-medium-emphasis text-center py-6">
+                  {{ pendingAll.length && tableSearch.trim() ? 'No matching pending forms.' : 'No assigned performance forms.' }}
+                </td>
             </tr>
           </tbody>
         </v-table>

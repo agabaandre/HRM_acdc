@@ -10,17 +10,21 @@ use Modules\Performance\Enums\PerformancePhase;
  *
  * Permission 83 is the existing allow_return_ppa grant. HR Manager / HR Admin /
  * System Administrator may view any entry so they can use that grant.
+ *
+ * Permission 127 (change_performance_supervisors) is required to change
+ * supervisors on draft forms — employees do not get this by default.
  */
 final class PerformanceFormAccess
 {
     public static function canViewAnyEntry(): bool
     {
-        return PortalPermission::can(83) || PerformanceSettingsAccess::canManage();
+        return PortalPermission::can(PerformancePermissions::ALLOW_RETURN)
+            || PerformanceSettingsAccess::canManage();
     }
 
     public static function canReturnOverride(): bool
     {
-        return PortalPermission::can(83);
+        return PortalPermission::can(PerformancePermissions::ALLOW_RETURN);
     }
 
     public static function phaseIsDraft(?object $entry, PerformancePhase $phase): bool
@@ -36,16 +40,12 @@ final class PerformanceFormAccess
         return (int) ($entry->{$phase->draftStatusColumn()} ?? 1) === 1;
     }
 
-    public static function canChangeSupervisors(?object $entry, PerformancePhase $phase, int $actorStaffId): bool
+    public static function canChangeSupervisors(?object $entry, PerformancePhase $phase, int $actorStaffId = 0): bool
     {
         if (! self::phaseIsDraft($entry, $phase)) {
             return false;
         }
 
-        if (! $entry) {
-            return true;
-        }
-
-        return $actorStaffId === (int) $entry->staff_id || self::canReturnOverride();
+        return PortalPermission::can(PerformancePermissions::CHANGE_SUPERVISORS);
     }
 }

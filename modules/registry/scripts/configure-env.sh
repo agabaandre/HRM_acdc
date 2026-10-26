@@ -27,12 +27,13 @@ ENV_PREEXISTED=0
 [[ -f "$ENV_FILE" ]] && ENV_PREEXISTED=1
 [[ -f "$ENV_FILE" ]] || cp "$FINANCE_ROOT/.env.example" "$ENV_FILE"
 
-if [[ "${FINANCE_PRODUCTION_SETUP:-}" == "1" || "${REGISTRY_PRODUCTION_SETUP:-}" == "1" ]]; then
-    if [[ "$ENV_PREEXISTED" != "1" ]] \
-        || ! dotenv_value_present "$(dotenv_get "$ENV_FILE" APP_ENV 2>/dev/null || true)"; then
-        APP_ENV=production
-        APP_DEBUG=false
-    fi
+if [[ "${FINANCE_PRODUCTION_SETUP:-}" == "1" \
+    || "${REGISTRY_PRODUCTION_SETUP:-}" == "1" \
+    || "${SITE_KIND:-}" == "production" \
+    || "${APP_ENV:-}" == "production" ]]; then
+    APP_ENV=production
+    APP_DEBUG=false
+    export APP_ENV APP_DEBUG
 fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
@@ -153,6 +154,14 @@ for key in \
     apply_from_setup "$key"
 done
 
+# Production always disables debug even when .env already existed with APP_DEBUG=true.
+if [[ "${APP_ENV:-}" == "production" ]]; then
+    dotenv_set "$ENV_FILE" APP_ENV "production"
+    dotenv_set "$ENV_FILE" APP_DEBUG "false"
+    dotenv_set "$SETUP_ENV" APP_ENV "production"
+    dotenv_set "$SETUP_ENV" APP_DEBUG "false"
+fi
+
 if [[ -z "${SESSION_PATH:-}" ]]; then
     SESSION_PATH="/staff/$(basename "$FINANCE_ROOT")"
 fi
@@ -203,8 +212,16 @@ if [[ -f "$BACKEND_ENV" ]]; then
             dotenv_set "$BACKEND_ENV" "$key" "$val"
             continue
         fi
+        if [[ "$key" == "APP_ENV" || "$key" == "APP_DEBUG" ]] && [[ "${APP_ENV:-}" == "production" ]]; then
+            dotenv_set "$BACKEND_ENV" "$key" "$val"
+            continue
+        fi
         dotenv_apply_if_missing "$BACKEND_ENV" "$key" "$val" "$BACKEND_PREEXISTED"
     done
+    if [[ "${APP_ENV:-}" == "production" ]]; then
+        dotenv_set "$BACKEND_ENV" APP_ENV "production"
+        dotenv_set "$BACKEND_ENV" APP_DEBUG "false"
+    fi
     # Never leave the API on staff when setup.env / root .env say finance.
     target_db="$(dotenv_get "$SETUP_ENV" DB_DATABASE 2>/dev/null || true)"
     [[ -z "$target_db" ]] && target_db="$(dotenv_get "$ENV_FILE" DB_DATABASE 2>/dev/null || true)"

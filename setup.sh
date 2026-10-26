@@ -195,6 +195,8 @@ setup_git_sync
 source "$ROOT/scripts/setup/env-upsert.sh"
 # shellcheck source=scripts/setup/prompt.sh
 source "$ROOT/scripts/setup/prompt.sh"
+# shellcheck source=scripts/setup/force-production-debug.sh
+source "$ROOT/scripts/setup/force-production-debug.sh"
 # shellcheck source=scripts/setup/secrets.sh
 source "$ROOT/scripts/setup/secrets.sh"
 # shellcheck source=scripts/setup/map-urls.sh
@@ -241,6 +243,22 @@ SITE_KIND_DEFAULT=1
 case "$DEFAULT_WEB_ROOT" in
   *demo*|demo_*|Demo*) SITE_KIND_DEFAULT=2 ;;
 esac
+# Prefer an existing root .env site role when re-running (defaults / step-by-step).
+if [[ -f "$ROOT/.env" ]]; then
+  _prev_site="$(printf '%s' "$(env_get "$ROOT/.env" SITE_KIND 2>/dev/null || true)" | tr '[:upper:]' '[:lower:]')"
+  _prev_env="$(printf '%s' "$(env_get "$ROOT/.env" APP_ENV 2>/dev/null || true)" | tr '[:upper:]' '[:lower:]')"
+  case "$_prev_site" in
+    production|prod) SITE_KIND_DEFAULT=1 ;;
+    demo|local|development|dev) SITE_KIND_DEFAULT=2 ;;
+    *)
+      case "$_prev_env" in
+        production) SITE_KIND_DEFAULT=1 ;;
+        local|development|dev|demo) SITE_KIND_DEFAULT=2 ;;
+      esac
+      ;;
+  esac
+  unset _prev_site _prev_env
+fi
 prompt_choice SITE_KIND_CHOICE "Site role" "1) Production  2) Demo" "$SITE_KIND_DEFAULT"
 if [[ "$SITE_KIND_CHOICE" == "2" ]]; then
   SITE_KIND=demo
@@ -256,8 +274,8 @@ echo "    Site role: $SITE_KIND  (APP_ENV=$APP_ENV APP_DEBUG=$APP_DEBUG)"
 if [[ "$SITE_KIND" == "demo" ]]; then
   echo "    Demo: Supervisor queue/scheduler workers will NOT be enabled."
 else
-  echo "    Production: APP_DEBUG=false forced on every module .env"
-  # Module configure-env / setup-production honour these.
+  echo "    Production: APP_DEBUG=false forced on every Laravel module .env"
+  # Module configure-env / setup-production honour these (always force debug off).
   export STAFF_PORTAL_PRODUCTION_SETUP=1
   export HELPDESK_PRODUCTION_SETUP=1
   export FINANCE_PRODUCTION_SETUP=1
@@ -736,6 +754,12 @@ env_set "$ROOT_ENV" DB_NAME "$DB_NAME"
 apply_app_runtime_to_file() {
   local file="$1"
   [[ -f "$file" ]] || return 0
+  # Production site role always wins — never leave APP_DEBUG=true from .env.example.
+  if setup_is_production_site; then
+    APP_ENV=production
+    APP_DEBUG=false
+    export APP_ENV APP_DEBUG
+  fi
   env_set "$file" APP_ENV "${APP_ENV:-production}" || return 1
   env_set "$file" APP_DEBUG "${APP_DEBUG:-false}" || return 1
   env_set "$file" LOG_CHANNEL "stack" || return 1
@@ -1305,8 +1329,36 @@ setup_fix_laravel_storage
 # Keys may still be empty when vendor was not installed yet — retry after storage fix.
 setup_ensure_it_registry_keys_and_perms
 
+# Final pass: production site role must disable debug on every Laravel .env
+# (configure-env apply_if_missing used to leave APP_DEBUG=true from .env.example).
+if setup_is_production_site; then
+  echo
+  echo "==> Forcing APP_ENV=production APP_DEBUG=false on every module .env"
+  setup_force_production_app_runtime \
+    "$ROOT/.env" \
+    "$ROOT/modules/apm/.env" \
+    "$ROOT/modules/staff-portal/setup.env" \
+    "$ROOT/modules/staff-portal/backend/.env" \
+    "$ROOT/modules/helpdesk/setup.env" \
+    "$ROOT/modules/helpdesk/backend/.env" \
+    "$ROOT/modules/finance/setup.env" \
+    "$ROOT/modules/finance/.env" \
+    "$ROOT/modules/finance/backend/.env" \
+    "$ROOT/modules/risk-register/setup.env" \
+    "$ROOT/modules/risk-register/backend/.env" \
+    "$ROOT/modules/it/setup.env" \
+    "$ROOT/modules/it/.env" \
+    "$ROOT/modules/it/backend/.env" \
+    "$ROOT/modules/registry/setup.env" \
+    "$ROOT/modules/registry/.env" \
+    "$ROOT/modules/registry/backend/.env" \
+    "$ROOT/modules/devtrack/backend/.env" \
+    "$ROOT/modules/devtrack/docker/.env"
+  echo "    APP_DEBUG=false on all module env files"
+fi
+
 # Drop stale config cache so APP_DEBUG=false takes effect immediately (Ignition).
-if [[ "$SITE_KIND" == "production" ]]; then
+if setup_is_production_site; then
   echo
   echo "==> Clearing Laravel config cache (production APP_DEBUG=false)"
   for _cfg_dir in \
@@ -1319,7 +1371,8 @@ if [[ "$SITE_KIND" == "production" ]]; then
     "$ROOT/modules/it/backend" \
     "$ROOT/modules/it" \
     "$ROOT/modules/registry/backend" \
-    "$ROOT/modules/registry"
+    "$ROOT/modules/registry" \
+    "$ROOT/modules/devtrack/backend"
   do
     [[ -f "$_cfg_dir/artisan" ]] || continue
     [[ -f "$_cfg_dir/vendor/autoload.php" ]] || continue

@@ -33,12 +33,12 @@ ENV_PREEXISTED=0
 [[ -f "$BACKEND_ENV" ]] && ENV_PREEXISTED=1
 [[ -f "$BACKEND_ENV" ]] || cp "$HELPDESK_ROOT/backend/.env.example" "$BACKEND_ENV"
 
-if [[ "${HELPDESK_PRODUCTION_SETUP:-}" == "1" ]]; then
-    if [[ "$ENV_PREEXISTED" != "1" ]] \
-        || ! dotenv_value_present "$(dotenv_get "$BACKEND_ENV" APP_ENV 2>/dev/null || true)"; then
-        APP_ENV=production
-        APP_DEBUG=false
-    fi
+if [[ "${HELPDESK_PRODUCTION_SETUP:-}" == "1" \
+    || "${SITE_KIND:-}" == "production" \
+    || "${APP_ENV:-}" == "production" ]]; then
+    APP_ENV=production
+    APP_DEBUG=false
+    export APP_ENV APP_DEBUG
 fi
 
 if [[ "${APP_ENV:-}" == "production" ]]; then
@@ -121,6 +121,15 @@ for key in \
     SANCTUM_STATEFUL_DOMAINS; do
     apply_from_setup "$key"
 done
+
+# Production always disables debug even when .env already existed with APP_DEBUG=true.
+if [[ "${APP_ENV:-}" == "production" ]]; then
+    dotenv_set "$BACKEND_ENV" APP_ENV "production"
+    dotenv_set "$BACKEND_ENV" APP_DEBUG "false"
+    dotenv_set "$SETUP_ENV" APP_ENV "production"
+    dotenv_set "$SETUP_ENV" APP_DEBUG "false"
+    echo "Production runtime: APP_ENV=production APP_DEBUG=false"
+fi
 
 helpdesk_inherit_sensitive_from_portal_env "$BACKEND_ENV" "$STAFF_ROOT"
 

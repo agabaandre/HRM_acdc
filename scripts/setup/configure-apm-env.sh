@@ -33,12 +33,19 @@ apply BASE_URL "${BASE_URL:-}"
 apply CI_BASE_URL "${CI_BASE_URL:-}"
 apply STAFF_PORTAL_SPA_URL "${STAFF_PORTAL_SPA_URL:-${BASE_URL:-}}"
 apply STAFF_PORTAL_URL "${STAFF_PORTAL_SPA_URL:-${BASE_URL:-}}"
-# Site role from root setup (production → APP_DEBUG=false).
+# Site role from root setup (production → APP_DEBUG=false on every retrieve/write).
+if [[ "${SITE_KIND:-}" == "production" || "${APP_ENV:-}" == "production" ]]; then
+  APP_ENV=production
+  APP_DEBUG=false
+  export APP_ENV APP_DEBUG
+fi
 if [[ -n "${APP_ENV:-}" ]]; then
   env_set "$ENV_FILE" APP_ENV "$APP_ENV"
 fi
 if [[ -n "${APP_DEBUG:-}" ]]; then
   env_set "$ENV_FILE" APP_DEBUG "$APP_DEBUG"
+elif [[ "${APP_ENV:-}" == "production" ]]; then
+  env_set "$ENV_FILE" APP_DEBUG "false"
 fi
 # JWT_SECRET / EXCHANGE_* come from $ROOT/.env via shared/load-staff-root-env.php
 apply DB_HOST "${DB_HOST:-}"
