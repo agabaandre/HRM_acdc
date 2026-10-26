@@ -31,31 +31,62 @@ class PpaFormService
     }
 
     /**
-     * Resolve a row by entry_id, then staff+period, then canonical/legacy hash aliases.
-     * Midterm/endterm only UPDATE existing PPA rows — never invent a new entry_id.
+     * Resolve the real ppa_entries row for PPA / midterm / endterm.
+     *
+     * When $staffId is provided, the returned row MUST belong to that staff — never
+     * another person's form (legacy vs canonical entry_id hashes used to cause misses
+     * and, worse, mismatched open links).
      */
     public function resolveEntry(string $entryId, ?int $staffId = null, ?string $periodSlug = null): ?object
     {
+        $entryId = trim($entryId);
+        if ($entryId === '') {
+            return null;
+        }
+
         $entry = $this->findEntry($entryId);
         if ($entry) {
+            if ($staffId && (int) $entry->staff_id !== $staffId) {
+                return null;
+            }
+
             return $entry;
         }
 
-        $period = PerformancePeriod::toSlug($periodSlug ?? '') ?? null;
-        if ($staffId && $period) {
-            $byPeriod = $this->findForPeriod($staffId, $period);
-            if ($byPeriod) {
-                return $byPeriod;
-            }
+        if (! $staffId || $staffId < 1) {
+            return null;
+        }
 
+        $periods = [];
+        $requestedPeriod = PerformancePeriod::toSlug($periodSlug ?? '');
+        if ($requestedPeriod) {
+            $periods[] = $requestedPeriod;
+        }
+        $periods[] = PerformancePeriod::currentSlug();
+
+        foreach (array_values(array_unique($periods)) as $period) {
             foreach ($this->entryIdAliases($staffId, $period) as $candidate) {
-                if ($candidate === $entryId) {
-                    continue;
-                }
                 $alias = $this->findEntry($candidate);
-                if ($alias) {
+                if ($alias && (int) $alias->staff_id === $staffId) {
                     return $alias;
                 }
+            }
+
+            $byPeriod = $this->findForPeriod($staffId, $period);
+            if ($byPeriod && $this->entryIdMatchesAliases($entryId, $staffId, $period)) {
+                return $byPeriod;
+            }
+        }
+
+        // Any period for this staff whose canonical/legacy hash equals the requested id.
+        $rows = DB::table('ppa_entries')->where('staff_id', $staffId)->orderByDesc('id')->get();
+        foreach ($rows as $row) {
+            $period = (string) ($row->performance_period ?? '');
+            if ($period === '') {
+                continue;
+            }
+            if ((string) $row->entry_id === $entryId || $this->entryIdMatchesAliases($entryId, $staffId, $period)) {
+                return $row;
             }
         }
 
@@ -69,11 +100,16 @@ class PpaFormService
     {
         $period = PerformancePeriod::toSlug($periodSlug) ?? $periodSlug;
 
-        return array_values(array_unique([
+        return array_values(array_unique(array_filter([
             $this->entryIdFor($staffId, $period),
             // Legacy CI3 / early Laravel: md5(staff_id_period) without stripping dashes.
             md5($staffId.'_'.$period),
-        ]));
+        ])));
+    }
+
+    public function entryIdMatchesAliases(string $entryId, int $staffId, string $periodSlug): bool
+    {
+        return in_array($entryId, $this->entryIdAliases($staffId, $periodSlug), true);
     }
 
     public function entryExists(string $entryId): bool

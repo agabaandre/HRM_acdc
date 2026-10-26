@@ -48,17 +48,7 @@ class PerformanceFormApiController extends Controller
         $phase = $this->resolvePhase($request);
         $actorStaffId = $this->actorStaffId();
 
-        $staffId = $request->integer('staff_id') ?: null;
-        $period = $request->input('performance_period') ?: $request->input('period');
-        $entry = $forms->resolveEntry(
-            $entryId,
-            $staffId ? (int) $staffId : null,
-            is_string($period) ? $period : null,
-        );
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
-
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryReadAccess($entry, $phase, $actorStaffId, $workflow);
 
@@ -206,11 +196,7 @@ class PerformanceFormApiController extends Controller
 
         $phase = $this->resolvePhase($request);
         $actorStaffId = $this->actorStaffId();
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
-
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
@@ -232,7 +218,7 @@ class PerformanceFormApiController extends Controller
             isset($validated['supervisor2_id']) ? (int) $validated['supervisor2_id'] : null,
         );
 
-        $entry = $forms->findEntry($entryId) ?? $entry;
+        $entry = $forms->findEntry((string) $entry->entry_id) ?? $entry;
 
         return response()->json([
             'message' => 'Supervisors updated.',
@@ -266,11 +252,8 @@ class PerformanceFormApiController extends Controller
 
         $phase = $this->resolvePhase($request);
         $actorStaffId = $this->actorStaffId();
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
-
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
+        $resolvedEntryId = (string) $entry->entry_id;
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
@@ -285,7 +268,7 @@ class PerformanceFormApiController extends Controller
 
         try {
             $approval->approve(
-                $entryId,
+                $resolvedEntryId,
                 $phase,
                 $actorStaffId,
                 PerformanceRichText::sanitize((string) ($validated['comments'] ?? '')),
@@ -299,7 +282,7 @@ class PerformanceFormApiController extends Controller
             ]);
         }
 
-        $entry = $this->syncEntryForPhase($forms->findEntry($entryId) ?? $entry, $phase, $workflow, $forms);
+        $entry = $this->syncEntryForPhase($forms->findEntry($resolvedEntryId) ?? $entry, $phase, $workflow, $forms);
 
         return response()->json([
             'message' => 'Approval recorded.',
@@ -333,11 +316,8 @@ class PerformanceFormApiController extends Controller
 
         $phase = $this->resolvePhase($request);
         $actorStaffId = $this->actorStaffId();
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
-
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
+        $resolvedEntryId = (string) $entry->entry_id;
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
@@ -361,14 +341,14 @@ class PerformanceFormApiController extends Controller
         }
 
         try {
-            $approval->returnForRevision($entryId, $phase, $actorStaffId, $comments);
+            $approval->returnForRevision($resolvedEntryId, $phase, $actorStaffId, $comments);
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages([
                 'entry' => [$e->getMessage()],
             ]);
         }
 
-        $entry = $this->syncEntryForPhase($forms->findEntry($entryId) ?? $entry, $phase, $workflow, $forms);
+        $entry = $this->syncEntryForPhase($forms->findEntry($resolvedEntryId) ?? $entry, $phase, $workflow, $forms);
 
         return response()->json([
             'message' => 'Returned for revision.',
@@ -402,11 +382,8 @@ class PerformanceFormApiController extends Controller
 
         $phase = PerformancePhase::Endterm;
         $actorStaffId = $this->actorStaffId();
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
-
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
+        $resolvedEntryId = (string) $entry->entry_id;
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryAccess($entry, $phase, $actorStaffId, $workflow);
 
@@ -417,7 +394,7 @@ class PerformanceFormApiController extends Controller
 
         try {
             $approval->recordEmployeeConsent(
-                $entryId,
+                $resolvedEntryId,
                 $actorStaffId,
                 PerformanceRichText::sanitize((string) ($validated['comments'] ?? '')),
                 array_key_exists('accept_rating', $validated) ? (bool) $validated['accept_rating'] : true,
@@ -428,7 +405,7 @@ class PerformanceFormApiController extends Controller
             ]);
         }
 
-        $entry = $this->syncEntryForPhase($forms->findEntry($entryId) ?? $entry, $phase, $workflow, $forms);
+        $entry = $this->syncEntryForPhase($forms->findEntry($resolvedEntryId) ?? $entry, $phase, $workflow, $forms);
 
         return response()->json([
             'message' => 'Consent recorded.',
@@ -519,14 +496,12 @@ class PerformanceFormApiController extends Controller
 
         $phase = PerformancePhase::tryFrom((string) $request->input('phase', $request->query('phase', 'ppa')))
             ?? PerformancePhase::Ppa;
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found.');
-        }
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
+        $resolvedEntryId = (string) $entry->entry_id;
 
         $this->authorizeEntryReadAccess($entry, $phase, $this->actorStaffId(), $workflow);
 
-        $result = $reminders->nudgePendingSupervisorForEntry($entryId, $phase);
+        $result = $reminders->nudgePendingSupervisorForEntry($resolvedEntryId, $phase);
 
         return response()->json([
             'message' => $result['message'],
@@ -592,12 +567,10 @@ class PerformanceFormApiController extends Controller
         $phase = PerformancePhase::tryFrom((string) $request->query('phase', 'ppa')) ?? PerformancePhase::Ppa;
         $withTrail = $request->boolean('with_trail');
         $actorStaffId = $this->actorStaffId();
-        $entry = $forms->findEntry($entryId);
-        if (! $entry) {
-            abort(404, 'Entry not found');
-        }
+        $entry = $this->loadResolvedEntry($entryId, $request, $forms);
         $entry = $this->syncEntryForPhase($entry, $phase, $workflow, $forms);
         $this->authorizeEntryReadAccess($entry, $phase, $actorStaffId, $workflow);
+        $entryId = (string) $entry->entry_id;
 
         $objectives = $forms->decodeObjectives((string) ($entry->objectives ?? ''), 5);
         if ($phase === PerformancePhase::Midterm) {
@@ -1253,6 +1226,31 @@ class PerformanceFormApiController extends Controller
         }
 
         return $phase;
+    }
+
+    /**
+     * Load the real DB row for an entry_id that may be a legacy/canonical hash alias.
+     * Always prefer staff_id (+ period) from the request so the wrong person's form
+     * cannot be returned for PPA / midterm / endterm.
+     */
+    protected function loadResolvedEntry(string $entryId, Request $request, PpaFormService $forms): object
+    {
+        $staffId = (int) ($request->input('staff_id') ?: $request->query('staff_id') ?: 0) ?: null;
+        $period = $request->input('performance_period')
+            ?: $request->query('performance_period')
+            ?: $request->input('period')
+            ?: $request->query('period');
+
+        $entry = $forms->resolveEntry(
+            $entryId,
+            $staffId,
+            is_string($period) && $period !== '' ? $period : null,
+        );
+        if (! $entry) {
+            abort(404, 'Entry not found.');
+        }
+
+        return $entry;
     }
 
     protected function syncEntryForPhase(

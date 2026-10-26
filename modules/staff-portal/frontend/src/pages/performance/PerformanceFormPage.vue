@@ -332,6 +332,11 @@ async function load(): Promise<void> {
     if (loadId !== latestLoadId) {
       return
     }
+    // Canonicalize the URL to the real DB entry_id (legacy vs current hash).
+    if (String(next.entry.entry_id) !== entryId || String(next.entry.staff_id) !== String(route.params.staffId || '')) {
+      await router.replace(formRouteLocation(next))
+      return
+    }
     applyPayload(next)
   } catch (e) {
     if (loadId === latestLoadId) {
@@ -412,13 +417,18 @@ async function approveAction(): Promise<void> {
   success.value = null
 
   try {
-    const next = await approvePerformanceEntry(payload.value.entry.entry_id, activePhase.value, {
-      comments: workflowComments.value || undefined,
-      supervisor2_agreement:
-        activePhase.value === 'endterm' && payload.value.workflow.state?.step === 'supervisor_2'
-          ? supervisor2Agreement.value
-          : undefined,
-    })
+    const next = await approvePerformanceEntry(
+      payload.value.entry.entry_id,
+      activePhase.value,
+      {
+        comments: workflowComments.value || undefined,
+        supervisor2_agreement:
+          activePhase.value === 'endterm' && payload.value.workflow.state?.step === 'supervisor_2'
+            ? supervisor2Agreement.value
+            : undefined,
+      },
+      { staffId: payload.value.entry.staff_id },
+    )
     applyPayload(next)
     success.value = 'Approval recorded.'
     void performancePending.refresh()
@@ -444,9 +454,12 @@ async function returnAction(): Promise<void> {
 
   try {
     const target = payload.value.return_target
-    const next = await returnPerformanceEntry(payload.value.entry.entry_id, activePhase.value, {
-      comments: workflowComments.value,
-    })
+    const next = await returnPerformanceEntry(
+      payload.value.entry.entry_id,
+      activePhase.value,
+      { comments: workflowComments.value },
+      { staffId: payload.value.entry.staff_id },
+    )
     applyPayload(next)
     success.value =
       target === 'draft' ? 'Returned to draft.' : 'Returned to the employee for revision.'
@@ -482,6 +495,7 @@ async function saveSupervisorsAction(): Promise<void> {
       activePhase.value,
       Number(form.value.supervisor_id),
       form.value.supervisor2_id ? Number(form.value.supervisor2_id) : null,
+      { staffId: payload.value.entry.staff_id },
     )
     applyPayload(next)
     success.value = 'Supervisors updated.'
@@ -502,10 +516,14 @@ async function consentAction(): Promise<void> {
   success.value = null
 
   try {
-    const next = await consentPerformanceEntry(payload.value.entry.entry_id, {
-      comments: workflowComments.value || undefined,
-      accept_rating: acceptRating.value,
-    })
+    const next = await consentPerformanceEntry(
+      payload.value.entry.entry_id,
+      {
+        comments: workflowComments.value || undefined,
+        accept_rating: acceptRating.value,
+      },
+      { staffId: payload.value.entry.staff_id },
+    )
     applyPayload(next)
     success.value = 'Consent recorded.'
     void performancePending.refresh()
@@ -526,6 +544,7 @@ async function openPdf(): Promise<void> {
   try {
     await openApiPdf(`/api/v1/performance/entries/${payload.value.entry.entry_id}/print`, {
       phase: activePhase.value,
+      staff_id: payload.value.entry.staff_id,
       with_trail: includeTrail.value ? 1 : 0,
     })
   } catch (e) {

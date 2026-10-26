@@ -369,11 +369,13 @@ export async function updatePerformanceSupervisors(
   phase: PerformancePhase,
   supervisorId: number,
   supervisor2Id: number | null,
+  opts?: { staffId?: number | null },
 ): Promise<PerformanceFormPayload> {
   const { data } = await api.post<{ data: PerformanceFormPayload }>(
     `/api/v1/performance/entries/${entryId}/supervisors`,
     {
       phase,
+      staff_id: opts?.staffId || undefined,
       supervisor_id: supervisorId,
       supervisor2_id: supervisor2Id || null,
     },
@@ -385,11 +387,13 @@ export async function approvePerformanceEntry(
   entryId: string,
   phase: PerformancePhase,
   payload: PerformanceWorkflowActionInput = {},
+  opts?: { staffId?: number | null },
 ): Promise<PerformanceFormPayload> {
   const { data } = await api.post<{ data: PerformanceFormPayload }>(
     `/api/v1/performance/entries/${entryId}/approve`,
     {
       phase,
+      staff_id: opts?.staffId || undefined,
       ...payload,
     },
   )
@@ -400,11 +404,13 @@ export async function returnPerformanceEntry(
   entryId: string,
   phase: PerformancePhase,
   payload: Pick<PerformanceWorkflowActionInput, 'comments'>,
+  opts?: { staffId?: number | null },
 ): Promise<PerformanceFormPayload> {
   const { data } = await api.post<{ data: PerformanceFormPayload }>(
     `/api/v1/performance/entries/${entryId}/return`,
     {
       phase,
+      staff_id: opts?.staffId || undefined,
       ...payload,
     },
   )
@@ -414,10 +420,14 @@ export async function returnPerformanceEntry(
 export async function consentPerformanceEntry(
   entryId: string,
   payload: PerformanceWorkflowActionInput = {},
+  opts?: { staffId?: number | null },
 ): Promise<PerformanceFormPayload> {
   const { data } = await api.post<{ data: PerformanceFormPayload }>(
     `/api/v1/performance/entries/${entryId}/consent`,
-    payload,
+    {
+      staff_id: opts?.staffId || undefined,
+      ...payload,
+    },
   )
   return unwrapPerformanceForm(data)
 }

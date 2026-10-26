@@ -592,6 +592,91 @@ class PerformanceFormApiTest extends TestCase
         $this->assertSame('Updated objective', $objectives[1]['objective'] ?? null);
     }
 
+    public function test_show_resolves_legacy_entry_id_for_correct_staff_only(): void
+    {
+        $period = 'January-2026-to-December-2026';
+        $legacyEntryId = md5('100_'.$period);
+        $canonicalEntryId = app(PpaFormService::class)->entryIdFor(100, $period);
+
+        DB::table('ppa_entries')->insert([
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => $period,
+            'entry_id' => $legacyEntryId,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => json_encode([1 => ['objective' => 'Owner objective']]),
+            'training_recommended' => 'No',
+            'staff_sign_off' => 1,
+            'draft_status' => 1,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        session()->put($this->portalSession(100));
+
+        $response = app(PerformanceFormApiController::class)->show(
+            $canonicalEntryId,
+            Request::create("/api/v1/performance/entries/{$canonicalEntryId}", 'GET', [
+                'phase' => 'ppa',
+                'staff_id' => 100,
+                'performance_period' => $period,
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $payload = $response->getData(true);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame($legacyEntryId, $payload['data']['entry']['entry_id']);
+        $this->assertSame(100, (int) $payload['data']['entry']['staff_id']);
+        $this->assertSame('Owner objective', $payload['data']['form']['objectives'][1]['objective']);
+
+        foreach (['midterm', 'endterm'] as $phase) {
+            $phaseResponse = app(PerformanceFormApiController::class)->show(
+                $canonicalEntryId,
+                Request::create("/api/v1/performance/entries/{$canonicalEntryId}", 'GET', [
+                    'phase' => $phase,
+                    'staff_id' => 100,
+                    'performance_period' => $period,
+                ]),
+                app(PpaFormService::class),
+                app(PpaContractService::class),
+                app(PpaSettingsService::class),
+                app(CompetencyService::class),
+                app(PerformanceWorkflowService::class),
+                app(PerformanceApprovalService::class),
+                app(PerformanceService::class),
+            );
+            $phasePayload = $phaseResponse->getData(true);
+            $this->assertSame(200, $phaseResponse->getStatusCode());
+            $this->assertSame($legacyEntryId, $phasePayload['data']['entry']['entry_id']);
+            $this->assertSame(100, (int) $phasePayload['data']['entry']['staff_id']);
+        }
+
+        // Wrong staff hint must not return another person's form.
+        $this->expectException(HttpException::class);
+        app(PerformanceFormApiController::class)->show(
+            $legacyEntryId,
+            Request::create("/api/v1/performance/entries/{$legacyEntryId}", 'GET', [
+                'phase' => 'ppa',
+                'staff_id' => 999,
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+    }
+
     public function test_save_midterm_and_endterm_resolve_legacy_entry_id(): void
     {
         $period = 'January-2026-to-December-2026';
