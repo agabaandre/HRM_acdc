@@ -325,7 +325,10 @@ async function load(): Promise<void> {
       return
     }
 
-    const next = await fetchPerformanceEntry(entryId, activePhase.value)
+    const next = await fetchPerformanceEntry(entryId, activePhase.value, {
+      staffId: route.params.staffId ? String(route.params.staffId) : null,
+      period: route.query.period ? String(route.query.period) : null,
+    })
     if (loadId !== latestLoadId) {
       return
     }

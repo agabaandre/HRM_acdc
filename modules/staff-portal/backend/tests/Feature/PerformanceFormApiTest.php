@@ -539,6 +539,123 @@ class PerformanceFormApiTest extends TestCase
         $this->assertArrayNotHasKey('create_ppa_livewire_url', $payload['data']);
     }
 
+    public function test_save_ppa_updates_legacy_entry_id_for_same_staff_and_period(): void
+    {
+        // Production rows used md5(staff_id_period) without stripping dashes.
+        // Current entryIdFor strips dashes, so a naive insert hits the unique (staff_id, period) key.
+        $period = 'January-2026-to-December-2026';
+        $legacyEntryId = md5('100_'.$period);
+        $canonicalEntryId = app(PpaFormService::class)->entryIdFor(100, $period);
+        $this->assertNotSame($legacyEntryId, $canonicalEntryId);
+
+        DB::table('ppa_entries')->insert([
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => $period,
+            'entry_id' => $legacyEntryId,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => json_encode([1 => ['objective' => 'Old objective']]),
+            'training_recommended' => 'No',
+            'staff_sign_off' => 1,
+            'draft_status' => 1,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        $savedId = app(PpaFormService::class)->savePpa([
+            'staff_id' => 100,
+            'performance_period' => $period,
+            'staff_contract_id' => 1000,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => [
+                1 => [
+                    'objective' => 'Updated objective',
+                    'timeline' => 'Q2',
+                    'indicator' => 'Done',
+                    'weight' => 100,
+                ],
+            ],
+            'training_recommended' => 'Yes',
+        ], 100, 'draft');
+
+        $this->assertSame($legacyEntryId, $savedId);
+        $this->assertSame(1, DB::table('ppa_entries')->where('staff_id', 100)->where('performance_period', $period)->count());
+        $this->assertDatabaseHas('ppa_entries', [
+            'entry_id' => $legacyEntryId,
+            'staff_id' => 100,
+            'performance_period' => $period,
+            'training_recommended' => 'Yes',
+        ]);
+        $objectives = json_decode((string) DB::table('ppa_entries')->where('entry_id', $legacyEntryId)->value('objectives'), true);
+        $this->assertSame('Updated objective', $objectives[1]['objective'] ?? null);
+    }
+
+    public function test_save_midterm_and_endterm_resolve_legacy_entry_id(): void
+    {
+        $period = 'January-2026-to-December-2026';
+        $legacyEntryId = md5('100_'.$period);
+        $canonicalEntryId = app(PpaFormService::class)->entryIdFor(100, $period);
+        $this->assertNotSame($legacyEntryId, $canonicalEntryId);
+
+        DB::table('ppa_entries')->insert([
+            'staff_id' => 100,
+            'staff_contract_id' => 1000,
+            'performance_period' => $period,
+            'entry_id' => $legacyEntryId,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => json_encode([1 => ['objective' => 'PPA objective']]),
+            'training_recommended' => 'No',
+            'staff_sign_off' => 1,
+            'draft_status' => 2,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        $forms = app(PpaFormService::class);
+
+        // Client sends the canonical hash while the DB row still has the legacy id.
+        $forms->saveMidterm([
+            'entry_id' => $canonicalEntryId,
+            'staff_id' => 100,
+            'performance_period' => $period,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => [1 => ['objective' => 'Midterm progress', 'self_appraisal' => 'On track']],
+            'midterm_comments' => 'Looks good',
+            'midterm_submit_action' => 'draft',
+        ], 100, 'draft');
+
+        $row = DB::table('ppa_entries')->where('entry_id', $legacyEntryId)->first();
+        $this->assertNotNull($row);
+        $this->assertNotNull($row->midterm_created_at);
+        $this->assertSame(1, (int) $row->midterm_draft_status);
+        $this->assertSame(1, DB::table('ppa_entries')->where('staff_id', 100)->where('performance_period', $period)->count());
+
+        $forms->saveEndterm([
+            'entry_id' => $canonicalEntryId,
+            'staff_id' => 100,
+            'performance_period' => $period,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'objectives' => [1 => ['objective' => 'Endterm result', 'appraiser_rating' => '4']],
+            'endterm_comments' => 'Solid year',
+            'endterm_submit_action' => 'draft',
+        ], 100, 'draft');
+
+        $row = DB::table('ppa_entries')->where('entry_id', $legacyEntryId)->first();
+        $this->assertNotNull($row->endterm_created_at);
+        $this->assertSame(1, (int) $row->endterm_draft_status);
+        $this->assertSame('Solid year', $row->endterm_comments);
+        $this->assertSame(1, DB::table('ppa_entries')->where('staff_id', 100)->where('performance_period', $period)->count());
+        $this->assertFalse(
+            DB::table('ppa_entries')->where('entry_id', $canonicalEntryId)->exists(),
+            'Must not create a second row under the canonical entry_id'
+        );
+    }
+
     public function test_put_draft_saves_a_ppa_and_returns_the_saved_payload(): void
     {
         $period = 'January-2026-to-December-2026';
@@ -1254,6 +1371,7 @@ class PerformanceFormApiTest extends TestCase
             $table->integer('staff_contract_id')->nullable();
             $table->string('performance_period', 50);
             $table->string('entry_id', 100)->unique();
+            $table->unique(['staff_id', 'performance_period']);
             $table->integer('supervisor_id')->nullable();
             $table->integer('supervisor2_id')->nullable();
             $table->longText('objectives')->nullable();

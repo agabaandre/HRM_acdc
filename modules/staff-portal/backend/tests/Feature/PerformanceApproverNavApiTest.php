@@ -98,14 +98,14 @@ class PerformanceApproverNavApiTest extends TestCase
         $this->assertSame(50, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-null-supervisor')->value('supervisor_id'));
     }
 
-    public function test_pending_shows_second_supervisor_when_settings_flag_off_but_supervisor2_named(): void
+    public function test_pending_skips_second_supervisor_when_settings_flag_off(): void
     {
-        // Mirrors CI3 get_pending_ppa: supervisor2_id presence drives the queue,
-        // even when ppa_requires_second_supervisor is disabled in settings.
+        // Settings gate the second-approver step. Named supervisor2_id alone
+        // must not keep PPA/midterm pending when the phase toggle is off.
         DB::table('ppa_configs')->update(['ppa_requires_second_supervisor' => 0]);
 
         $this->insertPpaEntry([
-            'entry_id' => 'ppa-entry-sup2-ci3',
+            'entry_id' => 'ppa-entry-sup2-settings-off',
             'staff_id' => 100,
             'supervisor_id' => 50,
             'supervisor2_id' => 51,
@@ -113,7 +113,7 @@ class PerformanceApproverNavApiTest extends TestCase
             'staff_sign_off' => 1,
         ]);
         DB::table('ppa_approval_trail')->insert([
-            'entry_id' => 'ppa-entry-sup2-ci3',
+            'entry_id' => 'ppa-entry-sup2-settings-off',
             'staff_id' => 50,
             'comments' => 'First approved',
             'action' => 'Approved',
@@ -131,12 +131,9 @@ class PerformanceApproverNavApiTest extends TestCase
         );
 
         $pending = $hubResponse->getData(true)['data']['pending'];
-        $match = collect($pending)->firstWhere('entry_id', 'ppa-entry-sup2-ci3');
+        $match = collect($pending)->firstWhere('entry_id', 'ppa-entry-sup2-settings-off');
 
-        $this->assertNotNull($match);
-        $this->assertSame('ppa', $match['approval_type']);
-        $this->assertTrue($match['can_act']);
-        $this->assertStringContainsString('second', strtolower((string) $match['overall_status']));
+        $this->assertNull($match);
     }
 
     public function test_pending_queue_shows_named_second_supervisor_waiting_on_consent(): void

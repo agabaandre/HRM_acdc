@@ -70,8 +70,9 @@ class PerformanceWorkflowCorrectionTest extends TestCase
         $this->assertFalse($result['can_correct']);
     }
 
-    public function test_does_not_correct_when_second_supervisor_is_named_and_pending(): void
+    public function test_does_not_correct_when_second_supervisor_is_required_and_pending(): void
     {
+        DB::table('ppa_configs')->update(['ppa_requires_second_supervisor' => 1]);
         $this->insertSubmittedPpa();
         $this->insertTrail('ppa-entry-1', 50, 'Approved');
 
@@ -80,6 +81,49 @@ class PerformanceWorkflowCorrectionTest extends TestCase
         $this->assertSame([], $result['corrected_phases']);
         $this->assertSame(0, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-1')->value('draft_status'));
         $this->assertSame('Pending second supervisor', $result['phases']['ppa']['state']);
+    }
+
+    public function test_midterm_finalizes_after_first_supervisor_when_second_not_required(): void
+    {
+        $this->insertSubmittedPpa([
+            'draft_status' => 2,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'midterm_supervisor_2' => 51,
+        ]);
+        $this->insertTrail('ppa-entry-1', 50, 'Approved', 'ppa_approval_trail_midterm');
+
+        $entry = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-1')->first();
+        $workflow = app(PerformanceWorkflowService::class);
+        $state = $workflow->resolveState($entry, PerformancePhase::Midterm);
+
+        $this->assertSame('approved', $state['step']);
+        $this->assertFalse($workflow->canActorApprove($entry, PerformancePhase::Midterm, 51));
+
+        $result = app(PerformanceWorkflowCorrectionService::class)->apply('ppa-entry-1');
+
+        $this->assertContains('midterm', $result['corrected_phases']);
+        $this->assertSame(2, (int) DB::table('ppa_entries')->where('entry_id', 'ppa-entry-1')->value('midterm_draft_status'));
+    }
+
+    public function test_endterm_still_requires_second_supervisor_by_default(): void
+    {
+        $this->insertSubmittedPpa([
+            'draft_status' => 2,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 0,
+            'endterm_supervisor_1' => 50,
+            'endterm_supervisor_2' => 51,
+            'endterm_staff_consent_at' => now()->toDateTimeString(),
+        ]);
+        $this->insertTrail('ppa-entry-1', 50, 'Approved', 'ppa_approval_trail_end_term');
+
+        $entry = DB::table('ppa_entries')->where('entry_id', 'ppa-entry-1')->first();
+        $state = app(PerformanceWorkflowService::class)->resolveState($entry, PerformancePhase::Endterm);
+
+        $this->assertSame('supervisor_2', $state['step']);
+        $this->assertSame(51, $state['actor_staff_id']);
     }
 
     public function test_finalize_if_ready_is_idempotent_once_approved(): void

@@ -325,9 +325,14 @@ export async function createPerformanceEntry(params: {
 export async function fetchPerformanceEntry(
   entryId: string,
   phase: PerformancePhase,
+  opts?: { staffId?: number | string | null; period?: string | null },
 ): Promise<PerformanceFormPayload> {
   const { data } = await api.get<{ data: PerformanceFormPayload }>(`/api/v1/performance/entries/${entryId}`, {
-    params: { phase },
+    params: {
+      phase,
+      staff_id: opts?.staffId ? Number(opts.staffId) : undefined,
+      performance_period: opts?.period || undefined,
+    },
   })
   return unwrapPerformanceForm(data)
 }

@@ -48,7 +48,13 @@ class PerformanceFormApiController extends Controller
         $phase = $this->resolvePhase($request);
         $actorStaffId = $this->actorStaffId();
 
-        $entry = $forms->findEntry($entryId);
+        $staffId = $request->integer('staff_id') ?: null;
+        $period = $request->input('performance_period') ?: $request->input('period');
+        $entry = $forms->resolveEntry(
+            $entryId,
+            $staffId ? (int) $staffId : null,
+            is_string($period) ? $period : null,
+        );
         if (! $entry) {
             abort(404, 'Entry not found.');
         }
@@ -762,7 +768,13 @@ class PerformanceFormApiController extends Controller
             'endterm_competency' => 'nullable|array',
         ]);
 
-        $existing = $forms->findEntry($entryId);
+        $staffIdHint = (int) ($request->input('staff_id') ?: 0) ?: null;
+        $periodHint = $request->input('performance_period');
+        $existing = $forms->resolveEntry(
+            $entryId,
+            $staffIdHint,
+            is_string($periodHint) ? $periodHint : null,
+        );
         if ($existing) {
             $existing = $this->syncEntryForPhase($existing, $phase, $workflow, $forms);
             $this->authorizeEntryAccess($existing, $phase, $actorStaffId, $workflow);
@@ -783,11 +795,13 @@ class PerformanceFormApiController extends Controller
             abort(404, 'Entry not found.');
         }
 
+        $resolvedEntryId = $existing ? (string) $existing->entry_id : $entryId;
+
         $payload = PerformanceRichText::sanitizeFormPayload([
             'staff_id' => $staffId,
             'staff_contract_id' => $this->nullableInt($request->input('staff_contract_id'), $existing->staff_contract_id ?? null),
             'performance_period' => (string) ($request->input('performance_period') ?: ($existing->performance_period ?? PerformancePeriod::currentSlug())),
-            'entry_id' => $entryId,
+            'entry_id' => $resolvedEntryId,
             'supervisor_id' => $this->nullableInt(
                 $request->input('supervisor_id'),
                 $this->phaseSupervisorValue($existing, $phase, true)
@@ -837,10 +851,11 @@ class PerformanceFormApiController extends Controller
             ]);
         }
 
-        $entry = $forms->findEntry($entryId);
-        if (! $entry && $phase === PerformancePhase::Ppa) {
-            $entry = $forms->findForPeriod($staffId, (string) $payload['performance_period']);
-        }
+        $entry = $forms->resolveEntry(
+            $resolvedEntryId,
+            $staffId,
+            (string) $payload['performance_period'],
+        );
         if (! $entry) {
             abort(404, 'Entry not found.');
         }

@@ -12,6 +12,10 @@ class PpaFormService
         protected SupervisorResolver $supervisors,
     ) {}
 
+    /**
+     * Canonical entry_id for new rows. Older production rows used md5(staff_id_period)
+     * without stripping dashes — always resolve existing rows via findForPeriod().
+     */
     public function entryIdFor(int $staffId, string $periodSlug): string
     {
         return md5($staffId.'_'.str_replace([' ', '-'], '', $periodSlug));
@@ -28,6 +32,52 @@ class PpaFormService
             ->where('staff_id', $staffId)
             ->where('performance_period', $periodSlug)
             ->first();
+    }
+
+    /**
+     * Resolve a row by entry_id, then staff+period, then canonical/legacy hash aliases.
+     * Midterm/endterm only UPDATE existing PPA rows — never invent a new entry_id.
+     */
+    public function resolveEntry(string $entryId, ?int $staffId = null, ?string $periodSlug = null): ?object
+    {
+        $entry = $this->findEntry($entryId);
+        if ($entry) {
+            return $entry;
+        }
+
+        $period = PerformancePeriod::toSlug($periodSlug ?? '') ?? null;
+        if ($staffId && $period) {
+            $byPeriod = $this->findForPeriod($staffId, $period);
+            if ($byPeriod) {
+                return $byPeriod;
+            }
+
+            foreach ($this->entryIdAliases($staffId, $period) as $candidate) {
+                if ($candidate === $entryId) {
+                    continue;
+                }
+                $alias = $this->findEntry($candidate);
+                if ($alias) {
+                    return $alias;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function entryIdAliases(int $staffId, string $periodSlug): array
+    {
+        $period = PerformancePeriod::toSlug($periodSlug) ?? $periodSlug;
+
+        return array_values(array_unique([
+            $this->entryIdFor($staffId, $period),
+            // Legacy CI3 / early Laravel: md5(staff_id_period) without stripping dashes.
+            md5($staffId.'_'.$period),
+        ]));
     }
 
     public function entryExists(string $entryId): bool
@@ -63,14 +113,26 @@ class PpaFormService
     {
         $staffId = (int) $data['staff_id'];
         $period = PerformancePeriod::toSlug($data['performance_period'] ?? '') ?? PerformancePeriod::currentSlug();
-        $entryId = $this->entryIdFor($staffId, $period);
+
+        // Unique key is (staff_id, performance_period). Match existing rows even when
+        // their entry_id was generated with a legacy hash formula.
+        $existing = $this->findForPeriod($staffId, $period);
+        if (! $existing && ! empty($data['entry_id'])) {
+            $byId = $this->findEntry((string) $data['entry_id']);
+            if ($byId && (int) $byId->staff_id === $staffId) {
+                $existing = $byId;
+            }
+        }
+
+        $entryId = $existing
+            ? (string) $existing->entry_id
+            : $this->entryIdFor($staffId, $period);
 
         $resolved = $this->supervisors->fromLatestContract($staffId);
         $save = [
             'staff_id' => $staffId,
             'staff_contract_id' => $data['staff_contract_id'] ?? $resolved['contract_id'],
             'performance_period' => $period,
-            'entry_id' => $entryId,
             'supervisor_id' => $data['supervisor_id'] ?? $resolved['supervisor_1'],
             'supervisor2_id' => $data['supervisor2_id'] ?? $resolved['supervisor_2'],
             'objectives' => json_encode($data['objectives'] ?? []),
@@ -84,9 +146,10 @@ class PpaFormService
             'updated_at' => now(),
         ];
 
-        if ($this->entryExists($entryId)) {
+        if ($existing) {
             DB::table('ppa_entries')->where('entry_id', $entryId)->update($save);
         } else {
+            $save['entry_id'] = $entryId;
             $save['created_at'] = now();
             DB::table('ppa_entries')->insert($save);
         }
@@ -110,8 +173,13 @@ class PpaFormService
      */
     public function saveMidterm(array $data, int $actorStaffId, string $submitAction): void
     {
-        $entryId = (string) $data['entry_id'];
         $staffId = (int) $data['staff_id'];
+        $period = PerformancePeriod::toSlug($data['performance_period'] ?? '') ?? null;
+        $entry = $this->resolveEntry((string) ($data['entry_id'] ?? ''), $staffId, $period);
+        if (! $entry) {
+            throw new \RuntimeException('PPA entry not found for midterm save.');
+        }
+        $entryId = (string) $entry->entry_id;
 
         $save = [
             'midterm_objectives' => isset($data['objectives']) ? json_encode($data['objectives']) : null,
@@ -132,8 +200,7 @@ class PpaFormService
             'midterm_updated_at' => now(),
         ];
 
-        $exists = $this->findEntry($entryId);
-        if ($exists && empty($exists->midterm_created_at)) {
+        if (empty($entry->midterm_created_at)) {
             $save['midterm_created_at'] = now();
         }
 
@@ -157,9 +224,13 @@ class PpaFormService
      */
     public function saveEndterm(array $data, int $actorStaffId, string $submitAction): void
     {
-        $entryId = (string) $data['entry_id'];
         $staffId = (int) $data['staff_id'];
-        $exists = $this->findEntry($entryId);
+        $period = PerformancePeriod::toSlug($data['performance_period'] ?? '') ?? null;
+        $entry = $this->resolveEntry((string) ($data['entry_id'] ?? ''), $staffId, $period);
+        if (! $entry) {
+            throw new \RuntimeException('PPA entry not found for endterm save.');
+        }
+        $entryId = (string) $entry->entry_id;
 
         $save = [];
         if (isset($data['objectives']) && ! empty($data['objectives'])) {
@@ -198,7 +269,7 @@ class PpaFormService
         }
         $save['endterm_updated_at'] = now();
 
-        if ($exists && empty($exists->endterm_created_at)) {
+        if (empty($entry->endterm_created_at)) {
             $save['endterm_created_at'] = now();
         }
 

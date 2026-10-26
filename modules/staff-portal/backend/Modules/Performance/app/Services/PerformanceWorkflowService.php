@@ -263,15 +263,15 @@ class PerformanceWorkflowService
     }
 
     /**
-     * CI3 pending/approval helpers key off whether supervisor2_id is set on the
-     * entry, not the settings toggle. Settings control whether a second
-     * supervisor is assigned at submit time; once named, they must approve.
+     * Second supervisor is required only when the phase setting is on and a
+     * distinct second supervisor is named. PPA/midterm default off; endterm on.
      *
      * @param  array{supervisor_1: ?int, supervisor_2: ?int}  $sup
      */
-    protected function requiresSecondSupervisor(PerformancePhase $_phase, array $sup): bool
+    protected function requiresSecondSupervisor(PerformancePhase $phase, array $sup): bool
     {
-        return ! empty($sup['supervisor_2'])
+        return $this->settings->requiresSecondSupervisor($phase)
+            && ! empty($sup['supervisor_2'])
             && (int) $sup['supervisor_2'] !== (int) ($sup['supervisor_1'] ?? 0);
     }
 
