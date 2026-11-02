@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HelpdeskItAssetCategory extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_it_asset_categories';
 
     protected $fillable = [

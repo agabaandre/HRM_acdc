@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HelpdeskLicense extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_licenses';
 
     protected $fillable = [

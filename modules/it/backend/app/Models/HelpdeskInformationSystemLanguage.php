@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class HelpdeskInformationSystemLanguage extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_information_system_languages';
 
     protected $fillable = [

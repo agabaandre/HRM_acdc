@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HelpdeskItAsset extends Model
 {
+    protected $connection = 'helpdesk';
+
     public const STATUS_IN_STOCK = 'in_stock';
 
     public const STATUS_DEPLOYED = 'deployed';

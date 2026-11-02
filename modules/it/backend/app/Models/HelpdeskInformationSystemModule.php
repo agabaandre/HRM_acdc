@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HelpdeskInformationSystemModule extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_information_system_modules';
 
     protected $fillable = [

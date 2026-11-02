@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HelpdeskInformationSystemStatusEvent extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_information_system_status_events';
 
     protected $fillable = [

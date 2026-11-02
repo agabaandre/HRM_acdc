@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HelpdeskInformationSystem extends Model
 {
+    protected $connection = 'helpdesk';
+
     protected $table = 'helpdesk_information_systems';
 
     protected $fillable = [
