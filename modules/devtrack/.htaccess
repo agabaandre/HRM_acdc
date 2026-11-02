@@ -11,16 +11,27 @@
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    RewriteRule ^(backend|frontend|docker|docs|vendor)/ - [F,L]
+    # Never expose source trees
+    RewriteRule ^(backend|frontend|docker|docs|deploy|vendor)/ - [F,L]
+
+    # Built SPA assets under /ui (Vite outDir)
+    RewriteRule ^ui(/|$) - [L]
 
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
+    # Real files (favicon, robots, ui chunks) — serve as-is
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Everything else through Laravel front controller (API + SPA shell)
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+ServerSignature Off
 
 <FilesMatch "^\.">
     Require all denied
@@ -29,5 +40,3 @@
 <FilesMatch "\.(env|log|json|lock|md|sql|xml|yml|yaml)$">
     Require all denied
 </FilesMatch>
-
-DirectoryIndex index.php

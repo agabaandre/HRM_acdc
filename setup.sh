@@ -1187,7 +1187,7 @@ env_ensure_file "$IT_SETUP" "$ROOT/modules/it/setup.env.example" \
 env_ensure_file "$IT_ENV" "$ROOT/modules/it/.env.example" \
   || setup_warn "it .env missing/unwritable"
 prompt_value IT_DB "it DB_DATABASE" "$(env_get "$IT_SETUP" DB_DATABASE)"
-IT_DB="${IT_DB:-it}"
+IT_DB="${IT_DB:-cdc_it}"
 # Clone still reads FINANCE_* keys — force paths to /it.
 write_it_env() {
   local f
@@ -1261,7 +1261,7 @@ env_ensure_file "$RG_SETUP" "$ROOT/modules/registry/setup.env.example" \
 env_ensure_file "$RG_ENV" "$ROOT/modules/registry/.env.example" \
   || setup_warn "registry .env missing/unwritable"
 prompt_value RG_DB "registry DB_DATABASE" "$(env_get "$RG_SETUP" DB_DATABASE)"
-RG_DB="${RG_DB:-registry}"
+RG_DB="${RG_DB:-cdc_registry}"
 write_registry_env() {
   local f
   for f in "$RG_SETUP" "$RG_ENV" "$ROOT/modules/registry/backend/.env"; do
@@ -1371,8 +1371,12 @@ setup_bootstrap_generic_module() {
   eval "db_val=\"\${$db_var:-$db_default}\""
 
   app_url="${PUBLIC_BASE%/}/${name}"
-  if [[ -f "$dir/backend/artisan" ]]; then
+  # Module-root front controller (e.g. DevTrack index.php) keeps APP_URL at /{name}.
+  # Finance-shaped apps expose Laravel only under /{name}/backend.
+  if [[ -f "$dir/backend/artisan" && ! -f "$dir/index.php" ]]; then
     app_url="${PUBLIC_BASE%/}/${name}/backend"
+  elif [[ -f "$dir/backend/artisan" && -f "$dir/index.php" ]]; then
+    app_url="${PUBLIC_BASE%/}/${name}"
   fi
 
   for f in "${files[@]}"; do

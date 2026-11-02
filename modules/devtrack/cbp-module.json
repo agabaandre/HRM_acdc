@@ -1,4 +1,5 @@
 {
-  "root_setup": false,
-  "notes": "Standalone email-server deploy; excluded from CBP root ./setup.sh auto-discovery."
+  "db_database": "cdc_devtrack",
+  "root_setup": true,
+  "notes": "CBP DevTrack SPA + Laravel API under /staff/devtrack (host Apache)."
 }

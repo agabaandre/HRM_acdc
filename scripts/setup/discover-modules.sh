@@ -115,6 +115,9 @@ setup_module_default_database() {
     helpdesk) printf 'helpdesk' ;;
     finance) printf 'finance' ;;
     risk-register) printf 'risk_register' ;;
+    it) printf 'cdc_it' ;;
+    registry) printf 'cdc_registry' ;;
+    devtrack) printf 'cdc_devtrack' ;;
     apm) printf 'apm_local' ;;
     *) printf '%s' "${name//-/_}" ;;
   esac
@@ -181,8 +184,9 @@ setup_module_db_name() {
     finance) printf '%s' "${FN_DB:-finance}"; return 0 ;;
     helpdesk) printf '%s' "${HD_DB:-helpdesk}"; return 0 ;;
     risk-register) printf '%s' "${RR_DB:-risk_register}"; return 0 ;;
-    it) printf '%s' "${IT_DB:-it}"; return 0 ;;
-    registry) printf '%s' "${RG_DB:-registry}"; return 0 ;;
+    it) printf '%s' "${IT_DB:-cdc_it}"; return 0 ;;
+    registry) printf '%s' "${RG_DB:-cdc_registry}"; return 0 ;;
+    devtrack) printf '%s' "${DT_DB:-cdc_devtrack}"; return 0 ;;
     apm) printf '%s' "${APM_DB_DATABASE:-apm_local}"; return 0 ;;
   esac
   if [[ -f "$dir/setup.env" ]]; then
