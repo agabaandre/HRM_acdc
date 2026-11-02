@@ -65,7 +65,12 @@ class HelpdeskLicense extends Model
             return null;
         }
 
-        $resolved = app(\App\Services\StaffDirectoryLookupService::class)->resolveByStaffId($staffId);
+        try {
+            $resolved = app(\App\Services\StaffDirectoryLookupService::class)->resolveByStaffId($staffId);
+        } catch (\Throwable) {
+            $resolved = null;
+        }
+
         if ($resolved === null) {
             return [
                 'staff_id' => $staffId,

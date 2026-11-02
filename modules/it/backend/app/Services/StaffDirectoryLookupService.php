@@ -18,9 +18,13 @@ class StaffDirectoryLookupService
             return null;
         }
 
-        $row = DB::connection('staff')->table('staff')
-            ->where('staff_id', $staffId)
-            ->first(['staff_id', 'fname', 'lname', 'oname', 'work_email']);
+        try {
+            $row = DB::connection('staff')->table('staff')
+                ->where('staff_id', $staffId)
+                ->first(['staff_id', 'fname', 'lname', 'oname', 'work_email']);
+        } catch (\Throwable) {
+            return null;
+        }
 
         if ($row === null) {
             return null;

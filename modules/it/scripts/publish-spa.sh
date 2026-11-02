@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish Finance Vite build for /staff/finance/
+# Publish IT Vite build for /staff/it/
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,7 +10,7 @@ if [[ ! -f "$DIST/index.html" || ! -d "$DIST/assets" ]]; then
   exit 1
 fi
 
-echo "==> Publishing Finance SPA from $DIST"
+echo "==> Publishing IT SPA from $DIST"
 rm -rf "$ROOT/public-spa"
 mkdir -p "$ROOT/public-spa"
 cp -a "$DIST/." "$ROOT/public-spa/"
@@ -20,14 +20,14 @@ rm -rf "$ROOT/frontend/dist-user"
 mkdir -p "$ROOT/frontend/dist-user"
 cp -a "$DIST/." "$ROOT/frontend/dist-user/"
 
-# Keep root index.html in sync for spa-static.php fallbacks (prefer dist-build via .htaccess).
+# Keep root index.html in sync for spa-static.php fallbacks.
 cp -f "$DIST/index.html" "$ROOT/index.html"
 
-# Guard: reject builds that point at portal /…/assets (wrong Vite base).
+# Guard: reject builds that point at the wrong module asset base.
 if grep -EEq 'src="/(staff|demo_staff|cbp|demo_cbp)[^"]*/assets/' "$ROOT/index.html"; then
-  if ! grep -EEq 'src="[^"]*/finance/assets/' "$ROOT/index.html"; then
-    echo "error: index.html asset URLs are not under …/finance/assets/ — Vite base is wrong." >&2
-    echo "       Rebuild with VITE_STAFF_PORTAL_BASE_PATH=/{web}/finance/" >&2
+  if ! grep -EEq 'src="[^"]*/it/assets/' "$ROOT/index.html"; then
+    echo "error: index.html asset URLs are not under …/it/assets/ — Vite base is wrong." >&2
+    echo "       Rebuild with VITE_STAFF_PORTAL_BASE_PATH=/{web}/it/" >&2
     grep -E 'assets/' "$ROOT/index.html" | head -5 >&2 || true
     exit 1
   fi
@@ -42,12 +42,8 @@ cat > "$ROOT/assets/.htaccess" <<'EOF'
     RewriteEngine On
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
-    RewriteCond %{DOCUMENT_ROOT}/ACDC/2026/cbp/modules/finance/frontend/dist-user/assets/$1 -f
-    RewriteRule ^(.*)$ ../frontend/dist-user/assets/$1 [L]
-    RewriteCond %{DOCUMENT_ROOT}/ACDC/2026/cbp/modules/finance/frontend/dist-build/assets/$1 -f
-    RewriteRule ^(.*)$ ../frontend/dist-build/assets/$1 [L]
 </IfModule>
 EOF
 
 chmod -R a+rX "$ROOT/assets" "$ROOT/public-spa" "$ROOT/index.html" 2>/dev/null || true
-echo "==> Done. Open /staff/finance/ (hard refresh)."
+echo "==> Done. Open /staff/it/ (hard refresh)."
