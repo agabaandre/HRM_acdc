@@ -72,12 +72,14 @@ if ($asset !== '') {
     exit;
 }
 
-// SPA index for client routes
+// SPA index for client routes.
+// Prefer published copies (index.html / public-spa) over Vite outDirs so a
+// stale dist-build from git sync cannot 404 hashed assets after republish.
 foreach ([
-    $dir.'/frontend/dist-user/index.html',
-    $dir.'/frontend/dist-build/index.html',
     $dir.'/index.html',
     $dir.'/public-spa/index.html',
+    $dir.'/frontend/dist-user/index.html',
+    $dir.'/frontend/dist-build/index.html',
 ] as $index) {
     if (is_file($index)) {
         $send($index);
