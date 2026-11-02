@@ -107,6 +107,14 @@ env_set "$ROOT/setup.env" APP_URL "$APP_URL"
 env_set "$ROOT/setup.env" BASE_URL "$BASE_URL"
 env_set "$ROOT/setup.env" DB_DATABASE "$(env_get "$BACKEND/.env" DB_DATABASE)"
 
+# Drop placeholder local root credentials so shared host creds can inherit.
+_db_user="$(env_get "$BACKEND/.env" DB_USERNAME 2>/dev/null || true)"
+if [[ -z "$_db_user" || "$_db_user" == "root" ]]; then
+  env_set "$BACKEND/.env" DB_USERNAME ""
+  env_set "$BACKEND/.env" DB_PASSWORD ""
+fi
+unset _db_user
+
 # Shared DB / Redis / JWT from staff root (or IT as fallback)
 for key in DB_HOST DB_PORT DB_USERNAME DB_PASSWORD REDIS_HOST REDIS_PORT REDIS_PASSWORD JWT_SECRET \
   STAFF_API_USERNAME STAFF_API_PASSWORD STAFF_API_TOKEN STAFF_API_INTERNAL_BASE_URL; do
