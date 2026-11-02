@@ -742,6 +742,308 @@ class PerformanceFormApiTest extends TestCase
         );
     }
 
+    public function test_supervisor_midterm_draft_save_preserves_submitted_status_and_ratings(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-midterm-supervisor-save',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'midterm_objectives' => json_encode([
+                1 => [
+                    'objective' => 'Deliver midterm work',
+                    'weight' => 100,
+                    'self_appraisal' => 'On track',
+                    'appraiser_rating' => '',
+                ],
+            ]),
+        ]);
+
+        session()->put($this->portalSession(50));
+
+        $shown = $this->showEntry('ppa-midterm-supervisor-save', 'midterm');
+        $this->assertTrue($shown['can_save']);
+        $this->assertTrue($shown['can_approve']);
+        $this->assertSame('', $shown['midreadonly']);
+
+        $response = app(PerformanceFormApiController::class)->update(
+            'ppa-midterm-supervisor-save',
+            Request::create('/api/v1/performance/entries/ppa-midterm-supervisor-save', 'PUT', [
+                'phase' => 'midterm',
+                'staff_id' => 100,
+                'performance_period' => $shown['entry']['performance_period'],
+                'objectives' => [
+                    1 => [
+                        'objective' => 'Deliver midterm work',
+                        'weight' => 100,
+                        'self_appraisal' => 'On track',
+                        'appraiser_rating' => '4',
+                    ],
+                ],
+                'midterm_achievements' => 'Strong delivery this cycle',
+                'midterm_non_achievements' => 'None',
+                'midterm_competency' => [],
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-midterm-supervisor-save')->first();
+        $this->assertSame(0, (int) $row->midterm_draft_status);
+        $this->assertSame('Strong delivery this cycle', $row->midterm_achievements);
+        $objectives = json_decode((string) $row->midterm_objectives, true);
+        $this->assertSame('4', (string) ($objectives[1]['appraiser_rating'] ?? ''));
+    }
+
+    public function test_supervisor_ppa_draft_save_preserves_submitted_status(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-supervisor-save',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 0,
+            'objectives' => json_encode([
+                1 => [
+                    'objective' => 'Ship PPA',
+                    'timeline' => '2026-06-30',
+                    'indicator' => 'Done',
+                    'weight' => 100,
+                ],
+            ]),
+            'training_recommended' => 'No',
+        ]);
+
+        session()->put($this->portalSession(50));
+
+        $shown = $this->showEntry('ppa-supervisor-save', 'ppa');
+        $this->assertTrue($shown['can_save']);
+        $this->assertTrue($shown['can_approve']);
+
+        $response = app(PerformanceFormApiController::class)->update(
+            'ppa-supervisor-save',
+            Request::create('/api/v1/performance/entries/ppa-supervisor-save', 'PUT', [
+                'phase' => 'ppa',
+                'staff_id' => 100,
+                'performance_period' => $shown['entry']['performance_period'],
+                'objectives' => [
+                    1 => [
+                        'objective' => 'Ship PPA updated',
+                        'timeline' => '2026-06-30',
+                        'indicator' => 'Done',
+                        'weight' => 100,
+                    ],
+                ],
+                'training_recommended' => 'Yes',
+                'training_contributions' => 'Mentoring',
+                'required_skills' => [],
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-supervisor-save')->first();
+        $this->assertSame(0, (int) $row->draft_status);
+        $this->assertSame('Yes', $row->training_recommended);
+        $this->assertSame('Mentoring', $row->training_contributions);
+    }
+
+    public function test_supervisor_endterm_draft_save_preserves_submitted_status_and_ratings(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-endterm-supervisor-save',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 0,
+            'endterm_supervisor_1' => 50,
+            'endterm_objectives' => json_encode([
+                1 => [
+                    'objective' => 'Year delivery',
+                    'weight' => 100,
+                    'self_appraisal' => 'Complete',
+                    'appraiser_rating' => '',
+                ],
+            ]),
+        ]);
+
+        session()->put($this->portalSession(50));
+
+        $shown = $this->showEntry('ppa-endterm-supervisor-save', 'endterm');
+        $this->assertTrue($shown['can_save']);
+        $this->assertTrue($shown['can_approve']);
+
+        $response = app(PerformanceFormApiController::class)->update(
+            'ppa-endterm-supervisor-save',
+            Request::create('/api/v1/performance/entries/ppa-endterm-supervisor-save', 'PUT', [
+                'phase' => 'endterm',
+                'staff_id' => 100,
+                'performance_period' => $shown['entry']['performance_period'],
+                'objectives' => [
+                    1 => [
+                        'objective' => 'Year delivery',
+                        'weight' => 100,
+                        'self_appraisal' => 'Complete',
+                        'appraiser_rating' => '5',
+                    ],
+                ],
+                'endterm_achievements' => 'Outstanding year',
+                'endterm_non_achievements' => 'None',
+                'endterm_competency' => [],
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+            app(SupervisorResolver::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-endterm-supervisor-save')->first();
+        $this->assertSame(0, (int) $row->endterm_draft_status);
+        $this->assertSame('Outstanding year', $row->endterm_achievements);
+        $objectives = json_decode((string) $row->endterm_objectives, true);
+        $this->assertSame('5', (string) ($objectives[1]['appraiser_rating'] ?? ''));
+    }
+
+    public function test_approve_endterm_persists_unsaved_appraiser_fields(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-endterm-approve-save',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'endterm_created_at' => now()->toDateTimeString(),
+            'endterm_draft_status' => 0,
+            'endterm_supervisor_1' => 50,
+            'endterm_objectives' => json_encode([
+                1 => [
+                    'objective' => 'Close the year',
+                    'weight' => 100,
+                    'self_appraisal' => 'Done',
+                    'appraiser_rating' => '',
+                ],
+            ]),
+            'endterm_achievements' => '',
+        ]);
+
+        session()->put($this->portalSession(50));
+
+        $response = app(PerformanceFormApiController::class)->approve(
+            'ppa-endterm-approve-save',
+            Request::create('/api/v1/performance/entries/ppa-endterm-approve-save/approve', 'POST', [
+                'phase' => 'endterm',
+                'staff_id' => 100,
+                'comments' => 'Approved endterm',
+                'objectives' => [
+                    1 => [
+                        'objective' => 'Close the year',
+                        'weight' => 100,
+                        'self_appraisal' => 'Done',
+                        'appraiser_rating' => '4',
+                    ],
+                ],
+                'endterm_achievements' => 'Met expectations',
+                'endterm_non_achievements' => 'N/A',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-endterm-approve-save')->first();
+        $this->assertSame('Met expectations', $row->endterm_achievements);
+        $objectives = json_decode((string) $row->endterm_objectives, true);
+        $this->assertSame('4', (string) ($objectives[1]['appraiser_rating'] ?? ''));
+    }
+
+    public function test_approve_midterm_persists_unsaved_appraiser_fields(): void
+    {
+        $this->insertPpaEntry([
+            'entry_id' => 'ppa-midterm-approve-save',
+            'staff_id' => 100,
+            'supervisor_id' => 50,
+            'supervisor2_id' => 51,
+            'draft_status' => 2,
+            'midterm_created_at' => now()->toDateTimeString(),
+            'midterm_draft_status' => 0,
+            'midterm_supervisor_1' => 50,
+            'midterm_objectives' => json_encode([
+                1 => [
+                    'objective' => 'Ship review',
+                    'weight' => 100,
+                    'self_appraisal' => 'Done',
+                    'appraiser_rating' => '',
+                ],
+            ]),
+            'midterm_achievements' => '',
+        ]);
+
+        session()->put($this->portalSession(50));
+
+        $response = app(PerformanceFormApiController::class)->approve(
+            'ppa-midterm-approve-save',
+            Request::create('/api/v1/performance/entries/ppa-midterm-approve-save/approve', 'POST', [
+                'phase' => 'midterm',
+                'staff_id' => 100,
+                'comments' => 'Approved with ratings',
+                'objectives' => [
+                    1 => [
+                        'objective' => 'Ship review',
+                        'weight' => 100,
+                        'self_appraisal' => 'Done',
+                        'appraiser_rating' => '5',
+                    ],
+                ],
+                'midterm_achievements' => 'Exceeded expectations',
+                'midterm_non_achievements' => 'N/A',
+            ]),
+            app(PpaFormService::class),
+            app(PpaContractService::class),
+            app(PpaSettingsService::class),
+            app(CompetencyService::class),
+            app(PerformanceWorkflowService::class),
+            app(PerformanceApprovalService::class),
+            app(PerformanceService::class),
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $row = DB::table('ppa_entries')->where('entry_id', 'ppa-midterm-approve-save')->first();
+        $this->assertSame('Exceeded expectations', $row->midterm_achievements);
+        $objectives = json_decode((string) $row->midterm_objectives, true);
+        $this->assertSame('5', (string) ($objectives[1]['appraiser_rating'] ?? ''));
+        $this->assertSame(2, (int) $row->midterm_draft_status);
+    }
+
     public function test_put_draft_saves_a_ppa_and_returns_the_saved_payload(): void
     {
         $period = 'January-2026-to-December-2026';

@@ -269,7 +269,38 @@ class PerformanceFormApiController extends Controller
         $validated = $request->validate([
             'comments' => 'nullable|string|max:20000',
             'supervisor2_agreement' => 'nullable|boolean',
+            'objectives' => 'nullable|array',
+            'midterm_comments' => 'nullable|string',
+            'midterm_training_review' => 'nullable|string',
+            'midterm_achievements' => 'nullable|string',
+            'midterm_non_achievements' => 'nullable|string',
+            'midterm_training_contributions' => 'nullable|string',
+            'midterm_recommended_trainings' => 'nullable|string',
+            'midterm_recommended_trainings_details' => 'nullable|string',
+            'midterm_recommended_skills' => 'nullable|array',
+            'midterm_competency' => 'nullable|array',
+            'endterm_comments' => 'nullable|string',
+            'endterm_training_review' => 'nullable|string',
+            'endterm_achievements' => 'nullable|string',
+            'endterm_non_achievements' => 'nullable|string',
+            'endterm_training_contributions' => 'nullable|string',
+            'endterm_recommended_trainings' => 'nullable|string',
+            'endterm_recommended_trainings_details' => 'nullable|string',
+            'endterm_recommended_skills' => 'nullable|array',
+            'endterm_competency' => 'nullable|array',
+            'training_recommended' => 'nullable|in:Yes,No',
+            'required_skills' => 'nullable|array',
+            'training_contributions' => 'nullable|string',
+            'recommended_trainings' => 'nullable|string',
+            'recommended_trainings_details' => 'nullable|string',
+            'form_comments' => 'nullable|string|max:20000',
         ]);
+
+        // Persist unsaved form fields (esp. appraiser ratings/comments) before approval.
+        if ($this->requestHasFormContent($request)) {
+            $this->persistApprovalFormContent($entry, $phase, $actorStaffId, $request, $forms);
+            $entry = $forms->findEntry($resolvedEntryId) ?? $entry;
+        }
 
         try {
             $approval->approve(
@@ -1154,7 +1185,9 @@ class PerformanceFormApiController extends Controller
             'midreadonly' => $midreadonly,
             'endreadonly' => $endreadonly,
             'is_owner' => $isOwner,
-            'can_save' => $isOwner && $submissionOpen && $activeReadonly === '',
+            // Editable forms (owner drafts or supervisor review) can persist — including
+            // autosave of appraiser ratings/comments before Approve.
+            'can_save' => $activeReadonly === '',
             'can_change_supervisors' => $canChangeSupervisors,
             'can_approve' => $canAct && ! $canConsent,
             'can_return' => $canReturn,
@@ -1434,6 +1467,114 @@ class PerformanceFormApiController extends Controller
         if ($staffId === $actorStaffId && ! $settings->isSubmissionOpen($phase)) {
             throw ValidationException::withMessages([
                 'phase' => [$settings->submissionWindowStatus($phase)['message']],
+            ]);
+        }
+    }
+
+    protected function requestHasFormContent(Request $request): bool
+    {
+        // Do not treat workflow approval `comments` as form content.
+        foreach ([
+            'objectives',
+            'midterm_achievements',
+            'midterm_non_achievements',
+            'midterm_competency',
+            'midterm_training_review',
+            'midterm_comments',
+            'midterm_training_contributions',
+            'midterm_recommended_trainings',
+            'midterm_recommended_trainings_details',
+            'midterm_recommended_skills',
+            'endterm_achievements',
+            'endterm_non_achievements',
+            'endterm_competency',
+            'endterm_training_review',
+            'endterm_comments',
+            'endterm_training_contributions',
+            'endterm_recommended_trainings',
+            'endterm_recommended_trainings_details',
+            'endterm_recommended_skills',
+            'training_recommended',
+            'required_skills',
+            'training_contributions',
+            'recommended_trainings',
+            'recommended_trainings_details',
+            'form_comments',
+        ] as $key) {
+            if ($request->exists($key)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function persistApprovalFormContent(
+        object $entry,
+        PerformancePhase $phase,
+        int $actorStaffId,
+        Request $request,
+        PpaFormService $forms
+    ): void {
+        $existing = $this->formStateFromEntry($entry, $phase, $forms);
+        $mergeKeys = [
+            'objectives',
+            'training_recommended',
+            'required_skills',
+            'training_contributions',
+            'recommended_trainings',
+            'recommended_trainings_details',
+            'midterm_comments',
+            'midterm_training_review',
+            'midterm_achievements',
+            'midterm_non_achievements',
+            'midterm_training_contributions',
+            'midterm_recommended_trainings',
+            'midterm_recommended_trainings_details',
+            'midterm_recommended_skills',
+            'midterm_competency',
+            'endterm_comments',
+            'endterm_training_review',
+            'endterm_achievements',
+            'endterm_non_achievements',
+            'endterm_training_contributions',
+            'endterm_recommended_trainings',
+            'endterm_recommended_trainings_details',
+            'endterm_recommended_skills',
+            'endterm_competency',
+        ];
+
+        $merged = $existing;
+        foreach ($mergeKeys as $key) {
+            if ($request->exists($key)) {
+                $merged[$key] = $request->input($key);
+            }
+        }
+        if ($request->exists('form_comments')) {
+            $merged['comments'] = $request->input('form_comments');
+        }
+
+        $payload = PerformanceRichText::sanitizeFormPayload([
+            'staff_id' => (int) $entry->staff_id,
+            'staff_contract_id' => (int) ($entry->staff_contract_id ?? 0),
+            'performance_period' => (string) $entry->performance_period,
+            'entry_id' => (string) $entry->entry_id,
+            'supervisor_id' => $this->phaseSupervisorValue($entry, $phase, true),
+            'supervisor2_id' => $this->phaseSupervisorValue($entry, $phase, false),
+            ...$merged,
+            'midterm_submit_action' => 'draft',
+            'endterm_submit_action' => 'draft',
+        ]);
+
+        try {
+            match ($phase) {
+                PerformancePhase::Ppa => $forms->savePpa($payload, $actorStaffId, 'draft'),
+                PerformancePhase::Midterm => $forms->saveMidterm($payload, $actorStaffId, 'draft'),
+                PerformancePhase::Endterm => $forms->saveEndterm($payload, $actorStaffId, 'draft'),
+            };
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages([
+                'entry' => [$e->getMessage()],
             ]);
         }
     }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { apiErrorMessage } from '@cbp/helpdesk-lib/lib/apiErrorMessage'
 import PortalPageChrome from '@/components/molecules/PortalPageChrome.vue'
 import PortalPillSubnav, { type PortalPillNavItem } from '@/components/molecules/PortalPillSubnav.vue'
+import PortalRichText from '@/components/atoms/PortalRichText.vue'
 import PerformanceApprovalTrail from '@/components/performance/PerformanceApprovalTrail.vue'
 import PerformanceStaffDetailsCard from '@/components/performance/PerformanceStaffDetailsCard.vue'
 import PpaSections from '@/components/performance/PpaSections.vue'
@@ -28,6 +29,8 @@ import {
   updatePerformanceSupervisors,
 } from '@/lib/performanceApi'
 
+const AUTOSAVE_DELAY_MS = 1500
+
 const route = useRoute()
 const router = useRouter()
 const locale = useLocaleStore()
@@ -35,18 +38,25 @@ const performancePending = usePerformancePendingStore()
 
 const loading = ref(false)
 const busy = ref(false)
+const autosaving = ref(false)
 const pdfLoading = ref(false)
 const wordLoading = ref(false)
 const includeTrail = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
+const autosaveStatus = ref<string | null>(null)
 const payload = ref<PerformanceFormPayload | null>(null)
 const form = ref<PerformanceFormState | null>(null)
 const workflowComments = ref('')
 const supervisor2Agreement = ref(true)
 const acceptRating = ref(true)
+const approvePreviewOpen = ref(false)
 
 let latestLoadId = 0
+let autosaveTimer: ReturnType<typeof setTimeout> | null = null
+let lastSavedSnapshot = ''
+let suppressAutosave = false
+let autosaveGeneration = 0
 
 const isCreate = computed(() => route.name === 'performance-create')
 const activePhase = computed<PerformancePhase>(() => {
@@ -247,13 +257,199 @@ function createRouteLocation(period: string) {
   }
 }
 
-function applyPayload(next: PerformanceFormPayload): void {
+function applyPayload(next: PerformanceFormPayload, opts?: { keepWorkflow?: boolean }): void {
+  suppressAutosave = true
   payload.value = next
   form.value = hydrateFormState(next)
-  workflowComments.value = ''
-  supervisor2Agreement.value = true
-  acceptRating.value = true
+  lastSavedSnapshot = JSON.stringify(form.value)
+  if (!opts?.keepWorkflow) {
+    workflowComments.value = ''
+    supervisor2Agreement.value = true
+    acceptRating.value = true
+  }
+  queueMicrotask(() => {
+    suppressAutosave = false
+  })
 }
+
+function formSnapshot(state: PerformanceFormState | null): string {
+  return state ? JSON.stringify(state) : ''
+}
+
+function clearAutosaveTimer(): void {
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+    autosaveTimer = null
+  }
+}
+
+function scheduleAutosave(): void {
+  if (suppressAutosave || loading.value || busy.value || !canSave.value || !form.value || !payload.value) {
+    return
+  }
+  if (formSnapshot(form.value) === lastSavedSnapshot) {
+    return
+  }
+  clearAutosaveTimer()
+  autosaveTimer = setTimeout(() => {
+    void autosaveDraft()
+  }, AUTOSAVE_DELAY_MS)
+}
+
+async function persistFormQuietly(): Promise<boolean> {
+  if (!payload.value || !form.value || !canSave.value) {
+    return true
+  }
+  if (formSnapshot(form.value) === lastSavedSnapshot) {
+    return true
+  }
+
+  const generation = ++autosaveGeneration
+  autosaving.value = true
+  try {
+    const next = await savePerformanceDraft(payload.value.entry.entry_id, activePhase.value, form.value)
+    if (generation !== autosaveGeneration) {
+      return false
+    }
+    // Keep the in-progress edits; only refresh flags/workflow from the server.
+    const keptForm = form.value
+    const keptWorkflow = workflowComments.value
+    const keptAgreement = supervisor2Agreement.value
+    const keptAccept = acceptRating.value
+    suppressAutosave = true
+    payload.value = next
+    form.value = keptForm
+    lastSavedSnapshot = formSnapshot(keptForm)
+    workflowComments.value = keptWorkflow
+    supervisor2Agreement.value = keptAgreement
+    acceptRating.value = keptAccept
+    queueMicrotask(() => {
+      suppressAutosave = false
+    })
+    autosaveStatus.value = 'Draft saved automatically'
+    return true
+  } catch (e) {
+    error.value = apiErrorMessage(e, 'Could not auto-save draft')
+    autosaveStatus.value = null
+    return false
+  } finally {
+    if (generation === autosaveGeneration) {
+      autosaving.value = false
+    }
+  }
+}
+
+async function autosaveDraft(): Promise<void> {
+  autosaveTimer = null
+  if (suppressAutosave || loading.value || busy.value || !canSave.value) {
+    return
+  }
+  await persistFormQuietly()
+}
+
+function reviewApproveErrors(): string[] {
+  if (!form.value) {
+    return []
+  }
+
+  if (activePhase.value === 'ppa') {
+    return ppaSubmitErrors()
+  }
+
+  const errors: string[] = []
+  for (let index = 1; index <= 10; index += 1) {
+    const row = form.value.objectives[index] ?? blankObjective()
+    const hasObjective = hasRichTextContent(row.objective) || Number(row.weight || 0) > 0
+    if (!hasObjective) {
+      continue
+    }
+    if (row.appraiser_rating === '' || row.appraiser_rating === null || row.appraiser_rating === undefined) {
+      errors.push(`Appraiser rating is required for objective ${index}.`)
+    }
+  }
+
+  const achievements =
+    activePhase.value === 'midterm' ? form.value.midterm_achievements : form.value.endterm_achievements
+  if (!hasRichTextContent(achievements)) {
+    errors.push("Appraiser's comments (achievements) are required before approval.")
+  }
+
+  return errors
+}
+
+const isReviewPhase = computed(() => activePhase.value === 'midterm' || activePhase.value === 'endterm')
+
+const approvePreviewRows = computed(() => {
+  if (!form.value) {
+    return [] as Array<{
+      index: number
+      rating: string
+      self: string
+      weight: string
+      hasObjective: string
+    }>
+  }
+
+  const limit = activePhase.value === 'ppa' ? 5 : 10
+  const rows: Array<{
+    index: number
+    rating: string
+    self: string
+    weight: string
+    hasObjective: string
+  }> = []
+
+  for (let index = 1; index <= limit; index += 1) {
+    const row = form.value.objectives[index] ?? blankObjective()
+    const hasContent = hasRichTextContent(row.objective) || Number(row.weight || 0) > 0
+    if (!hasContent && activePhase.value !== 'ppa') {
+      continue
+    }
+    if (activePhase.value === 'ppa' && !hasContent && index > 3) {
+      continue
+    }
+    rows.push({
+      index,
+      rating: String(row.appraiser_rating || '—'),
+      self: hasRichTextContent(row.self_appraisal) ? 'Provided' : 'Missing',
+      weight: String(row.weight === '' || row.weight === null || row.weight === undefined ? '—' : row.weight),
+      hasObjective: hasRichTextContent(row.objective) ? 'Provided' : 'Missing',
+    })
+  }
+  return rows
+})
+
+const approvePreviewAchievements = computed(() => {
+  if (!form.value || !isReviewPhase.value) {
+    return ''
+  }
+  return activePhase.value === 'midterm'
+    ? form.value.midterm_achievements
+    : form.value.endterm_achievements
+})
+
+const approvePreviewNonAchievements = computed(() => {
+  if (!form.value || !isReviewPhase.value) {
+    return ''
+  }
+  return activePhase.value === 'midterm'
+    ? form.value.midterm_non_achievements
+    : form.value.endterm_non_achievements
+})
+
+const approvePreviewPpaComments = computed(() => form.value?.comments || '')
+
+const approvePreviewTraining = computed(() => {
+  if (!form.value || activePhase.value !== 'ppa') {
+    return null
+  }
+  return {
+    recommended: form.value.training_recommended || 'No',
+    contributions: form.value.training_contributions || '',
+    trainings: form.value.recommended_trainings || '',
+    details: form.value.recommended_trainings_details || '',
+  }
+})
 
 function ppaSubmitErrors(): string[] {
   if (!form.value) {
@@ -355,9 +551,11 @@ async function saveDraftAction(): Promise<void> {
     return
   }
 
+  clearAutosaveTimer()
   busy.value = true
   error.value = null
   success.value = null
+  autosaveStatus.value = null
 
   try {
     const next = await savePerformanceDraft(payload.value.entry.entry_id, activePhase.value, form.value)
@@ -368,7 +566,7 @@ async function saveDraftAction(): Promise<void> {
       return
     }
 
-    applyPayload(next)
+    applyPayload(next, { keepWorkflow: true })
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not save draft')
   } finally {
@@ -392,8 +590,13 @@ async function submitAction(): Promise<void> {
     }
   }
 
+  clearAutosaveTimer()
   busy.value = true
   try {
+    const saved = await persistFormQuietly()
+    if (!saved) {
+      return
+    }
     const next = await submitPerformanceEntry(payload.value.entry.entry_id, activePhase.value, form.value)
     success.value = `${payload.value.phase_label} submitted.`
     if (isCreate.value) {
@@ -408,16 +611,40 @@ async function submitAction(): Promise<void> {
   }
 }
 
-async function approveAction(): Promise<void> {
+function approveAction(): void {
   if (!payload.value) {
     return
   }
 
+  error.value = null
+  success.value = null
+
+  const validationErrors = reviewApproveErrors()
+  if (validationErrors.length) {
+    error.value = validationErrors.join(' ')
+    return
+  }
+
+  approvePreviewOpen.value = true
+}
+
+async function confirmApproveAction(): Promise<void> {
+  if (!payload.value || !form.value) {
+    return
+  }
+
+  clearAutosaveTimer()
   busy.value = true
   error.value = null
   success.value = null
 
   try {
+    // Always persist current form values before approving so ratings/comments are not lost.
+    const saved = await persistFormQuietly()
+    if (!saved) {
+      return
+    }
+
     const next = await approvePerformanceEntry(
       payload.value.entry.entry_id,
       activePhase.value,
@@ -428,10 +655,11 @@ async function approveAction(): Promise<void> {
             ? supervisor2Agreement.value
             : undefined,
       },
-      { staffId: payload.value.entry.staff_id },
+      { staffId: payload.value.entry.staff_id, form: form.value },
     )
+    approvePreviewOpen.value = false
     applyPayload(next)
-    success.value = 'Approval recorded.'
+    success.value = 'Approval recorded. Form data was saved.'
     void performancePending.refresh()
   } catch (e) {
     error.value = apiErrorMessage(e, 'Could not approve form')
@@ -512,11 +740,16 @@ async function consentAction(): Promise<void> {
     return
   }
 
+  clearAutosaveTimer()
   busy.value = true
   error.value = null
   success.value = null
 
   try {
+    const saved = await persistFormQuietly()
+    if (!saved) {
+      return
+    }
     const next = await consentPerformanceEntry(
       payload.value.entry.entry_id,
       {
@@ -591,10 +824,23 @@ async function downloadWord(): Promise<void> {
 watch(
   () => [route.name, route.params.phase, route.params.entryId, route.query.period],
   () => {
+    clearAutosaveTimer()
     void load()
   },
   { immediate: true },
 )
+
+watch(
+  form,
+  () => {
+    scheduleAutosave()
+  },
+  { deep: true },
+)
+
+onBeforeUnmount(() => {
+  clearAutosaveTimer()
+})
 </script>
 
 <template>
@@ -653,6 +899,15 @@ watch(
 
     <v-alert v-if="success" type="success" variant="tonal" class="mb-3" density="compact">{{ success }}</v-alert>
     <v-alert v-if="error" type="error" variant="tonal" class="mb-3" density="compact">{{ error }}</v-alert>
+    <v-alert
+      v-if="autosaveStatus && !success && !error"
+      type="info"
+      variant="tonal"
+      class="mb-3"
+      density="compact"
+    >
+      {{ autosaving ? 'Saving draft…' : autosaveStatus }}
+    </v-alert>
     <div v-if="loading" class="text-medium-emphasis">Loading…</div>
 
     <template v-else-if="payload && form">
@@ -755,6 +1010,95 @@ watch(
           :accept-rating="false"
         />
       </div>
+
+      <v-dialog v-model="approvePreviewOpen" max-width="780" scrollable>
+        <v-card>
+          <v-card-title class="text-h6">
+            {{ payload.phase_label }} — preview before approval
+          </v-card-title>
+          <v-card-subtitle>
+            Review the form below. Confirming saves all current values, then records approval.
+          </v-card-subtitle>
+          <v-card-text class="d-flex flex-column ga-4">
+            <div>
+              <div class="text-subtitle-2 mb-2">
+                {{ isReviewPhase ? 'Objectives & appraiser ratings' : 'Performance objectives' }}
+              </div>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th>Objective</th>
+                    <th v-if="activePhase === 'ppa'">Content</th>
+                    <th v-if="activePhase === 'ppa'">Weight %</th>
+                    <th v-if="isReviewPhase">Self-appraisal</th>
+                    <th v-if="isReviewPhase">Appraiser rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in approvePreviewRows" :key="row.index">
+                    <td>{{ row.index }}</td>
+                    <td v-if="activePhase === 'ppa'">{{ row.hasObjective }}</td>
+                    <td v-if="activePhase === 'ppa'">{{ row.weight }}</td>
+                    <td v-if="isReviewPhase">{{ row.self }}</td>
+                    <td v-if="isReviewPhase">{{ row.rating }}</td>
+                  </tr>
+                  <tr v-if="!approvePreviewRows.length">
+                    <td :colspan="activePhase === 'ppa' ? 3 : 3" class="text-medium-emphasis">
+                      No active objectives
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </div>
+
+            <template v-if="activePhase === 'ppa' && approvePreviewTraining">
+              <div>
+                <div class="text-subtitle-2 mb-1">Training recommended</div>
+                <div class="text-body-2">{{ approvePreviewTraining.recommended }}</div>
+              </div>
+              <div>
+                <div class="text-subtitle-2 mb-1">Training contributions</div>
+                <PortalRichText :value="approvePreviewTraining.contributions" empty-text="—" />
+              </div>
+              <div>
+                <div class="text-subtitle-2 mb-1">Recommended trainings</div>
+                <PortalRichText :value="approvePreviewTraining.trainings" empty-text="—" />
+              </div>
+              <div>
+                <div class="text-subtitle-2 mb-1">Other training details</div>
+                <PortalRichText :value="approvePreviewTraining.details" empty-text="—" />
+              </div>
+              <div>
+                <div class="text-subtitle-2 mb-1">Comments for approval</div>
+                <PortalRichText :value="approvePreviewPpaComments" empty-text="—" />
+              </div>
+            </template>
+
+            <template v-if="isReviewPhase">
+              <div>
+                <div class="text-subtitle-2 mb-1">Achievements</div>
+                <PortalRichText :value="approvePreviewAchievements" empty-text="—" />
+              </div>
+              <div>
+                <div class="text-subtitle-2 mb-1">Non-achievements</div>
+                <PortalRichText :value="approvePreviewNonAchievements" empty-text="—" />
+              </div>
+            </template>
+
+            <div v-if="hasRichTextContent(workflowComments)">
+              <div class="text-subtitle-2 mb-1">Approval comments</div>
+              <PortalRichText :value="workflowComments" empty-text="—" />
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" :disabled="busy" @click="approvePreviewOpen = false">Cancel</v-btn>
+            <v-btn color="success" :loading="busy || autosaving" @click="confirmApproveAction">
+              Save and approve
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
   </div>
 </template>

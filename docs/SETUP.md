@@ -9,6 +9,17 @@ cd /path/to/staff   # or cbp / demo_cbp / cbpdemo
 ./setup.sh
 ```
 
+### Host Apache production re-deploy (all modules)
+
+On a production host that already has `.env` (MySQL on the host, Apache symlink under `/var/www/html/staff`):
+
+```bash
+cd /var/lib/ACDC_SYSTEMS/staff
+./scripts/deploy-host-production.sh
+```
+
+This removes leftover **cbp-staff** Docker containers, forces `DEPLOY_MODE=host`, syncs `origin/main`, then runs `./setup.sh --defaults` with `SETUP_FORCE_ALL_MODULES=1` so every discovered module gets a full `setup-production` / composer + migrate pass (not only modules that changed since `.setup-last-head`).
+
 Requires a TTY for the interactive wizard. Passwords are entered without echo.
 
 **Git sync (always first):** `git stash` (tracked changes only) → `git pull` → `stash pop`. Untracked files such as `.env` / `vendor/` are left alone. Skip with `./setup.sh --skip-git`. If `setup.sh` itself updates, the new script is re-executed automatically.

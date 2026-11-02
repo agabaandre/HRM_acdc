@@ -387,13 +387,25 @@ export async function approvePerformanceEntry(
   entryId: string,
   phase: PerformancePhase,
   payload: PerformanceWorkflowActionInput = {},
-  opts?: { staffId?: number | null },
+  opts?: { staffId?: number | null; form?: PerformanceFormState | null },
 ): Promise<PerformanceFormPayload> {
+  // Form `comments` would clash with workflow approval comments — send as form_comments.
+  const formBody = opts?.form
+    ? (() => {
+        const { comments: formComments, ...rest } = opts.form
+        return {
+          ...rest,
+          form_comments: formComments,
+        }
+      })()
+    : {}
+
   const { data } = await api.post<{ data: PerformanceFormPayload }>(
     `/api/v1/performance/entries/${entryId}/approve`,
     {
       phase,
       staff_id: opts?.staffId || undefined,
+      ...formBody,
       ...payload,
     },
   )

@@ -71,8 +71,10 @@ const showActionArea = computed(
   () => props.canApprove || props.canReturn || props.canConsent,
 )
 
+// Owners get Save Draft / Submit. Approvers get Approve / Return only — form
+// content still persists via autosave and the approve preview flow.
 const showEmployeeSubmit = computed(
-  () => props.variant === 'actions' && props.canSave,
+  () => props.variant === 'actions' && props.canSave && !showActionArea.value,
 )
 
 const isApproved = computed(() => props.state?.status_key === 'approved')

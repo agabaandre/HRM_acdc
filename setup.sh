@@ -1587,6 +1587,11 @@ setup_shared_changed() {
 
 setup_module_needs_full_install() {
   local name="$1"
+  # Force every discovered module through setup-production / bootstrap
+  # (used by scripts/deploy-host-production.sh after a full sync).
+  if [[ "${SETUP_FORCE_ALL_MODULES:-0}" == "1" ]]; then
+    return 0
+  fi
   # New installation → always full installers.
   if [[ "${INSTALL_TYPE:-1}" == "1" ]]; then
     return 0

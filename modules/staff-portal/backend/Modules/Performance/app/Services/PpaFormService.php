@@ -178,7 +178,10 @@ class PpaFormService
             'recommended_trainings' => $data['recommended_trainings'] ?? null,
             'recommended_trainings_details' => $data['recommended_trainings_details'] ?? null,
             'staff_sign_off' => 1,
-            'draft_status' => $submitAction === 'submit' ? 0 : 1,
+            'draft_status' => $this->nextDraftStatus(
+                $existing ? (int) ($existing->draft_status ?? 1) : 1,
+                $submitAction,
+            ),
             'updated_at' => now(),
         ];
 
@@ -232,7 +235,10 @@ class PpaFormService
             'midterm_recommended_trainings_details' => $data['midterm_recommended_trainings_details'] ?? null,
             'midterm_rating_by' => $actorStaffId,
             'midterm_sign_off' => 1,
-            'midterm_draft_status' => ($data['midterm_submit_action'] ?? $submitAction) === 'submit' ? 0 : 1,
+            'midterm_draft_status' => $this->nextDraftStatus(
+                (int) ($entry->midterm_draft_status ?? 1),
+                ($data['midterm_submit_action'] ?? $submitAction) === 'submit' ? 'submit' : 'draft',
+            ),
             'midterm_updated_at' => now(),
         ];
 
@@ -300,8 +306,11 @@ class PpaFormService
 
         $save['endterm_rating_by'] = $actorStaffId;
         $save['endterm_sign_off'] = 1;
-        if (isset($data['endterm_submit_action'])) {
-            $save['endterm_draft_status'] = $submitAction === 'submit' ? 0 : 1;
+        if (isset($data['endterm_submit_action']) || $submitAction === 'submit' || $submitAction === 'draft') {
+            $save['endterm_draft_status'] = $this->nextDraftStatus(
+                (int) ($entry->endterm_draft_status ?? 1),
+                $submitAction === 'submit' ? 'submit' : 'draft',
+            );
         }
         $save['endterm_updated_at'] = now();
 
@@ -430,5 +439,22 @@ class PpaFormService
                 'second_supervisor' => $supervisor2,
             ]);
         }
+    }
+
+    /**
+     * Keep submitted (0) forms submitted when supervisors autosave ratings/comments
+     * during approval. Only flip to draft (1) when the form is already a draft.
+     */
+    protected function nextDraftStatus(int $currentStatus, string $submitAction): int
+    {
+        if ($submitAction === 'submit') {
+            return 0;
+        }
+
+        if ($currentStatus === 0 || $currentStatus === 2) {
+            return $currentStatus;
+        }
+
+        return 1;
     }
 }
