@@ -141,7 +141,7 @@ return [
         FILTER_VALIDATE_BOOL
     ),
 
-    // Same signing secret the staff portal uses for module SSO. Not the DevTrack API JWT_SECRET.
-    'cbp_staff_jwt_secret' => env('CBP_STAFF_JWT_SECRET', ''),
+    // Same signing secret the staff portal uses for module SSO (JWT_SECRET / APP_KEY).
+    'cbp_staff_jwt_secret' => env('CBP_STAFF_JWT_SECRET', env('JWT_SECRET', '')),
 
 ];

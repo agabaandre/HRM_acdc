@@ -36,12 +36,20 @@ final class SsoJwt
 
     public static function secret(): string
     {
-        $secret = config('app.cbp_staff_jwt_secret');
-        if (! is_string($secret) || trim($secret) === '') {
-            $secret = env('CBP_STAFF_JWT_SECRET', '');
+        // Prefer an explicit CBP secret, then the shared staff-portal JWT_SECRET
+        // (same chain IT / Helpdesk / Staff Portal use). APP_KEY is last resort.
+        foreach ([
+            config('app.cbp_staff_jwt_secret'),
+            env('CBP_STAFF_JWT_SECRET', ''),
+            env('JWT_SECRET', ''),
+            env('APP_KEY', ''),
+        ] as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
         }
 
-        return is_string($secret) ? trim($secret) : '';
+        return '';
     }
 
     private static function base64UrlEncode(string $value): string
