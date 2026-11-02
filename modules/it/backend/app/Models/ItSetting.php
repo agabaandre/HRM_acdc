@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ItSetting extends Model
 {
-    protected $connection = 'it';
-
     public const KEY_LICENSE_EXPIRY_ALERT_ENABLED = 'license_expiry_alert_enabled';
 
     public const KEY_LICENSE_EXPIRY_ALERT_INTERVAL_DAYS = 'license_expiry_alert_interval_days';

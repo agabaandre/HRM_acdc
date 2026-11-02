@@ -100,6 +100,7 @@ return [
         ],
 
         // Helpdesk catalog (licenses, ITSM assets, information systems).
+        // Default connection remains cdc_it — do not point DB_DATABASE at finance/helpdesk.
         'helpdesk' => [
             'driver' => 'mysql',
             'host' => env('HELPDESK_DB_HOST', env('DB_HOST', '127.0.0.1')),
@@ -107,23 +108,6 @@ return [
             'database' => env('HELPDESK_DB_DATABASE', 'helpdesk'),
             'username' => env('HELPDESK_DB_USERNAME', env('DB_USERNAME', 'root')),
             'password' => env('HELPDESK_DB_PASSWORD', env('DB_PASSWORD', '')),
-            'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'strict' => true,
-            'engine' => null,
-        ],
-
-        // IT-only tables (servers / settings) when default DB is shared finance.
-        'it' => [
-            'driver' => 'mysql',
-            'host' => env('IT_DB_HOST', env('DB_HOST', '127.0.0.1')),
-            'port' => env('IT_DB_PORT', env('DB_PORT', '3306')),
-            'database' => env('IT_DB_DATABASE', 'cdc_it'),
-            'username' => env('IT_DB_USERNAME', env('DB_USERNAME', 'root')),
-            'password' => env('IT_DB_PASSWORD', env('DB_PASSWORD', '')),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),

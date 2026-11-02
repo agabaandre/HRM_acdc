@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class ItServer extends Model
 {
-    protected $connection = 'it';
-
     public const KIND_AZURE_VM = 'azure_vm';
 
     public const KIND_AZURE_LANDING_ZONE = 'azure_landing_zone';
