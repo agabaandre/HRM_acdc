@@ -23,8 +23,11 @@ echo "==> Hard reset tracked files to ${REMOTE}/${BRANCH} (server edits on track
 git reset --hard "${REMOTE}/${BRANCH}"
 
 echo "==> Checking for leftover merge conflict markers"
-if rg -n '<<<<<<<|=======|>>>>>>>' modules assets 2>/dev/null \
-  --glob '*.php' --glob '*.blade.php' --glob '*.css' --glob '*.js' --glob '*.vue'; then
+# Match real Git markers only (line-start). Bare "=======" appears in CSS comments.
+if rg -n --glob '!**/vendor/**' --glob '!**/node_modules/**' \
+  --glob '*.php' --glob '*.blade.php' --glob '*.css' --glob '*.js' --glob '*.vue' --glob '*.ts' \
+  -e '^<<<<<<<' -e '^>>>>>>>' -e '^=======$' \
+  modules assets shared scripts setup.sh 2>/dev/null; then
   echo "error: conflict markers still present after reset — fix manually or re-run fetch." >&2
   exit 1
 fi
