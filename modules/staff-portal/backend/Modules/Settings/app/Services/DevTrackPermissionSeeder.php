@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class DevTrackPermissionSeeder
 {
-    public const CBP_MODULE_PERMISSION_ID = 127;
+    public const CBP_MODULE_PERMISSION_ID = 128;
 
     /** @var list<array{id:int,name:string,definition:string,module:string}> */
     public const PERMISSIONS = [

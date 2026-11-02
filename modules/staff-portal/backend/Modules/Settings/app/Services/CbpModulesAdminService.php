@@ -153,7 +153,7 @@ class CbpModulesAdminService
             'base_url_development' => null,
             'base_url_production' => null,
             'icon_class' => 'fa-code-branch',
-            'permission_code' => '127',
+            'permission_code' => '128',
             'uses_staff_portal_token' => 1,
             'is_production' => 1,
             'is_enabled' => 1,
