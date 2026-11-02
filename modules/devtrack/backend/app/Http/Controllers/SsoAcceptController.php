@@ -22,7 +22,9 @@ class SsoAcceptController extends Controller
         $staffId = (int) ($payload['staff_id'] ?? 0);
 
         if (! is_array($payload) || $staffId < 1 || $email === '') {
-            return redirect('/'.$this->spaPath().'/login');
+            // App-relative: redirect('/staff/devtrack/login') is doubled by Laravel's
+            // URL generator when the app is already mounted at /staff/devtrack.
+            return redirect('/login');
         }
 
         $user = User::query()->where('staff_id', $staffId)->first()
@@ -67,7 +69,13 @@ class SsoAcceptController extends Controller
         if ($next !== '' && (str_contains($next, '..') || str_contains($next, '://'))) {
             $next = '';
         }
-        $redirect = '/'.$this->spaPath().'/'.$next;
+        // Absolute URL for window.location.replace (host-root path, not Laravel redirect()).
+        $redirect = rtrim((string) config('app.url', '/staff/devtrack'), '/');
+        if ($next !== '') {
+            $redirect .= '/'.$next;
+        } else {
+            $redirect .= '/';
+        }
 
         return response()->view('sso-bridge', [
             'token' => $token,
@@ -77,12 +85,5 @@ class SsoAcceptController extends Controller
             'Referrer-Policy' => 'no-referrer',
             'Cache-Control' => 'no-store',
         ]);
-    }
-
-    private function spaPath(): string
-    {
-        $path = parse_url(rtrim((string) config('app.url', ''), '/'), PHP_URL_PATH);
-
-        return is_string($path) && trim($path, '/') !== '' ? trim($path, '/') : 'staff/devtrack';
     }
 }

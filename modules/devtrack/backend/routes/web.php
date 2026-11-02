@@ -50,6 +50,20 @@ Route::get('/login/redirect', function (Request $request) {
     \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
 ]);
 
+// Repair bookmarks / SSO redirects that doubled the mount path
+// (/staff/devtrack/staff/devtrack/login → /staff/devtrack/login).
+Route::get('/staff/devtrack/{any?}', function (string $any = '') {
+    $target = trim($any, '/');
+
+    return redirect('/'.($target !== '' ? $target : 'login'));
+})->where('any', '.*')->withoutMiddleware([
+    \Illuminate\Cookie\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+]);
+
 // The shell is a static file. Cookie encryption and sessions need APP_KEY;
 // when that key is empty they throw, and the error page throws a second time.
 Route::get('/{any?}', SpaController::class)
