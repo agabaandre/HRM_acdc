@@ -13,7 +13,7 @@ Route::post('/sso/accept', SsoAcceptController::class)->withoutMiddleware([
     \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
     \Illuminate\Session\Middleware\StartSession::class,
     \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-    \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
 ]);
 
 // CBP staff-portal sign-in uses this app's registered Entra redirect, then returns home.
@@ -47,7 +47,7 @@ Route::get('/login/redirect', function (Request $request) {
     \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
     \Illuminate\Session\Middleware\StartSession::class,
     \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-    \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
 ]);
 
 // The shell is a static file. Cookie encryption and sessions need APP_KEY;
@@ -59,5 +59,5 @@ Route::get('/{any?}', SpaController::class)
         \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
     ]);

@@ -30,11 +30,14 @@ class RuntimeStoreFallback
         }
 
         $path = storage_path('app.key');
-        $stored = is_file($path) ? trim((string) file_get_contents($path)) : '';
+        $stored = '';
+        if (is_file($path) && is_readable($path)) {
+            $stored = trim((string) @file_get_contents($path));
+        }
         if (! str_starts_with($stored, 'base64:')) {
             $stored = 'base64:'.base64_encode(random_bytes(32));
             @file_put_contents($path, $stored.PHP_EOL);
-            @chmod($path, 0600);
+            @chmod($path, 0660);
         }
 
         Config::set('app.key', $stored);

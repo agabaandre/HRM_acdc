@@ -145,6 +145,24 @@ class CbpModulesAdminService
             'target_resolver' => 'staff_app_token',
             'sort_order' => 50,
         ],
+        [
+            'module_key' => 'devtrack',
+            'system_name' => 'Development Tracker',
+            'description' => 'Track MIS systems, projects, and development work requests.',
+            'base_url' => 'devtrack',
+            'base_url_development' => null,
+            'base_url_production' => null,
+            'icon_class' => 'fa-code-branch',
+            'permission_code' => '127',
+            'uses_staff_portal_token' => 1,
+            'is_production' => 1,
+            'is_enabled' => 1,
+            'show_in_apm_menu' => 0,
+            'alternate_base_url' => null,
+            'alternate_for_role_id' => null,
+            'target_resolver' => 'staff_app_token',
+            'sort_order' => 55,
+        ],
     ];
 
     /** @var list<string> */
@@ -267,6 +285,12 @@ class CbpModulesAdminService
 
         try {
             (new RegistryModulePermissionSeeder)->seed();
+        } catch (\Throwable) {
+            // Permissions table may be unavailable during early bootstrap.
+        }
+
+        try {
+            (new DevTrackPermissionSeeder)->seed();
         } catch (\Throwable) {
             // Permissions table may be unavailable during early bootstrap.
         }

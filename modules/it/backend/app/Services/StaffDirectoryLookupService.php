@@ -46,21 +46,28 @@ class StaffDirectoryLookupService
     {
         $limit = max(1, min($limit, 40));
         $q = trim($query);
-        $builder = DB::connection('staff')->table('staff')
-            ->select(['staff_id', 'fname', 'lname', 'oname', 'work_email'])
-            ->orderBy('fname')
-            ->limit($limit);
 
-        if ($q !== '') {
-            $like = '%'.$q.'%';
-            $builder->where(function ($w) use ($like, $q) {
-                $w->where('fname', 'like', $like)
-                    ->orWhere('lname', 'like', $like)
-                    ->orWhere('work_email', 'like', $like);
-                if (ctype_digit($q)) {
-                    $w->orWhere('staff_id', (int) $q);
-                }
-            });
+        try {
+            $builder = DB::connection('staff')->table('staff')
+                ->select(['staff_id', 'fname', 'lname', 'oname', 'work_email'])
+                ->orderBy('fname')
+                ->limit($limit);
+
+            if ($q !== '') {
+                $like = '%'.$q.'%';
+                $builder->where(function ($w) use ($like, $q) {
+                    $w->where('fname', 'like', $like)
+                        ->orWhere('lname', 'like', $like)
+                        ->orWhere('work_email', 'like', $like);
+                    if (ctype_digit($q)) {
+                        $w->orWhere('staff_id', (int) $q);
+                    }
+                });
+            }
+
+            $rows = $builder->get()->all();
+        } catch (\Throwable) {
+            return [];
         }
 
         return array_map(function ($row) {
@@ -70,7 +77,7 @@ class StaffDirectoryLookupService
                 'work_email' => trim((string) ($row->work_email ?? '')),
                 'duty_station_name' => null,
             ];
-        }, $builder->get()->all());
+        }, $rows);
     }
 
     /**
@@ -78,14 +85,18 @@ class StaffDirectoryLookupService
      */
     public function divisionsForSelect(): array
     {
-        return DB::connection('staff')->table('divisions')
-            ->orderBy('division_name')
-            ->get(['division_id', 'division_name'])
-            ->map(fn ($row) => [
-                'id' => (int) $row->division_id,
-                'name' => (string) $row->division_name,
-            ])
-            ->all();
+        try {
+            return DB::connection('staff')->table('divisions')
+                ->orderBy('division_name')
+                ->get(['division_id', 'division_name'])
+                ->map(fn ($row) => [
+                    'id' => (int) $row->division_id,
+                    'name' => (string) $row->division_name,
+                ])
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     private function fullName(object $row): string
