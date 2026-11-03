@@ -6,7 +6,12 @@ This guide explains how to add a **new application module** to the Africa CDC Ce
 2. Calls the **Staff Share API** (staff directory, divisions, directorates, CBP nav, mail hub)
 3. Optionally calls the **APM REST APIs** (approvals, documents, matrices, memos)
 
-Use existing modules as references: **Helpdesk**, **Finance**, **Risk Register**, and **APM**.
+Use existing modules as references: **Helpdesk**, **Finance**, **Risk Register**, **IT**, **DevTrack**, and **APM**.
+
+For the Staff Portal → module `staff_sso_jwt` handoff (accept URL, shared JWT secret, bridge token key, doubled-path pitfalls), follow the public Cursor skill:
+
+- [`.cursor/skills/cbp-staff-portal-sso/SKILL.md`](../.cursor/skills/cbp-staff-portal-sso/SKILL.md)
+- [`.cursor/skills/cbp-staff-portal-sso/reference.md`](../.cursor/skills/cbp-staff-portal-sso/reference.md)
 
 ---
 

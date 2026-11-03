@@ -25,9 +25,11 @@ Integrated with the Matrix Approval Management module, the system ensures struct
 
 This system enhances **transparency**, **accountability**, and **timely decision-making** across Africa CDC's internal operations.
 
-**Repository layout:** CBP apps live under `modules/{staff-portal,apm,finance,helpdesk,risk-register}`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, `/staff/helpdesk`, and `/staff/risk-register` (Apache maps these into `modules/`; there is no root `backend` symlink).
+**Repository layout:** CBP apps live under `modules/{staff-portal,apm,finance,helpdesk,risk-register,it,devtrack,…}`. Public URLs stay `/staff/`, `/staff/backend`, `/staff/apm`, `/staff/finance`, `/staff/helpdesk`, `/staff/risk-register`, `/staff/it`, and `/staff/devtrack` (Apache maps these into `modules/`; there is no root `backend` symlink).
 
 **Adding a new module?** See [docs/MODULE_INTEGRATION.md](./docs/MODULE_INTEGRATION.md) — register in the CBP launcher, call the Staff Share API, and optionally the APM REST APIs.
+
+**Staff Portal SSO for modules?** Use the public Cursor skill [`.cursor/skills/cbp-staff-portal-sso`](./.cursor/skills/cbp-staff-portal-sso/SKILL.md) (Finance, DevTrack, IT, Risk, Helpdesk, Registry, APM, or any external app that should accept `staff_sso_jwt`).
 
 ---
 
@@ -257,6 +259,7 @@ curl -i http://localhost/staff/helpdesk/backend/api/v1/public/screen    # Public
 | [**🔁 CI (GitHub + Azure)**](./docs/CI.md) | Build gates and GHCR image publish |
 | [**🛠️ Root setup**](./docs/SETUP.md) | Interactive env + installers + Supervisor |
 | [**🔌 New module integration**](./docs/MODULE_INTEGRATION.md) | Register in CBP launcher, Staff Share API, optional APM REST |
+| [**🔐 CBP Staff Portal SSO skill**](./.cursor/skills/cbp-staff-portal-sso/SKILL.md) | Cursor agent skill: wire `staff_sso_jwt` accept for Finance / DevTrack / IT / Risk / siblings ([reference](./.cursor/skills/cbp-staff-portal-sso/reference.md)) |
 
 </div>
 
@@ -296,11 +299,11 @@ All modules are seamlessly integrated through:
 
 | 🔐 **Session Management** | 🧭 **Navigation** | 🔒 **Permissions** |
 |---------------------------|-------------------|-------------------|
-| Shared Staff portal auth; POST SSO launch; background JWT refresh (`cbp-session-refresh.js`) across APM, Helpdesk, and Finance | CBP Modules menu with secure `home/launch_module` hand-off | Unified permission system across all modules |
+| Shared Staff portal auth; POST SSO launch (`staff_sso_jwt`); background JWT refresh (`cbp-session-refresh.js`) across APM, Helpdesk, Finance, IT, DevTrack, and Risk | CBP Modules menu with secure `home/launch_module` / SPA `launchCbpModule` hand-off | Unified permission system across all modules |
 
 </div>
 
-See [documentation/README.md](./documentation/README.md) for detailed integration information.
+For agents and integrators wiring a new accept endpoint, follow [`.cursor/skills/cbp-staff-portal-sso`](./.cursor/skills/cbp-staff-portal-sso/SKILL.md). See [documentation/README.md](./documentation/README.md) for broader integration information.
 
 ---
 
@@ -311,7 +314,8 @@ Public URLs (`/staff/…`) are mapped by root `.htaccess` into `modules/…` (no
 ```
 staff/
 ├── README.md                            # This file
-├── .htaccess                            # Rewrites /staff/{backend,apm,finance,helpdesk} → modules/
+├── .cursor/skills/cbp-staff-portal-sso/ # Public Cursor skill: Staff Portal SSO for modules
+├── .htaccess                            # Rewrites /staff/{backend,apm,finance,helpdesk,…} → modules/
 ├── index.php                            # Thin front controller for the staff mount
 ├── azure-pipelines.yml                  # Azure CI + GHCR publish
 ├── docker-compose.yml                   # Local web + Redis (+ optional workers / MySQL)
