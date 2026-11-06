@@ -4106,11 +4106,10 @@ public function submitSingleMemoForApproval(Activity $activity): RedirectRespons
 
     private function applyChangeRequestSnapshotToActivity(Activity $activity, ChangeRequest $cr): void
     {
-        $internalParticipants = $cr->internal_participants;
-        if (is_string($internalParticipants)) {
-            $decoded = json_decode($internalParticipants, true);
-            $internalParticipants = is_array($decoded) ? $decoded : [];
-        }
+        // Raw keyed JSON only — ChangeRequest::internal_participants accessor returns a Staff list.
+        $internalParticipants = $this->decodeInternalParticipantsJson(
+            $cr->getRawOriginal('internal_participants')
+        );
 
         $activity->fill([
             'activity_title' => $cr->activity_title,

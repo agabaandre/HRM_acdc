@@ -304,11 +304,14 @@ class SpecialMemoController extends Controller
             $participantEnds = is_array($participantEnds) ? $participantEnds : [];
             $participantDaysIn = $request->input('participant_days', []);
             $participantDaysIn = is_array($participantDaysIn) ? $participantDaysIn : [];
+            $internationalTravelIn = $request->input('international_travel', []);
+            $internationalTravelIn = is_array($internationalTravelIn) ? $internationalTravelIn : [];
             foreach ($participantStarts as $staffId => $start) {
                 $internalParticipants[$staffId] = [
                     'participant_start' => $start,
                     'participant_end' => $participantEnds[$staffId] ?? null,
                     'participant_days' => $participantDaysIn[$staffId] ?? null,
+                    'international_travel' => (int) ($internationalTravelIn[$staffId] ?? 0),
                 ];
             }
     
@@ -557,6 +560,18 @@ class SpecialMemoController extends Controller
                 ->with('error', 'You do not have permission to edit this memo.');
         }
 
+        // Capture primary memo leaving-country flags before any CR overlay (used as defaults for new participants).
+        $parentInternationalTravelMap = [];
+        $parentRawParticipants = $this->decodeInternalParticipantsJson(
+            $specialMemo->getAttributes()['internal_participants'] ?? null
+        );
+        foreach ($parentRawParticipants as $sid => $details) {
+            if (! is_array($details)) {
+                continue;
+            }
+            $parentInternationalTravelMap[(string) $sid] = (int) ($details['international_travel'] ?? 0);
+        }
+
         $changeRequestForEdit = null;
         if ($isChangeRequest && $crId > 0) {
             $changeRequestForEdit = ChangeRequest::query()->findOrFail($crId);
@@ -564,7 +579,9 @@ class SpecialMemoController extends Controller
         }
 
         ini_set('memory_limit', '1024M');
-        $division_id = user_session('division_id');
+        // Use the memo's division for participant select/split (not the viewer's session division),
+        // otherwise CR participants from the memo division are dropped or the wrong people are shown.
+        $division_id = (int) ($specialMemo->division_id ?: user_session('division_id'));
       
         // Request Types
         $requestTypes = RequestType::all();
@@ -574,7 +591,7 @@ class SpecialMemoController extends Controller
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name', 'job_name', 'duty_station_name'])
             ->get();
     
-        // Staff only from current division for internal participants
+        // Staff from the memo's division for the internal participants multi-select
         $divisionStaff =  Staff::active()
             ->select(['id', 'fname','lname','staff_id', 'division_id', 'division_name'])
             ->where('division_id', $division_id)
@@ -613,63 +630,76 @@ class SpecialMemoController extends Controller
         // Replace original budget on the model (optional, for view consistency)
         $specialMemo->budget_breakdown = $budget;
 
-        // Process participants data for edit form - following activities pattern
-        $rawParticipants = is_string($specialMemo->internal_participants)
-            ? json_decode($specialMemo->internal_participants, true)
-            : ($specialMemo->internal_participants ?? []);
+        // Process participants from raw keyed JSON (never the Staff-list accessor output).
+        // For change-request edits this is the CR row snapshot — same pattern as activities.
+        $rawParticipants = $this->internalParticipantsPayloadForSpecialMemoEdit(
+            $specialMemo,
+            $changeRequestForEdit
+        );
 
-        // Debug: Log the raw participants data
-        \Illuminate\Support\Facades\Log::info('Raw participants data:', ['data' => $rawParticipants]);
-        \Illuminate\Support\Facades\Log::info('Raw participants data type:', ['type' => gettype($rawParticipants)]);
-        \Illuminate\Support\Facades\Log::info('Raw participants data count:', ['count' => is_array($rawParticipants) ? count($rawParticipants) : 'not array']);
-
-        // Extract staff details and append date/days info - following activities pattern
         $internalParticipants = [];
         $externalParticipants = [];
-        if (!empty($rawParticipants)) {
-            // Check if data is already in the correct format (array of objects with staff key)
-            if (isset($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
-                // Data is already in the correct format, separate internal and external
+        if (! empty($rawParticipants)) {
+            // Already hydrated list: [{staff, participant_*}, ...]
+            if (isset($rawParticipants[0]) && is_array($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
                 foreach ($rawParticipants as $participant) {
-                    if ($participant['staff']->division_id == $division_id) {
+                    $staffModel = $participant['staff'] ?? null;
+                    if (! is_object($staffModel) || ! isset($staffModel->division_id)) {
+                        continue;
+                    }
+                    if ((int) $staffModel->division_id === (int) $division_id) {
                         $internalParticipants[] = $participant;
                     } else {
                         $externalParticipants[] = $participant;
                     }
                 }
-                \Illuminate\Support\Facades\Log::info('Participants already in correct format, separated internal and external', []);
             } else {
-                // Data is in key-value format, process it
+                // Keyed map: {staff_id: {participant_start, participant_end, participant_days, ...}}
                 $staffIds = array_keys($rawParticipants);
-                \Illuminate\Support\Facades\Log::info('Staff IDs to fetch:', ['staff_ids' => $staffIds]);
-                
                 $staffDetails = Staff::whereIn('staff_id', $staffIds)->get()->keyBy('staff_id');
-                \Illuminate\Support\Facades\Log::info('Staff details found:', ['count' => $staffDetails->count()]);
 
                 foreach ($rawParticipants as $staffId => $participantData) {
-                    if (isset($staffDetails[$staffId])) {
-                        $participant = [
-                            'staff' => $staffDetails[$staffId],
-                            'participant_start' => $participantData['participant_start'] ?? null,
-                            'participant_end' => $participantData['participant_end'] ?? null,
-                            'participant_days' => $participantData['participant_days'] ?? null,
-                        ];
-                        
-                        // Separate internal and external participants
-                        if ($staffDetails[$staffId]->division_id == $division_id) {
-                            $internalParticipants[] = $participant;
-                        } else {
-                            $externalParticipants[] = $participant;
-                        }
+                    if (! isset($staffDetails[$staffId]) || ! is_array($participantData)) {
+                        continue;
+                    }
+                    $sidKey = (string) $staffId;
+                    $travel = array_key_exists('international_travel', $participantData)
+                        ? (int) $participantData['international_travel']
+                        : (int) ($parentInternationalTravelMap[$sidKey] ?? 1);
+                    $participant = [
+                        'staff' => $staffDetails[$staffId],
+                        'participant_start' => $participantData['participant_start'] ?? null,
+                        'participant_end' => $participantData['participant_end'] ?? null,
+                        'participant_days' => $participantData['participant_days'] ?? null,
+                        'international_travel' => $travel,
+                    ];
+
+                    if ((int) $staffDetails[$staffId]->division_id === (int) $division_id) {
+                        $internalParticipants[] = $participant;
+                    } else {
+                        $externalParticipants[] = $participant;
                     }
                 }
-                \Illuminate\Support\Facades\Log::info('Processed participants from key-value format, separated internal and external', []);
             }
         }
 
-        // Debug: Log the processed participants
-        \Illuminate\Support\Facades\Log::info('Processed participants count:', ['count' => count($internalParticipants)]);
-        \Illuminate\Support\Facades\Log::info('Processed participants:', ['participants' => $internalParticipants]);
+        // Ensure memo/CR internal participants appear in the select even if not in Staff::active()
+        if ($internalParticipants !== []) {
+            $ensureIds = [];
+            foreach ($internalParticipants as $p) {
+                $sid = is_object($p['staff'] ?? null) ? ($p['staff']->staff_id ?? null) : ($p['staff_id'] ?? null);
+                if ($sid !== null) {
+                    $ensureIds[] = (int) $sid;
+                }
+            }
+            if ($ensureIds !== []) {
+                $extra = Staff::query()
+                    ->select(['id', 'fname', 'lname', 'staff_id', 'division_id', 'division_name'])
+                    ->whereIn('staff_id', $ensureIds)
+                    ->get();
+                $divisionStaff = $divisionStaff->concat($extra)->unique('staff_id')->values();
+            }
+        }
 
         // Process budget data for edit form - following activities pattern
         $budgetIds = is_string($specialMemo->budget_id)
@@ -710,6 +740,7 @@ class SpecialMemoController extends Controller
             'costItems' => $costItems,
             'internalParticipants' => $internalParticipants, // Following activities pattern
             'externalParticipants' => $externalParticipants, // External participants
+            'parentInternationalTravelMap' => $parentInternationalTravelMap,
             'budgetItems' => $budgetItems, // Following activities pattern
             'fundTypeId' => $fundTypeId, // Pass the fund type ID
             'budgetIds' => $budgetIds, // Pass the selected budget IDs
@@ -719,10 +750,68 @@ class SpecialMemoController extends Controller
     }
 
     /**
+     * Decode internal_participants JSON (handles double-encoding) into the keyed map used by forms.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function decodeInternalParticipantsJson(mixed $raw): array
+    {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+        if (is_array($raw)) {
+            // Accessor output is a list of {staff, participant_*}; only accept keyed staff_id maps here.
+            if ($raw !== [] && array_is_list($raw)) {
+                return [];
+            }
+
+            return $raw;
+        }
+        if (! is_string($raw)) {
+            return [];
+        }
+        $firstDecode = json_decode($raw, true);
+        if (is_string($firstDecode)) {
+            $secondDecode = json_decode($firstDecode, true);
+
+            return is_array($secondDecode) ? $secondDecode : [];
+        }
+
+        return is_array($firstDecode) ? $firstDecode : [];
+    }
+
+    /**
+     * Participant map for the special-memo edit UI.
+     * When a change request is open, prefer the CR row's raw JSON so the form matches what is stored
+     * (ChangeRequest::internal_participants accessor returns a Staff list, not the keyed map).
+     *
+     * @return array<int|string, mixed>
+     */
+    private function internalParticipantsPayloadForSpecialMemoEdit(SpecialMemo $memo, ?ChangeRequest $changeRequest): array
+    {
+        if ($changeRequest !== null) {
+            $rawColumn = $changeRequest->getRawOriginal('internal_participants');
+            if ($rawColumn !== null && $rawColumn !== '') {
+                return $this->decodeInternalParticipantsJson($rawColumn);
+            }
+        }
+
+        $rawMemo = $memo->getAttributes()['internal_participants'] ?? null;
+
+        return $this->decodeInternalParticipantsJson($rawMemo);
+    }
+
+    /**
      * Overlay change request draft data onto the special memo model for the edit form (in-memory only).
      */
     private function applyChangeRequestSnapshotToSpecialMemo(SpecialMemo $memo, ChangeRequest $cr): void
     {
+        // Use raw JSON for internal_participants — the model accessor returns a Staff list and would
+        // corrupt the keyed staff_id map the edit form expects (same fix as activities CR edit).
+        $internalParticipants = $this->decodeInternalParticipantsJson(
+            $cr->getRawOriginal('internal_participants')
+        );
+
         $memo->fill([
             'activity_title' => $cr->activity_title,
             'background' => $cr->background,
@@ -731,7 +820,7 @@ class SpecialMemoController extends Controller
             'date_from' => $cr->date_from,
             'date_to' => $cr->date_to,
             'location_id' => $cr->location_id,
-            'internal_participants' => $cr->internal_participants,
+            'internal_participants' => $internalParticipants,
             'fund_type_id' => $cr->fund_type_id,
             'budget_id' => $cr->budget_id,
             'budget_breakdown' => $cr->budget_breakdown,
@@ -873,11 +962,14 @@ class SpecialMemoController extends Controller
             $participantEnds = is_array($participantEnds) ? $participantEnds : [];
             $participantDaysIn = $request->input('participant_days', []);
             $participantDaysIn = is_array($participantDaysIn) ? $participantDaysIn : [];
+            $internationalTravelIn = $request->input('international_travel', []);
+            $internationalTravelIn = is_array($internationalTravelIn) ? $internationalTravelIn : [];
             foreach ($participantStarts as $staffId => $start) {
                 $internalParticipants[$staffId] = [
                     'participant_start' => $start,
                     'participant_end' => $participantEnds[$staffId] ?? null,
                     'participant_days' => $participantDaysIn[$staffId] ?? null,
+                    'international_travel' => (int) ($internationalTravelIn[$staffId] ?? 0),
                 ];
             }
     

@@ -1158,16 +1158,9 @@ class ChangeRequestController extends Controller
      */
     private function detectInternalParticipantsChange($parentMemo, Request $request): bool
     {
-        // Get parent memo internal participants
-        $parentParticipants = $parentMemo->internal_participants ?? [];
-        if (is_string($parentParticipants)) {
-            $parentParticipants = json_decode($parentParticipants, true) ?? [];
-        }
-        
-        // Ensure we have an array
-        if (!is_array($parentParticipants)) {
-            $parentParticipants = [];
-        }
+        // Prefer raw DB JSON so SpecialMemo/Activity accessors (Staff lists keyed 0..n) do not
+        // make every CR look like a participant change — or hide a real one.
+        $parentParticipants = $this->rawInternalParticipantsMap($parentMemo);
 
         // Get request internal participants - only get the participant IDs (keys)
         // The keys of participant_start array are the staff IDs
@@ -1194,6 +1187,70 @@ class ChangeRequestController extends Controller
         // This returns false if:
         // - Same participants (even if their dates/days/travel flags changed)
         return $parentParticipantIds !== $requestParticipantIds;
+    }
+
+    /**
+     * Keyed staff_id => details map from a memo/CR, bypassing Staff-list accessors.
+     *
+     * @return array<int|string, mixed>
+     */
+    private function rawInternalParticipantsMap($memo): array
+    {
+        if ($memo === null) {
+            return [];
+        }
+
+        $raw = null;
+        if (is_object($memo) && method_exists($memo, 'getRawOriginal')) {
+            $raw = $memo->getRawOriginal('internal_participants');
+        }
+        if (($raw === null || $raw === '') && is_object($memo) && method_exists($memo, 'getAttributes')) {
+            $raw = $memo->getAttributes()['internal_participants'] ?? null;
+        }
+        if ($raw === null || $raw === '') {
+            $raw = is_object($memo) ? ($memo->internal_participants ?? []) : [];
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        // Accessor-style list [{staff, ...}, ...] — extract staff_id keys when possible
+        if ($raw !== [] && array_is_list($raw)) {
+            $map = [];
+            foreach ($raw as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $sid = null;
+                if (isset($row['staff'])) {
+                    $st = $row['staff'];
+                    $sid = is_object($st) ? ($st->staff_id ?? null) : ($st['staff_id'] ?? null);
+                }
+                $sid = $sid ?? ($row['staff_id'] ?? null);
+                if ($sid === null) {
+                    continue;
+                }
+                $map[(int) $sid] = [
+                    'participant_start' => $row['participant_start'] ?? null,
+                    'participant_end' => $row['participant_end'] ?? null,
+                    'participant_days' => $row['participant_days'] ?? null,
+                    'international_travel' => $row['international_travel'] ?? 0,
+                ];
+            }
+
+            return $map;
+        }
+
+        return $raw;
     }
 
     /**
@@ -1495,11 +1552,7 @@ class ChangeRequestController extends Controller
      */
     private function detectNumberOfParticipantsChange($parentMemo, Request $request): bool
     {
-        // Get parent memo participants
-        $parentParticipants = $parentMemo->internal_participants ?? [];
-        if (is_string($parentParticipants)) {
-            $parentParticipants = json_decode($parentParticipants, true) ?? [];
-        }
+        $parentParticipants = $this->rawInternalParticipantsMap($parentMemo);
 
         // Get request participants
         $participantStarts = $request->input('participant_start', []);
@@ -1516,11 +1569,7 @@ class ChangeRequestController extends Controller
      */
     private function detectParticipantDaysChange($parentMemo, Request $request): bool
     {
-        // Get parent memo participants
-        $parentParticipants = $parentMemo->internal_participants ?? [];
-        if (is_string($parentParticipants)) {
-            $parentParticipants = json_decode($parentParticipants, true) ?? [];
-        }
+        $parentParticipants = $this->rawInternalParticipantsMap($parentMemo);
 
         // Get request participants
         $participantDays = $request->input('participant_days', []);
@@ -1530,7 +1579,7 @@ class ChangeRequestController extends Controller
         $requestTotalDays = 0;
 
         foreach ($parentParticipants as $staffId => $details) {
-            $parentTotalDays += (int) ($details['participant_days'] ?? 0);
+            $parentTotalDays += (int) (is_array($details) ? ($details['participant_days'] ?? 0) : 0);
         }
 
         foreach ($participantDays as $staffId => $days) {

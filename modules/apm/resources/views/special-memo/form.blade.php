@@ -149,19 +149,31 @@
                                 }
                             }
                         } else {
-                            $rawParticipants = is_string($specialMemo->internal_participants ?? null)
-                                ? json_decode($specialMemo->internal_participants, true)
-                                : ($specialMemo->internal_participants ?? []);
-                            if (!is_array($rawParticipants)) {
-                                $rawParticipants = [];
+                            // Prefer raw DB/attribute JSON (keyed by staff_id). The model accessor
+                            // returns a Staff list keyed 0..n and would select the wrong people.
+                            $rawAttr = $specialMemo->getAttributes()['internal_participants'] ?? null;
+                            $rawParticipants = [];
+                            if (is_string($rawAttr)) {
+                                $decoded = json_decode($rawAttr, true);
+                                if (is_string($decoded)) {
+                                    $decoded = json_decode($decoded, true);
+                                }
+                                $rawParticipants = is_array($decoded) ? $decoded : [];
+                            } elseif (is_array($rawAttr)) {
+                                $rawParticipants = $rawAttr;
                             }
-                            if (isset($rawParticipants[0]) && is_array($rawParticipants[0]) && isset($rawParticipants[0]['staff'])) {
+                            if ($rawParticipants !== [] && array_is_list($rawParticipants)) {
                                 foreach ($rawParticipants as $p) {
+                                    if (!is_array($p)) {
+                                        continue;
+                                    }
                                     $st = $p['staff'] ?? null;
                                     if (is_object($st) && isset($st->staff_id)) {
                                         $selectedParticipantIds[] = $st->staff_id;
                                     } elseif (is_array($st) && isset($st['staff_id'])) {
                                         $selectedParticipantIds[] = $st['staff_id'];
+                                    } elseif (isset($p['staff_id'])) {
+                                        $selectedParticipantIds[] = $p['staff_id'];
                                     }
                                 }
                             } else {
@@ -214,15 +226,16 @@
             <h6 class="fw-bold text-success mb-2 mt-4">
                 <i class="fas fa-users-cog me-2"></i>Participant dates &amp; days
             </h6>
-            <p class="text-muted small mb-3">Start, end, and day count for each internal participant selected above. Use <strong>Remove</strong> in the last column to drop a row.</p>
+            <p class="text-muted small mb-3">Start, end, day count, and leaving-country flag for each internal participant. Use <strong>Remove</strong> in the last column to drop a row.</p>
                 <div class="table-responsive">
                 <table class="table table-bordered table-sm align-middle participants-table--memo" id="participantsTable">
                     <colgroup>
                         <col class="participants-col-index" style="width: 3%;">
-                        <col class="participants-col-name" style="width: 26%;">
-                        <col style="width: 22%;">
-                        <col style="width: 22%;">
-                        <col style="width: 12%;">
+                        <col class="participants-col-name" style="width: 22%;">
+                        <col style="width: 16%;">
+                        <col style="width: 16%;">
+                        <col style="width: 10%;">
+                        <col style="width: 18%;">
                         <col style="width: 15%;">
                     </colgroup>
                     <thead class="table-light">
@@ -232,11 +245,18 @@
                             <th scope="col">Activity start date</th>
                             <th scope="col">Activity end date</th>
                             <th scope="col">No. of days</th>
+                            <th scope="col" class="text-center" style="min-width: 8.5rem;">
+                                <div class="small fw-semibold mb-1">Leaving Country</div>
+                                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                    <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 leaving-country-check-all" title="Check all participants">All</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 leaving-country-uncheck-all" title="Uncheck all participants">None</button>
+                                </div>
+                            </th>
                             <th scope="col" class="text-center text-nowrap" style="width: 1%;">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="participantsTableBody">
-                        <tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>
+                        <tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>
                     </tbody>
                 </table>
             </div>

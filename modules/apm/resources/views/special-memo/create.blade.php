@@ -309,6 +309,25 @@ $(document).ready(function () {
     }
     window.updateTotalParticipants = updateTotalParticipants;
 
+function setAllLeavingCountry(checked) {
+    $('#participantsTableBody tr[data-participant-id]').each(function () {
+        const row = $(this);
+        row.find('.international-travel-checkbox').prop('checked', checked);
+        row.find('input.international-travel-value').val(checked ? '1' : '0');
+    });
+}
+$(document).on('click', '.leaving-country-check-all', function (e) {
+    e.preventDefault();
+    setAllLeavingCountry(true);
+});
+$(document).on('click', '.leaving-country-uncheck-all', function (e) {
+    e.preventDefault();
+    setAllLeavingCountry(false);
+});
+$(document).on('change', '.international-travel-checkbox', function () {
+    $(this).closest('tr').find('input.international-travel-value').val(this.checked ? '1' : '0');
+});
+
 $('#internal_participants').on('change', function () {
     const selectedIds = ($(this).val() || []).map(id => String(id));
     const staffList = selectedIds.map(id => {
@@ -318,8 +337,15 @@ $('#internal_participants').on('change', function () {
         };
     });
 
-    appendToInternalParticipantsTable(staffList); // appends rows
-    updateTotalParticipants(); //  force count update
+    $('#participantsTableBody tr[data-participant-id]').each(function () {
+        const rowId = String($(this).data('participant-id'));
+        if (!selectedIds.includes(rowId)) {
+            $(this).remove();
+        }
+    });
+
+    appendToInternalParticipantsTable(staffList);
+    updateTotalParticipants();
 });
 
 $(document).on('click', '#participantsTable .remove-participant', function () {
@@ -349,7 +375,8 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
         return Math.max(Math.ceil((end - start) / msPerDay) + 1, 1);
     }
 
-    function appendToInternalParticipantsTable(staffList) {
+    function appendToInternalParticipantsTable(staffList, internationalTravelMap) {
+    internationalTravelMap = internationalTravelMap || {};
     const mainStart = $('#date_from').val();
     const mainEnd = $('#date_to').val();
     const days = getActivityDays(mainStart, mainEnd);
@@ -362,6 +389,10 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
     staffList.forEach(({ id, name }) => {
         const sid = String(id);
         if (!tableBody.find(`input[name="participant_days[${sid}]"]`).length) {
+            const travelVal = (internationalTravelMap[sid] !== undefined)
+                ? (internationalTravelMap[sid] == 1 ? 1 : 0)
+                : 1;
+            const checked = travelVal === 1;
             const row = $(`
                 <tr data-participant-id="${sid}">
                     <td class="participants-col-index text-center text-muted fw-semibold"></td>
@@ -369,6 +400,12 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
                     <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
                     <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
+                    <td class="text-center">
+                        <div class="form-check d-flex justify-content-center">
+                            <input type="hidden" name="international_travel[${sid}]" value="${travelVal}" class="international-travel-value">
+                            <input type="checkbox" class="form-check-input international-travel-checkbox" data-participant-id="${sid}" ${checked ? 'checked' : ''} aria-label="Leaving country">
+                        </div>
+                    </td>
                     <td class="text-center text-nowrap align-middle">
                         <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
                             <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
@@ -391,7 +428,7 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     const endDate = $end.val();
                     if (startDate && endDate) {
                         $days.val(getActivityDays(startDate, endDate));
-                        updateTotalParticipants(); // 🔁 trigger here too
+                        updateTotalParticipants();
                     }
                 }
             });
@@ -404,14 +441,14 @@ $(document).on('input change', '#participantsTableBody input, #internal_particip
                     const endDate = $end.val();
                     if (startDate && endDate) {
                         $days.val(getActivityDays(startDate, endDate));
-                        updateTotalParticipants(); // 🔁 trigger here too
+                        updateTotalParticipants();
                     }
                 }
             });
         }
     });
 
-    updateTotalParticipants(); // 🔁 TRIGGER HERE AFTER ALL PARTICIPANTS ADDED
+    updateTotalParticipants();
     if (typeof window.renumberParticipantsTable === 'function') {
         window.renumberParticipantsTable();
     }
@@ -543,40 +580,54 @@ $(document).ready(function () {
   
 
     function updateParticipantsTable() {
-    const selectedIds = $('#internal_participants').val();
+    const selectedIds = ($('#internal_participants').val() || []).map(id => String(id));
     const participantsTableBody = $('#participantsTableBody');
     const mainStart = $('#date_from').val();
     const mainEnd = $('#date_to').val();
     const days = getActivityDays(mainStart, mainEnd);
-    participantsTableBody.empty();
 
-    if (!selectedIds || selectedIds.length === 0) {
-        participantsTableBody.append('<tr><td colspan="6" class="text-muted text-center">No participants selected yet</td></tr>');
+    // Keep leaving-country state when refreshing dates
+    const existingRows = participantsTableBody.find('tr[data-participant-id]');
+    if (existingRows.length > 0) {
+        existingRows.each(function () {
+            const row = $(this);
+            const rowId = String(row.data('participant-id'));
+            if (selectedIds.length && !selectedIds.includes(rowId)) {
+                row.remove();
+                return;
+            }
+            const $start = row.find('.participant-start');
+            const $end = row.find('.participant-end');
+            const $days = row.find('.participant-days');
+            const startPicker = $start[0] && $start[0]._flatpickr;
+            const endPicker = $end[0] && $end[0]._flatpickr;
+            if (startPicker) startPicker.setDate(mainStart, false);
+            else $start.val(mainStart);
+            if (endPicker) endPicker.setDate(mainEnd, false);
+            else $end.val(mainEnd);
+            $days.val(days);
+        });
+        const staffList = selectedIds.map(id => ({
+            id: id,
+            name: $(`#internal_participants option[value="${id}"]`).text()
+        }));
+        appendToInternalParticipantsTable(staffList);
+        updateTotalParticipants();
         return;
     }
 
-    selectedIds.forEach((id, index) => {
-        const sid = String(id);
-        const name = $(`#internal_participants option[value="${sid}"]`).text();
-        participantsTableBody.append(`
-            <tr data-participant-id="${sid}">
-                <td class="participants-col-index text-center text-muted fw-semibold">${index + 1}</td>
-                <td class="participants-col-name">${name}</td>
-                <td><input type="text" name="participant_start[${sid}]" class="form-control date-picker participant-start" value="${mainStart}"></td>
-                <td><input type="text" name="participant_end[${sid}]" class="form-control date-picker participant-end" value="${mainEnd}"></td>
-                <td><input type="number" name="participant_days[${sid}]" class="form-control participant-days" value="${days}" readonly></td>
-                <td class="text-center text-nowrap align-middle">
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-participant" data-staff-id="${sid}" title="Remove this participant" aria-label="Remove">
-                        <i class="fas fa-trash-alt me-1" aria-hidden="true"></i> Remove
-                    </button>
-                </td>
-            </tr>
-        `);
-    });
+    participantsTableBody.empty();
 
-    flatpickr('.date-picker', {
-        dateFormat: 'Y-m-d'
-    });
+    if (!selectedIds || selectedIds.length === 0) {
+        participantsTableBody.append('<tr><td colspan="7" class="text-muted text-center">No participants selected yet</td></tr>');
+        return;
+    }
+
+    const staffList = selectedIds.map(id => ({
+        id: id,
+        name: $(`#internal_participants option[value="${id}"]`).text()
+    }));
+    appendToInternalParticipantsTable(staffList);
     updateTotalParticipants();
 }
 
